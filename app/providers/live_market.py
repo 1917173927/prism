@@ -95,6 +95,159 @@ A_SHARE_DATABASE: dict[str, dict[str, Any]] = {
         "market_cap_cny": 869000000000.0,
         "valuation_quantile_pct": 38.0,
     },
+    "688981": {
+        "symbol": "688981.SH",
+        "name": "中芯国际",
+        "sector": "Technology",
+        "sub_industry": "晶圆代工/半导体制造",
+        "price_cny": 92.40,
+        "change_pct": 3.15,
+        "pe_ttm": 95.2,
+        "pb": 3.8,
+        "roe_pct": 4.2,
+        "gross_margin_pct": 22.5,
+        "debt_ratio_pct": 33.6,
+        "revenue_cny": 45200000000.0,
+        "net_profit_cny": 4800000000.0,
+        "market_cap_cny": 735000000000.0,
+        "valuation_quantile_pct": 78.5,
+    },
+    "002371": {
+        "symbol": "002371.SZ",
+        "name": "北方华创",
+        "sector": "Technology",
+        "sub_industry": "集成电路与半导体设备",
+        "price_cny": 412.50,
+        "change_pct": 4.20,
+        "pe_ttm": 38.6,
+        "pb": 7.2,
+        "roe_pct": 19.8,
+        "gross_margin_pct": 43.1,
+        "debt_ratio_pct": 54.2,
+        "revenue_cny": 22079000000.0,
+        "net_profit_cny": 3899000000.0,
+        "market_cap_cny": 220000000000.0,
+        "valuation_quantile_pct": 62.0,
+    },
+    "600036": {
+        "symbol": "600036.SH",
+        "name": "招商银行",
+        "sector": "Finance",
+        "sub_industry": "股份制商业银行",
+        "price_cny": 38.65,
+        "change_pct": 0.85,
+        "pe_ttm": 5.8,
+        "pb": 0.82,
+        "roe_pct": 15.4,
+        "gross_margin_pct": 42.0,
+        "debt_ratio_pct": 91.5,
+        "revenue_cny": 339123000000.0,
+        "net_profit_cny": 146602000000.0,
+        "market_cap_cny": 975000000000.0,
+        "valuation_quantile_pct": 32.4,
+    },
+    "601318": {
+        "symbol": "601318.SH",
+        "name": "中国平安",
+        "sector": "Finance",
+        "sub_industry": "综合金融/人寿保险",
+        "price_cny": 54.20,
+        "change_pct": -0.32,
+        "pe_ttm": 7.6,
+        "pb": 0.95,
+        "roe_pct": 11.2,
+        "gross_margin_pct": 25.0,
+        "debt_ratio_pct": 88.0,
+        "revenue_cny": 913798000000.0,
+        "net_profit_cny": 85665000000.0,
+        "market_cap_cny": 987000000000.0,
+        "valuation_quantile_pct": 26.8,
+    },
+    "600900": {
+        "symbol": "600900.SH",
+        "name": "长江电力",
+        "sector": "Utilities",
+        "sub_industry": "清洁能源/大型水电",
+        "price_cny": 28.90,
+        "change_pct": 0.28,
+        "pe_ttm": 19.8,
+        "pb": 3.2,
+        "roe_pct": 15.8,
+        "gross_margin_pct": 58.5,
+        "debt_ratio_pct": 61.2,
+        "revenue_cny": 78112000000.0,
+        "net_profit_cny": 27244000000.0,
+        "market_cap_cny": 707000000000.0,
+        "valuation_quantile_pct": 68.2,
+    },
+    "300308": {
+        "symbol": "300308.SZ",
+        "name": "中际旭创",
+        "sector": "Technology",
+        "sub_industry": "光通信收发模块",
+        "price_cny": 135.60,
+        "change_pct": 2.80,
+        "pe_ttm": 28.5,
+        "pb": 7.1,
+        "roe_pct": 26.4,
+        "gross_margin_pct": 33.8,
+        "debt_ratio_pct": 38.5,
+        "revenue_cny": 10718000000.0,
+        "net_profit_cny": 2174000000.0,
+        "market_cap_cny": 152000000000.0,
+        "valuation_quantile_pct": 58.0,
+    },
+    "601138": {
+        "symbol": "601138.SH",
+        "name": "工业富联",
+        "sector": "Technology",
+        "sub_industry": "云计算/AI服务器精密制造",
+        "price_cny": 22.40,
+        "change_pct": 1.45,
+        "pe_ttm": 19.2,
+        "pb": 3.1,
+        "roe_pct": 16.2,
+        "gross_margin_pct": 7.8,
+        "debt_ratio_pct": 52.8,
+        "revenue_cny": 476340000000.0,
+        "net_profit_cny": 21040000000.0,
+        "market_cap_cny": 445000000000.0,
+        "valuation_quantile_pct": 42.5,
+    },
+    "600276": {
+        "symbol": "600276.SH",
+        "name": "恒瑞医药",
+        "sector": "Healthcare",
+        "sub_industry": "创新药/医药生物研发",
+        "price_cny": 46.80,
+        "change_pct": -0.15,
+        "pe_ttm": 44.2,
+        "pb": 6.5,
+        "roe_pct": 14.8,
+        "gross_margin_pct": 84.5,
+        "debt_ratio_pct": 12.3,
+        "revenue_cny": 22820000000.0,
+        "net_profit_cny": 4286000000.0,
+        "market_cap_cny": 298500000000.0,
+        "valuation_quantile_pct": 39.5,
+    },
+    "000858": {
+        "symbol": "000858.SZ",
+        "name": "五粮液",
+        "sector": "Consumer",
+        "sub_industry": "浓香型白酒/消费品",
+        "price_cny": 138.50,
+        "change_pct": 0.60,
+        "pe_ttm": 16.8,
+        "pb": 4.1,
+        "roe_pct": 25.3,
+        "gross_margin_pct": 75.8,
+        "debt_ratio_pct": 18.2,
+        "revenue_cny": 83272000000.0,
+        "net_profit_cny": 30211000000.0,
+        "market_cap_cny": 537600000000.0,
+        "valuation_quantile_pct": 22.0,
+    },
     "113050": {
         "symbol": "113050.SH",
         "name": "南银转债",
@@ -112,7 +265,35 @@ A_SHARE_DATABASE: dict[str, dict[str, Any]] = {
         "market_cap_cny": 20000000000.0,
         "valuation_quantile_pct": 15.0,
     },
+    "601998": {
+        "symbol": "601998.SH",
+        "name": "中信银行",
+        "sector": "Finance",
+        "sub_industry": "全国性股份制商业银行",
+        "price_cny": 8.76,
+        "change_pct": -1.46,
+        "pe_ttm": 6.48,
+        "pb": 0.65,
+        "roe_pct": 10.0,
+        "gross_margin_pct": 41.2,
+        "debt_ratio_pct": 92.4,
+        "revenue_cny": 205896000000.0,
+        "net_profit_cny": 67016000000.0,
+        "market_cap_cny": 487452000000.0,
+        "valuation_quantile_pct": 24.5,
+    },
 }
+
+
+def register_security_data(clean_code: str, data: dict[str, Any]) -> None:
+    """Dynamically register or update security data in the in-memory database."""
+    A_SHARE_DATABASE[clean_code] = data
+
+
+def get_security_data(clean_code: str) -> dict[str, Any] | None:
+    """Retrieve security data by clean code."""
+    return A_SHARE_DATABASE.get(clean_code)
+
 
 ETF_LOOKTHROUGH_DATABASE: dict[str, dict[str, Any]] = {
     "588000": {
@@ -157,18 +338,36 @@ ETF_LOOKTHROUGH_DATABASE: dict[str, dict[str, Any]] = {
         ],
         "sector_exposure": {"Finance": 22.4, "Technology": 18.5, "Consumer": 17.2, "Industrials": 16.8, "Healthcare": 8.5, "Utilities": 16.6},
     },
+    "159915": {
+        "fund_code": "159915.SZ",
+        "fund_name": "易方达创业板ETF",
+        "fund_type": "ETF / 宽基成长型",
+        "net_asset_value_cny": 2.120,
+        "top_holdings": [
+            {"asset_id": "300750.SZ", "name": "宁德时代", "weight_pct": 18.50, "sector": "Industrials"},
+            {"asset_id": "300059.SZ", "name": "东方财富", "weight_pct": 7.20, "sector": "Finance"},
+            {"asset_id": "300308.SZ", "name": "中际旭创", "weight_pct": 4.80, "sector": "Technology"},
+            {"asset_id": "300274.SZ", "name": "阳光电源", "weight_pct": 4.20, "sector": "Industrials"},
+            {"asset_id": "300124.SZ", "name": "汇川技术", "weight_pct": 3.80, "sector": "Industrials"},
+        ],
+        "sector_exposure": {"Industrials": 45.0, "Technology": 28.0, "Finance": 12.0, "Healthcare": 10.0, "Consumer": 5.0},
+    },
 }
 
 
-class LiveMarketProvider(FinancialProvider):
-    """Live Provider delivering real A-share stock quotes and ETF look-through."""
+class StaticMarketProvider(FinancialProvider):
+    """Static Provider delivering curated benchmark A-share stock quotes and ETF look-through."""
 
-    def __init__(self, name: NonEmptyStr = "live_market_provider") -> None:
+    def __init__(self, name: NonEmptyStr = "static_market_provider") -> None:
         self._name = name
 
     @property
     def name(self) -> NonEmptyStr:
         return self._name
+
+    @property
+    def is_synthetic(self) -> bool:
+        return True
 
     async def execute(self, request: ProviderRequest) -> ProviderResult:
         """Fetch stock or fund observation records."""
@@ -181,22 +380,25 @@ class LiveMarketProvider(FinancialProvider):
         if request.operation in (ProviderOperation.MARKET_DATA, ProviderOperation.COMPANY_DATA):
             data = A_SHARE_DATABASE.get(clean_code)
             if not data:
-                data = {
-                    "symbol": f"{clean_code}.SZ" if clean_code.startswith(("00", "30")) else f"{clean_code}.SH",
-                    "name": f"A股标的 ({clean_code})",
-                    "sector": "Technology" if clean_code.startswith("688") else "Industrials",
-                    "price_cny": 32.50,
-                    "change_pct": 1.20,
-                    "pe_ttm": 25.4,
-                    "pb": 3.2,
-                    "roe_pct": 14.5,
-                    "gross_margin_pct": 32.0,
-                    "debt_ratio_pct": 48.0,
-                    "revenue_cny": 15000000000.0,
-                    "net_profit_cny": 1200000000.0,
-                    "market_cap_cny": 45000000000.0,
-                    "valuation_quantile_pct": 50.0,
-                }
+                return ProviderResult(
+                    request_id=request.request_id,
+                    request_fingerprint=fingerprint,
+                    provider=self._name,
+                    status=ProviderStatus.PARTIAL,
+                    retrieved_at=datetime.now(UTC),
+                    records=(),
+                    missing_fields=("symbol", "price_cny"),
+                    issues=(
+                        ProviderIssue(
+                            code=ProviderIssueCode.INVALID_RESPONSE,
+                            stage="execute",
+                            safe_message=f"Security code [{clean_code}] not found in static market database.",
+                            retriable=False,
+                        ),
+                    ),
+                    scope_description=f"Static market observation for {symbol}",
+                    latency_ms=4,
+                )
 
             record_payload = {
                 "symbol": data["symbol"],
@@ -211,11 +413,12 @@ class LiveMarketProvider(FinancialProvider):
                 "debt_ratio_pct": data["debt_ratio_pct"],
                 "valuation_quantile_pct": data["valuation_quantile_pct"],
                 "market_cap_cny": data["market_cap_cny"],
+                "is_synthetic": True,
             }
             records.append(
                 ProviderRecord(
-                    source="live_market_provider",
-                    record_id=f"live-stock-{clean_code}-{int(datetime.now(UTC).timestamp())}",
+                    source=self._name,
+                    record_id=f"static-stock-{clean_code}-{int(datetime.now(UTC).timestamp())}",
                     fields=record_payload,
                 )
             )
@@ -223,29 +426,37 @@ class LiveMarketProvider(FinancialProvider):
         elif request.operation == ProviderOperation.FUND_DATA:
             fund_data = ETF_LOOKTHROUGH_DATABASE.get(clean_code)
             if not fund_data:
-                fund_data = {
-                    "fund_code": f"{clean_code}.OF",
-                    "fund_name": f"精选投资基金 ({clean_code})",
-                    "fund_type": "混合型 / 主题型",
-                    "net_asset_value_cny": 1.250,
-                    "top_holdings": [
-                        {"asset_id": "300750.SZ", "name": "宁德时代", "weight_pct": 8.5, "sector": "Industrials"},
-                        {"asset_id": "600519.SH", "name": "贵州茅台", "weight_pct": 7.2, "sector": "Consumer"},
-                        {"asset_id": "688981.SH", "name": "中芯国际", "weight_pct": 6.8, "sector": "Technology"},
-                    ],
-                    "sector_exposure": {"Technology": 40.0, "Industrials": 35.0, "Consumer": 25.0},
-                }
+                return ProviderResult(
+                    request_id=request.request_id,
+                    request_fingerprint=fingerprint,
+                    provider=self._name,
+                    status=ProviderStatus.PARTIAL,
+                    retrieved_at=datetime.now(UTC),
+                    records=(),
+                    missing_fields=("fund_code", "top_holdings"),
+                    issues=(
+                        ProviderIssue(
+                            code=ProviderIssueCode.INVALID_RESPONSE,
+                            stage="execute",
+                            safe_message=f"Fund code [{clean_code}] not found in look-through database.",
+                            retriable=False,
+                        ),
+                    ),
+                    scope_description=f"Static fund observation for {symbol}",
+                    latency_ms=4,
+                )
 
             record_payload = {
                 "fund_code": fund_data["fund_code"],
                 "fund_name": fund_data["fund_name"],
                 "top_holdings": fund_data["top_holdings"],
                 "sector_exposure": fund_data["sector_exposure"],
+                "is_synthetic": True,
             }
             records.append(
                 ProviderRecord(
-                    source="live_market_provider",
-                    record_id=f"live-fund-{clean_code}-{int(datetime.now(UTC).timestamp())}",
+                    source=self._name,
+                    record_id=f"static-fund-{clean_code}-{int(datetime.now(UTC).timestamp())}",
                     fields=record_payload,
                 )
             )
@@ -259,6 +470,10 @@ class LiveMarketProvider(FinancialProvider):
             records=tuple(records),
             missing_fields=(),
             issues=(),
-            scope_description=f"Live market observation for {symbol}",
+            scope_description=f"Static market observation for {symbol}",
             latency_ms=12,
         )
+
+
+# Backward compatibility alias
+LiveMarketProvider = StaticMarketProvider

@@ -75,10 +75,11 @@ def test_api_health_and_decision_event_round_trip_are_owner_scoped() -> None:
 
     health = client.get("/api/health")
     assert health.status_code == 200
-    assert health.json() == {
-        "status": "ok",
-        "schema_version": "decision-event.v1",
-    }
+    health_data = health.json()
+    assert health_data["status"] == "ok"
+    assert health_data["schema_version"] == "decision-event.v1"
+    assert health_data["data_mode"] in ("MOCK", "LIVE")
+    assert "capabilities" in health_data
 
     created = client.post(
         "/api/v1/decision-events",

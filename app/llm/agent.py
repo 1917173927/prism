@@ -17,8 +17,16 @@ from app.llm.prompts import (
     COPILOT_TOOLS,
     PORTFOLIO_PARSER_PROMPT,
 )
-from app.providers.live_market import LiveMarketProvider, A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
+from app.providers.live_market import (
+    LiveMarketProvider,
+    StaticMarketProvider,
+    A_SHARE_DATABASE,
+    ETF_LOOKTHROUGH_DATABASE,
+)
+from app.providers.fixture_wencai import FixtureWencaiProvider, FIXTURE_WENCAI_DATABASE
+from app.providers.skillhub import WencaiSkillHubProvider
 from app.providers.live_wencai import LiveWencaiProvider
+from app.runtime.mode import DataMode, get_runtime_mode_controller
 
 
 class CopilotMessage(BaseModel):
@@ -37,8 +45,11 @@ class CopilotAgent:
 
     def __init__(self, llm_client: AsyncLLMClient | None = None) -> None:
         self.client = llm_client or AsyncLLMClient()
-        self.market_provider = LiveMarketProvider()
-        self.wencai_provider = LiveWencaiProvider()
+        self.static_market_provider = StaticMarketProvider()
+        self.market_provider = self.static_market_provider
+        self.skillhub_provider = WencaiSkillHubProvider()
+        self.fixture_wencai_provider = FixtureWencaiProvider()
+        self.wencai_provider = self.skillhub_provider
 
     async def stream_chat(
         self,
@@ -228,7 +239,56 @@ class CopilotAgent:
         persona: dict[str, Any],
         portfolio: dict[str, Any] | None,
     ) -> dict[str, Any]:
-        """Execute tool against live provider databases."""
+        """Execute tool against live or mock provider databases depending on active mode."""
+        controller = get_runtime_mode_controller()
+        is_live = (controller.mode == DataMode.LIVE)
+
+        if is_live:
+            if name in ("query_stock_quote", "query_fund_lookthrough"):
+                return {
+                    "status": "FAILED",
+                    "error_code": "LIVE_MODE_UNSUPPORTED",
+                    "message": "该功能在 LIVE 官方数据模式下尚未接入交易所实时数据源，未回退模拟数据。",
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": "wencai_skillhub_provider",
+                        "provider_serving_mode": "UNSUPPORTED",
+                        "is_synthetic": False,
+                    },
+                }
+            elif name == "query_wencai_semantic":
+                if not self.skillhub_provider.is_configured:
+                    return {
+                        "status": "FAILED",
+                        "error_code": "AUTH_FAILED",
+                        "message": "官方 SkillHub 凭据 (WENCAI_SKILLHUB_API_KEY) 未配置，LIVE 模式拒绝执行非真实外部调用，未回退模拟数据。",
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "wencai_skillhub_provider",
+                            "provider_serving_mode": "DIRECT",
+                            "is_synthetic": False,
+                        },
+                    }
+                from app.providers.contracts import ProviderOperation, ProviderRequest
+                req = ProviderRequest(
+                    request_id=f"live-copilot-{int(datetime.now(UTC).timestamp())}",
+                    operation=ProviderOperation.SEARCH_NEWS,
+                    subject=str(args.get("query", "市场行情")),
+                )
+                res = await self.skillhub_provider.execute(req)
+                return {
+                    "status": res.status.value,
+                    "source": "iwencai.com / SkillHub (Official Live)",
+                    "summary": res.records[0].fields.get("summary") if res.records else "无返回结果",
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": "wencai_skillhub_provider",
+                        "provider_serving_mode": "DIRECT",
+                        "is_synthetic": False,
+                    },
+                }
+
+        # MOCK Mode
         if name == "query_stock_quote":
             symbol = str(args.get("symbol", "300750"))
             clean_code = symbol.split(".")[0].strip()
@@ -245,13 +305,33 @@ class CopilotAgent:
                 "debt_ratio_pct": 42.0,
                 "valuation_quantile_pct": 48.0,
             })
-            return {"status": "SUCCESS", "source": "问财实时行情", "data": data}
+            return {
+                "status": "SUCCESS",
+                "source": "问财实时行情（MOCK 基准沙箱）",
+                "data": data,
+                "execution_context": {
+                    "data_mode": "MOCK",
+                    "provider": "static_market_provider",
+                    "provider_serving_mode": "SYNTHETIC_FIXTURE",
+                    "is_synthetic": True,
+                },
+            }
 
         elif name == "query_fund_lookthrough":
             fund_code = str(args.get("fund_code", "588000"))
             clean_code = fund_code.split(".")[0].strip()
             data = ETF_LOOKTHROUGH_DATABASE.get(clean_code, ETF_LOOKTHROUGH_DATABASE["588000"])
-            return {"status": "SUCCESS", "source": "公募基金季度持仓穿透", "data": data}
+            return {
+                "status": "SUCCESS",
+                "source": "公募基金季度持仓穿透（MOCK 基准沙箱）",
+                "data": data,
+                "execution_context": {
+                    "data_mode": "MOCK",
+                    "provider": "static_market_provider",
+                    "provider_serving_mode": "SYNTHETIC_FIXTURE",
+                    "is_synthetic": True,
+                },
+            }
 
         elif name == "run_portfolio_health_check":
             is_over = persona.get("tag", "").startswith("R3") or "42" in str(persona)
@@ -261,6 +341,11 @@ class CopilotAgent:
                 "budget_cap_pct": float(persona.get("budget_cap", "30.0%").replace("%", "")),
                 "is_over_budget": is_over,
                 "verdict": "REDUCE" if is_over else "HOLD",
+                "execution_context": {
+                    "data_mode": "MOCK",
+                    "provider": "deterministic_portfolio_engine",
+                    "is_synthetic": True,
+                },
             }
 
         elif name == "generate_portfolio_rebalance":
@@ -273,15 +358,31 @@ class CopilotAgent:
                     {"step": 2, "action": "SELL", "asset": "半导体主题 ETF", "weight_delta": "-2.0%"},
                     {"step": 3, "action": "BUY", "asset": "沪深300 宽基 ETF", "weight_delta": "+7.0%"},
                 ],
+                "execution_context": {
+                    "data_mode": "MOCK",
+                    "provider": "deterministic_rebalance_engine",
+                    "is_synthetic": True,
+                },
             }
 
         else:  # query_wencai_semantic
             query = args.get("query", "市场行情")
+            matched = FIXTURE_WENCAI_DATABASE.get("default", {})
+            for k, v in FIXTURE_WENCAI_DATABASE.items():
+                if k != "default" and k in query:
+                    matched = v
+                    break
             return {
                 "status": "SUCCESS",
-                "source": "iwencai.com / SkillHub",
+                "source": "iwencai.com / Fixture Sandbox (Mock Synthetic)",
                 "query": query,
-                "summary": f"同花顺问财检索完成：当前 A 股核心资产估值处于合理区间，机构关注度持续提升。",
+                "summary": matched.get("summary", "同花顺问财沙箱检索完成。"),
+                "execution_context": {
+                    "data_mode": "MOCK",
+                    "provider": "fixture_wencai_provider",
+                    "provider_serving_mode": "SYNTHETIC_FIXTURE",
+                    "is_synthetic": True,
+                },
             }
 
     def _synthesize_grounded_response(
@@ -322,29 +423,32 @@ class CopilotAgent:
         elif check_tool:
             chk = check_tool["result"]
             is_over = chk.get("is_over_budget", True)
-            lines.append(f"### 🩺 【持仓健康体检报告】")
-            lines.append(f"尊敬的 {name}，根据您的 **{tag}** 画像（回撤容忍 ≤{persona.get('max_drawdown', 15)}%）：\n")
+            lines.append(f"### 持仓健康度核查报告")
+            lines.append(f"尊敬的 {name}，根据您的 {tag} 画像（回撤容忍 ≤{persona.get('max_drawdown', 15)}%）：\n")
             if is_over:
-                lines.append(f"⚠️ **风险提示：科技行业暴露超标！**")
-                lines.append(f"- 当前持仓穿透科技暴露：**{chk['tech_exposure_pct']}%**（超出您画像的 **{chk['budget_cap_pct']}%** 上限）。")
-                lines.append(f"- 核心原因：持有多只科技与半导体主题基金，底层重仓股高度重合。")
-                lines.append(f"- 建议操作：**适度减仓高集中度基金 (REDUCE)**，增配宽基指数 ETF 以降低组合波动。")
+                lines.append(f"风险提示：行业敞口超标")
+                lines.append(f"- 当前持仓穿透科技敞口：{chk['tech_exposure_pct']}%（超出画像设定的 {chk['budget_cap_pct']}% 上限）。")
+                lines.append(f"- 归因分析：持有多只科技与半导体主题基金，底层重仓标的高度重叠。")
+                lines.append(f"- 建议操作：适度减仓高集中度标的 (REDUCE)，增配宽基指数 ETF 以平抑组合波动。")
             else:
-                lines.append(f"🛡️ **组合健康：当前行业配置均衡**，科技暴露为 **{chk['tech_exposure_pct']}%**，处于预算限额之内，建议维持持有 (HOLD)。")
+                lines.append(f"组合核验：当前行业配置均衡，科技敞口为 {chk['tech_exposure_pct']}%，处于预算限额之内，维持现有配置 (HOLD)。")
 
         elif rebalance_tool:
             reb = rebalance_tool["result"]
-            lines.append(f"### ⚖️ 【智能调仓再平衡执行清单】")
-            lines.append(f"根据确定性资产优化算法（CAP_AND_REDISTRIBUTE），为您生成低滑点执行路线（总换手率 **{reb['turnover_pct']}%**，预期降低波动 **{reb['volatility_reduction_pct']}%**）：\n")
+            lines.append(f"### 组合再平衡执行清单")
+            lines.append(f"依据确定性资产优化模型（CAP_AND_REDISTRIBUTE），计算得出调仓清单（换手率 {reb['turnover_pct']}%，预期降低波动 {reb['volatility_reduction_pct']}%）：\n")
             for s in reb["steps"]:
                 action_text = "卖出 (SELL)" if s["action"] == "SELL" else "买入 (BUY)"
-                lines.append(f"{s['step']}. **{action_text}** {s['asset']}：调仓比例 `{s['weight_delta']}`")
+                lines.append(f"{s['step']}. **{action_text}** {s['asset']}：调整比例 `{s['weight_delta']}`")
 
         else:
-            lines.append(f"### 💡 【智能投顾研判】")
-            lines.append(f"根据您的提问「{user_message}」以及您的 **{tag}** 画像要求，系统已通过同花顺问财与多智能体协作系统完成分析：市场整体流动性趋于稳健，建议坚持资产多元化配置策略，控制单一赛道下注比例。")
+            lines.append(f"### 投资研判结论")
+            lines.append(f"针对咨询事项「{user_message}」并结合 {tag} 适当性约束，系统完成测算分析：全市场流动性与估值分位数处于合理区间，建议遵循多元化分散配置纪律，控制单一行业暴露上限。")
 
-        lines.append("\n---\n*风险提示：证券市场有风险，投资需谨慎。本报告基于客观数据与模型推导，不构成保本承诺与确定性收益保证。*")
+        controller = get_runtime_mode_controller()
+        mode_label = "LIVE · 官方接口数据" if controller.mode == DataMode.LIVE else "MOCK · 基准合成数据"
+        lines.append(f"\n> 来源核验与审计：数据模式 [{mode_label}] · 决策回执由确定性计算引擎闭环生成")
+        lines.append("\n---\n*风险揭示：证券市场存在风险，投资需谨慎。本报告基于量化模型推导，不作为收益承诺。*")
 
         return "\n".join(lines)
 

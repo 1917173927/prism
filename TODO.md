@@ -117,9 +117,23 @@
 - [x] Phase 38: Implement Copilot Interactive Task Center (Optimization Direction 1) featuring Three-Tier Information Architecture, 3 Preset Personas (Zhang R3, Li R2, Wang R4), 3 Core Tasks (Health Check, Asset Deep Dive, Smart Rebalancing), Natural Language Query router, L2 Decision Cards, and 1-Click L3 Expert Audit Drill-downs.
 - [x] Phase 39: Implement Live LLM Cognitive Agent & Real Financial Data Providers (Optimization Direction 2) featuring OpenAI/DeepSeek/Qwen compatible streaming client, ReAct multi-agent tool execution, Live Market Provider (real quotes/PE/ROE), Live Fund Look-Through Provider, Live Wencai SkillHub Provider, and Natural Language Portfolio Parser.
 
+## P3 — Workflow Orchestration & Anti-Hallucination Blackboard (Next Phase)
+
+- [ ] Phase 40: Multi-Agent Graph & Pipeline Workflow Builder (Coze-aligned capabilities)
+  - [ ] 引入成熟开源图引擎（如 AntV X6 / LiteGraph / Flow），构建高表现力节点画布与连线编排面板，避免从零造渲染轮子。
+  - [ ] 支持图引擎拓扑模型与后端 `WorkflowDefinition` (v1) 契约的双向转换与环路校验 (DAG Cycle Detection)。
+  - [ ] 提供「高级画布视图」与「流水线卡片视图」双模切换，适配普通用户预置模版与进阶用户自定义投研链。
+  - [ ] 将可视化导出的工作流配置对接至 `executor.py` 有界并发异步执行器。
+- [ ] Phase 41: Session Truth Blackboard & Hallucination Suppression Panel
+  - [ ] Define `session-blackboard.v1` contract extracting locked profile baselines, holdings, and risk envelopes per session.
+  - [ ] Implement deterministic drift and contradiction detection rules (`PREMISE_DRIFT`, `ACTION_CONFLICT`, `HALLUCINATED_DATA`).
+  - [ ] Add slide-over Session Truth Blackboard drawer with suspicious turn alerts and smooth scroll-to-turn anchors.
+  - [ ] Provide one-click manual premise override modal that commits to `ContextMemory` and enforces negative constraint prompts on subsequent turns.
+
 ## External inputs / decisions
 
-- [ ] Obtain competition-specific SkillHub development documentation and credentials.
+- [x] External decision confirmed: 官方 SkillHub 开发文档与测试凭据目前处于「暂时没有」状态。本轮系统架构严格实现真实适配器骨架（LiveWencaiProvider）与离线不可用/降级态（SKELETON_UNAVAILABLE），绝不虚假声称真实接口已测试通过。
+- [ ] Obtain competition-specific SkillHub development documentation and production credentials when officially issued by the committee.
 - [ ] Confirm SkillHub quotas, caching, retention, attribution and output-display rights.
 - [ ] Obtain the scoring appendix referenced by the competition brief.
 - [ ] Confirm reuse/provenance terms for both upstream repositories; neither root currently exposes a LICENSE/NOTICE file.
@@ -132,9 +146,12 @@ These inputs block claims of real SkillHub integration or submission readiness, 
 - broad persistent conversational memory beyond profile/decision audit state;
 - autonomous trading or real order execution;
 - microservices and Kubernetes;
-- complex animation, persona-heavy Agent presentations and custom model training.
+- complex animation, persona-heavy Agent presentations and custom model training;
+- 自研底层 Canvas/SVG 渲染引擎内核（统一通过引入成熟工业级开源图引擎支撑）。
 
 ## Next useful action
 
 Optimization Direction 1 (Phase 38) and Optimization Direction 2 (Phase 39) have been fully implemented and verified with 100% test pass rate across 472 automated tests.
-The system is ready for Optimization Direction 3 (Performance stress test & competition deliverables packaging).
+Next targets are Phase 40 (Multi-Agent Graph & Pipeline Workflow Builder, 引入成熟开源图引擎) and Phase 41 (Session Truth Blackboard & Anti-Hallucination Panel) as specified in `docs/architecture.md`.
+
+

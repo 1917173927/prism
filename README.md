@@ -80,19 +80,19 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
   `advisor-plan-response.v1`：用户可在 Advisor 工作台选择科技暴露复核或组合风险
   复核，预览复用既有 Macro/Industry/Stock/ETF-Fund 四轨道的确定性任务计划，再
   显式运行原有 HOLD/REDUCE 纵切；计划不运行 Provider、不写 DecisionEvent，也不把
-  自然语言或 LLM/Gemini 当作问题理解。详见 [Intent/Plan 契约](docs/intent-planning.md)。
+  自然语言或 LLM/Gemini 当作问题理解。详见 [Intent/Plan 契约](docs/archive/intent-planning.md)。
   Phase 22 最终 `293` 项回归、100 次固定评测回放、三场景 100 并发本地基线和真实
   浏览器验收均通过；这些 fixture/ASGI 数字不代表真实市场准确率或生产 SLA。
 - Phase 23 已把 Phase 2 的结构化 `ProfileExtractionProposal` 接入 Risk Profile 工作台：
   用户先预览问卷与提取值冲突，再逐项选择 `USE_QUESTIONNAIRE` 或 `USE_EXTRACTION`，
   服务端重建 draft 后生成保留冲突审计的确定性 Profile；不解析自然语言、不保存原文、
   不写 DecisionEvent。`299` 项回归、100 次评测回放、三场景 100 并发本地基线和真实
-  浏览器路径均通过。详见 [画像提案契约](docs/profile-proposal-confirmation.md)。
+  浏览器路径均通过。详见 [画像提案契约](docs/archive/profile-proposal-confirmation.md)。
 - Phase 24 已把 Research Tracks 的不确定性做成可回放工作台：场景目录覆盖基线一致、
   来源分歧、PARTIAL、EMPTY 和 FAILED；分歧显示双方 lineage Evidence，退化结果
   保留节点/run/pipeline 状态但不升级为 Fact/Finding/Recommendation。`314` 项回归、
   100 次固定评测回放、三场景 100 并发本地基线、wheel 和真实浏览器五场景路径均通过；
-  这些仍是离线 fixture/ASGI 证据。详见 [研究场景契约](docs/research-scenarios.md)。
+  这些仍是离线 fixture/ASGI 证据。详见 [研究场景契约](docs/archive/research-scenarios.md)。
 - Phase 25 已把 Demo F 个股研究落成独立的 Evidence Card：两条 `COMPANY_DATA`
   lineage 经过同一 bounded run、四态 Provider、Cross-Validation 和 Evidence/Finding
   bridge，基线闭合六个财务 Fact，并以服务端 `Decimal` 规则生成现金流质量、应收占比和
@@ -100,14 +100,14 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
   Fact/Finding/风险升级。owner-scoped API 与静态工作台支持五场景回放，结果不写
   DecisionEvent、不生成 Recommendation。`325` 项回归、100 次评测回放、三场景 100
   并发本地基线、wheel、静态边界和真实浏览器路径均通过；这些仍是离线 fixture/ASGI
-  证据。详见 [个股研究 Evidence Card](docs/stock-research-card.md)。
+  证据。详见 [个股研究 Evidence Card](docs/archive/stock-research-card.md)。
 - Phase 26 已把 Demo G ETF/Fund 资产研究落成独立的 Evidence Card：两条 `FUND_DATA`
   lineage 经过同一 bounded run、四态 Provider、Cross-Validation 和 Evidence/Finding
   bridge，基线闭合科技权重、前十大集中度、费率、波动、最大回撤和跟踪误差六个 Fact，
   并以服务端 `Decimal` 规则生成五类资产风险 Finding。来源分歧、PARTIAL、EMPTY、
   FAILED 保留 Evidence 与节点 reason，但不升级 Fact/Finding/风险；owner-scoped API
   与静态工作台支持五场景回放，结果不写 DecisionEvent、不生成 Recommendation。详见
-  [ETF/Fund 资产研究 Evidence Card](docs/fund-research-card.md)。Phase-specific `24`
+  [ETF/Fund 资产研究 Evidence Card](docs/archive/fund-research-card.md)。Phase-specific `24`
   项、全量 `349` 项回归、100 次固定评测和本地 100 并发基线均通过；这些仍是离线
   fixture/ASGI 证据，不代表实时市场准确率或生产 SLA。
 - Phase 27 已把 Demo H 最低可转债资产研究落成独立的 Evidence Card：两条
@@ -119,7 +119,7 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
   owner-scoped API 与静态工作台支持五场景回放，结果不写 DecisionEvent、不生成
   Recommendation。阶段 `28` 项、全量 `377` 项回归、100 次固定评测、本地 100 并发
   基线、wheel 与真实浏览器路径均通过；这些仍是离线 fixture/ASGI 证据，不代表实时
-  市场准确率或生产 SLA。详见 [可转债资产研究 Evidence Card](docs/convertible-bond-research-card.md)。
+  市场准确率或生产 SLA。详见 [可转债资产研究 Evidence Card](docs/archive/convertible-bond-research-card.md)。
 - Phase 28 已把 Portfolio Engine 的第一版目标结构提案落成独立的确定性纵切：基于已确认
   Risk Profile、Portfolio Exposure/Concentration 和 Risk Budget，以
   `CAP_AND_REDISTRIBUTE_V1` 生成当前→目标权重、资产/行业/Technology 约束算术和失效
@@ -127,27 +127,27 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
   DecisionEvent、不生成 Recommendation 或交易指令。阶段 `21` 项、全量 `398` 项回归、
   100 次固定评测、并发、wheel、静态边界和真实浏览器验收通过；这些仍是离线
   fixture/ASGI 证据，不代表相关性/流动性最优、实时市场准确率或生产 SLA。详见
-  [Portfolio Optimization 契约](docs/portfolio-optimization.md)。
+  [Portfolio Optimization 契约](docs/archive/portfolio-optimization.md)。
 - Phase 29 已加入 owner-scoped、不可变、可审计的结构化 Context Memory：只保存已确认的
   Risk Questionnaire/Profile、Portfolio bundle/snapshot 与可选 Intent/Plan/研究/优化
   引用，服务端派生 `memory_id`/SHA-256 `content_hash`，SQLite 迁移可跨重启读取，工作台
   支持刷新后读取与显式恢复；恢复会清空旧派生结果并要求重新运行，不保存聊天原文、Prompt、
   Provider/LLM 输出或凭据。阶段 `19` 项、全量 `417` 项回归、100 owner 并发/重启、wheel
   和真实浏览器验收通过；本地 fixture/ASGI 数字不代表生产认证、云同步或外部 SLA。详见
-  [Context Memory 契约](docs/context-memory.md)。
+  [Context Memory 契约](docs/archive/context-memory.md)。
 - Phase 30 已加入显式 Provider Cache/Fallback 边界：按公开 request fingerprint 做有界
   fresh cache、一次备用 Provider 与 stale grace，保留四态结果、provider/source/lineage
   身份并将 stale Evidence 降级为不可 VERIFIED；私人、敏感、EMPTY、FAILED 结果不进入
   公共缓存。阶段 `14` 项、全量 `431` 项回归、100 次固定评测、resilience 并发、wheel、
   静态边界与真实浏览器回归通过；仍不宣称实时 SkillHub 或生产缓存/SLA。详见
-  [Provider Cache/Fallback 契约](docs/provider-cache-fallback.md)。
+  [Provider Cache/Fallback 契约](docs/archive/provider-cache-fallback.md)。
 - Phase 31 已加入并验收 Advanced Evidence UI：只聚合当前 owner 已
   加载的 Advisor、Research Matrix、Stock、Fund 和 Convertible Bond trace，支持按
   Evidence/source/field、质量、serving mode、轨道与闭合状态筛选，并在详情展示
   provider、source、lineage、observed/retrieved、cache age 与 Finding → Fact → Evidence
   路径。stale/fallback/未闭合结果显式保持需复核，不改后端契约、不新增网络或推荐旁路；
   `434` 项回归、固定评测、resilience 回归、wheel、静态边界与真实本地浏览器验收通过。
-  详见 [Advanced Evidence UI 契约](docs/advanced-evidence-ui.md) 与
+  详见 [Advanced Evidence UI 契约](docs/archive/advanced-evidence-ui.md) 与
   [Phase 31 计划与验收](docs/plans/2026-09-02-mvp-phase-31-advanced-evidence-ui.md)。
 - Phase 32 已加入并验收中文工作台与稳定左侧导航：静态和动态用户文案统一为中文，
   状态/场景/方法说明保留可审计的稳定代码标识；点击导航、`hashchange` 和直接打开
@@ -160,7 +160,7 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
   fixture-first 假设场景（基线、科技上限收紧、头部资产减少 10 个百分点、基金穿透
   部分缺失），输出确定性基线→模拟差异；模拟值与 Fact/Finding/Recommendation/
   DecisionEvent 分离，并保持 `READY/REVIEW_REQUIRED/BLOCKED` 降级语义。详见
-  [情景模拟契约](docs/scenario-simulation.md) 与
+  [情景模拟契约](docs/archive/scenario-simulation.md) 与
   [Phase 33 计划与验收](docs/plans/2026-09-02-mvp-phase-33-scenario-simulation.md)。
 - Phase 34–37 P2 能力已实现并验收：历史建议支持不可变回溯、同 owner 回执对比和审计
   差分；组合再平衡支持 Decimal 守恒、0.50% deadband、换手上限和先卖后买的流动性
@@ -173,9 +173,14 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
 - Phase 39 已加入可选的 OpenAI-compatible 流式 LLM 客户端（可配置 DeepSeek、OpenAI、
   Qwen-compatible endpoint）、ReAct 工具调用、个股/ETF 查询、问财语义 Provider
   适配器和自然语言持仓解析。未配置 API key 时使用本地确定性模拟；当前自动化验证主要
-  使用内置数据集和离线回退，不等于实时行情或真实 SkillHub 网络验收。
-- 当前主分支已完成 P2 Phase 34–39 与默认工作台 UX 收敛；下一步是外部数据/凭据接入、
-  性能压测和竞赛交付物整理。
+- 当前主分支已完成 P2 Phase 34–39 与默认工作台 UX 收敛；下一阶段核心进阶目标为：
+  - **Phase 40：多 Agent 工作流可视化编排面板（Workflow Builder）**，对标 Coze，引入成熟工业级开源图引擎（如 AntV X6 / LiteGraph / Flow），支持用户自定义投研 DAG 拓扑连线与参数自由调优，并提供流水线双模视图；
+  - **Phase 41：会话全局总览研判面板（Session Truth Blackboard）**，构建会话级防幻觉、自洽性矛盾排查、原点双向溯源核验与一键纠偏控制台。PRD 编制基准详见系统总体架构规范 [系统总体技术架构与方案设计规范](docs/architecture.md)。
+
+
+
+
+
 
 ## 当前限制与待补齐
 
@@ -210,7 +215,29 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
 
 ## 本地运行
 
-要求 Python 3.11 或更高版本。Windows 下可使用脚本启动本地工作台：
+要求 Python 3.11 或更高版本。
+
+### 1. macOS 环境 (一键启动)
+
+在 macOS 系统下，支持双击运行或终端一键启动：
+
+```bash
+# 终端一键运行 (自动检查依赖、释放端口冲突、通过健康检查后唤起浏览器)
+./start_mac.sh
+
+# 或在 Finder 访达中直接双击运行
+start.command
+```
+
+手动启动方式：
+```bash
+uv sync
+uv run uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### 2. Windows 环境
+
+Windows 下可使用批处理脚本启动本地工作台：
 
 ```powershell
 python -m venv .venv
@@ -219,15 +246,15 @@ python -m venv .venv
 ```
 
 服务默认监听 `http://127.0.0.1:8000`，浏览器入口为 `/`，OpenAPI 文档为
-`/api/docs`，健康检查为 `/api/health`。不使用启动脚本时，可以直接运行：
+`/api/docs`，健康检查为 `/api/health`。
 
-```powershell
-.venv\Scripts\python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --reload
-```
+### 3. 测试套件执行
 
-仅运行测试时：
+```bash
+# macOS / Linux
+uv run pytest
 
-```powershell
+# Windows
 .venv\Scripts\python -m pytest
 ```
 
@@ -245,84 +272,84 @@ python -m venv .venv
 
 - [主项目规范](Prism.md)
 - [实施架构](docs/architecture.md)
-- [Evidence Contract](docs/evidence-contract.md)
-- [Provider Protocol](docs/provider-protocol.md)
-- [复用矩阵](docs/reuse-matrix.md)
+- [Evidence Contract](docs/archive/evidence-contract.md)
+- [Provider Protocol](docs/archive/provider-protocol.md)
+- [复用矩阵](docs/archive/reuse-matrix.md)
 - [架构决策 ADR-0001](docs/adr/0001-modular-monolith.md)
 - [当前实施计划](docs/plans/2026-09-01-foundation.md)
 - [Gemini Phase 1 执行合同](docs/plans/2026-09-01-mvp-phase-1-provider-protocol.md)
 - [Phase 1 Hardening 计划](docs/plans/2026-09-01-mvp-phase-1-hardening.md)
 - [Phase 2 Profile/Portfolio 计划](docs/plans/2026-09-01-mvp-phase-2-profile-portfolio-contracts.md)
-- [Phase 2 Profile/Portfolio 契约](docs/profile-portfolio-contracts.md)
+- [Phase 2 Profile/Portfolio 契约](docs/archive/profile-portfolio-contracts.md)
 - [Phase 3 Look-through Exposure 计划](docs/plans/2026-09-01-mvp-phase-3-lookthrough-exposure.md)
-- [Phase 3 Portfolio Exposure 契约](docs/portfolio-exposure.md)
+- [Phase 3 Portfolio Exposure 契约](docs/archive/portfolio-exposure.md)
 - [Phase 4 Concentration/Risk Budget 计划](docs/plans/2026-09-01-mvp-phase-4-concentration-risk-budget.md)
-- [Phase 4 Concentration/Risk Budget 契约](docs/risk-budget.md)
+- [Phase 4 Concentration/Risk Budget 契约](docs/archive/risk-budget.md)
 - [Phase 5 Allocation Envelope 计划](docs/plans/2026-09-01-mvp-phase-5-allocation-envelope.md)
-- [Phase 5 Allocation Envelope 契约](docs/allocation-envelope.md)
+- [Phase 5 Allocation Envelope 契约](docs/archive/allocation-envelope.md)
 - [Phase 6 Structured Research/Cross-Validation 计划](docs/plans/2026-09-01-mvp-phase-6-research-cross-validation.md)
-- [Phase 6 Structured Research/Cross-Validation 契约](docs/research-cross-validation.md)
+- [Phase 6 Structured Research/Cross-Validation 契约](docs/archive/research-cross-validation.md)
 - [Phase 7 Bounded Orchestration 计划](docs/plans/2026-09-01-mvp-phase-7-bounded-orchestration.md)
-- [Phase 7 Bounded Orchestration 契约](docs/bounded-orchestration.md)
+- [Phase 7 Bounded Orchestration 契约](docs/archive/bounded-orchestration.md)
 - [Phase 8 Evidence/Finding 桥接计划](docs/plans/2026-09-01-mvp-phase-8-evidence-finding.md)
-- [Phase 8 Evidence/Finding 桥接契约](docs/evidence-finding-bridge.md)
+- [Phase 8 Evidence/Finding 桥接契约](docs/archive/evidence-finding-bridge.md)
 - [Phase 9 Fixture-backed Research Run 计划](docs/plans/2026-09-01-mvp-phase-9-fixture-research-run.md)
-- [Phase 9 Fixture-backed Research Run 契约](docs/fixture-research-run.md)
+- [Phase 9 Fixture-backed Research Run 契约](docs/archive/fixture-research-run.md)
 - [Phase 10 Research-to-Evidence Pipeline 计划](docs/plans/2026-09-01-mvp-phase-10-research-evidence-pipeline.md)
-- [Phase 10 Research-to-Evidence Pipeline 契约](docs/research-evidence-pipeline.md)
+- [Phase 10 Research-to-Evidence Pipeline 契约](docs/archive/research-evidence-pipeline.md)
 - [Phase 11 Risk/Compliance Gate 计划](docs/plans/2026-09-01-mvp-phase-11-risk-compliance-gates.md)
-- [Phase 11 Risk/Compliance Gate 契约](docs/risk-compliance-gates.md)
+- [Phase 11 Risk/Compliance Gate 契约](docs/archive/risk-compliance-gates.md)
 - [Phase 12 Recommendation/Decision Receipt 计划](docs/plans/2026-09-02-mvp-phase-12-recommendation-decision-receipt.md)
-- [Phase 12 Recommendation/Decision Receipt 契约](docs/recommendation-decision-receipt.md)
+- [Phase 12 Recommendation/Decision Receipt 契约](docs/archive/recommendation-decision-receipt.md)
 - [Phase 13 Owner-scoped API/Persistence/UI 计划](docs/plans/2026-09-02-mvp-phase-13-owner-scoped-api-persistence-ui.md)
-- [Phase 13 Decision Events API 与工作台](docs/decision-events-api.md)
-- [Phase 14 Advisor Query API 与 Fixture 边界](docs/advisor-query-api.md)
+- [Phase 13 Decision Events API 与工作台](docs/archive/decision-events-api.md)
+- [Phase 14 Advisor Query API 与 Fixture 边界](docs/archive/advisor-query-api.md)
 - [Phase 14 Advisor Query/Profile/Portfolio 计划](docs/plans/2026-09-02-mvp-phase-14-advisor-query-profile-portfolio.md)
-- [Phase 15 Advisor Query 结构化工作台](docs/advisor-query-workbench.md)
+- [Phase 15 Advisor Query 结构化工作台](docs/archive/advisor-query-workbench.md)
 - [Phase 15 结构化工作台计划与验收](docs/plans/2026-09-02-mvp-phase-15-advisor-query-workbench.md)
-- [Phase 16 四类研究专员节点矩阵](docs/research-specialist-matrix.md)
+- [Phase 16 四类研究专员节点矩阵](docs/archive/research-specialist-matrix.md)
 - [Phase 16 研究节点矩阵计划与验收](docs/plans/2026-09-02-mvp-phase-16-research-node-matrix.md)
-- [Phase 17 Research Tracks 工作台](docs/research-workbench.md)
+- [Phase 17 Research Tracks 工作台](docs/archive/research-workbench.md)
 - [Phase 17 研究工作台计划与验收](docs/plans/2026-09-02-mvp-phase-17-research-workbench.md)
-- [Phase 18 Portfolio/Risk Profile 上下文工作台](docs/flagship-context-workbench.md)
+- [Phase 18 Portfolio/Risk Profile 上下文工作台](docs/archive/flagship-context-workbench.md)
 - [Phase 18 旗舰上下文工作台计划与验收](docs/plans/2026-09-02-mvp-phase-18-flagship-context-workbench.md)
-- [Phase 19 早期负载测试工具](docs/load-test.md)
+- [Phase 19 早期负载测试工具](docs/archive/load-test.md)
 - [Phase 19 负载测试计划与验收](docs/plans/2026-09-02-mvp-phase-19-load-test-harness.md)
-- [Phase 20 结构化上下文确认](docs/context-input.md)
+- [Phase 20 结构化上下文确认](docs/archive/context-input.md)
 - [Phase 20 上下文确认计划与验收](docs/plans/2026-09-02-mvp-phase-20-context-input-confirmation.md)
-- [Phase 21 MVP 固定评测集](docs/mvp-evaluation.md)
+- [Phase 21 MVP 固定评测集](docs/archive/mvp-evaluation.md)
 - [Phase 21 固定评测与回放计划](docs/plans/2026-09-02-mvp-phase-21-evaluation-harness.md)
-- [Phase 22 Intent/Plan 契约](docs/intent-planning.md)
+- [Phase 22 Intent/Plan 契约](docs/archive/intent-planning.md)
 - [Phase 22 结构化意图与任务计划预览计划](docs/plans/2026-09-02-mvp-phase-22-intent-planning.md)
-- [Phase 23 画像提案确认契约](docs/profile-proposal-confirmation.md)
+- [Phase 23 画像提案确认契约](docs/archive/profile-proposal-confirmation.md)
 - [Phase 23 结构化画像提案与冲突确认计划](docs/plans/2026-09-02-mvp-phase-23-profile-confirmation.md)
-- [Phase 24 Research Tracks 场景回放契约](docs/research-scenarios.md)
+- [Phase 24 Research Tracks 场景回放契约](docs/archive/research-scenarios.md)
 - [Phase 24 研究场景与不确定性计划](docs/plans/2026-09-02-mvp-phase-24-research-scenarios.md)
-- [Phase 25 个股研究 Evidence Card](docs/stock-research-card.md)
+- [Phase 25 个股研究 Evidence Card](docs/archive/stock-research-card.md)
 - [Phase 25 个股研究计划与验收](docs/plans/2026-09-02-mvp-phase-25-stock-research.md)
-- [Phase 26 ETF/Fund 资产研究 Evidence Card](docs/fund-research-card.md)
+- [Phase 26 ETF/Fund 资产研究 Evidence Card](docs/archive/fund-research-card.md)
 - [Phase 26 ETF/Fund 资产研究计划与验收](docs/plans/2026-09-02-mvp-phase-26-fund-research.md)
-- [Phase 27 可转债资产研究 Evidence Card](docs/convertible-bond-research-card.md)
+- [Phase 27 可转债资产研究 Evidence Card](docs/archive/convertible-bond-research-card.md)
 - [Phase 27 可转债资产研究计划与验收](docs/plans/2026-09-02-mvp-phase-27-convertible-bond.md)
-- [Phase 28 Portfolio Optimization 契约](docs/portfolio-optimization.md)
+- [Phase 28 Portfolio Optimization 契约](docs/archive/portfolio-optimization.md)
 - [Phase 28 Portfolio Optimization 计划与验收](docs/plans/2026-09-02-mvp-phase-28-portfolio-optimization.md)
-- [Phase 29 Context Memory 契约](docs/context-memory.md)
+- [Phase 29 Context Memory 契约](docs/archive/context-memory.md)
 - [Phase 29 Context Memory 计划与验收](docs/plans/2026-09-02-mvp-phase-29-persistent-context-memory.md)
-- [Phase 30 Provider Cache/Fallback 契约](docs/provider-cache-fallback.md)
+- [Phase 30 Provider Cache/Fallback 契约](docs/archive/provider-cache-fallback.md)
 - [Phase 30 Provider Cache/Fallback 计划与验收](docs/plans/2026-09-02-mvp-phase-30-provider-cache-fallback.md)
 - [Phase 30 Provider Cache/Fallback 复审](docs/reviews/2026-09-02-phase-30-provider-cache-fallback-review.md)
-- [Phase 31 Advanced Evidence UI 契约](docs/advanced-evidence-ui.md)
+- [Phase 31 Advanced Evidence UI 契约](docs/archive/advanced-evidence-ui.md)
 - [Phase 31 Advanced Evidence UI 计划与验收](docs/plans/2026-09-02-mvp-phase-31-advanced-evidence-ui.md)
 - [Phase 32 中文 UI 与导航计划与验收](docs/plans/2026-09-02-mvp-phase-32-ui-localization-navigation.md)
 - [Phase 32 中文 UI 与导航独立审查](docs/reviews/2026-09-02-phase-32-ui-localization-navigation-review.md)
-- [Phase 33 Scenario Simulation 契约](docs/scenario-simulation.md)
+- [Phase 33 Scenario Simulation 契约](docs/archive/scenario-simulation.md)
 - [Phase 33 Scenario Simulation 计划与验收](docs/plans/2026-09-02-mvp-phase-33-scenario-simulation.md)
 - [Phase 33 Scenario Simulation 独立审查](docs/reviews/2026-09-02-phase-33-scenario-simulation-review.md)
 - [Phase 34–37 P2 四项里程碑计划](docs/plans/2026-09-02-mvp-phase-34-to-37-p2-milestones.md)
-- [Phase 34 Recommendation History](docs/recommendation-history.md)
-- [Phase 35 Portfolio Rebalancing](docs/portfolio-rebalancing.md)
-- [Phase 36 Evaluation Dashboard](docs/evaluation-dashboard.md)
-- [Phase 37 Advanced Explainability](docs/advanced-explainability.md)
+- [Phase 34 Recommendation History](docs/archive/recommendation-history.md)
+- [Phase 35 Portfolio Rebalancing](docs/archive/portfolio-rebalancing.md)
+- [Phase 36 Evaluation Dashboard](docs/archive/evaluation-dashboard.md)
+- [Phase 37 Advanced Explainability](docs/archive/advanced-explainability.md)
 - [Phase 38 Copilot 任务中心](app/api/static/index.html)
 - [Phase 39 Copilot Agent](app/llm/agent.py)
 - [Phase 39 OpenAI-compatible LLM 客户端](app/llm/client.py)

@@ -58,6 +58,8 @@ def test_live_market_provider_fund_lookthrough() -> None:
 def test_live_wencai_provider() -> None:
     async def _run():
         provider = LiveWencaiProvider()
+        assert not provider.is_configured
+
         req = ProviderRequest(
             request_id="req-live-wc-001",
             subject="半导体龙头股",
@@ -66,9 +68,19 @@ def test_live_wencai_provider() -> None:
             timeout_ms=5000,
         )
         result = await provider.execute(req)
-        assert result.status.value == "SUCCESS"
+        # Invariant: When credentials are not provided, operates in skeleton degraded mode
+        assert result.status.value == "PARTIAL"
         assert len(result.records) == 1
-        assert "问财" in result.records[0].fields["results_summary"]
+        fields = result.records[0].fields
+        assert "问财" in fields["results_summary"]
+        assert fields["connection_mode"] == "SKELETON_UNAVAILABLE"
+        assert fields["credential_status"] == "NOT_CONFIGURED"
+        assert len(result.issues) == 1
+        assert result.issues[0].code.value == "AUTH_FAILED"
+
+        # When configured with API key
+        configured_provider = LiveWencaiProvider(api_key="dummy_sk_test")
+        assert configured_provider.is_configured
 
     asyncio.run(_run())
 
@@ -108,19 +120,60 @@ def test_copilot_portfolio_parser() -> None:
 def test_copilot_http_endpoints() -> None:
     client = TestClient(app)
 
-    # Test Live Quote Endpoint
+    # Test Live Quote Endpoint - Valid symbol
     quote_resp = client.get("/api/v1/copilot/live-quote?symbol=688256")
     assert quote_resp.status_code == 200
     quote_data = quote_resp.json()
     assert quote_data["status"] == "SUCCESS"
     assert quote_data["data"]["name"] == "寒武纪"
 
-    # Test Live Fund Endpoint
+    # Test Live Quote Endpoint - Newly added benchmark symbols
+    smic_resp = client.get("/api/v1/copilot/live-quote?symbol=688981")
+    assert smic_resp.status_code == 200
+    assert smic_resp.json()["data"]["name"] == "中芯国际"
+
+    cmb_resp = client.get("/api/v1/copilot/live-quote?symbol=600036")
+    assert cmb_resp.status_code == 200
+    assert cmb_resp.json()["data"]["name"] == "招商银行"
+
+    # Test Live Quote Endpoint - Hard Gate: Invalid Code (114514 / non-standard format) -> 400 REJECTED
+    invalid_resp = client.get("/api/v1/copilot/live-quote?symbol=114514")
+    assert invalid_resp.status_code == 400
+    invalid_data = invalid_resp.json()
+    assert invalid_data["status"] == "REJECTED"
+    assert invalid_data["error_code"] == "INVALID_SECURITY_CODE"
+
+    invalid_char_resp = client.get("/api/v1/copilot/live-quote?symbol=XYZ123")
+    assert invalid_char_resp.status_code == 400
+    assert invalid_char_resp.json()["error_code"] == "INVALID_SECURITY_CODE"
+
+    # Test Live Quote Endpoint - Hard Gate: Unrecorded Valid Symbol -> 404 NOT_FOUND
+    unrecorded_resp = client.get("/api/v1/copilot/live-quote?symbol=600999")
+    assert unrecorded_resp.status_code == 404
+    unrecorded_data = unrecorded_resp.json()
+    assert unrecorded_data["status"] == "NOT_FOUND"
+    assert unrecorded_data["error_code"] == "SECURITY_NOT_FOUND"
+
+    # Test Live Fund Endpoint - Valid ETF
     fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=512480")
     assert fund_resp.status_code == 200
     fund_data = fund_resp.json()
     assert fund_data["status"] == "SUCCESS"
     assert "半导体" in fund_data["data"]["fund_name"]
+
+    # Test Live Fund Endpoint - Newly added ETF
+    chinext_fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=159915")
+    assert chinext_fund_resp.status_code == 200
+    assert "创业板" in chinext_fund_resp.json()["data"]["fund_name"]
+
+    # Test Live Fund Endpoint - Invalid and Unrecorded
+    invalid_fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=ABC")
+    assert invalid_fund_resp.status_code == 400
+    assert invalid_fund_resp.json()["error_code"] == "INVALID_FUND_CODE"
+
+    unrecorded_fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=999999")
+    assert unrecorded_fund_resp.status_code == 404
+    assert unrecorded_fund_resp.json()["error_code"] == "FUND_NOT_FOUND"
 
     # Test Parse Portfolio Endpoint
     parse_resp = client.post(

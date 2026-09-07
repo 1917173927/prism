@@ -1372,14 +1372,26 @@ Recommendation History
 Portfolio Rebalancing
 Evaluation Dashboard
 Advanced Explainability
+Copilot Interactive Task Center (Phase 38)
+Live LLM Cognitive Agent & Providers (Phase 39)
 ```
 
-截至 2026-09-02，P1 路线中的 Provider Cache/Fallback、Advanced Evidence UI 与中文
-工作台/稳定导航已在独立 worktree 完成验收：工作台可在当前 owner 的已加载结果中查看
-provider/source/lineage、取得时间、serving mode、质量状态和 Finding → Fact → Evidence
-闭合路径；stale、fallback 与未闭合结果仍明确要求复核；左侧导航点击、hash 变化和直接
-hash 加载保持唯一选中态。该状态不等于真实 SkillHub 在线接入、生产认证、云持久化或生产
-SLA；Scenario Simulation 等 P2 能力和相关外部输入继续按本规范保留。
+P3（下一步进阶目标）：
+
+```text
+Multi-Agent Graph & Pipeline Workflow Builder (Phase 40, 引入成熟开源图引擎)
+Session Truth Blackboard & Anti-Hallucination Panel (Phase 41)
+```
+
+P3 目标致力于打破固定问答模板：引入成熟开源图引擎（如 AntV X6 / LiteGraph / Flow）构建多 Agent 可视化工作流编排面板（对标 Coze），支持用户自定义投研 DAG、节点拖拽连线与参数自由调优；并在多轮交互层面构建会话全局研判黑板，实现上下文漂移警告、自洽性核验与一键手动纠偏。全量赛题任务与 PRD 对接规范详见唯一技术架构规范 [系统总体技术架构与方案设计规范](docs/architecture.md)。
+
+截至 2026-09-02，P1 路线与 P2 (Phase 34–39) 已完成全面验收并收敛至 Copilot 默认工作台；P3 进阶能力作为下一阶段核心演进目标。
+
+
+
+
+
+
 
 ---
 

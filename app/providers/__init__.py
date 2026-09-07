@@ -18,6 +18,13 @@ from app.providers.fingerprint import (
     redact_sensitive_data,
 )
 from app.providers.fixture import FixtureFinancialProvider
+from app.providers.fixture_wencai import FixtureWencaiProvider
+from app.providers.live_market import (
+    LiveMarketProvider,
+    StaticMarketProvider,
+    get_security_data,
+    register_security_data,
+)
 from app.providers.normalization import normalize_result_to_evidence
 from app.providers.resilience import (
     InMemoryProviderCache,
@@ -29,11 +36,14 @@ from app.providers.resilience import (
     is_public_cache_request,
 )
 from app.providers.runtime import execute_with_budget, execute_with_resilience
+from app.providers.skillhub import WencaiSkillHubProvider
 
 __all__ = [
     "FinancialProvider",
     "FixtureFinancialProvider",
+    "FixtureWencaiProvider",
     "FrozenDict",
+    "LiveMarketProvider",
     "ProviderIssue",
     "ProviderIssueCode",
     "ProviderOperation",
@@ -42,6 +52,8 @@ __all__ = [
     "ProviderResult",
     "ProviderServingMode",
     "ProviderStatus",
+    "StaticMarketProvider",
+    "WencaiSkillHubProvider",
     "InMemoryProviderCache",
     "ProviderCacheHit",
     "ProviderCacheStats",
