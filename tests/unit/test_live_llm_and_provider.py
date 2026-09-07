@@ -171,7 +171,11 @@ def test_copilot_http_endpoints() -> None:
     assert invalid_fund_resp.status_code == 400
     assert invalid_fund_resp.json()["error_code"] == "INVALID_FUND_CODE"
 
-    unrecorded_fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=999999")
+    unsupported_fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=999999")
+    assert unsupported_fund_resp.status_code == 400
+    assert unsupported_fund_resp.json()["error_code"] == "INVALID_FUND_CODE"
+
+    unrecorded_fund_resp = client.get("/api/v1/copilot/live-fund?fund_code=510999")
     assert unrecorded_fund_resp.status_code == 404
     assert unrecorded_fund_resp.json()["error_code"] == "FUND_NOT_FOUND"
 

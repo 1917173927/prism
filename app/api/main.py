@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+import re
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -75,6 +77,12 @@ from app.providers.live_market import (
     CompositeMarketProvider,
     FallbackStaticProvider,
     MarketDataProvider,
+    market_prefix,
+)
+from app.providers.fuyao import (
+    CAPABILITY_FAILURE_CODES,
+    FuyaoFinanceProvider,
+    FuyaoProviderError,
 )
 from app.evaluation import (
     EvaluationDashboardRequest,
@@ -304,6 +312,7 @@ def create_app(
     advanced_explainability_service: AdvancedExplainabilityService | None = None,
     market_provider: MarketDataProvider | None = None,
     wencai_provider: WencaiSkillHubProvider | None = None,
+    live_finance_provider: FuyaoFinanceProvider | None = None,
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
 
@@ -342,6 +351,8 @@ def create_app(
     )
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
+    active_live_finance = live_finance_provider or FuyaoFinanceProvider()
+    live_probe_lock = asyncio.Lock()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -518,14 +529,29 @@ def create_app(
         }
 
     @api.get("/api/v1/runtime/data-mode")
-    def get_runtime_data_mode():
+    async def get_runtime_data_mode():
         controller = get_runtime_mode_controller()
+        if controller.needs_initial_probe and active_live_finance.is_configured:
+            async with live_probe_lock:
+                if controller.needs_initial_probe:
+                    capabilities = await active_live_finance.probe_capabilities()
+                    await controller.apply_fuyao_probe(capabilities, auto_activate=True)
         return JSONResponse(content={"status": "SUCCESS", "data": controller.get_status()})
 
     @api.put("/api/v1/runtime/data-mode")
     async def update_runtime_data_mode(req: RuntimeDataModeSwitchRequest):
         controller = get_runtime_mode_controller()
         try:
+            target_mode = str(req.target_mode).upper()
+            if (
+                target_mode == "LIVE"
+                and active_live_finance.is_configured
+                and not controller.is_fuyao_ready
+            ):
+                async with live_probe_lock:
+                    if not controller.is_fuyao_ready:
+                        capabilities = await active_live_finance.probe_capabilities()
+                        await controller.apply_fuyao_probe(capabilities)
             new_status = await controller.switch_mode(req.target_mode, req.expected_revision)
             return JSONResponse(content={"status": "SUCCESS", "data": new_status})
         except ModeRevisionConflictError as exc:
@@ -1231,7 +1257,10 @@ def create_app(
     # -------------------------------------------------------------------------
     # Copilot Direction 2: Live LLM Chat, Tool Calling & Portfolio Parser Routes
     # -------------------------------------------------------------------------
-    copilot_agent = CopilotAgent()
+    copilot_agent = CopilotAgent(
+        live_finance_provider=active_live_finance,
+        skillhub_provider=active_wencai_provider,
+    )
 
     @api.post("/api/v1/copilot/chat")
     async def copilot_chat_endpoint(req: CopilotChatApiRequest):
@@ -1364,6 +1393,21 @@ def create_app(
         "159",                       # SZSE ETF
         "110", "113", "123", "127", "128", # Convertible Bonds
     )
+    VALID_EXCHANGE_FUND_PREFIXES = ("510", "512", "513", "515", "588", "159")
+
+    def _validated_exchange_code(
+        value: str, allowed_prefixes: tuple[str, ...]
+    ) -> str | None:
+        match = re.fullmatch(r"(?P<code>\d{6})(?:\.(?P<suffix>SH|SZ|BJ))?", value.strip().upper())
+        if match is None:
+            return None
+        clean_code = match.group("code")
+        if not clean_code.startswith(allowed_prefixes):
+            return None
+        suffix = match.group("suffix")
+        if suffix is not None and suffix != market_prefix(clean_code).upper():
+            return None
+        return clean_code
 
     async def _auto_complete_security_baseline(clean_code: str) -> dict[str, Any] | None:
         """Fetch the resilient quote chain; never manufacture missing observations."""
@@ -1382,8 +1426,8 @@ def create_app(
     @api.post("/api/v1/copilot/auto-index-security")
     async def copilot_auto_index_security(symbol: str = Query(...)):
         """Automatically complete the missing baseline dependency for a valid security."""
-        clean_code = symbol.split(".")[0].strip()
-        if not clean_code.isdigit() or len(clean_code) != 6:
+        clean_code = _validated_exchange_code(symbol, VALID_A_SHARE_PREFIXES)
+        if clean_code is None:
             return JSONResponse(
                 status_code=400,
                 content={
@@ -1392,15 +1436,28 @@ def create_app(
                     "message": f"证券代码格式无效：[{symbol}] 不符合 6 位数字代码规范。",
                 },
             )
-        if not any(clean_code.startswith(p) for p in VALID_A_SHARE_PREFIXES):
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": "REJECTED",
-                    "error_code": "INVALID_SECURITY_CODE",
-                    "message": f"证券代码格式无效：标的代码 [{clean_code}] 非沪深北交易所合规证券前缀（合规前缀如 60/688/00/300/8/51/159/11/12）。",
-                },
-            )
+        controller = get_runtime_mode_controller()
+        if controller.mode == DataMode.LIVE:
+            try:
+                data = await active_live_finance.get_quote(symbol)
+            except FuyaoProviderError as exc:
+                if exc.code in CAPABILITY_FAILURE_CODES:
+                    await controller.record_fuyao_capability_failure("stock_quote", exc.code)
+                return JSONResponse(status_code=503, content={
+                    "status": "FAILED", "error_code": exc.code,
+                    "message": exc.safe_message,
+                })
+            if data is None:
+                return JSONResponse(status_code=404, content={
+                    "status": "NOT_FOUND", "error_code": "SECURITY_NOT_FOUND",
+                    "message": f"扶摇数据接口未返回标的 [{clean_code}] 的行情。",
+                })
+            return JSONResponse(content={
+                "status": "SUCCESS",
+                "message": f"已从扶摇接口取得标的 [{clean_code} {data.get('name', '')}] 行情；未写入模拟底稿。",
+                "data": data,
+                "auto_completed": False,
+            })
         data = await _auto_complete_security_baseline(clean_code)
         if data is None:
             return JSONResponse(status_code=503, content={
@@ -1453,17 +1510,20 @@ def create_app(
             raise StoreOwnerError("portfolio refresh request owner does not match owner scope")
         controller = get_runtime_mode_controller()
         if controller.mode == DataMode.LIVE:
-            if not controller.is_live_ready:
+            if not controller.is_wencai_ready:
                 return JSONResponse(
                     status_code=409,
                     content={
                         "status": "BLOCKED",
                         "error_code": "LIVE_PROVIDER_UNAVAILABLE",
-                        "message": "LIVE 数据源未通过凭据与接口契约校验。",
-                        "missing_fields": list(controller.live_readiness_issues),
+                        "message": "问财组合刷新能力未通过凭据与接口契约校验。",
+                        "missing_fields": ["WENCAI_RESEARCH_AND_REFRESH"],
                     },
                 )
-            return await refresh_portfolio_live(request, active_wencai_provider)
+            response = await refresh_portfolio_live(request, active_wencai_provider)
+            if any(row.provider_status == ProviderStatus.FAILED.value for row in response.positions):
+                await controller.record_wencai_failure("PORTFOLIO_REFRESH_FAILED")
+            return response
         return refresh_portfolio_mock(request)
 
     @api.post("/api/v1/runtime/provider-query")
@@ -1472,14 +1532,14 @@ def create_app(
     ) -> JSONResponse:
         """Expose the verified provider contract for read-only research tools."""
         controller = get_runtime_mode_controller()
-        if controller.mode != DataMode.LIVE or not controller.is_live_ready:
+        if controller.mode != DataMode.LIVE or not controller.is_wencai_ready:
             return JSONResponse(
                 status_code=409,
                 content={
                     "status": "BLOCKED",
                     "error_code": "LIVE_PROVIDER_UNAVAILABLE",
-                    "message": "当前不是可用的 LIVE 官方数据模式。",
-                    "missing_fields": list(controller.live_readiness_issues),
+                    "message": "当前不是可用的问财 LIVE 研究模式。",
+                    "missing_fields": ["WENCAI_RESEARCH_AND_REFRESH"],
                 },
             )
         provider_request = ProviderRequest(
@@ -1491,6 +1551,9 @@ def create_app(
             parameters=request.parameters,
         )
         result = await active_wencai_provider.execute(provider_request)
+        if result.status == ProviderStatus.FAILED:
+            error_code = result.issues[0].code.value if result.issues else "PROVIDER_FAILED"
+            await controller.record_wencai_failure(error_code)
         status_code = 200 if result.status in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL, ProviderStatus.EMPTY} else 502
         return JSONResponse(status_code=status_code, content=result.model_dump(mode="json"))
 
@@ -1500,74 +1563,8 @@ def create_app(
         auto_complete_dependency: bool = False,
     ):
         """Query real-time stock quote and valuation data."""
-        controller = get_runtime_mode_controller()
-        if controller.mode == DataMode.LIVE:
-            if not controller.is_live_ready:
-                return JSONResponse(
-                    status_code=409,
-                    content={
-                        "status": "BLOCKED",
-                        "error_code": "LIVE_PROVIDER_UNAVAILABLE",
-                        "message": "LIVE 数据源未通过凭据与接口契约校验，未回退到 MOCK。",
-                        "execution_context": {
-                            "data_mode": "LIVE",
-                            "provider": "wencai_skillhub_provider",
-                            "provider_serving_mode": "UNAVAILABLE",
-                            "is_synthetic": False,
-                            "missing_fields": list(controller.live_readiness_issues),
-                        },
-                    },
-                )
-            result = await active_wencai_provider.execute(
-                ProviderRequest(
-                    request_id=f"live-quote-{datetime.now(UTC).timestamp()}",
-                    operation=ProviderOperation.MARKET_DATA,
-                    subject=symbol,
-                    required_fields=("price_cny", "observed_at", "sector"),
-                )
-            )
-            if result.status not in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL} or not result.records:
-                return JSONResponse(
-                    status_code=502,
-                    content={
-                        "status": result.status.value,
-                        "error_code": "LIVE_PROVIDER_FAILED",
-                        "message": "官方 LIVE 行情未返回可核验记录，未回退到 MOCK。",
-                        "execution_context": {
-                            "data_mode": "LIVE",
-                            "provider": result.provider,
-                            "provider_serving_mode": result.serving_mode.value,
-                            "is_synthetic": False,
-                            "retrieved_at": result.retrieved_at.isoformat(),
-                            "missing_fields": list(result.missing_fields),
-                            "issues": [issue.safe_message for issue in result.issues],
-                        },
-                    },
-                )
-            data = dict(result.records[0].fields)
-            data.setdefault("source", result.records[0].source)
-            data["provider_tier"] = "LIVE_PRIMARY"
-            data["is_synthetic"] = False
-            data["retrieved_at"] = result.retrieved_at.isoformat()
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": result.status.value,
-                    "data": data,
-                    "execution_context": {
-                        "data_mode": "LIVE",
-                        "provider": result.provider,
-                        "provider_serving_mode": result.serving_mode.value,
-                        "is_synthetic": False,
-                        "observed_at": data.get("observed_at"),
-                        "retrieved_at": result.retrieved_at.isoformat(),
-                        "missing_fields": list(result.missing_fields),
-                    },
-                },
-            )
-
-        clean_code = symbol.split(".")[0].strip()
-        if not clean_code.isdigit() or len(clean_code) != 6:
+        clean_code = _validated_exchange_code(symbol, VALID_A_SHARE_PREFIXES)
+        if clean_code is None:
             return JSONResponse(
                 status_code=400,
                 content={
@@ -1576,15 +1573,46 @@ def create_app(
                     "message": f"证券代码格式无效：[{symbol}] 不符合 6 位数字代码规范。",
                 },
             )
-        if not any(clean_code.startswith(p) for p in VALID_A_SHARE_PREFIXES):
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": "REJECTED",
-                    "error_code": "INVALID_SECURITY_CODE",
-                    "message": f"证券代码格式无效：标的代码 [{clean_code}] 非沪深北交易所合规证券前缀（合规前缀如 60/688/00/300/8/51/159/11/12）。",
+        controller = get_runtime_mode_controller()
+        if controller.mode == DataMode.LIVE:
+            try:
+                data = await active_live_finance.get_quote(symbol)
+            except FuyaoProviderError as exc:
+                if exc.code in CAPABILITY_FAILURE_CODES:
+                    await controller.record_fuyao_capability_failure("stock_quote", exc.code)
+                return JSONResponse(status_code=503, content={
+                    "status": "FAILED",
+                    "error_code": exc.code,
+                    "message": exc.safe_message,
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": "fuyao_finance_api",
+                        "provider_serving_mode": "UNAVAILABLE",
+                        "is_synthetic": False,
+                    },
+                })
+            if data is None:
+                return JSONResponse(status_code=404, content={
+                    "status": "NOT_FOUND",
+                    "error_code": "SECURITY_NOT_FOUND",
+                    "message": f"扶摇数据接口未返回标的 [{symbol}] 的行情。",
+                })
+            return JSONResponse(content={
+                "status": "SUCCESS",
+                "data": data,
+                "execution_context": {
+                    "data_mode": "LIVE",
+                    "provider": "fuyao_finance_api",
+                    "provider_serving_mode": data["provider_tier"],
+                    "is_synthetic": False,
+                    "observed_at": data.get("observed_at"),
+                    "retrieved_at": data["retrieved_at"],
+                    "quote_latency_ms": data["quote_latency_ms"],
+                    "staleness_seconds": data["staleness_seconds"],
+                    "missing_fields": data["missing_fields"],
                 },
-            )
+            })
+
         data = await FallbackStaticProvider().get_quote(clean_code)
         if not data and auto_complete_dependency:
             data = await _auto_complete_security_baseline(clean_code)
@@ -1618,74 +1646,9 @@ def create_app(
 
     @api.get("/api/v1/copilot/live-fund")
     async def copilot_live_fund_endpoint(fund_code: str = "588000"):
-        """Query real-time fund/ETF look-through holdings."""
-        controller = get_runtime_mode_controller()
-        if controller.mode == DataMode.LIVE:
-            if not controller.is_live_ready:
-                return JSONResponse(
-                    status_code=409,
-                    content={
-                        "status": "BLOCKED",
-                        "error_code": "LIVE_PROVIDER_UNAVAILABLE",
-                        "message": "LIVE 基金数据源未通过凭据与接口契约校验，未回退到 MOCK。",
-                        "execution_context": {
-                            "data_mode": "LIVE",
-                            "provider": "wencai_skillhub_provider",
-                            "provider_serving_mode": "UNAVAILABLE",
-                            "is_synthetic": False,
-                            "missing_fields": list(controller.live_readiness_issues),
-                        },
-                    },
-                )
-            result = await active_wencai_provider.execute(
-                ProviderRequest(
-                    request_id=f"live-fund-{datetime.now(UTC).timestamp()}",
-                    operation=ProviderOperation.FUND_DATA,
-                    subject=fund_code,
-                    required_fields=("price_cny", "observed_at", "sector", "top_holdings"),
-                )
-            )
-            if result.status not in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL} or not result.records:
-                return JSONResponse(
-                    status_code=502,
-                    content={
-                        "status": result.status.value,
-                        "error_code": "LIVE_PROVIDER_FAILED",
-                        "message": "官方 LIVE 基金穿透未返回可核验记录，未回退到 MOCK。",
-                        "execution_context": {
-                            "data_mode": "LIVE",
-                            "provider": result.provider,
-                            "provider_serving_mode": result.serving_mode.value,
-                            "is_synthetic": False,
-                            "retrieved_at": result.retrieved_at.isoformat(),
-                            "missing_fields": list(result.missing_fields),
-                            "issues": [issue.safe_message for issue in result.issues],
-                        },
-                    },
-                )
-            data = dict(result.records[0].fields)
-            data.setdefault("source", result.records[0].source)
-            data["is_synthetic"] = False
-            data["retrieved_at"] = result.retrieved_at.isoformat()
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "status": result.status.value,
-                    "data": data,
-                    "execution_context": {
-                        "data_mode": "LIVE",
-                        "provider": result.provider,
-                        "provider_serving_mode": result.serving_mode.value,
-                        "is_synthetic": False,
-                        "observed_at": data.get("observed_at"),
-                        "retrieved_at": result.retrieved_at.isoformat(),
-                        "missing_fields": list(result.missing_fields),
-                    },
-                },
-            )
-
-        clean_code = fund_code.split(".")[0].strip()
-        if not clean_code.isdigit() or len(clean_code) != 6:
+        """Query the latest disclosed fund/ETF look-through holdings."""
+        clean_code = _validated_exchange_code(fund_code, VALID_EXCHANGE_FUND_PREFIXES)
+        if clean_code is None:
             return JSONResponse(
                 status_code=400,
                 content={
@@ -1694,6 +1657,46 @@ def create_app(
                     "message": f"基金代码格式无效：[{fund_code}] 不符合 6 位数字代码规范。",
                 },
             )
+        controller = get_runtime_mode_controller()
+        if controller.mode == DataMode.LIVE:
+            try:
+                data = await active_live_finance.get_fund_lookthrough(fund_code)
+            except FuyaoProviderError as exc:
+                if exc.code in CAPABILITY_FAILURE_CODES:
+                    await controller.record_fuyao_capability_failure("fund_lookthrough", exc.code)
+                return JSONResponse(status_code=503, content={
+                    "status": "FAILED",
+                    "error_code": exc.code,
+                    "message": exc.safe_message,
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": "fuyao_finance_api",
+                        "provider_serving_mode": "UNAVAILABLE",
+                        "is_synthetic": False,
+                    },
+                })
+            if data is None:
+                return JSONResponse(status_code=404, content={
+                    "status": "NOT_FOUND",
+                    "error_code": "FUND_NOT_FOUND",
+                    "message": f"扶摇数据接口未返回基金 [{fund_code}] 的披露持仓。",
+                })
+            return JSONResponse(content={
+                "status": "SUCCESS",
+                "data": data,
+                "execution_context": {
+                    "data_mode": "LIVE",
+                    "provider": "fuyao_finance_api",
+                    "provider_serving_mode": data["provider_tier"],
+                    "is_synthetic": False,
+                    "observed_at": data["observed_at"],
+                    "retrieved_at": data["retrieved_at"],
+                    "staleness_seconds": data["staleness_seconds"],
+                    "missing_fields": data["missing_fields"],
+                    "data_freshness_label": data["data_freshness_label"],
+                },
+            })
+
         data = ETF_LOOKTHROUGH_DATABASE.get(clean_code)
         if not data:
             return JSONResponse(

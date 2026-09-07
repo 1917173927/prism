@@ -26,6 +26,11 @@ from app.providers.live_market import (
 from app.providers.fixture_wencai import FixtureWencaiProvider, FIXTURE_WENCAI_DATABASE
 from app.providers.skillhub import WencaiSkillHubProvider
 from app.providers.live_wencai import LiveWencaiProvider
+from app.providers.fuyao import (
+    CAPABILITY_FAILURE_CODES,
+    FuyaoFinanceProvider,
+    FuyaoProviderError,
+)
 from app.runtime.mode import DataMode, get_runtime_mode_controller
 
 
@@ -43,13 +48,19 @@ class ChatStreamChunk(BaseModel):
 class CopilotAgent:
     """Intelligent ReAct agent for conversational investment advisory with live tool execution."""
 
-    def __init__(self, llm_client: AsyncLLMClient | None = None) -> None:
+    def __init__(
+        self,
+        llm_client: AsyncLLMClient | None = None,
+        live_finance_provider: FuyaoFinanceProvider | None = None,
+        skillhub_provider: WencaiSkillHubProvider | None = None,
+    ) -> None:
         self.client = llm_client or AsyncLLMClient()
         self.static_market_provider = StaticMarketProvider()
         self.market_provider = self.static_market_provider
-        self.skillhub_provider = WencaiSkillHubProvider()
+        self.skillhub_provider = skillhub_provider or WencaiSkillHubProvider()
         self.fixture_wencai_provider = FixtureWencaiProvider()
         self.wencai_provider = self.skillhub_provider
+        self.live_finance_provider = live_finance_provider or FuyaoFinanceProvider()
 
     async def stream_chat(
         self,
@@ -94,6 +105,7 @@ class CopilotAgent:
         yield {"type": "start", "timestamp": datetime.now(UTC).isoformat()}
 
         executed_tools: list[dict[str, Any]] = []
+        request_data_mode = get_runtime_mode_controller().mode
 
         # Execute LLM streaming
         async for chunk in active_client.stream_chat(messages, tools=COPILOT_TOOLS):
@@ -113,7 +125,13 @@ class CopilotAgent:
                 }
 
                 # Execute tool
-                tool_result = await self._execute_tool(tool_name, args, persona, portfolio_context)
+                tool_result = await self._execute_tool(
+                    tool_name,
+                    args,
+                    persona,
+                    portfolio_context,
+                    data_mode=request_data_mode,
+                )
                 executed_tools.append({"tool": tool_name, "args": args, "result": tool_result})
 
                 yield {
@@ -239,67 +257,79 @@ class CopilotAgent:
         args: dict[str, Any],
         persona: dict[str, Any],
         portfolio: dict[str, Any] | None,
+        data_mode: DataMode | None = None,
     ) -> dict[str, Any]:
         """Execute tool against live or mock provider databases depending on active mode."""
         controller = get_runtime_mode_controller()
-        is_live = (controller.mode == DataMode.LIVE)
+        is_live = ((data_mode or controller.mode) == DataMode.LIVE)
 
         if is_live:
-            if not controller.is_live_ready:
+            if name == "query_stock_quote":
+                try:
+                    data = await self.live_finance_provider.get_quote(
+                        str(args.get("symbol", "300750"))
+                    )
+                except FuyaoProviderError as exc:
+                    if exc.code in CAPABILITY_FAILURE_CODES:
+                        await controller.record_fuyao_capability_failure("stock_quote", exc.code)
+                    return {
+                        "status": "FAILED",
+                        "error_code": exc.code,
+                        "message": exc.safe_message,
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "fuyao_finance_api",
+                            "provider_serving_mode": "UNAVAILABLE",
+                            "is_synthetic": False,
+                        },
+                    }
                 return {
-                    "status": "FAILED",
-                    "error_code": "LIVE_PROVIDER_UNAVAILABLE",
-                    "message": "LIVE 官方数据源未通过凭据与接口契约校验，未回退模拟数据。",
+                    "status": "SUCCESS" if data else "EMPTY",
+                    "source": "扶摇金融数据接口",
+                    "data": data,
                     "execution_context": {
                         "data_mode": "LIVE",
-                        "provider": "wencai_skillhub_provider",
-                        "provider_serving_mode": "UNAVAILABLE",
+                        "provider": "fuyao_finance_api",
+                        "provider_serving_mode": "LIVE_PRIMARY",
                         "is_synthetic": False,
-                        "missing_fields": list(controller.live_readiness_issues),
                     },
                 }
-            from app.providers.contracts import ProviderOperation, ProviderRequest
-
-            if name in ("query_stock_quote", "query_fund_lookthrough"):
-                operation = (
-                    ProviderOperation.FUND_DATA
-                    if name == "query_fund_lookthrough"
-                    else ProviderOperation.MARKET_DATA
-                )
-                subject = str(args.get("fund_code") if name == "query_fund_lookthrough" else args.get("symbol", "300750"))
-                required_fields = (
-                    ("price_cny", "observed_at", "sector", "top_holdings")
-                    if operation == ProviderOperation.FUND_DATA
-                    else ("price_cny", "observed_at", "sector")
-                )
-                res = await self.skillhub_provider.execute(
-                    ProviderRequest(
-                        request_id=f"live-copilot-{int(datetime.now(UTC).timestamp() * 1000)}",
-                        operation=operation,
-                        subject=subject,
-                        required_fields=required_fields,
+            if name == "query_fund_lookthrough":
+                try:
+                    data = await self.live_finance_provider.get_fund_lookthrough(
+                        str(args.get("fund_code", "510300"))
                     )
-                )
+                except FuyaoProviderError as exc:
+                    if exc.code in CAPABILITY_FAILURE_CODES:
+                        await controller.record_fuyao_capability_failure("fund_lookthrough", exc.code)
+                    return {
+                        "status": "FAILED",
+                        "error_code": exc.code,
+                        "message": exc.safe_message,
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "fuyao_finance_api",
+                            "provider_serving_mode": "UNAVAILABLE",
+                            "is_synthetic": False,
+                        },
+                    }
                 return {
-                    "status": res.status.value,
-                    "source": "iwencai.com / SkillHub (Official Live)",
-                    "data": dict(res.records[0].fields) if res.records else None,
-                    "missing_fields": list(res.missing_fields),
-                    "issues": [issue.safe_message for issue in res.issues],
+                    "status": "SUCCESS" if data else "EMPTY",
+                    "source": "扶摇基金定期披露接口",
+                    "data": data,
                     "execution_context": {
                         "data_mode": "LIVE",
-                        "provider": res.provider,
-                        "provider_serving_mode": res.serving_mode.value,
+                        "provider": "fuyao_finance_api",
+                        "provider_serving_mode": "LIVE_PRIMARY",
                         "is_synthetic": False,
-                        "retrieved_at": res.retrieved_at.isoformat(),
                     },
                 }
             elif name == "query_wencai_semantic":
-                if not self.skillhub_provider.is_configured:
+                if not controller.is_wencai_ready:
                     return {
                         "status": "FAILED",
                         "error_code": "AUTH_FAILED",
-                        "message": "官方 SkillHub 凭据 (WENCAI_SKILLHUB_API_KEY) 未配置，LIVE 模式拒绝执行非真实外部调用，未回退模拟数据。",
+                        "message": "问财 SkillHub 凭据或服务端契约确认未就绪，LIVE 模式拒绝执行非真实外部调用，未回退模拟数据。",
                         "execution_context": {
                             "data_mode": "LIVE",
                             "provider": "wencai_skillhub_provider",
@@ -307,12 +337,16 @@ class CopilotAgent:
                             "is_synthetic": False,
                         },
                     }
+                from app.providers.contracts import ProviderOperation, ProviderRequest
                 req = ProviderRequest(
                     request_id=f"live-copilot-{int(datetime.now(UTC).timestamp())}",
                     operation=ProviderOperation.SEARCH_NEWS,
                     subject=str(args.get("query", "市场行情")),
                 )
                 res = await self.skillhub_provider.execute(req)
+                if res.status.value == "FAILED":
+                    error_code = res.issues[0].code.value if res.issues else "PROVIDER_FAILED"
+                    await controller.record_wencai_failure(error_code)
                 return {
                     "status": res.status.value,
                     "source": "iwencai.com / SkillHub (Official Live)",

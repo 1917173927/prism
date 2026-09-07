@@ -141,6 +141,9 @@
 
 ## External inputs / decisions
 
+- [x] 接入扶摇服务端金融数据凭据；普通用户无需配置上游 API Key，LIVE 行情与基金披露持仓已完成真实请求验证。
+- [x] 合并扶摇与问财核心能力：各 Provider 独立降级；问财未配置时不阻断扶摇行情、基金披露和基于已确认持仓的确定性组合计算。
+- [ ] 在公开部署或向第三方开放 Prism API 前，确认扶摇多用户展示、缓存、派生结果、调用限额、SLA 与再分发授权。
 - [x] External decision confirmed: 官方 SkillHub 开发文档与测试凭据目前处于「暂时没有」状态。本轮系统架构严格实现真实适配器骨架（LiveWencaiProvider）与离线不可用/降级态（SKELETON_UNAVAILABLE），绝不虚假声称真实接口已测试通过。
 - [ ] Obtain competition-specific SkillHub development documentation and production credentials when officially issued by the committee.
 - [ ] Confirm SkillHub quotas, caching, retention, attribution and output-display rights.
@@ -162,4 +165,3 @@ These inputs block claims of real SkillHub integration or submission readiness, 
 
 Optimization Direction 1 (Phase 38) and Optimization Direction 2 (Phase 39) have been fully implemented and verified with 100% test pass rate across 472 automated tests.
 Next targets are Phase 40 (Multi-Agent Graph & Pipeline Workflow Builder, 引入成熟开源图引擎) and Phase 41 (Session Truth Blackboard & Anti-Hallucination Panel) as specified in `docs/architecture.md`.
-

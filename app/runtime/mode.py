@@ -41,15 +41,37 @@ class RuntimeModeController:
         self._lock = asyncio.Lock()
         self._revision = 1
         self._updated_at = datetime.now(UTC)
+        self._fuyao_capabilities = {
+            "stock_quote": False,
+            "fund_lookthrough": False,
+        }
+        self._fuyao_capability_checked_at: dict[str, datetime | None] = {
+            "stock_quote": None,
+            "fund_lookthrough": None,
+        }
+        self._fuyao_capability_errors: dict[str, str | None] = {
+            "stock_quote": None,
+            "fund_lookthrough": None,
+        }
+        self._fuyao_verification = (
+            "NOT_CHECKED" if self._fuyao_configured else "UNCONFIGURED"
+        )
+        self._wencai_available = self._wencai_configured_and_verified
+        self._wencai_checked_at: datetime | None = None
+        self._wencai_last_error_code: str | None = None
+        self._initial_probe_pending = initial_mode is None and self._fuyao_configured
 
         # Boot mode detection:
-        # LIVE requires both server credentials and an explicit confirmation that
-        # the upstream response contract has been verified.  This prevents a
-        # configured but unvalidated endpoint from being presented as live data.
+        # A non-empty key is configuration evidence, not proof of permissions.
+        # The API layer performs a real capability probe before entering LIVE.
         if initial_mode is not None:
             self._mode = initial_mode
         else:
-            self._mode = DataMode.LIVE if self.is_live_ready else DataMode.MOCK
+            self._mode = (
+                DataMode.LIVE
+                if self.is_wencai_ready and not self._fuyao_configured
+                else DataMode.MOCK
+            )
 
     @property
     def mode(self) -> DataMode:
@@ -65,12 +87,25 @@ class RuntimeModeController:
 
     @property
     def is_live_ready(self) -> bool:
-        """Indicate whether credentials and the live contract gate are ready."""
-        return bool(os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()) and self.is_contract_verified
+        """Indicate whether at least one external provider capability is ready."""
+        return self.is_fuyao_ready or self.is_wencai_ready
+
+    @property
+    def is_fuyao_ready(self) -> bool:
+        """Report whether at least one Fuyao capability passed a real probe."""
+        return any(self._fuyao_capabilities.values())
+
+    @property
+    def _fuyao_configured(self) -> bool:
+        return bool(os.getenv("HITHINK_FINANCE_API_KEY", "").strip())
+
+    @property
+    def _wencai_ready(self) -> bool:
+        return self.is_wencai_ready
 
     @property
     def is_contract_verified(self) -> bool:
-        """Require an explicit server-side acknowledgement of provider mapping."""
+        """Require server-side confirmation of the Wencai response mapping."""
         return os.getenv("WENCAI_SKILLHUB_CONTRACT_VERIFIED", "").strip().lower() in {
             "1",
             "true",
@@ -78,18 +113,31 @@ class RuntimeModeController:
         }
 
     @property
+    def _wencai_configured_and_verified(self) -> bool:
+        return (
+            bool(os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip())
+            and self.is_contract_verified
+        )
+
+    @property
+    def is_wencai_ready(self) -> bool:
+        """Report Wencai readiness, including observed runtime failures."""
+        return self._wencai_available and self._wencai_configured_and_verified
+
+    @property
     def live_readiness_issues(self) -> tuple[str, ...]:
+        """List unavailable provider groups without blocking working providers."""
         issues: list[str] = []
-        if not os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip():
-            issues.append("WENCAI_SKILLHUB_API_KEY")
-        if not self.is_contract_verified:
-            issues.append("WENCAI_SKILLHUB_CONTRACT_VERIFIED")
+        if not any(self._fuyao_capabilities.values()):
+            issues.append("FUYAO_MARKET_AND_FUND")
+        if not self.is_wencai_ready:
+            issues.append("WENCAI_RESEARCH_AND_REFRESH")
         return tuple(issues)
 
     @property
     def capabilities(self) -> dict[str, Any]:
         """Matrix of feature readiness under MOCK and LIVE modes."""
-        live_wencai_ready = self.is_live_ready
+        live_wencai_ready = self._wencai_ready
         return {
             "MOCK": {
                 "stock_quote": True,
@@ -100,8 +148,8 @@ class RuntimeModeController:
                 "portfolio_rebalancing": True,
             },
             "LIVE": {
-                "stock_quote": live_wencai_ready,
-                "fund_lookthrough": live_wencai_ready,
+                "stock_quote": self._fuyao_capabilities["stock_quote"],
+                "fund_lookthrough": self._fuyao_capabilities["fund_lookthrough"],
                 "convertible_bond": live_wencai_ready,
                 "market_data": live_wencai_ready,
                 "company_data": live_wencai_ready,
@@ -110,10 +158,78 @@ class RuntimeModeController:
                 "fund_data": live_wencai_ready,
                 "convertible_bond_data": live_wencai_ready,
                 "semantic_search": live_wencai_ready,
-                "portfolio_health_check": live_wencai_ready,
-                "portfolio_rebalancing": False,
+                "announcement_search": live_wencai_ready,
+                "portfolio_refresh": live_wencai_ready,
+                "portfolio_health_check": True,
+                "portfolio_rebalancing": True,
             },
         }
+
+    @property
+    def needs_initial_probe(self) -> bool:
+        return self._initial_probe_pending
+
+    async def apply_fuyao_probe(
+        self, capabilities: dict[str, bool], *, auto_activate: bool = False
+    ) -> None:
+        """Record a real provider probe and optionally activate LIVE once."""
+        async with self._lock:
+            checked_at = datetime.now(UTC)
+            self._fuyao_capabilities = {
+                "stock_quote": bool(capabilities.get("stock_quote")),
+                "fund_lookthrough": bool(capabilities.get("fund_lookthrough")),
+            }
+            self._fuyao_capability_checked_at = {
+                name: checked_at for name in self._fuyao_capabilities
+            }
+            self._fuyao_capability_errors = {
+                name: None if available else "PROBE_FAILED"
+                for name, available in self._fuyao_capabilities.items()
+            }
+            available_count = sum(self._fuyao_capabilities.values())
+            self._fuyao_verification = (
+                "VERIFIED" if available_count == len(self._fuyao_capabilities)
+                else "DEGRADED" if available_count
+                else "FAILED"
+            )
+            self._initial_probe_pending = False
+            if auto_activate and self.is_live_ready and self._mode != DataMode.LIVE:
+                self._mode = DataMode.LIVE
+                self._revision += 1
+            elif not self.is_live_ready and self._mode == DataMode.LIVE:
+                self._mode = DataMode.MOCK
+                self._revision += 1
+            self._updated_at = checked_at
+
+    async def record_fuyao_capability_failure(
+        self, capability: str, error_code: str
+    ) -> None:
+        """Invalidate a failed capability and keep LIVE state internally valid."""
+        if capability not in self._fuyao_capabilities:
+            raise ValueError(f"Unknown Fuyao capability: {capability}")
+        async with self._lock:
+            checked_at = datetime.now(UTC)
+            self._fuyao_capabilities[capability] = False
+            self._fuyao_capability_checked_at[capability] = checked_at
+            self._fuyao_capability_errors[capability] = error_code
+            available_count = sum(self._fuyao_capabilities.values())
+            self._fuyao_verification = "DEGRADED" if available_count else "FAILED"
+            if not self.is_live_ready and self._mode == DataMode.LIVE:
+                self._mode = DataMode.MOCK
+                self._revision += 1
+            self._updated_at = checked_at
+
+    async def record_wencai_failure(self, error_code: str) -> None:
+        """Invalidate Wencai capabilities after an observed provider failure."""
+        async with self._lock:
+            checked_at = datetime.now(UTC)
+            self._wencai_available = False
+            self._wencai_checked_at = checked_at
+            self._wencai_last_error_code = error_code
+            if not self.is_live_ready and self._mode == DataMode.LIVE:
+                self._mode = DataMode.MOCK
+                self._revision += 1
+            self._updated_at = checked_at
 
     def get_status(self) -> dict[str, Any]:
         """Return serialized state representation."""
@@ -121,9 +237,33 @@ class RuntimeModeController:
             "data_mode": self._mode.value,
             "revision": self._revision,
             "live_ready": self.is_live_ready,
-            "live_readiness_issues": self.live_readiness_issues,
+            "live_configured": self._fuyao_configured,
+            "live_verification": self._fuyao_verification,
+            "wencai_ready": self.is_wencai_ready,
             "contract_verified": self.is_contract_verified,
+            "wencai_capability_status": {
+                "available": self.is_wencai_ready,
+                "checked_at": (
+                    self._wencai_checked_at.isoformat()
+                    if self._wencai_checked_at is not None
+                    else None
+                ),
+                "last_error_code": self._wencai_last_error_code,
+            },
+            "live_readiness_issues": self.live_readiness_issues,
             "capabilities": self.capabilities,
+            "live_capability_status": {
+                name: {
+                    "available": self._fuyao_capabilities[name],
+                    "checked_at": (
+                        self._fuyao_capability_checked_at[name].isoformat()
+                        if self._fuyao_capability_checked_at[name] is not None
+                        else None
+                    ),
+                    "last_error_code": self._fuyao_capability_errors[name],
+                }
+                for name in self._fuyao_capabilities
+            },
             "updated_at": self._updated_at.isoformat(),
         }
 
@@ -153,8 +293,8 @@ class RuntimeModeController:
 
             if target_enum == DataMode.LIVE and not self.is_live_ready:
                 raise LiveProviderUnavailableError(
-                    "Official SkillHub credentials or verified response contract are missing: "
-                    f"{', '.join(self.live_readiness_issues)}. Cannot switch to LIVE mode."
+                    "No verified external data capability is available. Configure a valid "
+                    "HITHINK_FINANCE_API_KEY or a verified Wencai SkillHub provider."
                 )
 
             if target_enum != self._mode:

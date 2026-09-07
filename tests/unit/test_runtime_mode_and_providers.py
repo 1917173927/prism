@@ -16,6 +16,7 @@ from app.providers.contracts import (
     ProviderStatus,
 )
 from app.providers.fixture_wencai import FixtureWencaiProvider
+from app.providers.fuyao import FuyaoProviderError
 from app.providers.live_market import StaticMarketProvider
 from app.providers.skillhub import WencaiSkillHubProvider
 from app.runtime.mode import (
@@ -23,6 +24,7 @@ from app.runtime.mode import (
     LiveProviderUnavailableError,
     ModeRevisionConflictError,
     RuntimeModeController,
+    get_runtime_mode_controller,
     reset_runtime_mode_controller,
 )
 
@@ -30,21 +32,20 @@ from app.runtime.mode import (
 @pytest.fixture(autouse=True)
 def clean_env():
     """Ensure clean environment variables for reproducible mode tests."""
-    old_key = os.environ.get("WENCAI_SKILLHUB_API_KEY")
-    old_verified = os.environ.get("WENCAI_SKILLHUB_CONTRACT_VERIFIED")
-    if "WENCAI_SKILLHUB_API_KEY" in os.environ:
-        del os.environ["WENCAI_SKILLHUB_API_KEY"]
-    if "WENCAI_SKILLHUB_CONTRACT_VERIFIED" in os.environ:
-        del os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"]
+    names = (
+        "WENCAI_SKILLHUB_API_KEY",
+        "WENCAI_SKILLHUB_CONTRACT_VERIFIED",
+        "HITHINK_FINANCE_API_KEY",
+    )
+    old_values = {name: os.environ.get(name) for name in names}
+    for name in names:
+        os.environ.pop(name, None)
     yield
-    if old_key is not None:
-        os.environ["WENCAI_SKILLHUB_API_KEY"] = old_key
-    elif "WENCAI_SKILLHUB_API_KEY" in os.environ:
-        del os.environ["WENCAI_SKILLHUB_API_KEY"]
-    if old_verified is not None:
-        os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = old_verified
-    elif "WENCAI_SKILLHUB_CONTRACT_VERIFIED" in os.environ:
-        del os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"]
+    for name, value in old_values.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 
 
 class TestRuntimeModeController:
@@ -62,13 +63,78 @@ class TestRuntimeModeController:
         assert status["capabilities"]["MOCK"]["stock_quote"] is True
         assert status["capabilities"]["LIVE"]["semantic_search"] is False
 
-    def test_default_boot_mode_is_live_with_credentials(self):
+    def test_default_boot_mode_requires_real_probe_before_live(self):
+        os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+        controller = RuntimeModeController()
+        assert controller.mode == DataMode.MOCK
+        assert controller.is_live_ready is False
+        assert controller.needs_initial_probe is True
+        asyncio.run(controller.apply_fuyao_probe(
+            {"stock_quote": True, "fund_lookthrough": True}, auto_activate=True
+        ))
+        assert controller.mode == DataMode.LIVE
+        assert controller.is_live_ready is True
+        capabilities = controller.get_status()["capabilities"]["LIVE"]
+        assert capabilities["stock_quote"] is True
+        assert capabilities["fund_lookthrough"] is True
+        assert capabilities["semantic_search"] is False
+
+    def test_wencai_capabilities_can_coexist_without_fuyao(self):
         os.environ["WENCAI_SKILLHUB_API_KEY"] = "test_official_key"
         os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
         controller = RuntimeModeController()
-        assert controller.mode == DataMode.LIVE
-        assert controller.is_live_ready is True
-        assert controller.get_status()["capabilities"]["LIVE"]["semantic_search"] is True
+        status = controller.get_status()
+        assert status["data_mode"] == "LIVE"
+        assert status["live_ready"] is True
+        assert status["wencai_ready"] is True
+        assert status["capabilities"]["LIVE"]["stock_quote"] is False
+        assert status["capabilities"]["LIVE"]["fund_lookthrough"] is False
+        assert status["capabilities"]["LIVE"]["semantic_search"] is True
+        assert status["capabilities"]["LIVE"]["portfolio_refresh"] is True
+
+    def test_fuyao_and_wencai_capabilities_coexist(self):
+        async def _run():
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+            os.environ["WENCAI_SKILLHUB_API_KEY"] = "test_official_key"
+            os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
+            controller = RuntimeModeController()
+            await controller.apply_fuyao_probe(
+                {"stock_quote": True, "fund_lookthrough": True},
+                auto_activate=True,
+            )
+            capabilities = controller.get_status()["capabilities"]["LIVE"]
+            assert controller.mode == DataMode.LIVE
+            assert capabilities["stock_quote"] is True
+            assert capabilities["fund_lookthrough"] is True
+            assert capabilities["semantic_search"] is True
+            assert capabilities["portfolio_refresh"] is True
+
+        asyncio.run(_run())
+
+    def test_wencai_runtime_failure_revokes_only_wencai_capabilities(self):
+        async def _run():
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+            os.environ["WENCAI_SKILLHUB_API_KEY"] = "test_official_key"
+            os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
+            controller = RuntimeModeController()
+            await controller.apply_fuyao_probe(
+                {"stock_quote": True, "fund_lookthrough": True},
+                auto_activate=True,
+            )
+
+            await controller.record_wencai_failure("AUTH_FAILED")
+
+            status = controller.get_status()
+            capabilities = status["capabilities"]["LIVE"]
+            assert status["data_mode"] == "LIVE"
+            assert status["wencai_ready"] is False
+            assert status["wencai_capability_status"]["last_error_code"] == "AUTH_FAILED"
+            assert capabilities["semantic_search"] is False
+            assert capabilities["portfolio_refresh"] is False
+            assert capabilities["stock_quote"] is True
+            assert capabilities["fund_lookthrough"] is True
+
+        asyncio.run(_run())
 
     def test_switch_mode_revision_conflict(self):
         async def _run():
@@ -83,7 +149,7 @@ class TestRuntimeModeController:
             controller = RuntimeModeController(initial_mode=DataMode.MOCK)
             with pytest.raises(LiveProviderUnavailableError) as exc_info:
                 await controller.switch_mode("LIVE", expected_revision=1)
-            assert "WENCAI_SKILLHUB_API_KEY" in str(exc_info.value)
+            assert "HITHINK_FINANCE_API_KEY" in str(exc_info.value)
             # Mode and revision must remain unchanged
             assert controller.mode == DataMode.MOCK
             assert controller.revision == 1
@@ -91,14 +157,40 @@ class TestRuntimeModeController:
 
     def test_switch_to_live_with_credentials_succeeds(self):
         async def _run():
-            os.environ["WENCAI_SKILLHUB_API_KEY"] = "sk_live_enterprise_token"
-            os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
             controller = RuntimeModeController(initial_mode=DataMode.MOCK)
+            await controller.apply_fuyao_probe(
+                {"stock_quote": True, "fund_lookthrough": True}
+            )
             result = await controller.switch_mode("LIVE", expected_revision=1)
             assert result["data_mode"] == "LIVE"
             assert result["revision"] == 2
             assert controller.mode == DataMode.LIVE
             assert controller.revision == 2
+        asyncio.run(_run())
+
+    def test_runtime_failure_invalidates_capability_and_leaves_no_unready_live_state(self):
+        async def _run():
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+            controller = RuntimeModeController(initial_mode=DataMode.MOCK)
+            await controller.apply_fuyao_probe(
+                {"stock_quote": True, "fund_lookthrough": True}
+            )
+            await controller.switch_mode("LIVE", expected_revision=1)
+            await controller.record_fuyao_capability_failure("stock_quote", "FUYAO_2003")
+            status = controller.get_status()
+            assert status["data_mode"] == "LIVE"
+            assert status["live_verification"] == "DEGRADED"
+            assert status["live_capability_status"]["stock_quote"]["available"] is False
+            assert status["live_capability_status"]["stock_quote"]["last_error_code"] == "FUYAO_2003"
+            await controller.record_fuyao_capability_failure(
+                "fund_lookthrough", "UPSTREAM_TIMEOUT"
+            )
+            status = controller.get_status()
+            assert status["data_mode"] == "MOCK"
+            assert status["live_ready"] is False
+            assert status["live_verification"] == "FAILED"
+
         asyncio.run(_run())
 
     def test_switch_same_mode_does_not_increment_revision(self):
@@ -238,6 +330,112 @@ class TestDualRegistryProviders:
 class TestRuntimeModeApiEndpoints:
     """Test public runtime data mode HTTP endpoints and execution contexts."""
 
+    def test_concurrent_initial_gets_commit_only_one_capability_probe(self):
+        import httpx
+        from app.api.main import create_app
+
+        class SequencedProbeProvider:
+            is_configured = True
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def probe_capabilities(self):
+                self.calls += 1
+                await asyncio.sleep(0.02)
+                return (
+                    {"stock_quote": True, "fund_lookthrough": True}
+                    if self.calls == 1
+                    else {"stock_quote": False, "fund_lookthrough": False}
+                )
+
+        async def _run():
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+            reset_runtime_mode_controller()
+            provider = SequencedProbeProvider()
+            api = create_app(live_finance_provider=provider)  # type: ignore[arg-type]
+            transport = httpx.ASGITransport(app=api)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://testserver"
+            ) as client:
+                first, second = await asyncio.gather(
+                    client.get("/api/v1/runtime/data-mode"),
+                    client.get("/api/v1/runtime/data-mode"),
+                )
+            assert first.status_code == second.status_code == 200
+            assert provider.calls == 1
+            status = get_runtime_mode_controller().get_status()
+            assert status["data_mode"] == "LIVE"
+            assert status["live_ready"] is True
+            assert status["live_verification"] == "VERIFIED"
+
+        asyncio.run(_run())
+
+    def test_concurrent_live_switches_probe_once_and_keep_consistent_state(self):
+        import httpx
+        from app.api.main import create_app
+
+        class ProbeProvider:
+            is_configured = True
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def probe_capabilities(self):
+                self.calls += 1
+                await asyncio.sleep(0.02)
+                return {"stock_quote": True, "fund_lookthrough": True}
+
+        async def _run():
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+            reset_runtime_mode_controller(mode=DataMode.MOCK)
+            provider = ProbeProvider()
+            api = create_app(live_finance_provider=provider)  # type: ignore[arg-type]
+            transport = httpx.ASGITransport(app=api)
+            request = {"target_mode": "LIVE", "expected_revision": 1}
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://testserver"
+            ) as client:
+                first, second = await asyncio.gather(
+                    client.put("/api/v1/runtime/data-mode", json=request),
+                    client.put("/api/v1/runtime/data-mode", json=request),
+                )
+            assert sorted((first.status_code, second.status_code)) == [200, 409]
+            assert provider.calls == 1
+            status = get_runtime_mode_controller().get_status()
+            assert status["data_mode"] == "LIVE"
+            assert status["live_ready"] is True
+
+        asyncio.run(_run())
+
+    def test_live_endpoint_failure_updates_capability_matrix(self):
+        from fastapi.testclient import TestClient
+        from app.api.main import create_app
+
+        class FailingQuoteProvider:
+            is_configured = True
+
+            async def get_quote(self, _: str):
+                raise FuyaoProviderError("FUYAO_2003", "当前接口权限不可用。")
+
+        async def prepare_controller():
+            controller = reset_runtime_mode_controller(mode=DataMode.MOCK)
+            await controller.apply_fuyao_probe(
+                {"stock_quote": True, "fund_lookthrough": True}
+            )
+            await controller.switch_mode("LIVE", expected_revision=1)
+
+        asyncio.run(prepare_controller())
+        api = create_app(live_finance_provider=FailingQuoteProvider())  # type: ignore[arg-type]
+        response = TestClient(api).get("/api/v1/copilot/live-quote?symbol=600519")
+        assert response.status_code == 503
+        status = get_runtime_mode_controller().get_status()
+        assert status["data_mode"] == "LIVE"
+        assert status["live_verification"] == "DEGRADED"
+        assert status["capabilities"]["LIVE"]["stock_quote"] is False
+        assert status["capabilities"]["LIVE"]["fund_lookthrough"] is True
+        assert status["live_capability_status"]["stock_quote"]["last_error_code"] == "FUYAO_2003"
+
     def setup_method(self):
         reset_runtime_mode_controller(mode=DataMode.MOCK)
 
@@ -284,24 +482,66 @@ class TestRuntimeModeApiEndpoints:
         assert body["status"] == "CONFLICT"
         assert body["error_code"] == "LIVE_PROVIDER_UNAVAILABLE"
 
-    def test_put_data_mode_live_with_verified_credentials_succeeds(self):
+    def test_put_data_mode_live_with_credentials_serves_fuyao_quote(self):
         from fastapi.testclient import TestClient
         from app.api.main import app
 
-        os.environ["WENCAI_SKILLHUB_API_KEY"] = "sk_live_enterprise_token"
-        os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
+        os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
         client = TestClient(app)
 
         # 1. Switch to LIVE mode
-        put_resp = client.put(
-            "/api/v1/runtime/data-mode",
-            json={"target_mode": "LIVE", "expected_revision": 1},
-        )
+        with patch(
+            "app.providers.fuyao.FuyaoFinanceProvider.probe_capabilities",
+            new_callable=AsyncMock,
+        ) as probe:
+            probe.return_value = {"stock_quote": True, "fund_lookthrough": True}
+            put_resp = client.put(
+                "/api/v1/runtime/data-mode",
+                json={"target_mode": "LIVE", "expected_revision": 1},
+            )
         assert put_resp.status_code == 200
         assert put_resp.json()["data"]["data_mode"] == "LIVE"
         assert put_resp.json()["data"]["revision"] == 2
 
-        # 2. Switch back to MOCK mode
+        # 2. In LIVE mode, stock quote endpoint uses the server-side Fuyao adapter.
+        live_quote = {
+            "symbol": "300750.SZ", "name": "宁德时代", "price_cny": 260.0,
+            "provider_tier": "LIVE_PRIMARY", "retrieved_at": "2026-09-07T00:00:00+00:00",
+            "observed_at": "2026-09-07T00:00:00+00:00", "quote_latency_ms": 12.5,
+            "staleness_seconds": 0.0, "missing_fields": [], "is_synthetic": False,
+        }
+        with patch("app.providers.fuyao.FuyaoFinanceProvider.get_quote", new_callable=AsyncMock) as get_quote:
+            get_quote.return_value = live_quote
+            quote_resp = client.get("/api/v1/copilot/live-quote?symbol=300750")
+        assert quote_resp.status_code == 200
+        quote_body = quote_resp.json()
+        assert quote_body["status"] == "SUCCESS"
+        assert quote_body["data"]["price_cny"] == 260.0
+        assert quote_body["execution_context"]["provider"] == "fuyao_finance_api"
+        assert quote_body["execution_context"]["data_mode"] == "LIVE"
+        assert quote_body["execution_context"]["is_synthetic"] is False
+
+        invalid_live_quote = client.get("/api/v1/copilot/live-quote?symbol=XYZ123")
+        assert invalid_live_quote.status_code == 400
+        assert invalid_live_quote.json()["error_code"] == "INVALID_SECURITY_CODE"
+
+        evil_suffix = client.get("/api/v1/copilot/live-quote?symbol=300750.EVIL")
+        assert evil_suffix.status_code == 400
+
+        from app.providers.live_market import A_SHARE_DATABASE
+        A_SHARE_DATABASE.pop("600016", None)
+        live_unindexed = dict(live_quote, symbol="600016.SH", name="民生银行")
+        with patch("app.providers.fuyao.FuyaoFinanceProvider.get_quote", new_callable=AsyncMock) as get_quote:
+            get_quote.return_value = live_unindexed
+            index_response = client.post(
+                "/api/v1/copilot/auto-index-security?symbol=600016"
+            )
+        assert index_response.status_code == 200
+        assert index_response.json()["data"]["is_synthetic"] is False
+        assert index_response.json()["auto_completed"] is False
+        assert "600016" not in A_SHARE_DATABASE
+
+        # 3. Switch back to MOCK mode
         mock_resp = client.put(
             "/api/v1/runtime/data-mode",
             json={"target_mode": "MOCK", "expected_revision": 2},
@@ -309,7 +549,7 @@ class TestRuntimeModeApiEndpoints:
         assert mock_resp.status_code == 200
         assert mock_resp.json()["data"]["data_mode"] == "MOCK"
 
-        # 3. In MOCK mode, stock quote endpoint returns 200 with execution_context
+        # 4. In MOCK mode, stock quote endpoint returns 200 with execution_context
         mock_quote = client.get("/api/v1/copilot/live-quote?symbol=300750")
         assert mock_quote.status_code == 200
         mock_body = mock_quote.json()

@@ -1413,3 +1413,20 @@ Phase 27 已在本地 worktree 接受，最终验收记录见
   交易、持久化、Recommendation History、Portfolio Rebalancing 与 Dashboard。
 - 当前状态为 `PLANNED`；下一 agent 应先读计划并执行契约先行、独立审查和全量验收，不能
   把本阶段计划或 Phase 32 的 `436 passed` 冒充为 Phase 33 实现证据。
+## 2026-09-07 — 扶摇金融数据服务端接入
+
+- 新增服务端 `FuyaoFinanceProvider`，通过 `HITHINK_FINANCE_API_KEY` 调用扶摇 REST API；密钥不进入前端、响应、日志或仓库文件。
+- LIVE 模式已接通 A 股行情快照和基金重仓披露接口。行情记录上游时间、延迟与新鲜度；基金持仓固定标记为 `PERIODIC_DISCLOSURE`，行业分布不可用时显式保留 `missing_fields`。
+- 扶摇 HTTP 200 业务错误按响应体 `code` 拦截；LIVE 失败返回明确错误，不回退到 MOCK 静态底稿。
+- 启动时先对行情与场内基金能力执行真实请求探测，只有至少一项验证成功才允许进入 LIVE；Copilot 工具与自动建档路径均复用同一服务端实例，LIVE 数据不会写入 MOCK 静态底稿。
+- 首次能力探测采用单事务锁避免并发覆盖；每项能力记录最近校验时间和失败码，运行中失效会同步到前端，最后一项能力失效时明确切回 MOCK。扶摇公开调用增加不超过 1.5 秒的端到端墙钟截止时间。
+- 真实连通性验证：`600519.SH` 行情成功；`510300.SH` 返回 10 条最近一期披露持仓；Prism 模式、行情、基金三个 HTTP 路径均成功。
+- 验证：当前环境未安装 `uv`，使用项目虚拟环境执行等价全量命令 `.venv\\Scripts\\python.exe -m pytest`，结果为 `519 passed`；`compileall`、`node --check`、`git diff --check` 通过；`app.js` 保持 0 `innerHTML` / 0 `outerHTML`；浏览器完成 LIVE → MOCK → LIVE 往返，并在受控 SSE 权限失效场景中同步切回 MOCK，控制台无错误。
+
+## 2026-09-07 — 扶摇与问财能力合并
+
+- 在远端问财公告、语义检索、通用查询和组合刷新实现之上合并扶摇实时行情与基金披露能力。两套 Provider 独立裁决，不以一方静默替代另一方。
+- 扶摇单独可用时，问财刷新会明确标记为未执行，组合体检与调仓继续使用用户已确认持仓，由 Python 确定性服务完成计算。
+- 问财返回认证、权限、超时、传输或上游失败后，运行时会撤销问财能力并记录失败码；若扶摇仍可用则保留 LIVE，若无外部能力则切回 MOCK。
+- 浏览器验收确认顶栏显示 `LIVE · 扶摇数据`，并准确提示问财能力不可用；体检区显示未刷新原因且成功返回 Python 验算结果。真实 HTTP 验证中，`600519.SH` 行情和 `510300.SH` 的 10 条披露持仓均来自扶摇且 `is_synthetic=false`。
+- 验证：全量测试 `526 passed`；`compileall`、`node --check`、`git diff --check` 通过；`app.js` 保持 0 `innerHTML` / 0 `outerHTML`。

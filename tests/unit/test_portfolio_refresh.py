@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from app.api.main import create_app
 from app.portfolio.contracts import AssetType, PortfolioImportBundle, Position, PositionSnapshot
 from app.providers.contracts import (
+    ProviderIssue,
+    ProviderIssueCode,
     ProviderRecord,
     ProviderRequest,
     ProviderResult,
@@ -60,6 +62,29 @@ class _LivePortfolioProvider:
                         "sector": "Technology",
                         "name": "测试股票",
                     },
+                ),
+            ),
+        )
+
+
+class _FailedPortfolioProvider:
+    name = "failed_iwencai_provider"
+
+    async def execute(self, request: ProviderRequest) -> ProviderResult:
+        return ProviderResult(
+            request_id=request.request_id,
+            request_fingerprint=compute_request_fingerprint(request),
+            provider=self.name,
+            status=ProviderStatus.FAILED,
+            serving_mode=ProviderServingMode.DIRECT,
+            retrieved_at=datetime.now(UTC),
+            records=(),
+            issues=(
+                ProviderIssue(
+                    code=ProviderIssueCode.AUTH_FAILED,
+                    stage="execute",
+                    safe_message="test authentication failure",
+                    retriable=False,
                 ),
             ),
         )
@@ -155,6 +180,27 @@ def test_live_refresh_blocks_incomplete_fund_lookthrough(monkeypatch):
     assert body["status"] == "REVIEW_REQUIRED"
     assert body["portfolio"] is None
     assert "top_holdings" in body["missing_fields"]
+
+
+def test_live_refresh_failure_revokes_wencai_runtime_capability(monkeypatch):
+    monkeypatch.setenv("WENCAI_SKILLHUB_API_KEY", "test-key")
+    monkeypatch.setenv("WENCAI_SKILLHUB_CONTRACT_VERIFIED", "true")
+    reset_runtime_mode_controller(mode=DataMode.LIVE)
+    client = TestClient(create_app(wencai_provider=_FailedPortfolioProvider()))
+
+    response = client.post(
+        "/api/v1/advisor/portfolio/refresh",
+        headers={"X-Owner-ID": "refresh-owner"},
+        json=_request(_portfolio()),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "REVIEW_REQUIRED"
+    status = client.get("/api/v1/runtime/data-mode").json()["data"]
+    assert status["data_mode"] == "MOCK"
+    assert status["wencai_ready"] is False
+    assert status["capabilities"]["LIVE"]["portfolio_refresh"] is False
+    assert status["wencai_capability_status"]["last_error_code"] == "PORTFOLIO_REFRESH_FAILED"
 
 
 def test_mock_refresh_keeps_fixture_data_explicitly_synthetic(monkeypatch):
