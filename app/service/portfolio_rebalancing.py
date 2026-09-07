@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN
+import re
 
 from app.gates import GateStatus
 from app.portfolio.contracts import AssetType, PositionImportStatus
@@ -20,6 +21,19 @@ def _q2(val: Decimal) -> Decimal:
     return val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+def trade_fees(amount: Decimal, selling: bool, stock: bool = True) -> dict[str, Decimal]:
+    """User-specified A-share model; each component rounded to CNY cents."""
+    stamp = _q2(amount * Decimal("0.0005")) if selling and stock else Decimal("0.00")
+    transfer = _q2(amount * Decimal("0.00001")) if stock else Decimal("0.00")
+    commission = _q2(max(Decimal("5"), amount * Decimal("0.00025"))) if amount else Decimal("0.00")
+    return dict(stamp_duty=stamp, transfer_fee=transfer, commission=commission,
+                total_fees_cny=stamp + transfer + commission)
+
+
+def _exchange_asset(asset_id: str) -> bool:
+    return bool(re.fullmatch(r"\d{6}(?:\.(?:SH|SZ|BJ))?", asset_id))
+
+
 class PortfolioRebalancingService:
     """Deterministic rebalancing planner."""
 
@@ -28,6 +42,10 @@ class PortfolioRebalancingService:
         request: PortfolioRebalancingRequest,
     ) -> PortfolioRebalancingResponse:
         positions = request.bundle.position_snapshot.positions
+        if any(p.currency != "CNY" for p in positions):
+            raise ValueError("Rebalancing requires CNY positions; FX conversion is unavailable")
+        if len({p.asset_id for p in positions}) != len(positions):
+            raise ValueError("Aggregate duplicate asset positions before rebalancing")
         total_val = sum((pos.market_value for pos in positions), start=Decimal("0"))
 
         if total_val <= Decimal("0"):
@@ -82,7 +100,7 @@ class PortfolioRebalancingService:
                     RebalancingAction(
                         asset_id=asset_id,
                         asset_name=f"新增资产({asset_id})",
-                        asset_type=AssetType.ETF,
+                        asset_type=request.asset_types.get(asset_id, AssetType.STOCK if _exchange_asset(asset_id) else AssetType.ETF),
                         current_weight_pct=Decimal("0.00"),
                         target_weight_pct=tw,
                         delta_weight_pct=tw,
@@ -94,11 +112,65 @@ class PortfolioRebalancingService:
                     )
                 )
 
-        # Calculate metrics
+        # Convert target amounts to executable quantities. Abstract fixture assets
+        # retain amount-only semantics; exchange instruments require an observed price.
+        cash_available = sum((p.market_value for p in positions if p.asset_type == AssetType.CASH), Decimal(0))
+        execution_issues: list[str] = []
+        adjusted: dict[str, RebalancingAction] = {}
+        ordered = sorted(actions, key=lambda a: a.action_type == RebalancingActionType.BUY)
+        for action in ordered:
+            pos = pos_by_asset.get(action.asset_id)
+            if action.asset_type == AssetType.CASH or action.action_type == RebalancingActionType.HOLD:
+                adjusted[action.asset_id] = action.model_copy(update={"cash_delta_cny": Decimal("0.00"), "delta_weight_pct": Decimal("0.00"), "action_type": RebalancingActionType.HOLD, "shares": Decimal(0)})
+                continue
+            if not _exchange_asset(action.asset_id):
+                adjusted[action.asset_id] = action
+                continue
+            price = request.prices_cny.get(action.asset_id) or ((pos.market_value / pos.quantity) if pos else None)
+            if not price or price <= 0:
+                execution_issues.append(f"{action.asset_id}: 缺少有效报价，无法计算股数")
+                adjusted[action.asset_id] = action.model_copy(update={"executable": False, "cash_delta_cny": Decimal(0), "delta_weight_pct": Decimal(0)})
+                continue
+            selling = action.action_type in (RebalancingActionType.SELL, RebalancingActionType.REDUCE)
+            if pos and pos.quantity != pos.quantity.to_integral_value():
+                raise ValueError("Exchange positions require integer quantities")
+            lot = Decimal(100) if request.round_to_lot and action.asset_type in (AssetType.STOCK, AssetType.ETF) else Decimal(1)
+            shares = (abs(action.cash_delta_cny) / price / lot).to_integral_value(rounding=ROUND_DOWN) * lot
+            if selling and pos:
+                shares = pos.quantity if action.target_weight_pct == 0 else min(shares, (pos.quantity // lot) * lot)
+            stock = action.asset_type == AssetType.STOCK
+            if not selling:
+                # Bisection finds the largest affordable lot count including minimum fees.
+                low, high = 0, int(shares / lot)
+                while low < high:
+                    middle = (low + high + 1) // 2
+                    amount = _q2(Decimal(middle) * lot * price)
+                    if amount + trade_fees(amount, False, stock)["total_fees_cny"] <= cash_available:
+                        low = middle
+                    else:
+                        high = middle - 1
+                affordable = Decimal(low) * lot
+                if affordable < shares:
+                    execution_issues.append(f"{action.asset_id}: 已按可用资金及费用缩减买入数量")
+                shares = affordable
+            amount = _q2(shares * price)
+            fees = trade_fees(amount, selling, stock)
+            delta = -amount if selling else amount
+            cash_available += (amount if selling else -amount) - fees["total_fees_cny"]
+            adjusted[action.asset_id] = action.model_copy(update={
+                "shares": shares, "current_price_cny": price, "cash_delta_cny": delta,
+                "delta_weight_pct": _q2(delta / total_val * 100),
+                "action_type": action.action_type if shares else RebalancingActionType.HOLD,
+                "target_value_cny": action.current_value_cny + delta, **fees})
+        actions = [adjusted[a.asset_id] for a in actions]
+
+        # Calculate metrics from executable amounts, excluding HOLD deadband drift.
         total_buy = sum((abs(a.cash_delta_cny) for a in actions if a.action_type == RebalancingActionType.BUY), start=Decimal("0"))
         total_sell = sum((abs(a.cash_delta_cny) for a in actions if a.action_type in (RebalancingActionType.SELL, RebalancingActionType.REDUCE)), start=Decimal("0"))
-        turnover_pct = _q2(sum((abs(a.delta_weight_pct) for a in actions), start=Decimal("0")) / Decimal("2"))
-        net_cash = _q2(total_sell - total_buy)
+        turnover_pct = _q2((total_buy + total_sell) / total_val * 50)
+        total_fees = sum((a.total_fees_cny for a in actions), Decimal(0))
+        net_cash = _q2(total_sell - total_buy - total_fees)
+        initial_cash = sum((p.market_value for p in positions if p.asset_type == AssetType.CASH), Decimal(0))
         turnover_breached = turnover_pct > request.max_turnover_pct
 
         metrics = RebalancingMetrics(
@@ -108,11 +180,15 @@ class PortfolioRebalancingService:
             total_sell_cny=_q2(total_sell),
             net_cash_flow_cny=net_cash,
             turnover_cap_breached=turnover_breached,
+            net_turnover_cost=total_fees,
+            net_turnover_cost_pct=_q2(total_fees / (total_buy + total_sell) * 100) if total_buy + total_sell else Decimal("0.00"),
+            cash_after_cny=_q2(initial_cash + net_cash),
+            cash_shortfall_cny=max(Decimal("0.00"), -initial_cash - net_cash),
         )
 
         # Build execution steps: Sell/Reduce first, then Buy
-        sells = [a for a in actions if a.action_type in (RebalancingActionType.SELL, RebalancingActionType.REDUCE)]
-        buys = [a for a in actions if a.action_type == RebalancingActionType.BUY]
+        sells = [a for a in actions if a.executable and a.action_type in (RebalancingActionType.SELL, RebalancingActionType.REDUCE)]
+        buys = [a for a in actions if a.executable and a.action_type == RebalancingActionType.BUY]
         sells.sort(key=lambda x: abs(x.cash_delta_cny), reverse=True)
         buys.sort(key=lambda x: abs(x.cash_delta_cny), reverse=True)
 
@@ -127,6 +203,7 @@ class PortfolioRebalancingService:
                     asset_name=s.asset_name,
                     amount_cny=abs(s.cash_delta_cny),
                     liquidity_priority=1,
+                    shares=s.shares, total_fees_cny=s.total_fees_cny,
                     description=f"优先卖出/减持 {s.asset_name} 释放现金 {abs(s.cash_delta_cny)} CNY",
                 )
             )
@@ -141,13 +218,17 @@ class PortfolioRebalancingService:
                     asset_name=b.asset_name,
                     amount_cny=abs(b.cash_delta_cny),
                     liquidity_priority=2,
+                    shares=b.shares, total_fees_cny=b.total_fees_cny,
                     description=f"使用释放流动性买入/增持 {b.asset_name} 金额 {abs(b.cash_delta_cny)} CNY",
                 )
             )
             step_idx += 1
 
-        issues: list[str] = []
-        status = GateStatus.PASS
+        issues: list[str] = execution_issues
+        status = GateStatus.REVIEW_REQUIRED if execution_issues else GateStatus.PASS
+        if metrics.cash_shortfall_cny > 0:
+            status = GateStatus.REVIEW_REQUIRED
+            issues.append(f"扣费后现金缺口 {metrics.cash_shortfall_cny} CNY")
 
         if turnover_breached:
             status = GateStatus.REVIEW_REQUIRED

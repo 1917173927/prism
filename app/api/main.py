@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-import httpx
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -62,6 +61,7 @@ from app.simulation import (
     ScenarioSimulationResponse,
     ScenarioSimulationTemplateResponse,
 )
+from app.scenarios import CustomStressScenarioRequest, CustomStressScenarioResponse, calculate_custom_stress
 from app.history import (
     RecommendationComparisonRequest,
     RecommendationComparisonResponse,
@@ -71,6 +71,7 @@ from app.rebalancing import (
     PortfolioRebalancingRequest,
     PortfolioRebalancingResponse,
 )
+from app.providers.live_market import CompositeMarketProvider
 from app.evaluation import (
     EvaluationDashboardRequest,
     EvaluationDashboardResponse,
@@ -301,6 +302,7 @@ def create_app(
     active_advanced_explainability = (
         advanced_explainability_service or AdvancedExplainabilityService()
     )
+    active_market_quotes = CompositeMarketProvider()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -1304,150 +1306,16 @@ def create_app(
     )
 
     async def _auto_complete_security_baseline(clean_code: str) -> dict[str, Any] | None:
-        """Fetch public exchange quote or synthesize deterministic baseline for valid A-share security."""
+        """Fetch the resilient quote chain; never manufacture missing observations."""
         if clean_code in A_SHARE_DATABASE:
-            return A_SHARE_DATABASE[clean_code]
-
-        # Prefix mapping for Tencent quote feed
-        if clean_code.startswith(("60", "688", "51", "588", "110", "113")):
-            mkt = "sh"
-        elif clean_code.startswith(("00", "30", "159", "123", "127", "128")):
-            mkt = "sz"
+            baseline = A_SHARE_DATABASE[clean_code]
         else:
-            mkt = "bj"
-
-        # Attempt fetching from public exchange feed
-        record_data: dict[str, Any] | None = None
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                resp = await client.get(f"http://qt.gtimg.cn/q={mkt}{clean_code}")
-                if resp.status_code == 200:
-                    text_content = resp.content.decode("gbk", errors="ignore")
-                    if f"v_{mkt}{clean_code}=\"1~" in text_content:
-                        raw = text_content.split('="')[1].rstrip('";\n')
-                        parts = raw.split("~")
-                        if len(parts) > 46:
-                            name = parts[1]
-                            price = float(parts[3]) if float(parts[3]) > 0 else float(parts[4])
-                            change_pct = float(parts[32]) if parts[32] else 0.0
-                            pe = float(parts[39]) if parts[39] and float(parts[39]) > 0 else (6.5 if "银行" in name else 20.0)
-                            pb = float(parts[46]) if parts[46] and float(parts[46]) > 0 else (0.65 if "银行" in name else 1.5)
-                            mcap_str = parts[45] if parts[45] else "100"
-                            market_cap = float(mcap_str) * 100_000_000.0
-
-                            # Sector determination
-                            if any(k in name for k in ("银行", "证券", "保险", "信托", "金融")):
-                                sector = "Finance"
-                                sub_ind = "金融/商业银行与非银"
-                                gm = 42.0
-                                debt = 92.0
-                            elif any(k in name for k in ("药", "生物", "医疗", "基因")):
-                                sector = "Healthcare"
-                                sub_ind = "创新药与生命科学"
-                                gm = 75.0
-                                debt = 25.0
-                            elif any(k in name for k in ("芯", "半导体", "微", "软件", "科技", "信息", "计算机")) or clean_code.startswith("688"):
-                                sector = "Technology"
-                                sub_ind = "硬科技与半导体"
-                                gm = 40.0
-                                debt = 30.0
-                            elif any(k in name for k in ("电", "汽", "能", "造", "工", "材")) or clean_code.startswith("300"):
-                                sector = "Industrials"
-                                sub_ind = "高端装备与制造"
-                                gm = 28.0
-                                debt = 55.0
-                            elif any(k in name for k in ("酒", "食", "消费", "美", "乳")):
-                                sector = "Consumer"
-                                sub_ind = "大消费与生活品"
-                                gm = 65.0
-                                debt = 20.0
-                            else:
-                                sector = "Finance" if clean_code.startswith("601") else ("Technology" if clean_code.startswith("688") else "Industrials")
-                                sub_ind = "沪深北交易所上市企业"
-                                gm = 35.0
-                                debt = 50.0
-
-                            roe = round((pb / pe) * 100, 1) if pe > 0 else 12.0
-                            quantile = 25.0 if pb < 1.0 else (45.0 if pb < 3.0 else 75.0)
-
-                            record_data = {
-                                "symbol": f"{clean_code}.{mkt.upper()}",
-                                "name": name,
-                                "sector": sector,
-                                "sub_industry": sub_ind,
-                                "price_cny": price,
-                                "change_pct": change_pct,
-                                "pe_ttm": pe,
-                                "pb": pb,
-                                "roe_pct": roe,
-                                "gross_margin_pct": gm,
-                                "debt_ratio_pct": debt,
-                                "revenue_cny": round(market_cap * 0.4, 2),
-                                "net_profit_cny": round(market_cap / pe, 2) if pe > 0 else round(market_cap * 0.05, 2),
-                                "market_cap_cny": round(market_cap, 2),
-                                "valuation_quantile_pct": quantile,
-                                "auto_indexed": True,
-                                "audit_note": "已自动完成前置依赖：从交易所实时快照与财报源建档入库",
-                            }
-        except Exception:
-            pass
-
-        # Fallback: Deterministic audited baseline
-        if not record_data:
-            is_sh = mkt == "sh"
-            if clean_code.startswith("601"):
-                sec = "Finance"
-                sub = "大型金融与央企基石"
-                name = f"蓝筹标的 ({clean_code})"
-                pe = 6.8
-                pb = 0.72
-                gm = 40.0
-                debt = 90.0
-            elif clean_code.startswith("688"):
-                sec = "Technology"
-                sub = "科创板关键核心技术"
-                name = f"科创标的 ({clean_code})"
-                pe = 48.5
-                pb = 4.2
-                gm = 52.0
-                debt = 28.0
-            elif clean_code.startswith("300"):
-                sec = "Industrials"
-                sub = "创业板先进制造"
-                name = f"成长标的 ({clean_code})"
-                pe = 32.0
-                pb = 3.5
-                gm = 32.0
-                debt = 48.0
-            else:
-                sec = "Industrials"
-                sub = "主板核心实体企业"
-                name = f"A股标的 ({clean_code})"
-                pe = 18.0
-                pb = 1.8
-                gm = 30.0
-                debt = 52.0
-
-            record_data = {
-                "symbol": f"{clean_code}.{'SH' if is_sh else 'SZ'}",
-                "name": name,
-                "sector": sec,
-                "sub_industry": sub,
-                "price_cny": 16.80,
-                "change_pct": 0.50,
-                "pe_ttm": pe,
-                "pb": pb,
-                "roe_pct": round((pb / pe) * 100, 1),
-                "gross_margin_pct": gm,
-                "debt_ratio_pct": debt,
-                "revenue_cny": 18000000000.0,
-                "net_profit_cny": 1500000000.0,
-                "market_cap_cny": 45000000000.0,
-                "valuation_quantile_pct": 45.0,
-                "auto_indexed": True,
-                "audit_note": "已自动完成前置依赖：合成确定性审计财报底稿建档入库",
-            }
-
+            baseline = {}
+        quote = await active_market_quotes.get_quote(clean_code)
+        if quote is None:
+            return None
+        record_data = {**baseline, **quote, "auto_indexed": True,
+                       "audit_note": "行情经主备快照链获取；缺失的财务字段保持显式缺失。"}
         A_SHARE_DATABASE[clean_code] = record_data
         return record_data
 
@@ -1474,14 +1342,31 @@ def create_app(
                 },
             )
         data = await _auto_complete_security_baseline(clean_code)
+        if data is None:
+            return JSONResponse(status_code=503, content={
+                "status": "FAILED", "error_code": "MARKET_DATA_UNAVAILABLE",
+                "message": f"标的 [{clean_code}] 的主源、备用源与静态底稿均不可用。",
+            })
         return JSONResponse(
             content={
                 "status": "SUCCESS",
-                "message": f"已自动完成前置依赖：标的 [{clean_code} {data.get('name', '')}] 行情与财务底稿已建档入库。",
+                "message": f"已自动完成行情前置依赖：标的 [{clean_code} {data.get('name', '')}] 快照已建档；缺失财务字段保持显式标注。",
                 "data": data,
                 "auto_completed": True,
             }
         )
+
+    @api.post(
+        "/api/v1/advisor/custom-stress-scenarios",
+        response_model=CustomStressScenarioResponse,
+    )
+    def create_custom_stress_scenario(
+        request: CustomStressScenarioRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> CustomStressScenarioResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("custom stress request owner does not match owner scope")
+        return calculate_custom_stress(request)
 
     @api.get("/api/v1/copilot/live-quote")
     async def copilot_live_quote_endpoint(
@@ -1541,18 +1426,32 @@ def create_app(
                     "message": f"未收录标的底稿：当前量化底稿库尚未收录标的 [{clean_code}] 的行情快照或审计财报底稿，拒绝生成未经核验的虚假研判。",
                 },
             )
+        if "provider_tier" not in data:
+            data = {
+                **data,
+                "provider_tier": "STATIC_FALLBACK",
+                "quote_latency_ms": 0.0,
+                "staleness_seconds": None,
+                "observed_at": None,
+                "retrieved_at": datetime.now(UTC).isoformat(),
+                "is_synthetic": True,
+                "missing_fields": ["observed_at"],
+                "fallback_reasons": [],
+            }
         return JSONResponse(
             content={
                 "status": "SUCCESS",
                 "data": data,
                 "execution_context": {
                     "data_mode": "MOCK",
-                    "provider": "static_market_provider",
-                    "provider_serving_mode": "SYNTHETIC_FIXTURE",
-                    "is_synthetic": True,
-                    "observed_at": datetime.now(UTC).isoformat(),
-                    "retrieved_at": datetime.now(UTC).isoformat(),
-                    "missing_fields": [],
+                    "provider": data["provider_tier"],
+                    "provider_serving_mode": data["provider_tier"],
+                    "is_synthetic": data["is_synthetic"],
+                    "observed_at": data.get("observed_at"),
+                    "retrieved_at": data["retrieved_at"],
+                    "quote_latency_ms": data["quote_latency_ms"],
+                    "staleness_seconds": data["staleness_seconds"],
+                    "missing_fields": data["missing_fields"],
                 },
             }
         )

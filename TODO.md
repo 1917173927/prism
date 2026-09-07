@@ -1,6 +1,6 @@
 # TODO
 
-> Updated: 2026-09-02
+> Updated: 2026-09-07
 >
 > Source of truth for product scope: [Prism.md](Prism.md)
 >
@@ -13,6 +13,15 @@
 
 - [x] Reorganize the default frontend around user tasks, with detailed research and audit modules available through explicit progressive disclosure.
 - [x] Validate the task-first home, detailed-workbench toggle, analysis view, health-check flow, and responsive layout in a real browser.
+- [x] Connect sector drill-down results below the chart and restore the evidence-lineage modal without changing sidebar or page partition behavior.
+
+## 2026-09-07 Engineering Backlog
+
+- [x] TASK-01: Tencent → Sina → static market-data failover with bounded timeout and freshness metadata.
+- [x] TASK-02: OCR fuzzy security correction, deterministic value reconciliation, confidence states and odd-lot review.
+- [x] TASK-03: A-share lot sizing and deterministic transaction-friction output.
+- [x] TASK-04: Five-sector custom stress inputs with Python-calculated volatility and VaR changes.
+- [x] TASK-05: Micro-Store for atomic owner, profile, portfolio and data-mode transitions.
 
 ## P0 — Foundation
 
@@ -153,5 +162,4 @@ These inputs block claims of real SkillHub integration or submission readiness, 
 
 Optimization Direction 1 (Phase 38) and Optimization Direction 2 (Phase 39) have been fully implemented and verified with 100% test pass rate across 472 automated tests.
 Next targets are Phase 40 (Multi-Agent Graph & Pipeline Workflow Builder, 引入成熟开源图引擎) and Phase 41 (Session Truth Blackboard & Anti-Hallucination Panel) as specified in `docs/architecture.md`.
-
 

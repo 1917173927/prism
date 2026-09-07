@@ -1,5 +1,26 @@
 # LOG
 
+## 2026-09-07 — Engineering backlog TASK-01 至 TASK-05
+
+### Decisions & Accomplishments
+
+- 行情自动建档改为 Tencent、Sina、静态底稿三级降级链，设置单级 1.5 秒、总计 2.0 秒预算，并输出供应商层级、延迟与新鲜度；删除网络失败后伪造行情和财务数据的旧分支。
+- OCR 增加证券简称模糊纠错、市值偏差 0.5% 校验、组合权重 1% 容差、逐行置信等级和零股复核提示。
+- 调仓服务增加 A 股整手约束、零股清仓规则以及印花税、过户费、最低佣金和净换手成本；缺少报价的新增标的明确进入复核态。
+- 新增五行业自定义冲击接口和滑块，由 Python 确定性计算组合损益、波动率及 95% 单日 VaR；前端增加 Micro-Store，并将调仓与情景卡片接入后端结果。
+- 修复分析依据弹窗被隐藏画像弹窗包裹的问题；行业环图点击结果改为紧邻图表呈现。按用户要求保留侧边栏与页面分区。
+
+### Verification
+
+```text
+.venv\Scripts\python.exe -m pytest -q
+# 498 tests passed; 2 dependency deprecation warnings
+node --check app/api/static/app.js
+rg "innerHTML|outerHTML" app/api/static/app.js
+# no matches
+Browser: custom stress slider recalculated loss/volatility/VaR; sector click rendered inline detail; evidence lineage modal opened.
+```
+
 ## 2026-09-02 — Frontend product UX pass completed
 
 ### Decisions & Accomplishments

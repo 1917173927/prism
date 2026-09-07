@@ -10,6 +10,8 @@ from __future__ import annotations
 import base64
 import io
 import re
+import unicodedata
+from decimal import Decimal
 from typing import Any
 
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
@@ -17,6 +19,100 @@ from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 CONFIDENCE_THRESHOLD = 0.85
 
 SUMMARY_KEYWORDS = ("总资产", "合计", "总计", "资产总计", "净资产", "可用资金", "资金余额", "可用现金", "可用", "可取")
+
+
+def levenshtein_distance(left: str, right: str) -> int:
+    previous = list(range(len(right) + 1))
+    for i, a in enumerate(left, 1):
+        current = [i]
+        for j, b in enumerate(right, 1):
+            current.append(min(current[-1] + 1, previous[j] + 1, previous[j - 1] + (a != b)))
+        previous = current
+    return previous[-1]
+
+
+def _normalized_name(value: str) -> str:
+    value = unicodedata.normalize("NFKC", value).upper()
+    value = re.sub(r"股份有限公司|股份|股票|[\s*·（）()\-]", "", value)
+    return value
+
+
+def _jaro_winkler(left: str, right: str) -> float:
+    if left == right:
+        return 1.0
+    if not left or not right:
+        return 0.0
+    window = max(len(left), len(right)) // 2 - 1
+    left_match = [False] * len(left)
+    right_match = [False] * len(right)
+    matches = 0
+    for i, char in enumerate(left):
+        for j in range(max(0, i - window), min(i + window + 1, len(right))):
+            if not right_match[j] and char == right[j]:
+                left_match[i] = right_match[j] = True
+                matches += 1
+                break
+    if matches == 0:
+        return 0.0
+    left_chars = [char for i, char in enumerate(left) if left_match[i]]
+    right_chars = [char for i, char in enumerate(right) if right_match[i]]
+    transpositions = sum(a != b for a, b in zip(left_chars, right_chars)) / 2
+    jaro = (matches / len(left) + matches / len(right) + (matches - transpositions) / matches) / 3
+    prefix = 0
+    for a, b in zip(left[:4], right[:4]):
+        if a != b:
+            break
+        prefix += 1
+    return jaro + prefix * 0.1 * (1 - jaro)
+
+
+def resolve_security_name(tokens: list[str]) -> str | None:
+    candidates = []
+    for code, info in {**A_SHARE_DATABASE, **ETF_LOOKTHROUGH_DATABASE}.items():
+        names = [info.get("name", info.get("fund_name", "")), *info.get("aliases", [])]
+        score = max((max(
+                         1 - levenshtein_distance(_normalized_name(token), _normalized_name(name)) /
+                         max(len(_normalized_name(token)), len(_normalized_name(name)), 1),
+                         _jaro_winkler(_normalized_name(token), _normalized_name(name)),
+                     )
+                     for token in tokens for name in names), default=0)
+        if score >= CONFIDENCE_THRESHOLD:
+            candidates.append((score, code))
+    candidates.sort(reverse=True)
+    if not candidates or (len(candidates) > 1 and candidates[0][0] == candidates[1][0]):
+        return None
+    return candidates[0][1]
+
+
+def validate_portfolio_values(positions: list[dict[str, Any]], cash_cny: float,
+                              total_asset: float) -> dict[str, Any]:
+    """Deterministic value reconciliation, including cash in total weight conservation."""
+    total = Decimal(str(total_asset))
+    weight_sum = Decimal(str(cash_cny)) / total if total > 0 else Decimal(0)
+    for position in positions:
+        quantity = Decimal(str(position["quantity"]))
+        price = Decimal(str(position["price"]))
+        value = quantity * price
+        reported = Decimal(str(position["market_value_cny"]))
+        issues = list(position.get("review_reasons", []))
+        if quantity <= 0 or quantity != quantity.to_integral_value() or price <= 0:
+            issues.append("INVALID_QUANTITY_OR_PRICE")
+        if value <= 0 or abs(value - reported) > value * Decimal("0.005"):
+            issues.append("MARKET_VALUE_MISMATCH")
+        if position.get("asset_class") == "EQUITY" and quantity % 100:
+            issues.append("ODD_LOT_REVIEW: 零股持仓请核对；买入须整手，清仓可卖出零股")
+        weight = value / total if total > 0 else Decimal(0)
+        position.update(weight=float(weight), calculated_market_value_cny=float(value),
+                        review_reasons=list(dict.fromkeys(issues)))
+        weight_sum += weight
+    balanced = total > 0 and abs(weight_sum - 1) <= Decimal("0.01")
+    for position in positions:
+        if not balanced:
+            position["review_reasons"].append("TOTAL_ASSET_MISMATCH")
+        review = bool(position.get("needs_review") or position["review_reasons"])
+        position.update(needs_review=review, confidence_level="REVIEW_REQUIRED" if review else "HIGH")
+    return {"weight_sum": float(weight_sum), "weights_balanced": balanced,
+            "has_low_confidence_items": any(p["needs_review"] for p in positions)}
 
 
 class OCRPortfolioParser:
@@ -125,6 +221,19 @@ class OCRPortfolioParser:
                     if num_str:
                         reported_total_assets = float(num_str)
 
+        # Some broker screenshots render summary labels as icons or unsupported
+        # glyphs. A numeric-only two-cell footer is still structurally usable.
+        if cash_cny == 0 and reported_total_assets == 0:
+            for row in reversed(rows):
+                numeric = []
+                for cell in row:
+                    cleaned = re.sub(r"[^\d.]", "", cell["text"].replace(",", ""))
+                    if cleaned and cleaned.count(".") <= 1:
+                        numeric.append(float(cleaned))
+                if len(numeric) == 2 and numeric[1] >= numeric[0] > 0:
+                    cash_cny, reported_total_assets = numeric
+                    break
+
         # 3. Extract Security Positions (Filter out summary/header rows)
         seen_codes: set[str] = set()
 
@@ -143,7 +252,14 @@ class OCRPortfolioParser:
             # Look for 6-digit security code
             code_match = re.search(r"\b([0-3568]\d{5})\b", row_combined)
             found_code = code_match.group(1) if code_match else None
+            original_code = found_code
             found_name = ""
+
+            if found_code not in A_SHARE_DATABASE and found_code not in ETF_LOOKTHROUGH_DATABASE:
+                corrected_code = resolve_security_name(row_tokens)
+                if corrected_code is None:
+                    continue
+                found_code = corrected_code
 
             # Match against known databases if not found by regex
             if not found_code:
@@ -199,12 +315,12 @@ class OCRPortfolioParser:
             # Extract numeric fields excluding code and numbers in the name
             pure_numbers: list[float] = []
             for tok in row_tokens:
-                if tok == found_code or tok == found_name:
+                if tok in (found_code, original_code, found_name) or re.search(r"[\u4e00-\u9fffA-Za-z]", tok):
                     continue
                 # If token matches the name or parts of it like '科创50ETF', skip it
                 if found_name and tok in found_name:
                     continue
-                num_matches = re.findall(r"\b\d+(?:\.\d+)?\b", tok)
+                num_matches = re.findall(r"(?<!\w)-?\d+(?:\.\d+)?\b", tok.replace(",", ""))
                 for nm in num_matches:
                     try:
                         n_val = float(nm)
@@ -213,10 +329,10 @@ class OCRPortfolioParser:
                     except ValueError:
                         continue
 
-            quantity = 1000
-            cost_price = 10.0
-            price = 10.0
-            market_val = 10000.0
+            quantity = 0
+            cost_price = 0.0
+            price = 0.0
+            market_val = 0.0
 
             # If tokens map neatly to standard table columns
             # e.g. [code, name, qty, cost, price, market_value]
@@ -255,6 +371,15 @@ class OCRPortfolioParser:
             min_score = min(row_scores) if row_scores else 0.90
             item_confidence = round(float(min_score), 3)
             is_low_conf = item_confidence < CONFIDENCE_THRESHOLD
+            reasons = []
+            if original_code != found_code:
+                reasons.append("SECURITY_CODE_CORRECTED")
+            if found_code not in A_SHARE_DATABASE and found_code not in ETF_LOOKTHROUGH_DATABASE:
+                reasons.append("UNKNOWN_SECURITY")
+            if len(pure_numbers) < 2:
+                reasons.append("MISSING_OBSERVED_FIELDS")
+            if pure_numbers and pure_numbers[0] != int(pure_numbers[0]):
+                reasons.append("FRACTIONAL_SHARES")
 
             if is_low_conf:
                 has_low_confidence = True
@@ -279,19 +404,22 @@ class OCRPortfolioParser:
                 "confidence": item_confidence,
                 "confidence_pct": round(item_confidence * 100, 1),
                 "needs_review": is_low_conf,
+                "original_code": original_code,
+                "review_reasons": reasons,
             })
 
         total_holdings_val = sum(p["market_value_cny"] for p in positions)
         total_val = round(reported_total_assets if reported_total_assets > 0 else (cash_cny + total_holdings_val), 2)
+        validation = validate_portfolio_values(positions, cash_cny, total_val)
 
         return {
-            "status": "SUCCESS",
+            "status": "SUCCESS" if positions else "EMPTY",
             "schema_version": "portfolio-ocr-bundle.v1",
             "total_value_cny": total_val,
             "cash_cny": round(cash_cny, 2),
             "positions": positions,
             "parsed_count": len(positions),
-            "has_low_confidence_items": has_low_confidence,
+            **validation,
             "confidence_threshold": CONFIDENCE_THRESHOLD,
             "raw_ocr_lines": [
                 {

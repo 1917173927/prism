@@ -1,8 +1,43 @@
 (() => {
   "use strict";
 
-  const state = {
+  function createMicroStore(initialState) {
+    const listeners = new Set();
+    let transactionDepth = 0;
+    let pending = false;
+    const notify = () => {
+      if (transactionDepth) { pending = true; return; }
+      listeners.forEach((listener) => listener(proxy));
+    };
+    const proxy = new Proxy(initialState, {
+      set(target, key, value) {
+        if (Object.is(target[key], value)) return true;
+        target[key] = value;
+        notify();
+        return true;
+      }
+    });
+    return {
+      state: proxy,
+      subscribe(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      transact(mutator) {
+        transactionDepth += 1;
+        try { mutator(proxy); }
+        finally {
+          transactionDepth -= 1;
+          if (!transactionDepth && pending) { pending = false; notify(); }
+        }
+      }
+    };
+  }
+
+  const microStore = createMicroStore({
     ownerId: "",
+    profile: null,
+    portfolio: null,
     events: [],
     selected: null,
     queryTemplate: null,
@@ -48,7 +83,14 @@
     dataMode: "MOCK",
     modeRevision: 1,
     capabilities: null,
-  };
+    rebalancingRun: null,
+    customStressRun: null,
+  });
+  const state = microStore.state;
+  microStore.subscribe((store) => {
+    document.documentElement.setAttribute("data-prism-owner", store.ownerId || "none");
+    document.documentElement.setAttribute("data-prism-mode", store.dataMode || "MOCK");
+  });
   const byId = (id) => document.getElementById(id);
 
   const DISPLAY_VALUE_LABELS = Object.freeze({
@@ -3291,7 +3333,10 @@
       if (!response.ok) throw await apiError(response);
       if (state.ownerId !== requestOwner || state.templateSequence !== contextSequence) return;
       const result = await response.json();
-      state.portfolioContext = result.portfolio;
+      microStore.transact((store) => {
+        store.portfolioContext = result.portfolio;
+        store.portfolio = result.portfolio;
+      });
       renderPortfolio(state.portfolioContext, "已确认 · 当前会话只读");
       setPortfolioContextStatus(
         `已确认 · ${text(result.position_count)} 个持仓`,
@@ -3353,7 +3398,10 @@
       if (!response.ok) throw await apiError(response);
       if (state.ownerId !== requestOwner || state.templateSequence !== contextSequence) return null;
       const result = await response.json();
-      state.profileContext = result;
+      microStore.transact((store) => {
+        store.profileContext = result;
+        store.profile = result.profile;
+      });
       renderProfileContext(result.questionnaire);
       renderConfirmedProfile(result.profile);
       setProfileContextStatus(`已确认 · ${text(result.profile.risk_level)}`, "pass");
@@ -4501,9 +4549,11 @@
       if (res.ok) {
         const payload = await res.json();
         if (payload && payload.data) {
-          state.dataMode = payload.data.data_mode || "MOCK";
-          state.modeRevision = payload.data.revision || 1;
-          state.capabilities = payload.data.capabilities || null;
+          microStore.transact((store) => {
+            store.dataMode = payload.data.data_mode || "MOCK";
+            store.modeRevision = payload.data.revision || 1;
+            store.capabilities = payload.data.capabilities || null;
+          });
           updateRuntimeDataModeUI();
         }
       }
@@ -4589,14 +4639,17 @@
 
       const body = await resp.json().catch(() => ({}));
       if (resp.status === 200 && body.status === "SUCCESS") {
-        state.dataMode = body.data.data_mode;
-        state.modeRevision = body.data.revision;
-        state.capabilities = body.data.capabilities;
+        microStore.transact((store) => {
+          store.dataMode = body.data.data_mode;
+          store.modeRevision = body.data.revision;
+          store.capabilities = body.data.capabilities;
+          store.stockResearchRun = null;
+          store.fundResearchRun = null;
+          store.convertibleBondResearchRun = null;
+          store.customStressRun = null;
+        });
         updateRuntimeDataModeUI();
         closeDataModeConfirmModal();
-        state.stockResearchRun = null;
-        state.fundResearchRun = null;
-        state.convertibleBondResearchRun = null;
         syncNavigation();
       } else if (resp.status === 409) {
         alert(`[模式切换拦截 HTTP 409] ${body.message || "版本修订冲突或凭据缺失"}`);
@@ -4793,6 +4846,22 @@
   }
   const runScenarioBtn = byId("run-scenario-simulation");
   if (runScenarioBtn) runScenarioBtn.addEventListener("click", runScenarioSimulation);
+  let stressDebounceTimer = null;
+  stressInputs().forEach((input) => {
+    input.addEventListener("input", () => {
+      const output = byId(`${input.id}-value`);
+      if (output) output.textContent = `${Number(input.value).toFixed(1)}%`;
+      const status = byId("custom-stress-status");
+      if (status) { status.textContent = "计算中"; status.className = "status-chip"; }
+      window.clearTimeout(stressDebounceTimer);
+      stressDebounceTimer = window.setTimeout(() => {
+        runCustomStressScenario().catch((error) => {
+          if (status) { status.textContent = "计算失败"; status.className = "status-chip blocked"; }
+          setError(error.message || "自定义压力测试失败");
+        });
+      }, 180);
+    });
+  });
 
   // 1. Recommendation History
   async function loadRecommendationHistory() {
@@ -4905,6 +4974,7 @@
       });
       if (!res.ok) throw new Error("生成调仓计划失败");
       const data = await res.json();
+      state.rebalancingRun = data;
       const chip = byId("rebalancing-status-chip");
       if (chip) {
         chip.textContent = data.status === "PASS" ? "已就绪（READY）" : data.status;
@@ -4976,8 +5046,10 @@
         sc.append(h, p);
         stepsPanel.append(sc);
       });
+      return data;
     } catch (err) {
       setError(err.message);
+      return null;
     }
   }
 
@@ -5824,7 +5896,12 @@
   function switchPersona(personaId) {
     const persona = PERSONAS[personaId];
     if (!persona) return;
-    state.selectedPersona = personaId;
+    microStore.transact((store) => {
+      store.selectedPersona = personaId;
+      store.ownerId = persona.ownerId;
+      store.profile = persona;
+      store.customStressRun = null;
+    });
 
     // Keep the compact current-profile summary in sync; example profiles stay behind
     // the optional picker so the main task surface remains calm.
@@ -5888,7 +5965,6 @@
     renderQuickTags(persona.quickTags);
 
     // Refresh underlying state and charts
-    state.ownerId = persona.ownerId;
     ensureDependency("PROFILE_CONTEXT").catch(() => {});
     renderHeroDonutChart(personaId);
     renderOverviewWorkspace(personaId);
@@ -6040,13 +6116,16 @@
     });
     thead.append(hRow);
 
+    const isLiveMode = state.dataMode === "LIVE";
     const steps = [
       {
         step: "Step 01",
         name: "行情与财报底稿拉取",
-        source: "同花顺问财实时行情 + 季报财务底稿 (代码/现价/PE/PB)",
-        logic: "字段清洗与价格对齐，报价容差 ≤0.1%，财报容差 ≤1.0%",
-        verdict: "READY 就绪",
+        source: isLiveMode
+          ? "Tencent 主源 → Sina 备用源 → 静态底稿；财务字段独立记录缺失状态"
+          : "内置合成底稿（MOCK）；不冒充实时行情或官方财务数据",
+        logic: "记录 provider_tier、quote_latency_ms 与 staleness_seconds；缺失字段不补造",
+        verdict: isLiveMode ? "READY / FALLBACK" : "DEMO 示例",
         statusClass: "matrix-status-pass"
       },
       {
@@ -6068,9 +6147,9 @@
       {
         step: "Step 04",
         name: "不可篡改证据存证与哈希",
-        source: "Evidence DAG 拓扑节点与双轨决策对比",
-        logic: "SHA-256 签名存证校验 (sha256:7f8a19c4...)",
-        verdict: "VERIFIED 存证",
+        source: "本地 Evidence DAG 节点；当前窗口展示流程摘要",
+        logic: "仅在已有决策回执时校验真实内容哈希；不生成示例哈希冒充存证",
+        verdict: "PROCESS 流程",
         statusClass: "matrix-status-pass"
       }
     ];
@@ -6106,7 +6185,7 @@
 
     const note = document.createElement("div");
     note.className = "lineage-isolation-note";
-    note.textContent = "物理隔离声明：本系统严格执行大模型与确定性算法物理隔离原则。大模型仅负责意图识别与阐述，禁止进行金融加减乘除；所有量化穿透指标 100% 由底层金融工程确定性算子输出，确保数据绝对真实可复查。";
+    note.textContent = "计算边界：大模型仅负责意图识别与阐述；量化穿透、风险闸门与调仓测算由 Python 确定性算子执行。计算结果可复核，输入真实性以供应商层级、新鲜度和缺失字段标记为准。";
 
     content.append(formulaBox, table, note);
   }
@@ -6217,6 +6296,7 @@
     const container = byId("copilot-hero-donut-chart");
     const legendContainer = byId("copilot-donut-legend");
     const hintEl = byId("donut-active-hint");
+    const detailEl = byId("donut-sector-detail");
     const rankPill = byId("cf-profile-rank-pill");
     const verdictBadge = byId("cf-hero-verdict-badge");
     const causeCallout = byId("donut-cause-callout");
@@ -6224,6 +6304,10 @@
 
     clear(container);
     clear(legendContainer);
+    if (detailEl) {
+      clear(detailEl);
+      detailEl.hidden = true;
+    }
 
     const persona = PERSONAS[personaId || state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
     const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
@@ -6300,6 +6384,43 @@
       }
     }
 
+    function renderSectorDetail(s) {
+      if (!detailEl) return;
+      const v = getSectorVerdict(s);
+      clear(detailEl);
+      detailEl.hidden = false;
+      detailEl.className = v.isOver
+        ? "donut-sector-detail risk"
+        : "donut-sector-detail pass";
+
+      const header = document.createElement("div");
+      header.className = "donut-sector-detail-header";
+      const title = document.createElement("strong");
+      title.textContent = `${s.name}穿透结果`;
+      const verdict = document.createElement("span");
+      verdict.className = v.isOver ? "donut-chip-badge overbound" : "donut-chip-badge pass";
+      verdict.textContent = v.verdictCode;
+      header.append(title, verdict);
+
+      const comparison = document.createElement("p");
+      const comparator = v.isCash ? "不低于" : "不高于";
+      comparison.textContent = `实际暴露 ${s.pct.toFixed(1)}%；${persona.tag} 画像要求${comparator} ${s.cap.toFixed(1)}%。`;
+
+      const result = document.createElement("p");
+      result.className = "donut-sector-detail-result";
+      if (v.isOver) {
+        result.textContent = `偏离限额 ${v.diffVal.toFixed(1)} 个百分点，已触发风险复核。`;
+      } else {
+        result.textContent = `距限额仍有 ${Math.abs(v.diffVal).toFixed(1)} 个百分点缓冲，当前判定合规。`;
+      }
+
+      const holdings = document.createElement("p");
+      holdings.className = "donut-sector-detail-holdings";
+      holdings.textContent = `主要标的：${s.topHoldings}`;
+      detailEl.append(header, comparison, result, holdings);
+      detailEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
     sectors.forEach((s, idx) => {
       const v = getSectorVerdict(s);
       const sliceAngle = (s.pct / 100) * (2 * Math.PI);
@@ -6327,7 +6448,7 @@
       path.addEventListener("mouseleave", () => resetSelection());
       path.addEventListener("click", () => {
         selectSector(s, idx);
-        handleStreamingChat(`请分析当前组合在${s.name}行业的穿透持仓风险及限额`);
+        renderSectorDetail(s);
       });
 
       svg.append(path);
@@ -6335,6 +6456,9 @@
 
       const chip = document.createElement("div");
       chip.className = "donut-legend-chip";
+      chip.setAttribute("role", "button");
+      chip.setAttribute("tabindex", "0");
+      chip.setAttribute("aria-label", `查看${s.name}行业穿透结果`);
       const left = document.createElement("div");
       left.className = "donut-legend-left";
       const dot = document.createElement("span");
@@ -6364,7 +6488,13 @@
       chip.addEventListener("mouseleave", () => resetSelection());
       chip.addEventListener("click", () => {
         selectSector(s, idx);
-        handleStreamingChat(`请分析当前组合在${s.name}行业的穿透持仓风险及限额`);
+        renderSectorDetail(s);
+      });
+      chip.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        selectSector(s, idx);
+        renderSectorDetail(s);
       });
 
       legendContainer.append(chip);
@@ -6829,6 +6959,30 @@
       const quote = res.data;
       if (!quote) throw new Error("未获取到标的底稿数据");
 
+      const requiredFinancialFields = ["pe_ttm", "pb", "roe_pct", "valuation_quantile_pct"];
+      const missingFinancialFields = requiredFinancialFields.filter((field) => !Number.isFinite(Number(quote[field])));
+      if (missingFinancialFields.length) {
+        clear(output);
+        const card = document.createElement("div");
+        card.className = "copilot-decision-card";
+        const banner = document.createElement("div");
+        banner.className = "decision-banner hold";
+        const title = document.createElement("h3");
+        title.textContent = `${quote.name} (${quote.symbol}) 行情已获取，财务适配性暂不可计算`;
+        const status = document.createElement("span");
+        status.className = "cf-verdict cf-verdict-hold";
+        status.textContent = "REVIEW_REQUIRED 财务字段缺失";
+        banner.append(title, status);
+        const body = document.createElement("div");
+        body.className = "decision-card-body";
+        const message = document.createElement("p");
+        message.textContent = `报价 ¥${quote.price_cny}；来源层级 ${quote.provider_tier || "未知"}；缺少 ${missingFinancialFields.join("、")}，因此不生成估值与配置结论。`;
+        body.append(message);
+        card.append(banner, body);
+        output.append(card);
+        return;
+      }
+
       const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
 
       // Deterministic Financial Suitability Evaluation
@@ -6998,7 +7152,8 @@
 
     try {
       await runPortfolioOptimization();
-      await runPortfolioRebalancing();
+      const plan = await runPortfolioRebalancing();
+      if (!plan) throw new Error("后端未返回可用调仓方案");
       const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
 
       clear(output);
@@ -7014,7 +7169,7 @@
       icon.className = "decision-verdict-icon";
       icon.append(createSvgIcon("icon-scale", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = "智能调仓方案已生成 · 换手率 14.0% · 满足预算约束";
+      h3.textContent = `调仓方案已生成 · 换手率 ${plan.metrics.total_turnover_pct}% · 费用 ¥${plan.metrics.net_turnover_cost}`;
       titleWrap.append(icon, h3);
 
       const statusChip = document.createElement("span");
@@ -7038,7 +7193,7 @@
       cTitle.className = "callout-title";
       cTitle.textContent = "调仓方案与执行准则（先卖后买 · 控制换手）";
       const cP = document.createElement("p");
-      cP.textContent = `针对 ${persona.name} 的持仓，方案已根据资产上限重新分配权重，将科技集中度由 42.0% 降至 28.0%，同时增加宽基与固收配置。全流程遵循「先卖后买释放流动性、死区抑制控制换手、严格满足流动性」原则。`;
+      cP.textContent = `针对 ${persona.name} 的当前组合，后端已按目标权重、整手约束与交易费用生成 ${plan.execution_steps.length} 个可执行步骤。卖出优先于买入；不可报价或资金不足的项目会进入复核状态。`;
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
 
@@ -7046,9 +7201,9 @@
       const metricsRow = document.createElement("div");
       metricsRow.className = "decision-metrics-row";
       metricsRow.append(
-        buildCopilotMetricBox("总调仓换手率", "14.0% (≤20%)", false, true, "设置换手率死区（Deadband）以严格抑制频繁交易带来的摩擦成本。"),
-        buildCopilotMetricBox("调整资产项", "3 笔", false, false, "本次再平衡所涉及的证券与基金调整操作数量。"),
-        buildCopilotMetricBox("预期组合波动降幅", "-2.4%", false, true, "调仓后基于因子协方差矩阵预测的组合年化波动率收窄幅度。")
+        buildCopilotMetricBox("总调仓换手率", `${plan.metrics.total_turnover_pct}%`, plan.metrics.turnover_cap_breached, !plan.metrics.turnover_cap_breached, "由实际可执行调仓金额计算。"),
+        buildCopilotMetricBox("调整资产项", `${plan.execution_steps.length} 笔`, false, false, "本次再平衡的可执行操作数量。"),
+        buildCopilotMetricBox("交易摩擦成本", `¥${plan.metrics.net_turnover_cost} (${plan.metrics.net_turnover_cost_pct}%)`, false, false, "包含佣金、卖出印花税和过户费。")
       );
 
       // Steps
@@ -7060,49 +7215,24 @@
       sHeadIcon.style.marginRight = "6px";
       stepsHead.append(sHeadIcon, document.createTextNode(" 建议调整顺序（先卖后买 · 释放流动性）："));
 
-      const step1 = document.createElement("div");
-      step1.className = "action-step-item";
-      const s1Left = document.createElement("div");
-      const s1Num = document.createElement("span");
-      s1Num.className = "step-num";
-      s1Num.textContent = "1";
-      const s1Bold = document.createElement("strong");
-      s1Bold.textContent = "科技先锋混合基金 (001234)";
-      s1Left.append(s1Num, document.createTextNode(" 卖出 "), s1Bold, document.createTextNode("：持仓 12.0% → 6.0% (释放现金 ¥30,000)"));
-      const s1Chip = document.createElement("span");
-      s1Chip.className = "cf-verdict cf-verdict-risk";
-      s1Chip.textContent = "第一步 · 卖出 SELL";
-      step1.append(s1Left, s1Chip);
-
-      const step2 = document.createElement("div");
-      step2.className = "action-step-item";
-      const s2Left = document.createElement("div");
-      const s2Num = document.createElement("span");
-      s2Num.className = "step-num";
-      s2Num.textContent = "2";
-      const s2Bold = document.createElement("strong");
-      s2Bold.textContent = "半导体行业 ETF (512480)";
-      s2Left.append(s2Num, document.createTextNode(" 卖出 "), s2Bold, document.createTextNode("：持仓 10.0% → 5.0% (释放现金 ¥25,000)"));
-      const s2Chip = document.createElement("span");
-      s2Chip.className = "cf-verdict cf-verdict-risk";
-      s2Chip.textContent = "第二步 · 卖出 SELL";
-      step2.append(s2Left, s2Chip);
-
-      const step3 = document.createElement("div");
-      step3.className = "action-step-item";
-      const s3Left = document.createElement("div");
-      const s3Num = document.createElement("span");
-      s3Num.className = "step-num";
-      s3Num.textContent = "3";
-      const s3Bold = document.createElement("strong");
-      s3Bold.textContent = "沪深300 宽基 ETF (510300)";
-      s3Left.append(s3Num, document.createTextNode(" 买入 "), s3Bold, document.createTextNode("：持仓 18.0% → 29.0% (配置现金 ¥55,000)"));
-      const s3Chip = document.createElement("span");
-      s3Chip.className = "cf-verdict cf-verdict-pass";
-      s3Chip.textContent = "第三步 · 买入 BUY";
-      step3.append(s3Left, s3Chip);
-
-      stepsWrap.append(stepsHead, step1, step2, step3);
+      stepsWrap.append(stepsHead);
+      plan.execution_steps.forEach((step) => {
+        const item = document.createElement("div");
+        item.className = "action-step-item";
+        const detail = document.createElement("div");
+        const number = document.createElement("span");
+        number.className = "step-num";
+        number.textContent = String(step.step_number);
+        detail.append(number, document.createTextNode(` ${step.description}`));
+        if (step.shares !== null && step.shares !== undefined) {
+          detail.append(document.createTextNode(` · ${step.shares} 股/份 · 费用 ¥${step.total_fees_cny}`));
+        }
+        const action = document.createElement("span");
+        action.className = step.action_type === "BUY" ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-risk";
+        action.textContent = step.action_type;
+        item.append(detail, action);
+        stepsWrap.append(item);
+      });
       body.append(stepsWrap);
 
       // Drilldown links
@@ -7127,75 +7257,88 @@
     }
   }
 
+  function stressInputs() {
+    return [...document.querySelectorAll(".custom-stress-sliders input[data-sector]")];
+  }
+
+  function renderCustomStressResult(data, target = byId("custom-stress-result")) {
+    if (!target) return;
+    clear(target);
+    const grid = document.createElement("div");
+    grid.className = "decision-metrics-row";
+    grid.append(
+      buildCopilotMetricBox("组合冲击", `${Number(data.scenario_return_pct).toFixed(2)}%`, Number(data.scenario_return_pct) < 0, false),
+      buildCopilotMetricBox("年化波动率", `${data.baseline_volatility_pct}% → ${data.stressed_volatility_pct}%`, Number(data.volatility_change_pct_points) > 0, false),
+      buildCopilotMetricBox("95% 单日 VaR", `¥${Number(data.baseline_var_95_1d_cny).toLocaleString()} → ¥${Number(data.stressed_var_95_1d_cny).toLocaleString()}`, Number(data.var_change_cny) > 0, false)
+    );
+    const note = document.createElement("p");
+    note.className = "research-boundary";
+    note.textContent = `${data.methodology} 情景损益：¥${Number(data.scenario_pnl_cny).toLocaleString()}。`;
+    target.append(grid, note);
+  }
+
+  async function runCustomStressScenario() {
+    const persona = PERSONAS[state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
+    const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
+    const shocks = {};
+    stressInputs().forEach((input) => { shocks[input.dataset.sector] = Number(input.value); });
+    const weights = {
+      TECHNOLOGY: sectors[0]?.pct || 0,
+      INDUSTRIALS: sectors[1]?.pct || 0,
+      CONSUMER_HEALTHCARE: sectors[2]?.pct || 0,
+      FINANCE_CYCLICAL: sectors[3]?.pct || 0,
+      CASH: sectors[4]?.pct || 0,
+    };
+    const response = await fetch("/api/v1/advisor/custom-stress-scenarios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
+      body: JSON.stringify({
+        schema_version: "custom-stress-scenario-request.v1",
+        request_id: `custom-stress-${Date.now()}`,
+        owner_id: state.ownerId,
+        portfolio_value_cny: Number(String(persona.aum).replace(/[^\d.]/g, "")) || 500000,
+        sector_weights_pct: weights,
+        sector_shocks_pct: shocks,
+      }),
+    });
+    if (!response.ok) throw await apiError(response);
+    const data = await response.json();
+    state.customStressRun = data;
+    renderCustomStressResult(data);
+    const status = byId("custom-stress-status");
+    if (status) { status.textContent = "CALCULATED 已计算"; status.className = "status-chip pass"; }
+    return data;
+  }
+
   async function runCopilotScenarioShock() {
     const output = byId("copilot-decision-output");
     if (!output) return;
     clear(output);
-    output.append(buildCopilotLoadingCard("⏳", "正在测试下跌 20% 的情景…", "正在比较当前组合和调整后组合的可能回撤。"));
+    output.append(buildCopilotLoadingCard("icon-activity", "正在运行自定义压力测试…", "组合损益、波动率与 VaR 均由后端确定性模型计算。"));
 
     try {
-      await runScenarioSimulation();
-      const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
+      const data = await runCustomStressScenario();
 
       clear(output);
       const card = document.createElement("div");
       card.className = "copilot-decision-card";
-
-      // Banner
       const banner = document.createElement("div");
-      banner.className = "decision-banner reduce";
+      banner.className = Number(data.scenario_return_pct) < 0 ? "decision-banner reduce" : "decision-banner hold";
       const titleWrap = document.createElement("div");
       titleWrap.className = "decision-verdict-title";
       const icon = document.createElement("span");
       icon.className = "decision-verdict-icon";
-      icon.textContent = "⚡";
+      icon.append(createSvgIcon("icon-activity", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = "情景压力模拟：科技板块回调 -20% 冲击分析";
+      h3.textContent = `自定义压力测试：组合冲击 ${data.scenario_return_pct}%`;
       titleWrap.append(icon, h3);
-
       const statusChip = document.createElement("span");
-      statusChip.className = "status-chip alert";
-      statusChip.textContent = "压力测试完成";
+      statusChip.className = "cf-verdict cf-verdict-pass";
+      statusChip.textContent = "CALCULATED 后端计算完成";
       banner.append(titleWrap, statusChip);
-
-      // Body
       const body = document.createElement("div");
       body.className = "decision-card-body";
-
-      const summary = document.createElement("p");
-      summary.className = "decision-summary-text";
-      const strongTest = document.createElement("strong");
-      strongTest.textContent = "压力测试结论：";
-      summary.append(
-        strongTest,
-        document.createTextNode(`若科技板块整体回调 20%，${persona.name} 当前未经调仓的组合净值将下跌 `),
-        document.createElement("strong")
-      );
-      summary.lastChild.textContent = "-8.4%";
-      summary.append(
-        document.createTextNode("；若执行智能调仓方案后，组合净值下跌将收窄至 "),
-        document.createElement("strong")
-      );
-      summary.lastChild.textContent = "-4.2%";
-      summary.append(
-        document.createTextNode("，显著处于您 "),
-        document.createElement("strong")
-      );
-      summary.lastChild.textContent = `${persona.maxDrawdown}%`;
-      summary.append(document.createTextNode(" 的最大回撤容忍阈值之内。"));
-
-      // Metrics
-      const metricsRow = document.createElement("div");
-      metricsRow.className = "decision-metrics-row";
-      metricsRow.append(
-        buildCopilotMetricBox("未经调仓预期回撤", "-8.4%", true, false),
-        buildCopilotMetricBox("调仓后预期回撤", "-4.2%", false, true),
-        buildCopilotMetricBox("风险缓冲提升", "+50.0%", false, true)
-      );
-
-      body.append(summary, metricsRow);
-
-      // Drilldown links
+      renderCustomStressResult(data, body);
       body.append(buildCopilotDrilldownRow([
         { href: "#scenario-simulation", text: "查看情景明细" },
         { href: "#portfolio-rebalancing", text: "查看调仓方案" }
@@ -7602,6 +7745,7 @@
       const data = await resp.json();
 
       if (data.positions && data.positions.length > 0) {
+        state.portfolio = data;
         if (statusBox) {
           clear(statusBox);
           const strong = document.createElement("strong");
@@ -7676,6 +7820,7 @@
         body: JSON.stringify({ image_base64: dataUrl }),
       });
       const data = await resp.json();
+      state.portfolio = data;
       renderPortfolioOcrResult(data);
     } catch (err) {
       if (container) {
@@ -7792,10 +7937,13 @@
       const vTag = document.createElement("span");
       if (pos.needs_review) {
         vTag.className = "cf-verdict cf-verdict-warning";
-        vTag.textContent = "待核对";
+        vTag.textContent = pos.confidence_level === "REVIEW_REQUIRED" ? "REVIEW_REQUIRED" : "待核对";
+        if (Array.isArray(pos.review_reasons) && pos.review_reasons.length) {
+          vTag.title = pos.review_reasons.join("；");
+        }
       } else {
         vTag.className = "cf-verdict cf-verdict-pass";
-        vTag.textContent = "通过";
+        vTag.textContent = pos.confidence_level === "HIGH" ? "HIGH" : "通过";
       }
       tdVerdict.append(vTag);
 

@@ -37,6 +37,13 @@ class RebalancingAction(ContractModel):
     cash_delta_cny: Decimal
     action_type: RebalancingActionType
     rationale: NonEmptyStr
+    shares: Decimal | None = Field(default=None, ge=0)
+    current_price_cny: Decimal | None = Field(default=None, gt=0)
+    stamp_duty: Decimal = Field(default=Decimal("0.00"), ge=0)
+    transfer_fee: Decimal = Field(default=Decimal("0.00"), ge=0)
+    commission: Decimal = Field(default=Decimal("0.00"), ge=0)
+    total_fees_cny: Decimal = Field(default=Decimal("0.00"), ge=0)
+    executable: bool = True
 
     @model_validator(mode="after")
     def validate_action(self) -> Self:
@@ -57,6 +64,8 @@ class RebalancingStep(ContractModel):
     amount_cny: Decimal = Field(ge=Decimal("0"))
     liquidity_priority: int = Field(ge=1)
     description: NonEmptyStr
+    shares: Decimal | None = None
+    total_fees_cny: Decimal = Decimal("0.00")
 
 
 class RebalancingMetrics(ContractModel):
@@ -68,6 +77,10 @@ class RebalancingMetrics(ContractModel):
     total_sell_cny: Decimal
     net_cash_flow_cny: Decimal
     turnover_cap_breached: bool = False
+    net_turnover_cost: Decimal = Decimal("0.00")
+    net_turnover_cost_pct: Decimal = Decimal("0.00")
+    cash_after_cny: Decimal = Decimal("0.00")
+    cash_shortfall_cny: Decimal = Decimal("0.00")
 
 
 class PortfolioRebalancingRequest(ContractModel):
@@ -79,8 +92,11 @@ class PortfolioRebalancingRequest(ContractModel):
     generated_at: datetime
     bundle: PortfolioImportBundle
     target_weights: dict[str, Decimal]
-    deadband_pct: Decimal = Decimal("0.50")
-    max_turnover_pct: Decimal = Decimal("50.00")
+    deadband_pct: Decimal = Field(default=Decimal("0.50"), ge=0, le=100)
+    max_turnover_pct: Decimal = Field(default=Decimal("50.00"), ge=0, le=100)
+    round_to_lot: bool = True
+    prices_cny: dict[str, Decimal] = Field(default_factory=dict)
+    asset_types: dict[str, AssetType] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_request(self) -> Self:
@@ -89,6 +105,10 @@ class PortfolioRebalancingRequest(ContractModel):
         if self.owner_id != self.bundle.position_snapshot.owner_id:
             raise ValueError("request owner_id does not match bundle owner_id")
         total_target = sum(self.target_weights.values())
+        if any(not v.is_finite() or v < 0 or v > 100 for v in self.target_weights.values()):
+            raise ValueError("target weights must be finite and between 0 and 100")
+        if any(not v.is_finite() or v <= 0 for v in self.prices_cny.values()):
+            raise ValueError("prices must be finite and positive")
         if abs(total_target - Decimal("100.00")) > Decimal("0.05"):
             raise ValueError(f"target_weights must sum to 100.00% (got {total_target}%)")
         return self

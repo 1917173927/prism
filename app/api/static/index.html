@@ -352,7 +352,7 @@
                   <strong class="stat-value" id="copilot-stat-budget">30.0%</strong>
                 </div>
                 <div class="copilot-stat-item clickable-stat" id="copilot-stat-evidence-card" role="button" tabindex="0" title="点击查看穿透底稿与4步确定性计算流转过程">
-                  <span class="stat-label term-tip" data-tooltip="所有分析结论均绑定同花顺问财与权威研报不可篡改的哈希证据链（Evidence DAG）。点击查看流转。">分析依据 <span class="tip-icon">?</span></span>
+                  <span class="stat-label term-tip" data-tooltip="查看当前数据模式、供应商层级、确定性公式与证据状态；缺失输入会明确标注。">分析依据 <span class="tip-icon">?</span></span>
                   <div class="stat-evidence-value-wrap">
                     <strong class="stat-value ok-text" id="copilot-stat-evidence">8项底稿 · 4轨验算</strong>
                     <span class="stat-sub-action" id="btn-show-evidence-lineage">查看过程 →</span>
@@ -387,6 +387,7 @@
               <div class="copilot-donut-footer">
                 <span class="donut-active-hint" id="donut-active-hint">提示：悬浮或点击扇区可穿透查看具体标的与限额对照</span>
               </div>
+              <div id="donut-sector-detail" class="donut-sector-detail" hidden aria-live="polite"></div>
             </div>
           </div>
 
@@ -663,6 +664,7 @@
                 <div id="profile-save-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>
             </div>
+          </div>
           <!-- 穿透依据与确定性计算流转审计弹窗 (Evidence & Calculation Lineage Modal) -->
           <div id="evidence-lineage-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="evidence-lineage-title">
             <div class="copilot-modal-content" style="max-width: 820px;">
@@ -1076,6 +1078,25 @@
                 <small>选择情景，评估组合变化。</small>
               </label>
               <button id="run-scenario-simulation" class="query-submit" type="button">运行情景模拟</button>
+            </div>
+            <div class="custom-stress-controls" aria-labelledby="custom-stress-title">
+              <div class="custom-stress-heading">
+                <div>
+                  <strong id="custom-stress-title">自定义五行业冲击</strong>
+                  <small>范围 -30.0% 至 +30.0%；拖动后由后端确定性模型实时重算。</small>
+                </div>
+                <span id="custom-stress-status" class="status-chip">待输入</span>
+              </div>
+              <div class="custom-stress-sliders">
+                <label>科技半导体 <output id="stress-technology-value">-20.0%</output><input id="stress-technology" data-sector="TECHNOLOGY" type="range" min="-30" max="30" step="0.5" value="-20"></label>
+                <label>先进制造 <output id="stress-industrials-value">0.0%</output><input id="stress-industrials" data-sector="INDUSTRIALS" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                <label>消费医药 <output id="stress-consumer-value">0.0%</output><input id="stress-consumer" data-sector="CONSUMER_HEALTHCARE" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                <label>金融周期 <output id="stress-finance-value">0.0%</output><input id="stress-finance" data-sector="FINANCE_CYCLICAL" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                <label>可用现金 <output id="stress-cash-value">0.0%</output><input id="stress-cash" data-sector="CASH" type="range" min="-30" max="30" step="0.5" value="0"></label>
+              </div>
+              <div id="custom-stress-result" class="custom-stress-result" aria-live="polite">
+                <div class="empty-state">调整任一滑块后显示组合冲击、年化波动率和 95% 单日 VaR。</div>
+              </div>
             </div>
              <p class="research-boundary">这是“如果……会怎样”的模拟，不会修改已观测数据，也不是交易指令。</p>
             <div id="scenario-simulation-content" class="scenario-simulation-content" aria-live="polite">

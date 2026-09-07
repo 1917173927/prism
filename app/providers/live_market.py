@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from abc import ABC, abstractmethod
+from copy import deepcopy
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
+from time import perf_counter, monotonic
 import logging
 from typing import Any
 
@@ -477,3 +480,124 @@ class StaticMarketProvider(FinancialProvider):
 
 # Backward compatibility alias
 LiveMarketProvider = StaticMarketProvider
+
+
+# Preserve the packaged baseline separately from dynamically indexed quotes.
+_STATIC_BASELINES = deepcopy(A_SHARE_DATABASE)
+
+
+def market_prefix(code: str) -> str:
+    if code.startswith(("6", "5", "110", "113")):
+        return "sh"
+    return "bj" if code.startswith(("8", "9")) else "sz"
+
+
+class MarketDataProvider(ABC):
+    """A quote source. Missing observations are never manufactured."""
+
+    @abstractmethod
+    async def get_quote(self, code: str) -> dict[str, Any] | None:
+        raise NotImplementedError
+
+
+class TencentMarketProvider(MarketDataProvider):
+    def __init__(self, transport: httpx.AsyncBaseTransport | None = None) -> None:
+        self.transport = transport
+
+    async def get_quote(self, code: str) -> dict[str, Any] | None:
+        prefix = market_prefix(code)
+        async with httpx.AsyncClient(timeout=1.5, transport=self.transport) as client:
+            response = await client.get(f"https://qt.gtimg.cn/q={prefix}{code}")
+            response.raise_for_status()
+        parts = response.content.decode("gbk").split('="', 1)[-1].split('"', 1)[0].split("~")
+        if len(parts) < 33 or parts[2] != code:
+            return None
+        price = Decimal(parts[3])
+        if not price.is_finite() or price <= 0:
+            return None
+        observed = datetime.strptime(parts[30], "%Y%m%d%H%M%S").replace(tzinfo=timezone(timedelta(hours=8)))
+        return {"symbol": f"{code}.{prefix.upper()}", "name": parts[1],
+                "price_cny": float(price), "change_pct": float(parts[32]),
+                "observed_at": observed.isoformat(), "source": "Tencent public quote snapshot"}
+
+
+class SinaMarketProvider(MarketDataProvider):
+    def __init__(self, transport: httpx.AsyncBaseTransport | None = None) -> None:
+        self.transport = transport
+
+    async def get_quote(self, code: str) -> dict[str, Any] | None:
+        prefix = market_prefix(code)
+        async with httpx.AsyncClient(timeout=1.5, transport=self.transport) as client:
+            response = await client.get(f"https://hq.sinajs.cn/list={prefix}{code}",
+                                        headers={"Referer": "https://finance.sina.com.cn/"})
+            response.raise_for_status()
+        body = response.content.decode("gbk")
+        if f"hq_str_{prefix}{code}=" not in body:
+            return None
+        parts = body.split('="', 1)[-1].split('"', 1)[0].split(",")
+        if len(parts) < 32:
+            return None
+        price, previous = Decimal(parts[3]), Decimal(parts[2])
+        if not price.is_finite() or not previous.is_finite() or price <= 0 or previous <= 0:
+            return None
+        observed = datetime.strptime(f"{parts[30]} {parts[31]}", "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=8)))
+        return {"symbol": f"{code}.{prefix.upper()}", "name": parts[0],
+                "price_cny": float(price), "change_pct": float((price / previous - 1) * 100),
+                "observed_at": observed.isoformat(), "source": "Sina public quote snapshot"}
+
+
+class FallbackStaticProvider(MarketDataProvider):
+    async def get_quote(self, code: str) -> dict[str, Any] | None:
+        data = _STATIC_BASELINES.get(code)
+        if data is None:
+            return None
+        return {**deepcopy(data), "observed_at": None, "is_synthetic": True,
+                "source": "Packaged illustrative baseline (observation time unknown)"}
+
+
+class CompositeMarketProvider(MarketDataProvider):
+    """Sequential failover, 2s total deadline, 1.5s per source, 30s circuit cooldown."""
+
+    def __init__(self, primary: MarketDataProvider | None = None,
+                 secondary: MarketDataProvider | None = None,
+                 fallback: MarketDataProvider | None = None,
+                 total_timeout_seconds: float = 2.0, tier_timeout_seconds: float = 1.5,
+                 cooldown_seconds: float = 30.0) -> None:
+        self.providers = (primary or TencentMarketProvider(), secondary or SinaMarketProvider())
+        self.fallback = fallback or FallbackStaticProvider()
+        self.total_timeout = min(max(total_timeout_seconds, 0.001), 2.0)
+        self.tier_timeout = min(max(tier_timeout_seconds, 0.001), 1.5)
+        self.cooldown = cooldown_seconds
+        self.open_until = [0.0, 0.0]
+
+    async def get_quote(self, code: str) -> dict[str, Any] | None:
+        started = perf_counter()
+        failures = []
+        for index, provider in enumerate(self.providers):
+            remaining = self.total_timeout - (perf_counter() - started)
+            if remaining <= 0:
+                break
+            if monotonic() < self.open_until[index]:
+                failures.append(f"tier_{index + 1}:CIRCUIT_OPEN")
+                continue
+            try:
+                quote = await asyncio.wait_for(provider.get_quote(code), min(remaining, self.tier_timeout))
+                if quote:
+                    return self._annotate(quote, ("LIVE_PRIMARY", "LIVE_SECONDARY")[index], started, failures)
+                failures.append(f"tier_{index + 1}:NO_QUOTE")
+            except (httpx.HTTPError, TimeoutError, ValueError, ArithmeticError) as exc:
+                self.open_until[index] = monotonic() + self.cooldown
+                failures.append(f"tier_{index + 1}:{type(exc).__name__}")
+        quote = await self.fallback.get_quote(code)
+        return self._annotate(quote, "STATIC_FALLBACK", started, failures) if quote else None
+
+    @staticmethod
+    def _annotate(quote: dict[str, Any], tier: str, started: float, failures: list[str]) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        observed = quote.get("observed_at")
+        age = max(0.0, (now - datetime.fromisoformat(observed)).total_seconds()) if observed else None
+        return {**quote, "provider_tier": tier, "quote_latency_ms": round((perf_counter() - started) * 1000, 2),
+                "staleness_seconds": round(age, 2) if age is not None else None,
+                "retrieved_at": now.isoformat(), "is_synthetic": tier == "STATIC_FALLBACK",
+                "missing_fields": ["financial_statements", "valuation_history"] + ([] if observed else ["observed_at"]),
+                "fallback_reasons": failures}
