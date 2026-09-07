@@ -245,16 +245,53 @@ class CopilotAgent:
         is_live = (controller.mode == DataMode.LIVE)
 
         if is_live:
-            if name in ("query_stock_quote", "query_fund_lookthrough"):
+            if not controller.is_live_ready:
                 return {
                     "status": "FAILED",
-                    "error_code": "LIVE_MODE_UNSUPPORTED",
-                    "message": "该功能在 LIVE 官方数据模式下尚未接入交易所实时数据源，未回退模拟数据。",
+                    "error_code": "LIVE_PROVIDER_UNAVAILABLE",
+                    "message": "LIVE 官方数据源未通过凭据与接口契约校验，未回退模拟数据。",
                     "execution_context": {
                         "data_mode": "LIVE",
                         "provider": "wencai_skillhub_provider",
-                        "provider_serving_mode": "UNSUPPORTED",
+                        "provider_serving_mode": "UNAVAILABLE",
                         "is_synthetic": False,
+                        "missing_fields": list(controller.live_readiness_issues),
+                    },
+                }
+            from app.providers.contracts import ProviderOperation, ProviderRequest
+
+            if name in ("query_stock_quote", "query_fund_lookthrough"):
+                operation = (
+                    ProviderOperation.FUND_DATA
+                    if name == "query_fund_lookthrough"
+                    else ProviderOperation.MARKET_DATA
+                )
+                subject = str(args.get("fund_code") if name == "query_fund_lookthrough" else args.get("symbol", "300750"))
+                required_fields = (
+                    ("price_cny", "observed_at", "sector", "top_holdings")
+                    if operation == ProviderOperation.FUND_DATA
+                    else ("price_cny", "observed_at", "sector")
+                )
+                res = await self.skillhub_provider.execute(
+                    ProviderRequest(
+                        request_id=f"live-copilot-{int(datetime.now(UTC).timestamp() * 1000)}",
+                        operation=operation,
+                        subject=subject,
+                        required_fields=required_fields,
+                    )
+                )
+                return {
+                    "status": res.status.value,
+                    "source": "iwencai.com / SkillHub (Official Live)",
+                    "data": dict(res.records[0].fields) if res.records else None,
+                    "missing_fields": list(res.missing_fields),
+                    "issues": [issue.safe_message for issue in res.issues],
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": res.provider,
+                        "provider_serving_mode": res.serving_mode.value,
+                        "is_synthetic": False,
+                        "retrieved_at": res.retrieved_at.isoformat(),
                     },
                 }
             elif name == "query_wencai_semantic":
@@ -270,7 +307,6 @@ class CopilotAgent:
                             "is_synthetic": False,
                         },
                     }
-                from app.providers.contracts import ProviderOperation, ProviderRequest
                 req = ProviderRequest(
                     request_id=f"live-copilot-{int(datetime.now(UTC).timestamp())}",
                     operation=ProviderOperation.SEARCH_NEWS,

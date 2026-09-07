@@ -43,13 +43,13 @@ class RuntimeModeController:
         self._updated_at = datetime.now(UTC)
 
         # Boot mode detection:
-        # If explicitly specified, use it. Otherwise, default to LIVE only if
-        # WENCAI_SKILLHUB_API_KEY is present and non-empty; else default to MOCK.
+        # LIVE requires both server credentials and an explicit confirmation that
+        # the upstream response contract has been verified.  This prevents a
+        # configured but unvalidated endpoint from being presented as live data.
         if initial_mode is not None:
             self._mode = initial_mode
         else:
-            has_credentials = bool(os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip())
-            self._mode = DataMode.LIVE if has_credentials else DataMode.MOCK
+            self._mode = DataMode.LIVE if self.is_live_ready else DataMode.MOCK
 
     @property
     def mode(self) -> DataMode:
@@ -65,8 +65,26 @@ class RuntimeModeController:
 
     @property
     def is_live_ready(self) -> bool:
-        """Indicate whether official SkillHub credentials are configured."""
-        return bool(os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip())
+        """Indicate whether credentials and the live contract gate are ready."""
+        return bool(os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()) and self.is_contract_verified
+
+    @property
+    def is_contract_verified(self) -> bool:
+        """Require an explicit server-side acknowledgement of provider mapping."""
+        return os.getenv("WENCAI_SKILLHUB_CONTRACT_VERIFIED", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+
+    @property
+    def live_readiness_issues(self) -> tuple[str, ...]:
+        issues: list[str] = []
+        if not os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip():
+            issues.append("WENCAI_SKILLHUB_API_KEY")
+        if not self.is_contract_verified:
+            issues.append("WENCAI_SKILLHUB_CONTRACT_VERIFIED")
+        return tuple(issues)
 
     @property
     def capabilities(self) -> dict[str, Any]:
@@ -82,11 +100,17 @@ class RuntimeModeController:
                 "portfolio_rebalancing": True,
             },
             "LIVE": {
-                "stock_quote": False,  # Pending official exchange quote protocol
-                "fund_lookthrough": False,  # Pending official fund disclosure protocol
-                "convertible_bond": False,  # Not supported in Live yet (returns 501)
+                "stock_quote": live_wencai_ready,
+                "fund_lookthrough": live_wencai_ready,
+                "convertible_bond": live_wencai_ready,
+                "market_data": live_wencai_ready,
+                "company_data": live_wencai_ready,
+                "industry_data": live_wencai_ready,
+                "macro_data": live_wencai_ready,
+                "fund_data": live_wencai_ready,
+                "convertible_bond_data": live_wencai_ready,
                 "semantic_search": live_wencai_ready,
-                "portfolio_health_check": False,
+                "portfolio_health_check": live_wencai_ready,
                 "portfolio_rebalancing": False,
             },
         }
@@ -97,6 +121,8 @@ class RuntimeModeController:
             "data_mode": self._mode.value,
             "revision": self._revision,
             "live_ready": self.is_live_ready,
+            "live_readiness_issues": self.live_readiness_issues,
+            "contract_verified": self.is_contract_verified,
             "capabilities": self.capabilities,
             "updated_at": self._updated_at.isoformat(),
         }
@@ -127,8 +153,8 @@ class RuntimeModeController:
 
             if target_enum == DataMode.LIVE and not self.is_live_ready:
                 raise LiveProviderUnavailableError(
-                    "Official SkillHub credentials (WENCAI_SKILLHUB_API_KEY) are missing or unconfigured. "
-                    "Cannot switch to LIVE mode."
+                    "Official SkillHub credentials or verified response contract are missing: "
+                    f"{', '.join(self.live_readiness_issues)}. Cannot switch to LIVE mode."
                 )
 
             if target_enum != self._mode:

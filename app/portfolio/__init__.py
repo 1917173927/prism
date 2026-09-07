@@ -23,6 +23,13 @@ from app.portfolio.exposure import (
     ExposureStatus,
     calculate_exposure,
 )
+from app.portfolio.refresh import (
+    PortfolioPositionRefresh,
+    PortfolioRefreshRequest,
+    PortfolioRefreshResponse,
+    refresh_portfolio_live,
+    refresh_portfolio_mock,
+)
 
 __all__ = [
     "AssetType",
@@ -44,4 +51,9 @@ __all__ = [
     "ExposureResult",
     "ExposureStatus",
     "calculate_exposure",
+    "PortfolioPositionRefresh",
+    "PortfolioRefreshRequest",
+    "PortfolioRefreshResponse",
+    "refresh_portfolio_live",
+    "refresh_portfolio_mock",
 ]

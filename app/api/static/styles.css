@@ -5291,6 +5291,21 @@ body.dev-mode .dev-tools-banner {
   transform: translateY(-1px);
 }
 
+.portfolio-refresh-status {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--ink-subtle);
+  line-height: 1.5;
+}
+
+.portfolio-refresh-status.complete {
+  color: #2e7d32;
+}
+
+.portfolio-refresh-status.review {
+  color: #b45309;
+}
+
 .mode-status-indicator {
   width: 8px;
   height: 8px;

@@ -288,6 +288,8 @@ def test_frontend_keeps_safe_dom_and_renders_sector_result_below_chart():
     page = (static_root / "index.html").read_text(encoding="utf-8")
     assert "innerHTML" not in script
     assert "outerHTML" not in script
+    assert "WENCAI_SKILLHUB_API_KEY" not in script
+    assert "Authorization: Bearer" not in script
     assert "state.profileContext" not in script
     assert "state.portfolioContext" not in script
     assert "pos.market_value_cny = Math.round" not in script

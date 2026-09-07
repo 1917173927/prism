@@ -115,14 +115,26 @@ from app.service import (
     EvaluationDashboardService,
     AdvancedExplainabilityService,
 )
-from app.portfolio import PortfolioImportBundle
+from app.portfolio import (
+    PortfolioImportBundle,
+    PortfolioRefreshRequest,
+    PortfolioRefreshResponse,
+    refresh_portfolio_live,
+    refresh_portfolio_mock,
+)
 from app.portfolio.health import (
     PortfolioHealthRequest,
     PortfolioHealthResponse,
     calculate_portfolio_health,
 )
 from app.profile import RiskQuestionnaire
-from app.providers import ProviderServingMode
+from app.providers import (
+    ProviderOperation,
+    ProviderRequest,
+    ProviderServingMode,
+    ProviderStatus,
+    WencaiSkillHubProvider,
+)
 from app.store import (
     ContextMemoryListResponse,
     ContextMemoryWriteRequest,
@@ -153,6 +165,15 @@ import json
 class RuntimeDataModeSwitchRequest(BaseModel):
     target_mode: str = Field(..., description="Target runtime data mode: MOCK or LIVE")
     expected_revision: int = Field(..., description="Expected controller revision for optimistic locking")
+
+
+class LiveProviderQueryRequest(BaseModel):
+    request_id: str = Field(min_length=1)
+    operation: ProviderOperation
+    subject: str = Field(min_length=1)
+    as_of: datetime | None = None
+    required_fields: tuple[str, ...] = ()
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class CopilotChatApiRequest(BaseModel):
@@ -282,6 +303,7 @@ def create_app(
     evaluation_dashboard_service: EvaluationDashboardService | None = None,
     advanced_explainability_service: AdvancedExplainabilityService | None = None,
     market_provider: MarketDataProvider | None = None,
+    wencai_provider: WencaiSkillHubProvider | None = None,
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
 
@@ -319,6 +341,7 @@ def create_app(
         advanced_explainability_service or AdvancedExplainabilityService()
     )
     active_market_quotes = market_provider or CompositeMarketProvider()
+    active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -1417,6 +1440,60 @@ def create_app(
             raise StoreOwnerError("portfolio health request owner does not match owner scope")
         return calculate_portfolio_health(request)
 
+    @api.post(
+        "/api/v1/advisor/portfolio/refresh",
+        response_model=PortfolioRefreshResponse,
+    )
+    async def refresh_advisor_portfolio(
+        request: PortfolioRefreshRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> PortfolioRefreshResponse:
+        """Refresh portfolio market observations without falling back to MOCK."""
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("portfolio refresh request owner does not match owner scope")
+        controller = get_runtime_mode_controller()
+        if controller.mode == DataMode.LIVE:
+            if not controller.is_live_ready:
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "BLOCKED",
+                        "error_code": "LIVE_PROVIDER_UNAVAILABLE",
+                        "message": "LIVE 数据源未通过凭据与接口契约校验。",
+                        "missing_fields": list(controller.live_readiness_issues),
+                    },
+                )
+            return await refresh_portfolio_live(request, active_wencai_provider)
+        return refresh_portfolio_mock(request)
+
+    @api.post("/api/v1/runtime/provider-query")
+    async def execute_live_provider_query(
+        request: LiveProviderQueryRequest,
+    ) -> JSONResponse:
+        """Expose the verified provider contract for read-only research tools."""
+        controller = get_runtime_mode_controller()
+        if controller.mode != DataMode.LIVE or not controller.is_live_ready:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "status": "BLOCKED",
+                    "error_code": "LIVE_PROVIDER_UNAVAILABLE",
+                    "message": "当前不是可用的 LIVE 官方数据模式。",
+                    "missing_fields": list(controller.live_readiness_issues),
+                },
+            )
+        provider_request = ProviderRequest(
+            request_id=request.request_id,
+            operation=request.operation,
+            subject=request.subject,
+            as_of=request.as_of,
+            required_fields=request.required_fields,
+            parameters=request.parameters,
+        )
+        result = await active_wencai_provider.execute(provider_request)
+        status_code = 200 if result.status in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL, ProviderStatus.EMPTY} else 502
+        return JSONResponse(status_code=status_code, content=result.model_dump(mode="json"))
+
     @api.get("/api/v1/copilot/live-quote")
     async def copilot_live_quote_endpoint(
         symbol: str = "300750",
@@ -1425,20 +1502,66 @@ def create_app(
         """Query real-time stock quote and valuation data."""
         controller = get_runtime_mode_controller()
         if controller.mode == DataMode.LIVE:
+            if not controller.is_live_ready:
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "BLOCKED",
+                        "error_code": "LIVE_PROVIDER_UNAVAILABLE",
+                        "message": "LIVE 数据源未通过凭据与接口契约校验，未回退到 MOCK。",
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "wencai_skillhub_provider",
+                            "provider_serving_mode": "UNAVAILABLE",
+                            "is_synthetic": False,
+                            "missing_fields": list(controller.live_readiness_issues),
+                        },
+                    },
+                )
+            result = await active_wencai_provider.execute(
+                ProviderRequest(
+                    request_id=f"live-quote-{datetime.now(UTC).timestamp()}",
+                    operation=ProviderOperation.MARKET_DATA,
+                    subject=symbol,
+                    required_fields=("price_cny", "observed_at", "sector"),
+                )
+            )
+            if result.status not in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL} or not result.records:
+                return JSONResponse(
+                    status_code=502,
+                    content={
+                        "status": result.status.value,
+                        "error_code": "LIVE_PROVIDER_FAILED",
+                        "message": "官方 LIVE 行情未返回可核验记录，未回退到 MOCK。",
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": result.provider,
+                            "provider_serving_mode": result.serving_mode.value,
+                            "is_synthetic": False,
+                            "retrieved_at": result.retrieved_at.isoformat(),
+                            "missing_fields": list(result.missing_fields),
+                            "issues": [issue.safe_message for issue in result.issues],
+                        },
+                    },
+                )
+            data = dict(result.records[0].fields)
+            data.setdefault("source", result.records[0].source)
+            data["provider_tier"] = "LIVE_PRIMARY"
+            data["is_synthetic"] = False
+            data["retrieved_at"] = result.retrieved_at.isoformat()
             return JSONResponse(
-                status_code=501,
+                status_code=200,
                 content={
-                    "status": "REJECTED",
-                    "error_code": "LIVE_MODE_UNSUPPORTED",
-                    "message": "该功能在 LIVE 官方数据模式下尚未接入交易所实时数据源。请切换至 MOCK 模式查看基准沙箱数据。",
+                    "status": result.status.value,
+                    "data": data,
                     "execution_context": {
                         "data_mode": "LIVE",
-                        "provider": "wencai_skillhub_provider",
-                        "provider_serving_mode": "UNSUPPORTED",
+                        "provider": result.provider,
+                        "provider_serving_mode": result.serving_mode.value,
                         "is_synthetic": False,
-                        "observed_at": datetime.now(UTC).isoformat(),
-                        "retrieved_at": datetime.now(UTC).isoformat(),
-                        "missing_fields": ["live_exchange_feed"],
+                        "observed_at": data.get("observed_at"),
+                        "retrieved_at": result.retrieved_at.isoformat(),
+                        "missing_fields": list(result.missing_fields),
                     },
                 },
             )
@@ -1494,24 +1617,69 @@ def create_app(
         )
 
     @api.get("/api/v1/copilot/live-fund")
-    def copilot_live_fund_endpoint(fund_code: str = "588000"):
+    async def copilot_live_fund_endpoint(fund_code: str = "588000"):
         """Query real-time fund/ETF look-through holdings."""
         controller = get_runtime_mode_controller()
         if controller.mode == DataMode.LIVE:
+            if not controller.is_live_ready:
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "status": "BLOCKED",
+                        "error_code": "LIVE_PROVIDER_UNAVAILABLE",
+                        "message": "LIVE 基金数据源未通过凭据与接口契约校验，未回退到 MOCK。",
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "wencai_skillhub_provider",
+                            "provider_serving_mode": "UNAVAILABLE",
+                            "is_synthetic": False,
+                            "missing_fields": list(controller.live_readiness_issues),
+                        },
+                    },
+                )
+            result = await active_wencai_provider.execute(
+                ProviderRequest(
+                    request_id=f"live-fund-{datetime.now(UTC).timestamp()}",
+                    operation=ProviderOperation.FUND_DATA,
+                    subject=fund_code,
+                    required_fields=("price_cny", "observed_at", "sector", "top_holdings"),
+                )
+            )
+            if result.status not in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL} or not result.records:
+                return JSONResponse(
+                    status_code=502,
+                    content={
+                        "status": result.status.value,
+                        "error_code": "LIVE_PROVIDER_FAILED",
+                        "message": "官方 LIVE 基金穿透未返回可核验记录，未回退到 MOCK。",
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": result.provider,
+                            "provider_serving_mode": result.serving_mode.value,
+                            "is_synthetic": False,
+                            "retrieved_at": result.retrieved_at.isoformat(),
+                            "missing_fields": list(result.missing_fields),
+                            "issues": [issue.safe_message for issue in result.issues],
+                        },
+                    },
+                )
+            data = dict(result.records[0].fields)
+            data.setdefault("source", result.records[0].source)
+            data["is_synthetic"] = False
+            data["retrieved_at"] = result.retrieved_at.isoformat()
             return JSONResponse(
-                status_code=501,
+                status_code=200,
                 content={
-                    "status": "REJECTED",
-                    "error_code": "LIVE_MODE_UNSUPPORTED",
-                    "message": "该功能在 LIVE 官方数据模式下尚未接入公募基金季度穿透数据源。请切换至 MOCK 模式查看基准沙箱数据。",
+                    "status": result.status.value,
+                    "data": data,
                     "execution_context": {
                         "data_mode": "LIVE",
-                        "provider": "wencai_skillhub_provider",
-                        "provider_serving_mode": "UNSUPPORTED",
+                        "provider": result.provider,
+                        "provider_serving_mode": result.serving_mode.value,
                         "is_synthetic": False,
-                        "observed_at": datetime.now(UTC).isoformat(),
-                        "retrieved_at": datetime.now(UTC).isoformat(),
-                        "missing_fields": ["live_fund_lookthrough_feed"],
+                        "observed_at": data.get("observed_at"),
+                        "retrieved_at": result.retrieved_at.isoformat(),
+                        "missing_fields": list(result.missing_fields),
                     },
                 },
             )

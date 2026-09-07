@@ -8,6 +8,7 @@
     "fundResearchRun",
     "convertibleBondResearchRun",
     "portfolioHealthRun",
+    "portfolioRefreshRun",
     "portfolioOptimizationRun",
     "rebalancingRun",
     "scenarioSimulationRun",
@@ -21,6 +22,7 @@
     "fundResearchSequence",
     "convertibleBondResearchSequence",
     "portfolioOptimizationSequence",
+    "portfolioRefreshSequence",
     "scenarioSimulationSequence",
     "rebalancingSequence",
     "customStressSequence",
@@ -78,6 +80,8 @@
     templateSequence: 0,
     portfolioHealthSequence: 0,
     portfolioHealthRun: null,
+    portfolioRefreshSequence: 0,
+    portfolioRefreshRun: null,
     ocrPortfolioDraft: null,
     profileProposalDraft: null,
     profileProposalQuestionnaire: null,
@@ -116,6 +120,8 @@
     advancedEvidenceSelectedKey: "",
     dataMode: "MOCK",
     modeRevision: 1,
+    liveReady: false,
+    liveReadinessIssues: [],
     capabilities: null,
     rebalancingRun: null,
     rebalancingSequence: 0,
@@ -4652,6 +4658,8 @@
           microStore.transact((store) => {
             store.dataMode = payload.data.data_mode || "MOCK";
             store.modeRevision = payload.data.revision || 1;
+            store.liveReady = payload.data.live_ready === true;
+            store.liveReadinessIssues = payload.data.live_readiness_issues || [];
             store.capabilities = payload.data.capabilities || null;
           });
           updateRuntimeDataModeUI();
@@ -4668,9 +4676,15 @@
     if (!btn || !label) return;
 
     const isLive = (state.dataMode === "LIVE");
+    const liveReady = state.liveReady === true;
     btn.classList.toggle("mode-live", isLive);
     btn.classList.toggle("mode-mock", !isLive);
-    label.textContent = isLive ? "LIVE · 官方数据" : "MOCK · 合成数据";
+    label.textContent = isLive
+      ? (liveReady ? "LIVE · 官方数据" : "LIVE · 不可用")
+      : (liveReady ? "MOCK · 合成数据" : "MOCK · LIVE未配置");
+    btn.title = liveReady
+      ? "点击切换运行数据模式 (MOCK / LIVE)"
+      : `LIVE 不可用：${(state.liveReadinessIssues || []).join("、") || "缺少官方 Provider 配置"}`;
   }
 
   function openDataModeConfirmModal() {
@@ -4683,6 +4697,8 @@
     const revText = byId("modal-mode-revision-text");
     const warnTitle = byId("modal-mode-warning-title");
     const warnText = byId("modal-mode-warning-text");
+    const confirmBtn = byId("btn-confirm-mode-switch");
+    if (confirmBtn) confirmBtn.disabled = false;
 
     if (currChip) {
       currChip.textContent = (state.dataMode === "MOCK") ? "MOCK · 合成数据" : "LIVE · 官方数据";
@@ -4698,7 +4714,10 @@
     if (warnTitle && warnText) {
       if (targetMode === "LIVE") {
         warnTitle.textContent = "合规防线与连通性约束";
-        warnText.textContent = "切入 LIVE 模式要求服务端已注入官方 WENCAI_SKILLHUB_API_KEY。若凭据缺失，切换将被拒绝并抛出 409 冲突拦截，严禁伪造外部连通性。";
+        warnText.textContent = state.liveReady
+          ? "服务端已通过凭据与接口契约闸门。LIVE 失败时不会回退到 MOCK，关键数据缺失将进入待复核。"
+          : `当前不能切入 LIVE：${(state.liveReadinessIssues || []).join("、") || "缺少官方 Provider 配置"}。请由服务端完成配置，浏览器不会接收 API Key。`;
+        if (confirmBtn) confirmBtn.disabled = !state.liveReady;
       } else {
         warnTitle.textContent = "沙箱仿真环境重置";
         warnText.textContent = "切回 MOCK 模式将加载本地基准沙箱与高质量仿真数据，所有分析结果将标注 MOCK · 合成数据。";
@@ -4722,6 +4741,10 @@
     if (!confirmBtn) return;
 
     const targetMode = (state.dataMode === "MOCK") ? "LIVE" : "MOCK";
+    if (targetMode === "LIVE" && !state.liveReady) {
+      alert(`LIVE 不可用：${(state.liveReadinessIssues || []).join("、") || "缺少官方 Provider 配置"}`);
+      return;
+    }
     const expectedRevision = state.modeRevision;
 
     confirmBtn.disabled = true;
@@ -4742,6 +4765,8 @@
         microStore.transact((store) => {
           store.dataMode = body.data.data_mode;
           store.modeRevision = body.data.revision;
+          store.liveReady = body.data.live_ready === true;
+          store.liveReadinessIssues = body.data.live_readiness_issues || [];
           store.capabilities = body.data.capabilities;
           invalidateDerivedState(store);
         });
@@ -6177,14 +6202,52 @@
       microStore.transact((store) => {
         store.portfolioHealthSequence += 1;
         store.portfolioHealthRun = null;
+        store.portfolioRefreshSequence += 1;
+        store.portfolioRefreshRun = null;
       });
+      renderPortfolioRefreshStatus(null);
       renderHeroDonutChart(state.selectedPersona);
       renderOverviewWorkspace(state.selectedPersona);
       return null;
     }
-    const token = beginContextRequest("portfolioHealthSequence");
+    let token = beginContextRequest("portfolioHealthSequence");
+    microStore.transact((store) => {
+      store.portfolioHealthRun = null;
+      store.portfolioRefreshRun = null;
+    });
+    renderPortfolioRefreshStatus(null);
     const profile = token.profile.profile;
-    const portfolio = token.portfolio;
+    let portfolio = token.portfolio;
+    const refreshResponse = await fetch("/api/v1/advisor/portfolio/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": token.ownerId },
+      body: JSON.stringify({
+        schema_version: "portfolio-refresh-request.v1",
+        request_id: `portfolio-refresh-${Date.now()}`,
+        owner_id: token.ownerId,
+        as_of: new Date().toISOString(),
+        portfolio,
+      }),
+    });
+    if (!isContextRequestCurrent(token)) return null;
+    const refreshPayload = await refreshResponse.json().catch(() => ({}));
+    if (!refreshResponse.ok) {
+      microStore.transact((store) => { store.portfolioRefreshRun = refreshPayload; });
+      renderPortfolioRefreshStatus(refreshPayload);
+      throw new Error(refreshPayload.message || "最新数据刷新失败，未使用旧数据继续计算");
+    }
+    if (refreshPayload.status !== "COMPLETE" || !refreshPayload.portfolio) {
+      microStore.transact((store) => { store.portfolioRefreshRun = refreshPayload; });
+      renderPortfolioRefreshStatus(refreshPayload);
+      throw new Error("最新数据不完整，组合体检已暂停并等待复核");
+    }
+    microStore.transact((store) => {
+      store.portfolio = refreshPayload.portfolio;
+      store.portfolioRefreshRun = refreshPayload;
+    });
+    renderPortfolioRefreshStatus(refreshPayload);
+    token = beginContextRequest("portfolioHealthSequence");
+    portfolio = token.portfolio;
     const response = await fetch("/api/v1/advisor/portfolio-health", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Owner-ID": token.ownerId },
@@ -6219,6 +6282,27 @@
     renderHeroDonutChart(state.selectedPersona);
     renderOverviewWorkspace(state.selectedPersona);
     return health;
+  }
+
+  function renderPortfolioRefreshStatus(refresh) {
+    const target = byId("portfolio-refresh-status");
+    if (!target) return;
+    if (!refresh) {
+      target.textContent = "等待持仓数据";
+      target.className = "portfolio-refresh-status";
+      return;
+    }
+    const isLive = refresh.data_mode === "LIVE";
+    const complete = refresh.status === "COMPLETE";
+    const rows = Array.isArray(refresh.positions) ? refresh.positions : [];
+    const latest = rows.find((row) => row.observed_at);
+    const freshness = latest?.staleness_seconds == null
+      ? "新鲜度未提供"
+      : `数据距计算时点 ${Number(latest.staleness_seconds).toFixed(0)} 秒`;
+    target.textContent = complete
+      ? `${isLive ? "LIVE · 官方数据" : "MOCK · 合成数据"} · ${refresh.provider || "未标注来源"} · ${freshness}`
+      : `${isLive ? "LIVE · 需要复核" : "MOCK · 需要复核"} · ${refresh.issues?.[0] || "数据未完整刷新"}`;
+    target.className = `portfolio-refresh-status ${complete ? "complete" : "review"}`;
   }
 
   function renderEvidenceLineageModal() {
@@ -6405,8 +6489,9 @@
     const sourceTitle = document.createElement("strong");
     sourceTitle.textContent = "数据来源";
     const sourceText = document.createElement("p");
+    const refresh = state.portfolioRefreshRun;
     sourceText.textContent = isLiveMode
-      ? "行情按 Tencent 主源、Sina 备用源、静态快照顺序降级；每次结果记录来源层级、响应时间和新鲜度。"
+      ? `当前使用问财官方 Provider：${refresh?.provider || "等待刷新"}；观察时间、获取时间和缺失字段以服务端回执为准。`
       : "当前为 MOCK 模式，使用明确标注的静态演示底稿，不冒充实时行情或官方财务数据。";
     const formulaTitle = document.createElement("strong");
     formulaTitle.textContent = "确定性计算";

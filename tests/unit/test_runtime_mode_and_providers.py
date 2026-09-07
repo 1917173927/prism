@@ -31,13 +31,20 @@ from app.runtime.mode import (
 def clean_env():
     """Ensure clean environment variables for reproducible mode tests."""
     old_key = os.environ.get("WENCAI_SKILLHUB_API_KEY")
+    old_verified = os.environ.get("WENCAI_SKILLHUB_CONTRACT_VERIFIED")
     if "WENCAI_SKILLHUB_API_KEY" in os.environ:
         del os.environ["WENCAI_SKILLHUB_API_KEY"]
+    if "WENCAI_SKILLHUB_CONTRACT_VERIFIED" in os.environ:
+        del os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"]
     yield
     if old_key is not None:
         os.environ["WENCAI_SKILLHUB_API_KEY"] = old_key
     elif "WENCAI_SKILLHUB_API_KEY" in os.environ:
         del os.environ["WENCAI_SKILLHUB_API_KEY"]
+    if old_verified is not None:
+        os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = old_verified
+    elif "WENCAI_SKILLHUB_CONTRACT_VERIFIED" in os.environ:
+        del os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"]
 
 
 class TestRuntimeModeController:
@@ -57,6 +64,7 @@ class TestRuntimeModeController:
 
     def test_default_boot_mode_is_live_with_credentials(self):
         os.environ["WENCAI_SKILLHUB_API_KEY"] = "test_official_key"
+        os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
         controller = RuntimeModeController()
         assert controller.mode == DataMode.LIVE
         assert controller.is_live_ready is True
@@ -84,6 +92,7 @@ class TestRuntimeModeController:
     def test_switch_to_live_with_credentials_succeeds(self):
         async def _run():
             os.environ["WENCAI_SKILLHUB_API_KEY"] = "sk_live_enterprise_token"
+            os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
             controller = RuntimeModeController(initial_mode=DataMode.MOCK)
             result = await controller.switch_mode("LIVE", expected_revision=1)
             assert result["data_mode"] == "LIVE"
@@ -275,11 +284,12 @@ class TestRuntimeModeApiEndpoints:
         assert body["status"] == "CONFLICT"
         assert body["error_code"] == "LIVE_PROVIDER_UNAVAILABLE"
 
-    def test_put_data_mode_live_with_credentials_succeeds_and_returns_501_on_quote(self):
+    def test_put_data_mode_live_with_verified_credentials_succeeds(self):
         from fastapi.testclient import TestClient
         from app.api.main import app
 
         os.environ["WENCAI_SKILLHUB_API_KEY"] = "sk_live_enterprise_token"
+        os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
         client = TestClient(app)
 
         # 1. Switch to LIVE mode
@@ -291,15 +301,7 @@ class TestRuntimeModeApiEndpoints:
         assert put_resp.json()["data"]["data_mode"] == "LIVE"
         assert put_resp.json()["data"]["revision"] == 2
 
-        # 2. In LIVE mode, stock quote endpoint returns 501 LIVE_MODE_UNSUPPORTED
-        quote_resp = client.get("/api/v1/copilot/live-quote?symbol=300750")
-        assert quote_resp.status_code == 501
-        quote_body = quote_resp.json()
-        assert quote_body["error_code"] == "LIVE_MODE_UNSUPPORTED"
-        assert quote_body["execution_context"]["data_mode"] == "LIVE"
-        assert quote_body["execution_context"]["is_synthetic"] is False
-
-        # 3. Switch back to MOCK mode
+        # 2. Switch back to MOCK mode
         mock_resp = client.put(
             "/api/v1/runtime/data-mode",
             json={"target_mode": "MOCK", "expected_revision": 2},
@@ -307,7 +309,7 @@ class TestRuntimeModeApiEndpoints:
         assert mock_resp.status_code == 200
         assert mock_resp.json()["data"]["data_mode"] == "MOCK"
 
-        # 4. In MOCK mode, stock quote endpoint returns 200 with execution_context
+        # 3. In MOCK mode, stock quote endpoint returns 200 with execution_context
         mock_quote = client.get("/api/v1/copilot/live-quote?symbol=300750")
         assert mock_quote.status_code == 200
         mock_body = mock_quote.json()
@@ -350,4 +352,3 @@ class TestRuntimeModeApiEndpoints:
         assert auto_quote.status_code == 200
         assert auto_quote.json()["status"] == "SUCCESS"
         assert auto_quote.json()["data"]["symbol"].startswith("600016")
-
