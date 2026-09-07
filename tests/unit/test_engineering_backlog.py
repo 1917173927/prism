@@ -301,6 +301,12 @@ def test_frontend_keeps_safe_dom_and_renders_sector_result_below_chart():
     assert 'await refreshPortfolioHealth()' in script
     assert 'id="donut-sector-detail"' in page
     assert page.index('id="copilot-donut-legend"') < page.index('id="donut-sector-detail"')
+    assert "为什么得到这个分析结果？" in page
+    assert "先看结论和关键原因，需要时再展开专业计算依据" in page
+    assert "穿透证据链与确定性计算流转底稿" not in page
+    assert 'track.setAttribute("role", "img")' in script
+    assert 'details.className = "evidence-professional-details"' in script
+    assert 'processFlow.className = "evidence-process-flow"' in script
     profile_modal = page.index('id="profile-edit-modal"')
     evidence_modal = page.index('id="evidence-lineage-modal"')
     assert page.rfind("</div>", profile_modal, evidence_modal) > profile_modal

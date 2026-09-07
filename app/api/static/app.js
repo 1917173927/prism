@@ -6225,103 +6225,210 @@
     const content = byId("evidence-lineage-content");
     if (!content) return;
     clear(content);
-
-    const formulaBox = document.createElement("div");
-    formulaBox.className = "lineage-formula-box";
-    const f1 = document.createElement("div");
-    f1.textContent = "1. 资产穿透暴露守恒律：Exposure_i = ∑(w_k · r_{k,i})，全组合资产守恒 ∑ Exposure_i = 100.0%";
-    const f2 = document.createElement("div");
-    f2.textContent = "2. 行业集中度指数：HHI = ∑ (Exposure_i × 100)^2，分散度安全阈值 HHI ≤ 2500";
-    const f3 = document.createElement("div");
-    f3.textContent = "3. 风控硬闸门安全边界：单一行业 Exposure_i ≤ 限额 Cap_i，流动性缓冲 Exposure_cash ≥ 5.0%";
-    formulaBox.append(f1, f2, f3);
-
-    const table = document.createElement("table");
-    table.className = "lineage-table";
-    const thead = document.createElement("thead");
-    const hRow = document.createElement("tr");
-    ["阶段", "流转环节", "底稿数据源与凭证", "确定性算子 / 判定逻辑", "执行状态"].forEach(colText => {
-      const th = document.createElement("th");
-      th.textContent = colText;
-      hRow.append(th);
-    });
-    thead.append(hRow);
-
     const isLiveMode = state.dataMode === "LIVE";
     const health = state.portfolioHealthRun;
-    const hasHealth = Boolean(health);
-    const healthPass = health?.status === "PASS";
-    const steps = [
-      {
-        step: "Step 01",
-        name: "行情与财报底稿拉取",
-        source: isLiveMode
-          ? "Tencent 主源 → Sina 备用源 → 静态底稿；财务字段独立记录缺失状态"
-          : "内置合成底稿（MOCK）；不冒充实时行情或官方财务数据",
-        logic: "记录 provider_tier、quote_latency_ms 与 staleness_seconds；缺失字段不补造",
-        verdict: isLiveMode ? "CONFIGURED 已配置" : "DEMO 示例",
-        statusClass: isLiveMode ? "matrix-status-pass" : "matrix-status-overbound"
-      },
-      {
-        step: "Step 02",
-        name: "基金穿透暴露加权折算",
-        source: hasHealth ? `当前持仓合同；${health.evidence_count} 项穿透贡献` : "尚未确认持仓合同",
-        logic: "穿透折算 Exposure_i = ∑ w_k · r_{k,i}，归集至 5 大产业链",
-        verdict: hasHealth ? "CALCULATED 已计算" : "NOT_RUN 未执行",
-        statusClass: hasHealth ? "matrix-status-pass" : "matrix-status-overbound"
-      },
-      {
-        step: "Step 03",
-        name: "风控限额与HHI硬闸门校验",
-        source: hasHealth ? "组合穿透矩阵与当前已确认投资画像" : "画像或持仓尚未完成确认",
-        logic: "按后端画像预算校验行业上限、现金缓冲与 HHI 集中度",
-        verdict: hasHealth ? `${health.status} 后端裁决` : "NOT_RUN 未执行",
-        statusClass: healthPass ? "matrix-status-pass" : "matrix-status-overbound"
-      },
-      {
-        step: "Step 04",
-        name: "不可篡改证据存证与哈希",
-        source: state.events.length ? `本地 Evidence DAG；当前载入 ${state.events.length} 条事件` : "当前未载入决策回执",
-        logic: "仅在已有决策回执时校验真实内容哈希；不生成示例哈希冒充存证",
-        verdict: state.events.length ? "AVAILABLE 可核验" : "NOT_RUN 未执行",
-        statusClass: state.events.length ? "matrix-status-pass" : "matrix-status-overbound"
-      }
-    ];
+    const persona = PERSONAS[state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
+    const shell = document.createElement("div");
+    shell.className = "evidence-explainer";
 
-    const tbody = document.createElement("tbody");
-    steps.forEach(s => {
-      const tr = document.createElement("tr");
+    if (!health) {
+      const empty = document.createElement("section");
+      empty.className = "evidence-empty-state";
+      const icon = document.createElement("span");
+      icon.className = "evidence-empty-icon";
+      icon.append(createSvgIcon("icon-layers", "prism-icon prism-icon-lg"));
+      const title = document.createElement("h4");
+      title.textContent = "还没有足够信息生成分析依据";
+      const description = document.createElement("p");
+      description.textContent = "先确认投资画像和持仓，系统会用后端模型还原行业占比，再与风险边界逐项对照。";
+      empty.append(icon, title, description);
+      shell.append(empty);
+      content.append(shell);
+      return;
+    }
 
-      const tdStep = document.createElement("td");
-      tdStep.className = "lineage-step-code";
-      tdStep.textContent = s.step;
+    const overbound = health.sectors.filter((sector) => sector.verdictCode === "OVERBOUND");
+    const primaryIssue = overbound[0] || null;
+    const needsReview = health.status !== "PASS";
 
-      const tdName = document.createElement("td");
-      tdName.style.fontWeight = "600";
-      tdName.textContent = s.name;
+    const summary = document.createElement("section");
+    summary.className = `evidence-answer-card ${needsReview ? "review" : "pass"}`;
+    const summaryIcon = document.createElement("span");
+    summaryIcon.className = "evidence-answer-icon";
+    summaryIcon.append(createSvgIcon(needsReview ? "icon-alert" : "icon-shield-check", "prism-icon prism-icon-lg"));
+    const summaryCopy = document.createElement("div");
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "evidence-answer-eyebrow";
+    eyebrow.textContent = needsReview ? "本次判断 · 需要关注" : "本次判断 · 当前通过";
+    const title = document.createElement("h4");
+    const description = document.createElement("p");
+    if (primaryIssue) {
+      const direction = primaryIssue.limitOperator === "MIN" ? "低于最低要求" : "超过你的风险上限";
+      title.textContent = `${primaryIssue.name}${direction}`;
+      description.textContent = `实际为 ${primaryIssue.pct.toFixed(1)}%，你的边界是 ${primaryIssue.limitOperator === "MIN" ? "至少" : "不超过"} ${primaryIssue.cap.toFixed(1)}%。${primaryIssue.differenceLabel}，因此本次结果需要复核。`;
+    } else if (needsReview) {
+      title.textContent = "部分持仓信息还不完整";
+      description.textContent = "当前没有发现明确的数值超限，但存在缺失或未分类信息，系统不会把未知情况判定为正常。";
+    } else {
+      title.textContent = "当前持仓未触发画像中的风险边界";
+      description.textContent = "后端已完成持仓穿透和逐项对照；当前可计算指标均在已确认画像的范围内。";
+    }
+    summaryCopy.append(eyebrow, title, description);
+    summary.append(summaryIcon, summaryCopy);
 
-      const tdSource = document.createElement("td");
-      tdSource.textContent = s.source;
-
-      const tdLogic = document.createElement("td");
-      tdLogic.textContent = s.logic;
-
-      const tdVerdict = document.createElement("td");
-      const vSpan = document.createElement("span");
-      vSpan.className = s.statusClass;
-      vSpan.textContent = s.verdict;
-      tdVerdict.append(vSpan);
-
-      tr.append(tdStep, tdName, tdSource, tdLogic, tdVerdict);
-      tbody.append(tr);
+    const facts = document.createElement("div");
+    facts.className = "evidence-fact-strip";
+    [
+      { label: "分析了什么", value: `${health.evidence_count} 项持仓贡献`, note: "含基金底层持仓" },
+      { label: "依据哪套边界", value: persona.tag, note: "来自已确认画像" },
+      { label: "结果状态", value: needsReview ? "需要复核" : "当前通过", note: "由 Python 后端判定" },
+    ].forEach((fact) => {
+      const item = document.createElement("div");
+      item.className = "evidence-fact";
+      const label = document.createElement("span");
+      label.textContent = fact.label;
+      const value = document.createElement("strong");
+      value.textContent = fact.value;
+      const note = document.createElement("small");
+      note.textContent = fact.note;
+      item.append(label, value, note);
+      facts.append(item);
     });
-    table.append(thead, tbody);
 
-    const note = document.createElement("div");
-    note.className = "lineage-isolation-note";
-    note.textContent = "计算边界：大模型仅负责意图识别与阐述；量化穿透、风险闸门与调仓测算由 Python 确定性算子执行。计算结果可复核，输入真实性以供应商层级、新鲜度和缺失字段标记为准。";
+    const comparison = document.createElement("section");
+    comparison.className = "evidence-comparison";
+    const comparisonHeader = document.createElement("header");
+    const comparisonTitle = document.createElement("h4");
+    comparisonTitle.textContent = "实际持仓与风险边界的距离";
+    const comparisonHelp = document.createElement("p");
+    comparisonHelp.textContent = "彩色条是当前占比，竖线是你的边界。红色表示已经越过边界。";
+    comparisonHeader.append(comparisonTitle, comparisonHelp);
+    const barList = document.createElement("div");
+    barList.className = "evidence-bar-list";
+    health.sectors.forEach((sector) => {
+      const row = document.createElement("div");
+      row.className = `evidence-bar-row ${sector.verdictCode === "OVERBOUND" ? "overbound" : "pass"}`;
+      const rowHeader = document.createElement("div");
+      rowHeader.className = "evidence-bar-header";
+      const name = document.createElement("strong");
+      name.textContent = sector.name;
+      const verdict = document.createElement("span");
+      verdict.className = "evidence-bar-verdict";
+      verdict.textContent = sector.verdictCode === "OVERBOUND" ? "需要关注" : "范围内";
+      rowHeader.append(name, verdict);
+      const track = document.createElement("div");
+      track.className = "evidence-bar-track";
+      track.setAttribute("role", "img");
+      track.setAttribute("aria-label", `${sector.name}实际 ${sector.pct.toFixed(1)}%，边界${sector.limitOperator === "MIN" ? "至少" : "不超过"}${sector.cap.toFixed(1)}%，${verdict.textContent}`);
+      const fill = document.createElement("span");
+      fill.className = "evidence-bar-fill";
+      fill.style.width = `${Math.max(0, Math.min(100, sector.pct))}%`;
+      fill.style.backgroundColor = sector.color;
+      const marker = document.createElement("span");
+      marker.className = "evidence-limit-marker";
+      marker.style.left = `${Math.max(0, Math.min(100, sector.cap))}%`;
+      const markerLabel = document.createElement("span");
+      markerLabel.className = "evidence-limit-label";
+      markerLabel.textContent = "边界";
+      marker.append(markerLabel);
+      track.append(fill, marker);
+      const caption = document.createElement("div");
+      caption.className = "evidence-bar-caption";
+      const actual = document.createElement("span");
+      actual.textContent = `当前 ${sector.pct.toFixed(1)}%`;
+      const limit = document.createElement("span");
+      limit.textContent = `${sector.limitOperator === "MIN" ? "至少" : "上限"} ${sector.cap.toFixed(1)}% · ${sector.differenceLabel}`;
+      caption.append(actual, limit);
+      row.append(rowHeader, track, caption);
+      barList.append(row);
+    });
+    comparison.append(comparisonHeader, barList);
 
-    content.append(formulaBox, table, note);
+    const process = document.createElement("section");
+    process.className = "evidence-process";
+    const processTitle = document.createElement("h4");
+    processTitle.textContent = "这个结论是怎样得出的";
+    const processFlow = document.createElement("div");
+    processFlow.className = "evidence-process-flow";
+    [
+      { icon: "icon-file-text", title: "读取持仓", text: "使用你已确认的数量、价格和现金。" },
+      { icon: "icon-layers", title: "还原真实占比", text: "股票直接归类，基金继续穿透到底层持仓。" },
+      { icon: "icon-scale", title: "对照风险边界", text: `逐项对照 ${persona.tag} 的行业上限和现金最低要求。` },
+      { icon: needsReview ? "icon-alert" : "icon-check", title: "形成判断", text: primaryIssue ? `${primaryIssue.name}触发复核。` : needsReview ? "信息不完整，保留复核状态。" : "没有指标触发硬边界。" },
+    ].forEach((step, index, items) => {
+      const card = document.createElement("div");
+      card.className = "evidence-process-step";
+      const icon = document.createElement("span");
+      icon.append(createSvgIcon(step.icon, "prism-icon"));
+      const copy = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = step.title;
+      const text = document.createElement("p");
+      text.textContent = step.text;
+      copy.append(name, text);
+      card.append(icon, copy);
+      processFlow.append(card);
+      if (index < items.length - 1) {
+        const arrow = document.createElement("span");
+        arrow.className = "evidence-process-arrow";
+        arrow.textContent = "→";
+        arrow.setAttribute("aria-hidden", "true");
+        processFlow.append(arrow);
+      }
+    });
+    process.append(processTitle, processFlow);
+
+    const next = document.createElement("section");
+    next.className = `evidence-next-step ${needsReview ? "review" : "pass"}`;
+    const nextIcon = document.createElement("span");
+    nextIcon.append(createSvgIcon(needsReview ? "icon-compass" : "icon-check", "prism-icon"));
+    const nextCopy = document.createElement("div");
+    const nextTitle = document.createElement("strong");
+    nextTitle.textContent = needsReview ? "接下来可以怎么做" : "什么时候需要重新检查";
+    const nextText = document.createElement("p");
+    if (primaryIssue) {
+      nextText.textContent = "先确认这项偏离是否符合你的实际需要；如需调整，进入调仓计划，由后端把整手约束和交易费用一起算入。";
+    } else if (needsReview) {
+      nextText.textContent = "补齐缺失或未分类的持仓信息后重新运行体检，再决定是否需要调整。";
+    } else {
+      nextText.textContent = "当持仓数量、价格、基金底层持仓或投资画像变化时，再运行一次体检。";
+    }
+    nextCopy.append(nextTitle, nextText);
+    next.append(nextIcon, nextCopy);
+
+    const details = document.createElement("details");
+    details.className = "evidence-professional-details";
+    const detailsSummary = document.createElement("summary");
+    detailsSummary.textContent = "查看专业计算、数据来源与审计状态";
+    const detailsBody = document.createElement("div");
+    detailsBody.className = "evidence-professional-body";
+    const sourceTitle = document.createElement("strong");
+    sourceTitle.textContent = "数据来源";
+    const sourceText = document.createElement("p");
+    sourceText.textContent = isLiveMode
+      ? "行情按 Tencent 主源、Sina 备用源、静态快照顺序降级；每次结果记录来源层级、响应时间和新鲜度。"
+      : "当前为 MOCK 模式，使用明确标注的静态演示底稿，不冒充实时行情或官方财务数据。";
+    const formulaTitle = document.createElement("strong");
+    formulaTitle.textContent = "确定性计算";
+    const formulaList = document.createElement("ul");
+    [
+      "行业占比：每项持仓市值占组合总市值的比例；基金按底层权重继续拆分。",
+      "集中度：由各行业占比平方求和；当前 HHI 为 " + health.sector_hhi + "，边界为 " + health.hhi_limit + "。",
+      "风险闸门：行业占比不得超过画像上限，可用现金不得低于最低要求。",
+    ].forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      formulaList.append(li);
+    });
+    const auditTitle = document.createElement("strong");
+    auditTitle.textContent = "审计状态";
+    const auditText = document.createElement("p");
+    auditText.textContent = `持仓穿透 ${health.source_exposure_status}；后端判定 ${health.status}；当前载入 ${state.events.length} 条可查决策事件。大模型只负责理解问题和解释文字，不参与金融数值计算。`;
+    detailsBody.append(sourceTitle, sourceText, formulaTitle, formulaList, auditTitle, auditText);
+    details.append(detailsSummary, detailsBody);
+
+    shell.append(summary, facts, comparison, process, next, details);
+    content.append(shell);
   }
 
   function openEvidenceLineageModal() {

@@ -2017,58 +2017,370 @@ dd { margin: 2px 0 0; font: 12px var(--mono); color: var(--ink); }
   text-underline-offset: 2px;
 }
 
-/* 确定性计算流转审计弹窗专属样式 */
-.lineage-formula-box {
-  background: var(--surface-soft);
-  border: 1px solid var(--outline);
-  border-left: 4px solid var(--clay);
-  border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-family: var(--mono);
-  font-size: 12.5px;
+/* 面向投资者的分析依据可视化 */
+.copilot-modal-content.evidence-explainer-modal {
+  width: min(920px, calc(100vw - 32px));
+  max-width: 920px;
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+}
+
+.evidence-explainer-modal .copilot-modal-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.evidence-explainer {
+  display: grid;
+  gap: 18px;
+}
+
+.evidence-answer-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 18px;
+  border: 1px solid;
+  border-radius: var(--radius-lg);
+}
+
+.evidence-answer-card.review {
+  color: #8f2f22;
+  background: linear-gradient(135deg, #fff7f3 0%, #fff1eb 100%);
+  border-color: #f1b9aa;
+}
+
+.evidence-answer-card.pass {
+  color: #12624c;
+  background: linear-gradient(135deg, #f1fbf7 0%, #eaf8f3 100%);
+  border-color: #a8dac9;
+}
+
+.evidence-answer-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: currentColor;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 4px 12px rgba(30, 44, 58, 0.08);
+}
+
+.evidence-answer-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.evidence-answer-card h4,
+.evidence-comparison h4,
+.evidence-process h4 {
+  margin: 0;
   color: var(--ink);
+}
+
+.evidence-answer-card h4 {
+  margin-bottom: 6px;
+  font-size: clamp(18px, 2vw, 23px);
+}
+
+.evidence-answer-card p,
+.evidence-comparison header p,
+.evidence-process-step p,
+.evidence-next-step p,
+.evidence-professional-body p {
+  margin: 0;
   line-height: 1.55;
 }
 
-.lineage-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-  margin-bottom: 16px;
+.evidence-fact-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.lineage-table th {
+.evidence-fact {
+  display: grid;
+  gap: 3px;
+  padding: 13px 14px;
+  border: 1px solid var(--outline-light);
+  border-radius: var(--radius-md);
   background: var(--surface-soft);
-  color: var(--ink-secondary);
+}
+
+.evidence-fact > span,
+.evidence-fact small {
+  color: var(--ink-subtle);
+  font-size: 11px;
+}
+
+.evidence-fact strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.evidence-comparison {
+  display: grid;
+  gap: 14px;
+  padding: 17px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.evidence-comparison header {
+  display: grid;
+  gap: 4px;
+}
+
+.evidence-comparison header p {
+  color: var(--ink-subtle);
+  font-size: 12px;
+}
+
+.evidence-bar-list {
+  display: grid;
+  gap: 15px;
+}
+
+.evidence-bar-row {
+  display: grid;
+  gap: 7px;
+}
+
+.evidence-bar-header,
+.evidence-bar-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.evidence-bar-header strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.evidence-bar-verdict {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.evidence-bar-row.pass .evidence-bar-verdict {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.evidence-bar-row.overbound .evidence-bar-verdict {
+  color: #b42318;
+  background: #fff0ec;
+}
+
+.evidence-bar-track {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: #e8edf0;
+}
+
+.evidence-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  opacity: 0.82;
+  transition: width 360ms ease;
+}
+
+.evidence-bar-row.overbound .evidence-bar-track {
+  box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.12);
+}
+
+.evidence-limit-marker {
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 22px;
+  background: var(--ink);
+  transform: translateX(-1px);
+}
+
+.evidence-limit-label {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #fff;
+  background: var(--ink);
+  font-size: 9px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.evidence-bar-caption {
+  color: var(--ink-subtle);
+  font-size: 10.5px;
+}
+
+.evidence-bar-row.overbound .evidence-bar-caption span:last-child {
+  color: #b42318;
   font-weight: 700;
-  text-align: left;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--outline);
+}
+
+.evidence-process {
+  display: grid;
+  gap: 12px;
+}
+
+.evidence-process-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.evidence-process-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--outline-light);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.evidence-process-step > span {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  color: var(--sage);
+  background: var(--sage-soft);
+}
+
+.evidence-process-step strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.evidence-process-step p {
+  color: var(--ink-subtle);
+  font-size: 10.5px;
+}
+
+.evidence-process-arrow {
+  align-self: center;
+  color: var(--ink-subtle);
+  font-weight: 800;
+}
+
+.evidence-next-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 13px 15px;
+  border-radius: var(--radius-md);
+}
+
+.evidence-next-step.review {
+  color: #8f2f22;
+  background: #fff7f3;
+  border: 1px solid #f1c9bd;
+}
+
+.evidence-next-step.pass {
+  color: #12624c;
+  background: #effaf6;
+  border: 1px solid #b7dece;
+}
+
+.evidence-next-step strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.evidence-next-step p {
+  color: var(--ink-secondary);
+  font-size: 12px;
+}
+
+.evidence-professional-details {
+  border-top: 1px solid var(--outline-light);
+}
+
+.evidence-professional-details summary {
+  padding: 12px 2px 2px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.evidence-professional-details summary:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+
+.evidence-professional-body {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  color: var(--ink-secondary);
+  background: var(--surface-soft);
   font-size: 11.5px;
 }
 
-.lineage-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--outline-light);
-  vertical-align: middle;
-  color: var(--ink);
+.evidence-professional-body strong:not(:first-child) {
+  margin-top: 8px;
 }
 
-.lineage-step-code {
-  font-family: var(--mono);
-  font-weight: 700;
-  color: var(--clay);
+.evidence-professional-body ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.65;
 }
 
-.lineage-isolation-note {
-  padding: 10px 14px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: #1e40af;
-  line-height: 1.45;
+.evidence-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 34px 20px;
+  text-align: center;
+  border: 1px dashed var(--outline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.evidence-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--sage);
+  background: var(--sage-soft);
+}
+
+.evidence-empty-state h4,
+.evidence-empty-state p {
+  margin: 0;
+}
+
+.evidence-empty-state p {
+  max-width: 520px;
+  color: var(--ink-subtle);
+  line-height: 1.55;
 }
 
 /* 组合全景与投资分析独立工作区 (SPA 视图隔离) */
@@ -5171,4 +5483,47 @@ body.dev-mode .dev-tools-banner {
 
 @media (max-width: 960px) {
   .custom-stress-sliders { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .evidence-fact-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-process-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-process-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .evidence-bar-caption {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+@media (max-width: 520px) {
+  .evidence-explainer-modal {
+    width: calc(100vw - 16px);
+  }
+
+  .evidence-explainer-modal .copilot-modal-header,
+  .evidence-explainer-modal .copilot-modal-body,
+  .evidence-explainer-modal .modal-actions {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .evidence-answer-card {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-answer-icon {
+    width: 36px;
+    height: 36px;
+  }
 }

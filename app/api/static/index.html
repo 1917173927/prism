@@ -665,15 +665,15 @@
               </div>
             </div>
           </div>
-          <!-- 穿透依据与确定性计算流转审计弹窗 (Evidence & Calculation Lineage Modal) -->
+          <!-- 面向投资者的分析依据弹窗；专业底稿采用渐进式展开 -->
           <div id="evidence-lineage-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="evidence-lineage-title">
-            <div class="copilot-modal-content" style="max-width: 820px;">
+            <div class="copilot-modal-content evidence-explainer-modal">
               <div class="copilot-modal-header">
                 <div class="copilot-modal-title-row">
                   <span class="copilot-avatar"><svg class="prism-icon"><use href="#icon-shield-check"/></svg></span>
                   <div>
-                    <h3 id="evidence-lineage-title">穿透证据链与确定性计算流转底稿</h3>
-                    <p class="copilot-modal-sub">全流程量化穿透、硬闸门风控校验与不可篡改存证底稿</p>
+                    <h3 id="evidence-lineage-title">为什么得到这个分析结果？</h3>
+                    <p class="copilot-modal-sub">先看结论和关键原因，需要时再展开专业计算依据</p>
                   </div>
                 </div>
                 <button class="copilot-modal-close" id="btn-close-evidence-modal" type="button" aria-label="关闭">×</button>
@@ -684,10 +684,10 @@
               <div class="modal-actions" style="justify-content: space-between;">
                 <a href="#evidence" class="copilot-action-btn secondary" id="btn-goto-deep-evidence">
                   <svg class="prism-icon"><use href="#icon-external-link"/></svg>
-                  <span>进入高级证据链浏览器</span>
+                  <span>查看完整专业证据</span>
                 </a>
                 <button class="copilot-action-btn primary" id="btn-close-evidence-modal-action" type="button">
-                  <span>完成审阅并关闭</span>
+                  <span>我明白了</span>
                 </button>
               </div>
             </div>

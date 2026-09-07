@@ -156,6 +156,10 @@ def test_copilot_styles_and_responsive_rules() -> None:
         ".pipeline-step",
         ".pipeline-step.active",
         ".edit-profile-chip",
+        ".evidence-answer-card",
+        ".evidence-bar-track",
+        ".evidence-process-flow",
+        ".evidence-professional-details",
     ):
         assert selector in styles
 
