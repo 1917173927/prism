@@ -335,12 +335,13 @@ def _direct_contribution(
         asset_id=position.asset_id,
         asset_name=position.asset_name,
         asset_type=position.asset_type,
+        sector=position.sector,
         basis=ExposureBasis.DIRECT,
         market_value=value,
         portfolio_weight_pct=Decimal("0"),
         source_position_ids=(position.position_id,),
         is_attributed=True,
-        is_technology=False,
+        is_technology=_is_technology_sector(position.sector),
     )
 
 

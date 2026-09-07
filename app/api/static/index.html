@@ -341,20 +341,20 @@
               <div class="copilot-stats-grid">
                 <div class="copilot-stat-item">
                   <span class="stat-label term-tip" data-tooltip="账户当前全部证券资产与可用现金的公允价值总额。">总资产规模 <span class="tip-icon">?</span></span>
-                  <strong class="stat-value" id="copilot-stat-aum">¥ 500,000</strong>
+                  <strong class="stat-value" id="copilot-stat-aum">待计算</strong>
                 </div>
                 <div class="copilot-stat-item alert-stat">
-                  <span class="stat-label term-tip" data-tooltip="穿透底层前十大重仓股票后，实际暴露最高的产业大类比例（当前为科技与半导体）。">主重仓行业 <span class="tip-icon">?</span></span>
-                  <strong class="stat-value alert-text" id="copilot-stat-tech">科技 28.0%</strong>
+                  <span class="stat-label term-tip" data-tooltip="由后端穿透当前持仓后返回的最高权重产业大类及其比例。">主重仓行业 <span class="tip-icon">?</span></span>
+                  <strong class="stat-value" id="copilot-stat-tech">待计算</strong>
                 </div>
                 <div class="copilot-stat-item">
-                  <span class="stat-label term-tip" data-tooltip="根据当前 R3 平衡型画像设定的单一行业配置硬性安全边界（30.0%）。">行业风险上限 <span class="tip-icon">?</span></span>
+                  <span class="stat-label term-tip" data-tooltip="已确认画像对当前主重仓行业设置的确定性风险预算上限。">行业风险上限 <span class="tip-icon">?</span></span>
                   <strong class="stat-value" id="copilot-stat-budget">30.0%</strong>
                 </div>
                 <div class="copilot-stat-item clickable-stat" id="copilot-stat-evidence-card" role="button" tabindex="0" title="点击查看穿透底稿与4步确定性计算流转过程">
                   <span class="stat-label term-tip" data-tooltip="查看当前数据模式、供应商层级、确定性公式与证据状态；缺失输入会明确标注。">分析依据 <span class="tip-icon">?</span></span>
                   <div class="stat-evidence-value-wrap">
-                    <strong class="stat-value ok-text" id="copilot-stat-evidence">8项底稿 · 4轨验算</strong>
+                    <strong class="stat-value" id="copilot-stat-evidence">待计算</strong>
                     <span class="stat-sub-action" id="btn-show-evidence-lineage">查看过程 →</span>
                   </div>
                 </div>
@@ -1307,7 +1307,7 @@
             <div class="context-confirm-actions">
               <div>
                 <strong>关键因素</strong>
-                <small>结合风险偏好、持仓分布与研究数据，说明结论的适用条件。</small>
+                <small>读取当前画像与持仓的后端体检结果，说明计算步骤、边界与复核条件。</small>
               </div>
               <div class="context-import-actions">
                 <button id="run-explainability" class="query-submit" type="button">分析决策原因</button>

@@ -1,8 +1,34 @@
 (() => {
   "use strict";
 
-  function createMicroStore(initialState) {
+  const DERIVED_RUN_KEYS = Object.freeze([
+    "advisorPlan",
+    "researchRun",
+    "stockResearchRun",
+    "fundResearchRun",
+    "convertibleBondResearchRun",
+    "portfolioHealthRun",
+    "portfolioOptimizationRun",
+    "rebalancingRun",
+    "scenarioSimulationRun",
+    "customStressRun",
+  ]);
+  const DERIVED_SEQUENCE_KEYS = Object.freeze([
+    "templateSequence",
+    "portfolioHealthSequence",
+    "researchSequence",
+    "stockResearchSequence",
+    "fundResearchSequence",
+    "convertibleBondResearchSequence",
+    "portfolioOptimizationSequence",
+    "scenarioSimulationSequence",
+    "rebalancingSequence",
+    "customStressSequence",
+  ]);
+
+  function createMicroStore(initialState, contextKeys = []) {
     const listeners = new Set();
+    const contextKeySet = new Set(contextKeys);
     let transactionDepth = 0;
     let pending = false;
     const notify = () => {
@@ -13,6 +39,11 @@
       set(target, key, value) {
         if (Object.is(target[key], value)) return true;
         target[key] = value;
+        if (contextKeySet.has(key)) {
+          target.contextRevision += 1;
+          DERIVED_SEQUENCE_KEYS.forEach((sequenceKey) => { target[sequenceKey] += 1; });
+          DERIVED_RUN_KEYS.forEach((runKey) => { target[runKey] = null; });
+        }
         notify();
         return true;
       }
@@ -36,6 +67,8 @@
 
   const microStore = createMicroStore({
     ownerId: "",
+    selectedPersona: "custom-user",
+    contextRevision: 0,
     profile: null,
     portfolio: null,
     events: [],
@@ -43,8 +76,9 @@
     queryTemplate: null,
     templateContext: null,
     templateSequence: 0,
-    portfolioContext: null,
-    profileContext: null,
+    portfolioHealthSequence: 0,
+    portfolioHealthRun: null,
+    ocrPortfolioDraft: null,
     profileProposalDraft: null,
     profileProposalQuestionnaire: null,
     profileProposalExtraction: null,
@@ -84,9 +118,77 @@
     modeRevision: 1,
     capabilities: null,
     rebalancingRun: null,
+    rebalancingSequence: 0,
     customStressRun: null,
-  });
+    customStressSequence: 0,
+  }, ["ownerId", "selectedPersona", "profile", "portfolio", "dataMode"]);
   const state = microStore.state;
+
+  function invalidateDerivedState(store) {
+    store.contextRevision += 1;
+    DERIVED_SEQUENCE_KEYS.forEach((sequenceKey) => { store[sequenceKey] += 1; });
+    DERIVED_RUN_KEYS.forEach((runKey) => { store[runKey] = null; });
+    store.researchTemplate = null;
+    store.stockResearchTemplate = null;
+    store.fundResearchTemplate = null;
+    store.convertibleBondResearchTemplate = null;
+    store.portfolioOptimizationTemplate = null;
+    store.scenarioSimulationTemplate = null;
+  }
+
+  function beginContextRequest(sequenceKey) {
+    state[sequenceKey] += 1;
+    return {
+      sequenceKey,
+      sequence: state[sequenceKey],
+      contextRevision: state.contextRevision,
+      ownerId: state.ownerId,
+      selectedPersona: state.selectedPersona,
+      dataMode: state.dataMode,
+      profile: state.profile,
+      portfolio: state.portfolio,
+    };
+  }
+
+  function isContextRequestCurrent(token) {
+    return state[token.sequenceKey] === token.sequence
+      && state.contextRevision === token.contextRevision
+      && state.ownerId === token.ownerId
+      && state.selectedPersona === token.selectedPersona
+      && state.dataMode === token.dataMode
+      && state.profile === token.profile
+      && state.portfolio === token.portfolio;
+  }
+
+  function renderInvalidatedDerivedState() {
+    renderResearchMatrix(null);
+    renderStockResearch(null);
+    renderFundResearch(null);
+    renderConvertibleBondResearch(null);
+    renderPortfolioOptimization(null);
+    renderScenarioSimulation(null);
+    renderHeroDonutChart(state.selectedPersona);
+    renderOverviewWorkspace(state.selectedPersona);
+    const customStress = byId("custom-stress-result");
+    if (customStress) clear(customStress);
+    const customStressStatus = byId("custom-stress-status");
+    if (customStressStatus) {
+      customStressStatus.textContent = "待计算";
+      customStressStatus.className = "status-chip";
+    }
+    ["rebalancing-metrics-content", "rebalancing-actions-content", "rebalancing-steps-content"]
+      .forEach((id) => {
+        const panel = byId(id);
+        if (panel) clear(panel);
+      });
+    const rebalancingStatus = byId("rebalancing-status-chip");
+    if (rebalancingStatus) {
+      rebalancingStatus.textContent = "待运行";
+      rebalancingStatus.className = "status-chip";
+    }
+    const decisionOutput = byId("copilot-decision-output");
+    if (decisionOutput) clear(decisionOutput);
+  }
   microStore.subscribe((store) => {
     document.documentElement.setAttribute("data-prism-owner", store.ownerId || "none");
     document.documentElement.setAttribute("data-prism-mode", store.dataMode || "MOCK");
@@ -1073,11 +1175,11 @@
       return;
     }
     state.contextMemorySelected = record.memory_id;
-    state.profileContext = {
+    state.profile = {
       questionnaire: record.questionnaire,
       profile: record.profile,
     };
-    state.portfolioContext = record.portfolio;
+    state.portfolio = record.portfolio;
     const questionnaireId = text(record.questionnaire?.questionnaire_id, "");
     const queryId = questionnaireId.endsWith("-questionnaire")
       ? questionnaireId.slice(0, -"-questionnaire".length)
@@ -1139,19 +1241,19 @@
       setError("请先读取该隔离标识，再确认风险画像与持仓。");
       return;
     }
-    if (!state.profileContext?.profile || !state.profileContext?.questionnaire) {
+    if (!state.profile?.profile || !state.profile?.questionnaire) {
       setContextMemoryStatus("正在自动确认前置画像…", "review");
       await ensureDependency("PROFILE_CONTEXT");
     }
-    if (!state.profileContext?.profile || !state.profileContext?.questionnaire) {
+    if (!state.profile?.profile || !state.profile?.questionnaire) {
       setContextMemoryStatus("需先确认画像", "review");
       setError("请先确认风险画像，再保存上下文记忆。");
       return;
     }
-    if (!state.portfolioContext) {
+    if (!state.portfolio) {
       await ensureDependency("PORTFOLIO_CONTEXT");
     }
-    if (!state.portfolioContext) {
+    if (!state.portfolio) {
       setContextMemoryStatus("需先确认持仓", "review");
       setError("请先验证并加载持仓，再保存上下文记忆。");
       return;
@@ -1171,9 +1273,9 @@
         body: JSON.stringify({
           schema_version: "context-memory-write-request.v1",
           owner_id: requestOwner,
-          questionnaire: state.profileContext.questionnaire,
-          profile: state.profileContext.profile,
-          portfolio: state.portfolioContext,
+          questionnaire: state.profile.questionnaire,
+          profile: state.profile.profile,
+          portfolio: state.portfolio,
           references: buildContextMemoryReferences(),
         }),
       });
@@ -3283,14 +3385,14 @@
     clearPortfolioOptimizationRun("需重新运行", "review");
     clearScenarioSimulationRun("需重新运行", "review");
     if (!requestOwner) {
-      state.portfolioContext = null;
+      state.portfolio = null;
       renderPortfolio(state.queryTemplate?.portfolio || null);
       setPortfolioContextStatus("需要隔离标识", "blocked");
       setError("请输入隔离标识。");
       return;
     }
     if (!raw) {
-      state.portfolioContext = null;
+      state.portfolio = null;
       renderPortfolio(state.queryTemplate?.portfolio || null);
       setPortfolioContextStatus("未提供 JSON", "blocked");
       setError("请粘贴已脱敏的持仓 JSON。");
@@ -3303,7 +3405,7 @@
         throw new Error("not an object");
       }
     } catch (_) {
-      state.portfolioContext = null;
+      state.portfolio = null;
       renderPortfolio(state.queryTemplate?.portfolio || null);
       setPortfolioContextStatus("JSON 无效", "blocked");
       setError("持仓 JSON 无法解析；输入原文不会写入错误信息。");
@@ -3334,17 +3436,16 @@
       if (state.ownerId !== requestOwner || state.templateSequence !== contextSequence) return;
       const result = await response.json();
       microStore.transact((store) => {
-        store.portfolioContext = result.portfolio;
         store.portfolio = result.portfolio;
       });
-      renderPortfolio(state.portfolioContext, "已确认 · 当前会话只读");
+      renderPortfolio(state.portfolio, "已确认 · 当前会话只读");
       setPortfolioContextStatus(
         `已确认 · ${text(result.position_count)} 个持仓`,
         "pass",
       );
     } catch (error) {
       if (state.ownerId === requestOwner && state.templateSequence === contextSequence) {
-        state.portfolioContext = null;
+        state.portfolio = null;
         setPortfolioContextStatus("未确认", "blocked");
         renderPortfolio(state.queryTemplate?.portfolio || null);
       }
@@ -3364,7 +3465,7 @@
       clearScenarioSimulationRun("需重新运行", "review");
     }
     if (!requestOwner) {
-      state.profileContext = null;
+      state.profile = null;
       renderConfirmedProfile(null);
       setProfileContextStatus("需要隔离标识", "blocked");
       if (!silent) setError("请输入隔离标识。");
@@ -3399,8 +3500,7 @@
       if (state.ownerId !== requestOwner || state.templateSequence !== contextSequence) return null;
       const result = await response.json();
       microStore.transact((store) => {
-        store.profileContext = result;
-        store.profile = result.profile;
+        store.profile = result;
       });
       renderProfileContext(result.questionnaire);
       renderConfirmedProfile(result.profile);
@@ -3408,7 +3508,7 @@
       return result;
     } catch (error) {
       if (state.ownerId === requestOwner && state.templateSequence === contextSequence) {
-        state.profileContext = null;
+        state.profile = null;
         renderConfirmedProfile(null);
         setProfileContextStatus("未确认", "blocked");
       }
@@ -3421,22 +3521,22 @@
 
   async function ensureDependency(depType) {
     if (depType === "PROFILE_CONTEXT") {
-      if (state.profileContext && state.profileContext.profile) {
-        return state.profileContext;
+      if (state.profile && state.profile.profile) {
+        return state.profile;
       }
       return await confirmProfileContext({ silent: true });
     }
     if (depType === "PORTFOLIO_CONTEXT") {
-      if (state.portfolioContext) return state.portfolioContext;
+      if (state.portfolio) return state.portfolio;
       if (state.templateContext?.portfolio) {
-        state.portfolioContext = state.templateContext.portfolio;
-        return state.portfolioContext;
+        state.portfolio = state.templateContext.portfolio;
+        return state.portfolio;
       }
       const owner = byId("owner-id")?.value.trim() || state.ownerId || "custom-user";
       const tpl = await loadTemplateContext(owner, ++state.templateSequence);
       if (tpl?.portfolio) {
-        state.portfolioContext = tpl.portfolio;
-        return state.portfolioContext;
+        state.portfolio = tpl.portfolio;
+        return state.portfolio;
       }
       return null;
     }
@@ -3451,8 +3551,8 @@
   }
 
   function clearConfirmedContexts() {
-    state.portfolioContext = null;
-    state.profileContext = null;
+    state.portfolio = null;
+    state.profile = null;
     byId("portfolio-json").value = "";
     setPortfolioContextStatus("未确认");
     setProfileContextStatus("未确认");
@@ -3482,11 +3582,11 @@
       state.queryTemplate = template;
       byId("query-template-meta").textContent = `合成数据 ${text(template.fixture_id)} · 生成时间 ${text(template.generated_at)} · 合成持仓模板`;
       renderPortfolio(
-        state.portfolioContext || template.portfolio,
-        state.portfolioContext ? "已确认 · 当前会话只读" : "只读 · 合成模板",
+        state.portfolio || template.portfolio,
+        state.portfolio ? "已确认 · 当前会话只读" : "只读 · 合成模板",
       );
-      renderProfileContext(state.profileContext?.questionnaire || template.questionnaire);
-      renderConfirmedProfile(state.profileContext?.profile || null);
+      renderProfileContext(state.profile?.questionnaire || template.questionnaire);
+      renderConfirmedProfile(state.profile?.profile || null);
       return template;
     } catch (error) {
       if (state.ownerId === ownerId && state.templateSequence === sequence) {
@@ -3764,7 +3864,7 @@
     try {
       const template = state.queryTemplate || await loadTemplateContext(requestOwner, planSequence);
       if (!template) return;
-      const portfolio = state.portfolioContext || template.portfolio;
+      const portfolio = state.portfolio || template.portfolio;
       const questionnaire = buildQuestionnaire(template);
       const intentType = byId("intent-type").value;
       const response = await fetch("/api/v1/advisor/plans", {
@@ -3778,7 +3878,7 @@
           intent_id: `${questionnaire.questionnaire_id}-plan`,
           owner_id: requestOwner,
           intent_type: intentType,
-          generated_at: template.generated_at,
+          generated_at: new Date().toISOString(),
           portfolio_bundle_id: portfolio.bundle_id,
           position_snapshot_id: portfolio.position_snapshot.snapshot_id,
           questionnaire_id: questionnaire.questionnaire_id,
@@ -3902,7 +4002,7 @@
         fixture_id: template.fixture_id,
         generated_at: template.generated_at,
         questionnaire,
-        portfolio: state.portfolioContext || template.portfolio,
+        portfolio: state.portfolio || template.portfolio,
       };
       const response = await fetch("/api/v1/advisor/queries", {
         method: "POST",
@@ -3969,7 +4069,7 @@
           matrix_id: template.matrix_id,
           request_id: "ui-research-001",
           owner_id: state.ownerId,
-          generated_at: template.generated_at,
+          generated_at: new Date().toISOString(),
           scenario_id: scenarioId,
         }),
       });
@@ -4211,21 +4311,21 @@
     }
     const template = state.portfolioOptimizationTemplate;
     if (!template || state.ownerId !== requestOwner) return;
-    if (!state.profileContext || !state.profileContext.profile) {
+    if (!state.profile || !state.profile.profile) {
       setPortfolioOptimizationStatus("正在自动确认前置画像…", "review");
       await ensureDependency("PROFILE_CONTEXT");
     }
-    if (!state.profileContext || !state.profileContext.profile) {
+    if (!state.profile || !state.profile.profile) {
       setPortfolioOptimizationStatus("需先确认画像", "review");
       setError("请先确认风险画像，再生成组合目标结构。");
       return;
     }
     const requestSequence = ++state.portfolioOptimizationSequence;
     const scenarioId = scenarioSelect.value || "BASELINE_READY";
-    const questionnaire = state.profileContext && state.profileContext.questionnaire
-      ? state.profileContext.questionnaire
+    const questionnaire = state.profile && state.profile.questionnaire
+      ? state.profile.questionnaire
       : template.questionnaire;
-    const portfolio = state.portfolioContext || template.portfolio;
+    const portfolio = state.portfolio || template.portfolio;
     submit.disabled = true;
     scenarioSelect.disabled = true;
     state.portfolioOptimizationRun = null;
@@ -4289,25 +4389,25 @@
     }
     const template = state.scenarioSimulationTemplate;
     if (!template || state.ownerId !== requestOwner) return;
-    if (!state.profileContext || !state.profileContext.profile) {
+    if (!state.profile || !state.profile.profile) {
       setScenarioSimulationStatus("正在自动确认前置画像…", "review");
       await ensureDependency("PROFILE_CONTEXT");
     }
-    if (!state.profileContext || !state.profileContext.profile) {
+    if (!state.profile || !state.profile.profile) {
       setScenarioSimulationStatus("需先确认画像", "review");
       setError("请先确认风险画像，再运行情景模拟。");
       return;
     }
-    if (!state.portfolioContext) {
+    if (!state.portfolio) {
       await ensureDependency("PORTFOLIO_CONTEXT");
     }
     const requestSequence = ++state.scenarioSimulationSequence;
     const scenarioId = scenarioSelect.value || "BASELINE_READY";
     const baseTemplate = state.queryTemplate || state.portfolioOptimizationTemplate;
-    const questionnaire = state.profileContext && state.profileContext.questionnaire
-      ? state.profileContext.questionnaire
+    const questionnaire = state.profile && state.profile.questionnaire
+      ? state.profile.questionnaire
       : (baseTemplate ? buildQuestionnaire(baseTemplate) : null);
-    const portfolio = state.portfolioContext || baseTemplate?.portfolio;
+    const portfolio = state.portfolio || baseTemplate?.portfolio;
     if (!questionnaire || !portfolio) {
       setError("未找到有效持仓快照或问卷数据，请先加载工作台模板。");
       return;
@@ -4643,11 +4743,9 @@
           store.dataMode = body.data.data_mode;
           store.modeRevision = body.data.revision;
           store.capabilities = body.data.capabilities;
-          store.stockResearchRun = null;
-          store.fundResearchRun = null;
-          store.convertibleBondResearchRun = null;
-          store.customStressRun = null;
+          invalidateDerivedState(store);
         });
+        renderInvalidatedDerivedState();
         updateRuntimeDataModeUI();
         closeDataModeConfirmModal();
         syncNavigation();
@@ -4948,32 +5046,38 @@
 
   // 2. Portfolio Rebalancing
   async function runPortfolioRebalancing() {
-    const owner = state.ownerId;
     try {
-      const tRes = await fetch("/api/v1/advisor/rebalancing-template", {
-        headers: { "X-Owner-ID": owner },
-      });
-      if (!tRes.ok) throw new Error("获取再平衡模板失败");
-      const tpl = await tRes.json();
+      if (!state.portfolioOptimizationRun?.targets?.length) {
+        throw new Error("缺少已计算的目标权重，请先生成组合目标结构");
+      }
+      await ensureDependency("PORTFOLIO_CONTEXT");
+      if (!state.portfolio) throw new Error("缺少结构化持仓，无法生成调仓计划");
+      const token = beginContextRequest("rebalancingSequence");
+      const portfolio = token.portfolio;
+      const targetWeights = Object.fromEntries(
+        state.portfolioOptimizationRun.targets.map((target) => [target.target_id, target.target_weight_pct])
+      );
       const res = await fetch("/api/v1/advisor/rebalancing-runs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Owner-ID": owner,
+          "X-Owner-ID": token.ownerId,
         },
         body: JSON.stringify({
           schema_version: "portfolio-rebalancing-request.v1",
           request_id: `reb-${Date.now()}`,
-          owner_id: owner,
+          owner_id: token.ownerId,
           generated_at: new Date().toISOString(),
-          bundle: tpl.bundle,
-          target_weights: tpl.target_weights,
+          bundle: portfolio,
+          target_weights: targetWeights,
           deadband_pct: "0.50",
           max_turnover_pct: "50.00",
         }),
       });
+      if (!isContextRequestCurrent(token)) return null;
       if (!res.ok) throw new Error("生成调仓计划失败");
       const data = await res.json();
+      if (!isContextRequestCurrent(token)) return null;
       state.rebalancingRun = data;
       const chip = byId("rebalancing-status-chip");
       if (chip) {
@@ -5055,73 +5159,57 @@
 
   // 3. Advanced Explainability
   async function runAdvancedExplainability() {
-    const owner = state.ownerId;
     try {
-      const res = await fetch("/api/v1/advisor/explainability-runs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Owner-ID": owner,
-        },
-        body: JSON.stringify({
-          schema_version: "advanced-explainability-request.v1",
-          request_id: `exp-${Date.now()}`,
-          owner_id: owner,
-          generated_at: new Date().toISOString(),
-          risk_score: "35.00",
-          risk_level: "BALANCED",
-          action_type: "HOLD",
-          asset: "ASSET-TECH-ETF-001",
-          tech_exposure_pct: "38.50",
-          tech_cap_pct: "40.00",
-          top_asset_weight_pct: "35.00",
-          finding_count: 6,
-        }),
-      });
-      if (!res.ok) throw new Error("高级可解释性分析失败");
-      const data = await res.json();
+      await ensureDependency("PROFILE_CONTEXT");
+      await ensureDependency("PORTFOLIO_CONTEXT");
+      const health = await refreshPortfolioHealth();
+      if (!health) throw new Error("画像或持仓尚未确认，无法解释分析依据");
       const chip = byId("explainability-status-chip");
       if (chip) {
-        chip.textContent = "分析就绪";
-        chip.className = "status-chip ready";
+        chip.textContent = health.status;
+        chip.className = health.status === "PASS" ? "status-chip ready" : "status-chip review";
       }
       const driversPanel = byId("explainability-drivers-content");
-      driversPanel.textContent = "";
-      data.key_drivers.forEach((d) => {
+      clear(driversPanel);
+      health.calculation_steps.forEach((step, index) => {
         const div = document.createElement("div");
         div.className = "driver-item";
         const h = document.createElement("strong");
-        h.textContent = `[${d.category}] ${d.driver_name} (贡献度: ${d.contribution_pct}%)`;
+        h.textContent = `步骤 ${index + 1}`;
         const p = document.createElement("p");
-        p.textContent = d.explanation;
+        p.textContent = step;
         div.append(h, p);
         driversPanel.append(div);
       });
 
       const cfPanel = byId("explainability-counterfactual-content");
-      cfPanel.textContent = "";
-      data.counterfactuals.forEach((cf) => {
+      clear(cfPanel);
+      health.sectors.forEach((sector) => {
         const div = document.createElement("div");
         div.className = "counterfactual-item";
         const h = document.createElement("strong");
-        h.textContent = cf.scenario_name;
+        h.textContent = `${sector.name} · ${sector.verdictCode}`;
         const p1 = document.createElement("p");
-        p1.textContent = `条件变化: ${cf.condition_change} -> 预期动作: ${cf.expected_action_change}`;
+        p1.textContent = `后端结果：实际 ${sector.pct}%；边界 ${sector.limitOperator === "MIN" ? "≥" : "≤"}${sector.cap}%。`;
         const p2 = document.createElement("p");
-        p2.textContent = `原因: ${cf.rationale}`;
+        p2.textContent = sector.differenceLabel;
         div.append(h, p1, p2);
         cfPanel.append(div);
       });
 
       const trgPanel = byId("explainability-triggers-content");
-      trgPanel.textContent = "";
-      data.invalidation_triggers.forEach((trg) => {
+      clear(trgPanel);
+      const triggers = [
+        `持仓快照或画像发生变化时重新计算；当前敞口状态 ${health.source_exposure_status}`,
+        ...(health.issues || []).map((issue) => `数据问题：${issue}`),
+      ];
+      triggers.forEach((description) => {
         const div = document.createElement("div");
         div.className = "trigger-item";
         const h = document.createElement("strong");
-        h.textContent = `[${trg.trigger_type}] ${trg.description}`;
+        h.textContent = "复核条件";
         const p = document.createElement("p");
-        p.textContent = `触发阈值/事件: ${trg.threshold_or_event}`;
+        p.textContent = description;
         div.append(h, p);
         trgPanel.append(div);
       });
@@ -5337,16 +5425,15 @@
     clear(legendContainer);
 
     let items = [];
-    if (state.portfolioOptimizationRun && Array.isArray(state.portfolioOptimizationRun.target_allocations)) {
-      items = state.portfolioOptimizationRun.target_allocations.map(t => ({
-        label: t.asset_id || t.holding_id || "资产",
+    if (state.portfolioOptimizationRun && Array.isArray(state.portfolioOptimizationRun.targets)) {
+      items = state.portfolioOptimizationRun.targets.map(t => ({
+        label: t.asset_name || t.target_id || "资产",
         weight: parseFloat(t.target_weight_pct) || 0,
       }));
-    } else if (state.templateContext && state.templateContext.portfolio && Array.isArray(state.templateContext.portfolio.positions)) {
-      const total = state.templateContext.portfolio.positions.reduce((acc, p) => acc + (parseFloat(p.market_value) || 0), 0);
-      items = state.templateContext.portfolio.positions.map(p => ({
-        label: p.asset_id || "资产",
-        weight: total > 0 ? ((parseFloat(p.market_value) || 0) / total) * 100 : 0,
+    } else if (state.portfolioHealthRun && Array.isArray(state.portfolioHealthRun.sectors)) {
+      items = state.portfolioHealthRun.sectors.map((sector) => ({
+        label: sector.name,
+        weight: sector.pct,
       }));
     }
 
@@ -5535,7 +5622,7 @@
     const nodeReceipt = byId("node-receipt");
 
     if (nodeProfile) {
-      const ok = !!state.profileContext || !!state.templateContext;
+      const ok = !!state.profile || !!state.templateContext;
       nodeProfile.classList.toggle("verified", ok);
       const st = nodeProfile.querySelector(".lineage-node-status");
       if (st) st.textContent = ok ? "✓" : "1";
@@ -5651,13 +5738,11 @@
     name: "我的专属账户",
     tag: "R3 平衡型",
     riskLevel: "R3",
-    portfolioTag: "动态自选持仓",
+    portfolioTag: "待加载当前持仓",
     avatar: "👤",
     desc: "投资目标：控制回撤，稳健增长。",
     aum: "¥ 500,000",
-    techExposure: "28.0% · 在上限内",
     budgetCap: "30.0%",
-    evidenceStatus: "8项底稿 · 4轨验算",
     lossToleranceScore: "3",
     investmentHorizon: "MEDIUM",
     liquidityNeed: "MEDIUM",
@@ -5665,14 +5750,6 @@
     returnExpectation: "MODERATE",
     maxDrawdown: "15",
     defaultStock: "300750",
-    hhi: 1840,
-    sectors: [
-      { name: "科技半导体", pct: 28.0, cap: 30.0, color: "#3b82f6", overbound: false, topHoldings: "中芯国际、北方华创" },
-      { name: "先进制造", pct: 22.0, cap: 25.0, color: "#10b981", overbound: false, topHoldings: "宁德时代、比亚迪" },
-      { name: "消费医药", pct: 18.0, cap: 25.0, color: "#f97316", overbound: false, topHoldings: "贵州茅台、恒瑞医药" },
-      { name: "金融周期", pct: 14.0, cap: 20.0, color: "#8b5cf6", overbound: false, topHoldings: "招商银行、中国平安" },
-      { name: "可用现金", pct: 18.0, cap: 5.0, color: "#eab308", overbound: false, topHoldings: "证券账户现金" }
-    ],
     quickTags: [
       { label: "体检我的组合", intent: "CHECK_PORTFOLIO" },
       { label: "研究 300750", intent: "RESEARCH_STOCK", target: "300750" },
@@ -5688,13 +5765,11 @@
       ownerId: "demo-owner",
       name: "张先生",
       tag: "R3 平衡型",
-      portfolioTag: "科技重仓 (42.0%)",
+      portfolioTag: "待加载当前持仓",
       avatar: "👨‍💼",
       desc: "35岁中产白领 · 投资期限 中期 · 回撤容忍 ≤15% · 目标在控制波动的条件下获得稳健超额收益。",
       aum: "¥ 500,000",
-      techExposure: "42.0% · 超过上限",
       budgetCap: "30.0%",
-      evidenceStatus: "8项底稿 · 4轨验算",
       lossToleranceScore: "3",
       investmentHorizon: "MEDIUM",
       liquidityNeed: "MEDIUM",
@@ -5702,14 +5777,6 @@
       returnExpectation: "MODERATE",
       maxDrawdown: "15",
       defaultStock: "300750",
-      hhi: 2478,
-      sectors: [
-        { name: "科技半导体", pct: 42.0, cap: 30.0, color: "#3b82f6", overbound: true, topHoldings: "易方达科创50、中芯国际" },
-        { name: "先进制造", pct: 20.0, cap: 25.0, color: "#10b981", overbound: false, topHoldings: "宁德时代、汇川技术" },
-        { name: "消费医药", pct: 15.0, cap: 25.0, color: "#f97316", overbound: false, topHoldings: "贵州茅台、迈瑞医疗" },
-        { name: "金融周期", pct: 10.0, cap: 20.0, color: "#8b5cf6", overbound: false, topHoldings: "中国平安、招商银行" },
-        { name: "可用现金", pct: 13.0, cap: 5.0, color: "#eab308", overbound: false, topHoldings: "华宝添益货币ETF" }
-      ],
       quickTags: [
         { label: "体检科技持仓", intent: "CHECK_PORTFOLIO" },
         { label: "研究 300750", intent: "RESEARCH_STOCK", target: "300750" },
@@ -5722,13 +5789,11 @@
       ownerId: "demo-owner",
       name: "李阿姨",
       tag: "R2 稳健型",
-      portfolioTag: "稳健固收与红利",
+      portfolioTag: "待加载当前持仓",
       avatar: "👵",
       desc: "58岁退休长辈 · 投资期限 长期 · 回撤容忍 ≤8% · 注重本金安全、低波动与稳定分红收益。",
       aum: "¥ 800,000",
-      techExposure: "12.0% · 在上限内",
       budgetCap: "15.0%",
-      evidenceStatus: "8项底稿 · 4轨验算",
       lossToleranceScore: "2",
       investmentHorizon: "LONG",
       liquidityNeed: "LOW",
@@ -5736,14 +5801,6 @@
       returnExpectation: "LOW",
       maxDrawdown: "8",
       defaultStock: "113050",
-      hhi: 2950,
-      sectors: [
-        { name: "金融国债固收", pct: 45.0, cap: 50.0, color: "#8b5cf6", overbound: false, topHoldings: "国债ETF、工商银行" },
-        { name: "消费红利", pct: 25.0, cap: 30.0, color: "#f97316", overbound: false, topHoldings: "长江电力、大秦铁路" },
-        { name: "先进制造", pct: 10.0, cap: 15.0, color: "#10b981", overbound: false, topHoldings: "美的集团" },
-        { name: "科技半导体", pct: 5.0, cap: 15.0, color: "#3b82f6", overbound: false, topHoldings: "紫光国微" },
-        { name: "可用现金", pct: 15.0, cap: 5.0, color: "#eab308", overbound: false, topHoldings: "建信现金添利" }
-      ],
       quickTags: [
         { label: "检查组合风险", intent: "CHECK_PORTFOLIO" },
         { label: "研究 113050", intent: "RESEARCH_STOCK", target: "113050" },
@@ -5756,13 +5813,11 @@
       ownerId: "demo-owner",
       name: "王同学",
       tag: "R4 进取型",
-      portfolioTag: "成长 ETF 与高弹性",
+      portfolioTag: "待加载当前持仓",
       avatar: "🧑‍💻",
       desc: "28岁青年投资者 · 投资期限 长期 · 回撤容忍 ≤25% · 偏好科创板龙头与高成长赛道，追求超额 Alpha。",
       aum: "¥ 200,000",
-      techExposure: "48.0% · 在上限内",
       budgetCap: "50.0%",
-      evidenceStatus: "8项底稿 · 4轨验算",
       lossToleranceScore: "4",
       investmentHorizon: "LONG",
       liquidityNeed: "HIGH",
@@ -5770,14 +5825,6 @@
       returnExpectation: "HIGH",
       maxDrawdown: "25",
       defaultStock: "588000",
-      hhi: 3180,
-      sectors: [
-        { name: "科技半导体", pct: 48.0, cap: 50.0, color: "#3b82f6", overbound: false, topHoldings: "科创50ETF、北方华创" },
-        { name: "新能源智能车", pct: 26.0, cap: 30.0, color: "#10b981", overbound: false, topHoldings: "比亚迪、天齐锂业" },
-        { name: "生物医药", pct: 12.0, cap: 20.0, color: "#f97316", overbound: false, topHoldings: "恒瑞医药" },
-        { name: "周期与其它", pct: 6.0, cap: 15.0, color: "#8b5cf6", overbound: false, topHoldings: "紫金矿业" },
-        { name: "可用现金", pct: 8.0, cap: 5.0, color: "#eab308", overbound: false, topHoldings: "证券账户可用资金" }
-      ],
       quickTags: [
         { label: "体检成长组合波动", intent: "CHECK_PORTFOLIO" },
         { label: "研究 588000", intent: "RESEARCH_STOCK", target: "588000" },
@@ -5897,11 +5944,16 @@
     const persona = PERSONAS[personaId];
     if (!persona) return;
     microStore.transact((store) => {
+      invalidateDerivedState(store);
       store.selectedPersona = personaId;
       store.ownerId = persona.ownerId;
-      store.profile = persona;
-      store.customStressRun = null;
+      store.profile = null;
+      store.portfolio = null;
+      store.queryTemplate = null;
+      store.templateContext = null;
+      store.ocrPortfolioDraft = null;
     });
+    renderInvalidatedDerivedState();
 
     // Keep the compact current-profile summary in sync; example profiles stay behind
     // the optional picker so the main task surface remains calm.
@@ -5929,18 +5981,16 @@
 
     // Update stats
     const aum = byId("copilot-stat-aum");
-    if (aum) aum.textContent = persona.aum;
+    if (aum) aum.textContent = "计算中…";
     const tech = byId("copilot-stat-tech");
     if (tech) {
-      tech.textContent = persona.techExposure;
-      const isOverBudget = persona.techExposure.includes("超标") || persona.techExposure.includes("超过");
-      tech.classList.toggle("alert-text", isOverBudget);
-      tech.classList.toggle("ok-text", !isOverBudget);
+      tech.textContent = "计算中…";
+      tech.classList.remove("alert-text", "ok-text");
     }
     const budget = byId("copilot-stat-budget");
-    if (budget) budget.textContent = persona.budgetCap;
+    if (budget) budget.textContent = "计算中…";
     const evStat = byId("copilot-stat-evidence");
-    if (evStat) evStat.textContent = persona.evidenceStatus;
+    if (evStat) evStat.textContent = "待计算";
 
     // Update underlying form fields
     const ownerInput = byId("owner-id");
@@ -5965,11 +6015,18 @@
     renderQuickTags(persona.quickTags);
 
     // Refresh underlying state and charts
-    ensureDependency("PROFILE_CONTEXT").catch(() => {});
     renderHeroDonutChart(personaId);
     renderOverviewWorkspace(personaId);
-    loadEvents();
-    loadRecommendationHistory();
+    Promise.allSettled([loadEvents(), loadRecommendationHistory()])
+      .then(async () => {
+        if (state.selectedPersona !== personaId) return;
+        await ensureDependency("PROFILE_CONTEXT");
+        if (state.selectedPersona !== personaId) return;
+        await ensureDependency("PORTFOLIO_CONTEXT");
+        if (state.selectedPersona !== personaId) return;
+        await refreshPortfolioHealth();
+      })
+      .catch((error) => setError(error.message || "持仓体检初始化失败"));
     updateVisualCompanion();
   }
 
@@ -6076,18 +6133,92 @@
   }
 
   function getSectorVerdict(s) {
-    const isCash = s.name.includes("现金") || s.name.includes("流动性");
-    const isOver = isCash ? (s.pct < s.cap) : (s.pct > s.cap);
-    const diffVal = s.pct - s.cap;
     return {
-      isCash,
-      isOver,
-      diffVal,
-      verdictCode: isOver ? "OVERBOUND" : "PASS",
-      diffLabel: isCash
-        ? (isOver ? `缺口 ${(s.cap - s.pct).toFixed(1)}%` : `+${diffVal.toFixed(1)}% (缓冲充裕)`)
-        : (isOver ? `+${diffVal.toFixed(1)}% (超出上限)` : `${diffVal >= 0 ? "+" : ""}${diffVal.toFixed(1)}% (合规)`)
+      isCash: s.limitOperator === "MIN",
+      isOver: s.verdictCode === "OVERBOUND",
+      diffVal: s.differencePctPoints,
+      verdictCode: s.verdictCode,
+      diffLabel: s.differenceLabel,
     };
+  }
+
+  const SECTOR_COLORS = Object.freeze({
+    TECHNOLOGY: "#3b82f6",
+    INDUSTRIALS: "#10b981",
+    CONSUMER_HEALTHCARE: "#f97316",
+    FINANCE_CYCLICAL: "#8b5cf6",
+    CASH: "#eab308",
+    UNCLASSIFIED: "#94a3b8",
+  });
+
+  function portfolioHealthView(data) {
+    return {
+      ...data,
+      sectors: (data.sectors || []).map((row) => ({
+        sectorKey: row.sector_key,
+        name: row.name,
+        pct: Number(row.weight_pct),
+        cap: Number(row.limit_pct),
+        color: SECTOR_COLORS[row.sector_key] || SECTOR_COLORS.UNCLASSIFIED,
+        topHoldings: (row.top_holdings || []).join("、") || "无可用穿透标的",
+        limitOperator: row.limit_operator,
+        differencePctPoints: Number(row.difference_pct_points),
+        marginPctPoints: Number(row.margin_pct_points),
+        verdictCode: row.verdict,
+        differenceLabel: row.verdict === "OVERBOUND"
+          ? `${row.limit_operator === "MIN" ? "不足" : "超限"} ${row.margin_pct_points} 个百分点`
+          : `余量 ${row.margin_pct_points} 个百分点`,
+      })),
+    };
+  }
+
+  async function refreshPortfolioHealth() {
+    if (!state.profile?.profile || !state.portfolio) {
+      microStore.transact((store) => {
+        store.portfolioHealthSequence += 1;
+        store.portfolioHealthRun = null;
+      });
+      renderHeroDonutChart(state.selectedPersona);
+      renderOverviewWorkspace(state.selectedPersona);
+      return null;
+    }
+    const token = beginContextRequest("portfolioHealthSequence");
+    const profile = token.profile.profile;
+    const portfolio = token.portfolio;
+    const response = await fetch("/api/v1/advisor/portfolio-health", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": token.ownerId },
+      body: JSON.stringify({
+        schema_version: "portfolio-health-request.v1",
+        request_id: `portfolio-health-${Date.now()}`,
+        owner_id: token.ownerId,
+        calculated_at: new Date().toISOString(),
+        portfolio,
+        profile,
+      }),
+    });
+    if (!isContextRequestCurrent(token)) return null;
+    if (!response.ok) throw await apiError(response);
+    const result = portfolioHealthView(await response.json());
+    if (!isContextRequestCurrent(token)) return null;
+    state.portfolioHealthRun = result;
+    const health = state.portfolioHealthRun;
+    const aum = byId("copilot-stat-aum");
+    if (aum) aum.textContent = `¥ ${Number(health.total_market_value_cny).toLocaleString()}`;
+    const tech = byId("copilot-stat-tech");
+    const topSector = health.sectors.find((row) => row.sectorKey === health.top_sector_key);
+    if (tech) {
+      tech.textContent = `${health.top_sector_name} ${health.top_sector_weight_pct}%`;
+      tech.classList.toggle("alert-text", topSector?.verdictCode === "OVERBOUND");
+      tech.classList.toggle("ok-text", topSector?.verdictCode === "PASS");
+    }
+    const budget = byId("copilot-stat-budget");
+    if (budget) budget.textContent = topSector ? `${topSector.cap}%` : "待计算";
+    const evidence = byId("copilot-stat-evidence");
+    if (evidence) evidence.textContent = `${health.evidence_count}项穿透贡献 · Python 验算`;
+    renderHeroDonutChart(state.selectedPersona);
+    renderOverviewWorkspace(state.selectedPersona);
+    return health;
   }
 
   function renderEvidenceLineageModal() {
@@ -6117,6 +6248,9 @@
     thead.append(hRow);
 
     const isLiveMode = state.dataMode === "LIVE";
+    const health = state.portfolioHealthRun;
+    const hasHealth = Boolean(health);
+    const healthPass = health?.status === "PASS";
     const steps = [
       {
         step: "Step 01",
@@ -6125,32 +6259,32 @@
           ? "Tencent 主源 → Sina 备用源 → 静态底稿；财务字段独立记录缺失状态"
           : "内置合成底稿（MOCK）；不冒充实时行情或官方财务数据",
         logic: "记录 provider_tier、quote_latency_ms 与 staleness_seconds；缺失字段不补造",
-        verdict: isLiveMode ? "READY / FALLBACK" : "DEMO 示例",
-        statusClass: "matrix-status-pass"
+        verdict: isLiveMode ? "CONFIGURED 已配置" : "DEMO 示例",
+        statusClass: isLiveMode ? "matrix-status-pass" : "matrix-status-overbound"
       },
       {
         step: "Step 02",
         name: "基金穿透暴露加权折算",
-        source: "公募基金前十大重仓股票持仓明细与资产净值",
+        source: hasHealth ? `当前持仓合同；${health.evidence_count} 项穿透贡献` : "尚未确认持仓合同",
         logic: "穿透折算 Exposure_i = ∑ w_k · r_{k,i}，归集至 5 大产业链",
-        verdict: "CALCULATED 折算",
-        statusClass: "matrix-status-pass"
+        verdict: hasHealth ? "CALCULATED 已计算" : "NOT_RUN 未执行",
+        statusClass: hasHealth ? "matrix-status-pass" : "matrix-status-overbound"
       },
       {
         step: "Step 03",
         name: "风控限额与HHI硬闸门校验",
-        source: "组合穿透矩阵与当前 R3 投资画像边界",
-        logic: "单一行业 ≤30.0%、现金缓冲 ≥5.0%、HHI 集中度校验",
-        verdict: "PASS 正常",
-        statusClass: "matrix-status-pass"
+        source: hasHealth ? "组合穿透矩阵与当前已确认投资画像" : "画像或持仓尚未完成确认",
+        logic: "按后端画像预算校验行业上限、现金缓冲与 HHI 集中度",
+        verdict: hasHealth ? `${health.status} 后端裁决` : "NOT_RUN 未执行",
+        statusClass: healthPass ? "matrix-status-pass" : "matrix-status-overbound"
       },
       {
         step: "Step 04",
         name: "不可篡改证据存证与哈希",
-        source: "本地 Evidence DAG 节点；当前窗口展示流程摘要",
+        source: state.events.length ? `本地 Evidence DAG；当前载入 ${state.events.length} 条事件` : "当前未载入决策回执",
         logic: "仅在已有决策回执时校验真实内容哈希；不生成示例哈希冒充存证",
-        verdict: "PROCESS 流程",
-        statusClass: "matrix-status-pass"
+        verdict: state.events.length ? "AVAILABLE 可核验" : "NOT_RUN 未执行",
+        statusClass: state.events.length ? "matrix-status-pass" : "matrix-status-overbound"
       }
     ];
 
@@ -6259,16 +6393,15 @@
     return table;
   }
 
-  function buildMultiDimensionalMetricsGrid(persona) {
-    const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
-    const maxSector = [...sectors].sort((a, b) => b.pct - a.pct)[0];
-    const cashSector = sectors.find(s => s.name.includes("现金")) || { pct: 15.0 };
+  function buildMultiDimensionalMetricsGrid(health) {
+    const maxSector = (health.sectors || []).find(s => s.sectorKey === health.top_sector_key);
+    const cashSector = (health.sectors || []).find(s => s.sectorKey === "CASH");
 
     const metricsData = [
-      { label: "单一最大行业集中度", value: `${maxSector.pct.toFixed(1)}% (${maxSector.name})`, status: `上限 ${maxSector.cap.toFixed(1)}% · ${maxSector.pct > maxSector.cap ? "OVERBOUND 预警" : "PASS 正常"}`, isOk: maxSector.pct <= maxSector.cap },
-      { label: "组合分散度指数 (HHI)", value: `${persona.hhi || 1840}`, status: `${(persona.hhi || 1840) <= 2500 ? "≤ 2500 · PASS 优良" : "> 2500 · 结构偏集中"}`, isOk: (persona.hhi || 1840) <= 2500 },
-      { label: "现金与流动性安全垫", value: `${cashSector.pct.toFixed(1)}%`, status: "硬性要求 ≥ 5.0% · PASS 充裕", isOk: cashSector.pct >= 5.0 },
-      { label: "底层财务暴雷排查", value: "0 项预警", status: "ROE / 负债率 / 质押率合格", isOk: true }
+      { label: "单一最大行业集中度", value: `${health.top_sector_weight_pct}% (${health.top_sector_name})`, status: `${maxSector?.verdictCode || "REVIEW_REQUIRED"} · Python 风控`, isOk: maxSector?.verdictCode === "PASS" },
+      { label: "组合分散度指数 (HHI)", value: `${health.sector_hhi}`, status: `阈值 ${health.hhi_limit} · ${health.hhi_verdict}`, isOk: health.hhi_verdict === "PASS" },
+      { label: "现金与流动性安全垫", value: `${health.cash_weight_pct}%`, status: `硬性要求 ≥ ${health.cash_minimum_pct}% · ${cashSector?.verdictCode || "REVIEW_REQUIRED"}`, isOk: cashSector?.verdictCode === "PASS" },
+      { label: "底层财务排查", value: "未执行", status: "本次体检未提供财务凭证", isOk: false }
     ];
 
     const mGrid = document.createElement("div");
@@ -6310,20 +6443,33 @@
     }
 
     const persona = PERSONAS[personaId || state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
-    const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
+    const health = state.portfolioHealthRun;
+    const sectors = health?.sectors || [];
+    if (!health || !sectors.length) {
+      if (hintEl) hintEl.textContent = "正在等待 Python 持仓穿透结果…";
+      if (verdictBadge) verdictBadge.textContent = "CALCULATING 计算中";
+      if (causeCallout) causeCallout.textContent = "画像与持仓确认后，由后端执行穿透与风险闸门。";
+      return;
+    }
     const overboundList = sectors
       .map(s => ({ sector: s, verdict: getSectorVerdict(s) }))
       .filter(x => x.verdict.isOver);
-    const isAnyOverbound = overboundList.length > 0;
+    const isAnyOverbound = health.has_breaches;
+    const requiresReview = health.status !== "PASS";
 
     if (rankPill) rankPill.textContent = persona.tag;
     if (verdictBadge) {
       clear(verdictBadge);
-      verdictBadge.className = isAnyOverbound ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
-      const vIcon = createSvgIcon(isAnyOverbound ? "icon-alert" : "icon-check", "prism-icon");
+      verdictBadge.className = requiresReview ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
+      const vIcon = createSvgIcon(requiresReview ? "icon-alert" : "icon-check", "prism-icon");
       if (isAnyOverbound) {
         const topOver = overboundList[0];
-        verdictBadge.append(vIcon, document.createTextNode(` OVERBOUND ${topOver.sector.name}超标 (+${topOver.verdict.diffVal.toFixed(1)}%)`));
+        const breachText = topOver.verdict.isCash
+          ? `${topOver.sector.name}不足 (${topOver.verdict.diffVal.toFixed(1)}%)`
+          : `${topOver.sector.name}超标 (+${topOver.verdict.diffVal.toFixed(1)}%)`;
+        verdictBadge.append(vIcon, document.createTextNode(` OVERBOUND ${breachText}`));
+      } else if (requiresReview) {
+        verdictBadge.append(vIcon, document.createTextNode(` ${health.status} 数据需复核`));
       } else {
         verdictBadge.append(vIcon, document.createTextNode(" PASS 合规正常"));
       }
@@ -6332,10 +6478,16 @@
     if (causeCallout) {
       if (isAnyOverbound) {
         causeCallout.className = "donut-cause-callout risk";
-        causeCallout.textContent = `风险拦截原因：${overboundList.map(x => `【${x.sector.name}】实际暴露 ${x.sector.pct.toFixed(1)}% 超过画像上限 ${x.sector.cap.toFixed(1)}%（偏离度 +${x.verdict.diffVal.toFixed(1)}%）`).join("；")}。已触发智能硬闸门拦截，建议通过调仓减配。`;
+        causeCallout.textContent = `风险拦截原因：${overboundList.map(x => x.verdict.isCash
+          ? `【${x.sector.name}】实际比例 ${x.sector.pct.toFixed(1)}% 低于最低要求 ${x.sector.cap.toFixed(1)}%（差额 ${x.sector.marginPctPoints.toFixed(1)}%）`
+          : `【${x.sector.name}】实际暴露 ${x.sector.pct.toFixed(1)}% 超过画像上限 ${x.sector.cap.toFixed(1)}%（超出 ${x.sector.marginPctPoints.toFixed(1)}%）`
+        ).join("；")}。已触发后端风险闸门，需通过调仓服务重新测算。`;
+      } else if (requiresReview) {
+        causeCallout.className = "donut-cause-callout risk";
+        causeCallout.textContent = `当前没有数值超限项，但后端状态为 ${health.status}；请先处理缺失或未分类数据。`;
       } else {
         causeCallout.className = "donut-cause-callout pass";
-        causeCallout.textContent = `合规状态：全组合 5 大行业及流动性暴露均在 ${persona.tag} 安全限额内（主行业暴露 ≤ 上限），未触发硬闸门拦截。`;
+        causeCallout.textContent = `合规状态：后端穿透结果处于 ${persona.tag} 安全限额内，未触发硬闸门拦截。`;
       }
     }
 
@@ -6409,9 +6561,9 @@
       const result = document.createElement("p");
       result.className = "donut-sector-detail-result";
       if (v.isOver) {
-        result.textContent = `偏离限额 ${v.diffVal.toFixed(1)} 个百分点，已触发风险复核。`;
+        result.textContent = `偏离限额 ${s.marginPctPoints} 个百分点，已触发风险复核。`;
       } else {
-        result.textContent = `距限额仍有 ${Math.abs(v.diffVal).toFixed(1)} 个百分点缓冲，当前判定合规。`;
+        result.textContent = `距限额仍有 ${s.marginPctPoints} 个百分点缓冲，当前判定合规。`;
       }
 
       const holdings = document.createElement("p");
@@ -6517,26 +6669,38 @@
     clear(tableBody);
     clear(metricsBody);
 
-    const persona = PERSONAS[personaId || state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
-    const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
-    const isAnyOverbound = sectors.some(s => getSectorVerdict(s).isOver);
+    const health = state.portfolioHealthRun;
+    if (!health) {
+      tableBody.textContent = "正在等待 Python 持仓穿透结果…";
+      metricsBody.textContent = "画像与持仓确认后生成确定性风险指标。";
+      return;
+    }
+    const sectors = health.sectors;
+    const isAnyOverbound = health.has_breaches;
+    const requiresReview = health.status !== "PASS";
 
     if (tableVerdict) {
       clear(tableVerdict);
-      tableVerdict.className = isAnyOverbound ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
+      tableVerdict.className = requiresReview ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
       tableVerdict.append(
-        createSvgIcon(isAnyOverbound ? "icon-alert" : "icon-check", "prism-icon"),
-        document.createTextNode(isAnyOverbound ? " OVERBOUND 限额拦截" : " PASS 合规正常")
+        createSvgIcon(requiresReview ? "icon-alert" : "icon-check", "prism-icon"),
+        document.createTextNode(
+          isAnyOverbound
+            ? " OVERBOUND 限额拦截"
+            : requiresReview
+              ? ` ${health.status} 数据复核`
+              : " PASS 合规正常"
+        )
       );
     }
 
     if (hhiChip) {
-      hhiChip.textContent = `HHI ${persona.hhi || 1840} (${(persona.hhi || 1840) <= 2500 ? "优良分散" : "高度集中"})`;
-      hhiChip.className = (persona.hhi || 1840) <= 2500 ? "status-chip ok" : "status-chip alert";
+      hhiChip.textContent = `HHI ${health.sector_hhi} (${health.hhi_verdict})`;
+      hhiChip.className = health.hhi_verdict === "PASS" ? "status-chip ok" : "status-chip alert";
     }
 
     tableBody.append(buildMultiIndustryMatrixTable(sectors));
-    metricsBody.append(buildMultiDimensionalMetricsGrid(persona));
+    metricsBody.append(buildMultiDimensionalMetricsGrid(health));
   }
 
   async function runCopilotHealthCheck() {
@@ -6546,11 +6710,13 @@
     output.append(buildCopilotLoadingCard("icon-activity", "正在检查你的组合…", "正在核对全行业集中度、画像边界、HHI指标和可用证据。"));
 
     try {
-      await runAdvisorQuery({ preventDefault: () => {} });
-
+      const health = await refreshPortfolioHealth();
+      if (!health) throw new Error("后端未返回持仓穿透结果");
       const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"] || DEFAULT_USER_PROFILE;
-      const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
-      const isOverBudget = sectors.some(s => getSectorVerdict(s).isOver);
+      const sectors = health.sectors;
+      const hasBreaches = health.has_breaches;
+      const requiresReview = health.status !== "PASS";
+      const technologySector = sectors.find((sector) => sector.code === "TECHNOLOGY");
 
       clear(output);
       const card = document.createElement("div");
@@ -6558,22 +6724,27 @@
 
       // Banner
       const banner = document.createElement("div");
-      banner.className = `decision-banner ${isOverBudget ? "reduce" : "hold"}`;
+      banner.className = `decision-banner ${requiresReview ? "reduce" : "hold"}`;
       const verdictTitleWrap = document.createElement("div");
       verdictTitleWrap.className = "decision-verdict-title";
       const icon = document.createElement("span");
       icon.className = "decision-verdict-icon";
-      icon.append(createSvgIcon(isOverBudget ? "icon-alert" : "icon-shield-check", "prism-icon prism-icon-lg"));
+      icon.append(createSvgIcon(requiresReview ? "icon-alert" : "icon-shield-check", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = isOverBudget
-        ? "持仓体检结论：部分行业穿透暴露超过画像边界 · 建议降低集中度"
-        : "持仓体检结论：全组合各维度处于当前安全边界内 · 可以继续观察";
+      h3.textContent = hasBreaches
+        ? "持仓体检结论：至少一项确定性风险边界被触发 · 需要复核"
+        : requiresReview
+          ? "持仓体检结论：输入数据尚未满足完整计算条件 · 需要复核"
+          : "持仓体检结论：全组合各维度处于当前安全边界内 · 可以继续观察";
       verdictTitleWrap.append(icon, h3);
 
       const statusChip = document.createElement("span");
-      statusChip.className = isOverBudget ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
-      if (isOverBudget) {
-        statusChip.append(createSvgIcon("icon-alert", "prism-icon"), document.createTextNode(" OVERBOUND 风险拦截"));
+      statusChip.className = requiresReview ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
+      if (requiresReview) {
+        statusChip.append(
+          createSvgIcon("icon-alert", "prism-icon"),
+          document.createTextNode(hasBreaches ? " OVERBOUND 风险拦截" : ` ${health.status} 数据复核`)
+        );
       } else {
         statusChip.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" PASS 合规通过"));
       }
@@ -6585,23 +6756,29 @@
 
       // 菜鸟/文档风格 Callout 诊断说明
       const callout = document.createElement("div");
-      callout.className = isOverBudget ? "doc-callout doc-callout-danger" : "doc-callout doc-callout-tip";
+      callout.className = requiresReview ? "doc-callout doc-callout-danger" : "doc-callout doc-callout-tip";
       
       const cIcon = document.createElement("div");
       cIcon.className = "callout-icon";
-      cIcon.append(createSvgIcon(isOverBudget ? "icon-alert" : "icon-info", "prism-icon"));
+      cIcon.append(createSvgIcon(requiresReview ? "icon-alert" : "icon-info", "prism-icon"));
       
       const cContent = document.createElement("div");
       cContent.className = "callout-content";
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
-      cTitle.textContent = isOverBudget ? "风险拦截：多维体检发现隐性集中度超标" : "合规提示：全组合多维健康度处于安全阈值内";
+      cTitle.textContent = hasBreaches
+        ? "风险拦截：多维体检触发后端硬闸门"
+        : requiresReview
+          ? "数据复核：部分指标缺少完整输入"
+          : "合规提示：全组合多维健康度处于安全阈值内";
       
       const cP = document.createElement("p");
-      cP.textContent = `根据 ${persona.name} 的 ${persona.tag}（最大回撤 ≤${persona.maxDrawdown}%），全组合穿透后覆盖 ${sectors.length} 个产业大类。` +
-        (isOverBudget
-          ? `其中科技半导体暴露达 ${persona.techExposure.split(" ")[0]}，已超过 ${persona.budgetCap} 的行业风险上限。建议先降低集中度，再重新检查组合。`
-          : `整体处于安全风险预算范围内，各行业配置均衡，建议继续持有核心底仓并关注宏观流动性变化。`);
+      cP.textContent = `根据 ${persona.name} 的已确认画像，Python 已对当前持仓执行逐层穿透、集中度计算和风险闸门。` +
+        (hasBreaches
+          ? "至少一项确定性风险边界被触发，后续调整必须通过调仓服务重新测算。"
+          : requiresReview
+            ? "当前结果仅覆盖可计算指标；未分类或缺失输入必须补齐后重新计算。"
+            : "当前可计算指标均处于画像边界内；未提供的数据不会推断为正常。" );
       
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
@@ -6610,9 +6787,9 @@
       const metricsRow = document.createElement("div");
       metricsRow.className = "decision-metrics-row";
       metricsRow.append(
-        buildCopilotMetricBox("当前科技暴露", persona.techExposure.split(" ")[0], isOverBudget, false, "穿透底层全部持仓基金后，科技与半导体产业链真实加权暴露比例。"),
-        buildCopilotMetricBox("画像限额上限", persona.budgetCap, false, false, "投资者画像设定的单一行业配置硬性安全上限。"),
-        buildCopilotMetricBox("建议调整目标", isOverBudget ? "28.0%" : persona.techExposure.split(" ")[0], false, true, "执行调仓再平衡后预期达到的安全配置水平。")
+        buildCopilotMetricBox("当前科技暴露", `${health.technology_weight_pct}%`, technologySector?.verdictCode === "OVERBOUND", technologySector?.verdictCode === "PASS", "由 Python 穿透底层基金持仓后计算。"),
+        buildCopilotMetricBox("科技风险上限", `${health.technology_limit_pct}%`, false, false, "来自后端确认画像的风险预算。"),
+        buildCopilotMetricBox("组合 HHI", `${health.sector_hhi}`, health.hhi_verdict === "OVERBOUND", health.hhi_verdict === "PASS", "由后端基于闭合行业权重计算。")
       );
 
       // 全行业穿透对照表
@@ -6631,7 +6808,7 @@
       mGridTitle.style.margin = "0 0 8px";
       mGridTitle.style.fontSize = "13.5px";
       mGridTitle.append(createSvgIcon("icon-shield-check", "prism-icon"), document.createTextNode(" 组合多维健康度评分网格 (Multi-Dimensional)："));
-      multiMetricsWrap.append(mGridTitle, buildMultiDimensionalMetricsGrid(persona));
+      multiMetricsWrap.append(mGridTitle, buildMultiDimensionalMetricsGrid(health));
 
       // Reasons
       const reasonsWrap = document.createElement("div");
@@ -6647,62 +6824,22 @@
       const r1 = document.createElement("li");
       const r1Bold = document.createElement("strong");
       r1Bold.textContent = "持仓穿透发现：";
-      r1.append(r1Bold, document.createTextNode("全持仓穿透至底层个股，各行业权重清晰归因，隐性重叠标的一览无余。"));
+      r1.append(r1Bold, document.createTextNode("后端已将当前持仓归集为可审计的底层贡献，并明确保留未分类或缺失输入。"));
 
       const r2 = document.createElement("li");
       const r2Bold = document.createElement("strong");
       r2Bold.textContent = "多行业分散度：";
-      r2.append(r2Bold, document.createTextNode(`组合当前 HHI 指数为 ${persona.hhi || 1840}，${(persona.hhi || 1840) <= 2500 ? "处于优良分散区间，单一行业黑天鹅冲击风险较低" : "集中度偏高，需警惕赛道补跌风险"}。`));
+      r2.append(r2Bold, document.createTextNode(`组合当前 HHI 指数为 ${health.sector_hhi}，后端裁决为 ${health.hhi_verdict}。`));
 
       const r3 = document.createElement("li");
       const r3Bold = document.createElement("strong");
-      r3Bold.textContent = "流动性与财务防线：";
-      r3.append(r3Bold, document.createTextNode("现金缓冲充裕（≥5.0%），底层核心标的经问财六项财务指标排查均未发现重大造假或违约脆弱性。"));
+      r3Bold.textContent = "数据边界：";
+      r3.append(r3Bold, document.createTextNode(`现金权重 ${health.cash_weight_pct}%，最低边界 ${health.cash_minimum_pct}%；本次未执行财务凭证排查。`));
 
       reasonsList.append(r1, r2, r3);
       reasonsWrap.append(reasonsHead, reasonsList);
 
       body.append(callout, metricsRow, matrixTableWrap, multiMetricsWrap, reasonsWrap);
-
-      // Action steps if over budget
-      if (isOverBudget) {
-        const stepsWrap = document.createElement("div");
-        stepsWrap.className = "decision-action-steps";
-        const stepsHead = document.createElement("div");
-        stepsHead.className = "action-steps-head";
-        stepsHead.textContent = "📋 建议执行调仓步骤：";
-
-        const step1 = document.createElement("div");
-        step1.className = "action-step-item";
-        const step1Left = document.createElement("div");
-        const s1Num = document.createElement("span");
-        s1Num.className = "step-num";
-        s1Num.textContent = "1";
-        const s1Strong = document.createElement("strong");
-        s1Strong.textContent = "易方达科技创新混合";
-        step1Left.append(s1Num, document.createTextNode(" 减持 "), s1Strong, document.createTextNode("（调减 5.0%）"));
-        const s1Chip = document.createElement("span");
-        s1Chip.className = "status-chip alert";
-        s1Chip.textContent = "卖出 (SELL)";
-        step1.append(step1Left, s1Chip);
-
-        const step2 = document.createElement("div");
-        step2.className = "action-step-item";
-        const step2Left = document.createElement("div");
-        const s2Num = document.createElement("span");
-        s2Num.className = "step-num";
-        s2Num.textContent = "2";
-        const s2Strong = document.createElement("strong");
-        s2Strong.textContent = "华泰柏瑞沪深300 ETF";
-        step2Left.append(s2Num, document.createTextNode(" 增配 "), s2Strong, document.createTextNode("（调增 5.0%）"));
-        const s2Chip = document.createElement("span");
-        s2Chip.className = "status-chip ready";
-        s2Chip.textContent = "买入 (BUY)";
-        step2.append(step2Left, s2Chip);
-
-        stepsWrap.append(stepsHead, step1, step2);
-        body.append(stepsWrap);
-      }
 
       // Drilldown links
       body.append(buildCopilotDrilldownRow([
@@ -6983,38 +7120,12 @@
         return;
       }
 
-      const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
-
-      // Deterministic Financial Suitability Evaluation
-      let valuationTag = "合理区间";
-      if (quote.valuation_quantile_pct < 30) {
-        valuationTag = "低估区间";
-      } else if (quote.valuation_quantile_pct > 70) {
-        valuationTag = "高估偏热";
-      }
-
-      const isConservative = persona.tag.includes("R1") || persona.tag.includes("R2");
-      const isHighRiskStock = quote.pe_ttm > 80 || quote.symbol.startsWith("688") || quote.valuation_quantile_pct > 80;
-      let suitabilityPass = true;
-      let verdictBannerClass = "buy";
-      let verdictTitle = `标的研判结论：${quote.name} (${quote.symbol}) · 适度配置`;
-      let verdictChipText = "FACT CHECKED 交易所行情与财报核验通过";
-      let verdictChipClass = "cf-verdict-pass";
-
-      if (isConservative && isHighRiskStock) {
-        suitabilityPass = false;
-        verdictBannerClass = "overbound";
-        verdictTitle = `标的研判警示：${quote.name} (${quote.symbol}) · 适当性超限`;
-        verdictChipText = "OVERBOUND 风险预算超限";
-        verdictChipClass = "cf-verdict-overbound";
-      }
-
-      let maxAllocCap = "≤ 5.0%";
-      if (persona.tag.includes("R4") || persona.tag.includes("R5")) {
-        maxAllocCap = "≤ 10.0%";
-      } else if (isConservative) {
-        maxAllocCap = suitabilityPass ? "≤ 3.0%" : "0.0% (建议回避)";
-      }
+      const providerTier = quote.provider_tier || "UNSPECIFIED";
+      const sourceIsLive = providerTier === "LIVE_PRIMARY" || providerTier === "LIVE_SECONDARY";
+      const verdictBannerClass = sourceIsLive ? "buy" : "hold";
+      const verdictTitle = `标的底稿：${quote.name} (${quote.symbol}) · ${providerTier}`;
+      const verdictChipText = sourceIsLive ? "QUOTE 行情快照已获取" : "STATIC 静态底稿";
+      const verdictChipClass = sourceIsLive ? "cf-verdict-pass" : "cf-verdict-hold";
 
       clear(output);
       const card = document.createElement("div");
@@ -7027,14 +7138,14 @@
       titleWrap.className = "decision-verdict-title";
       const icon = document.createElement("span");
       icon.className = "decision-verdict-icon";
-      icon.append(createSvgIcon(suitabilityPass ? "icon-check" : "icon-alert", "prism-icon prism-icon-lg"));
+      icon.append(createSvgIcon(sourceIsLive ? "icon-check" : "icon-file-text", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
       h3.textContent = verdictTitle;
       titleWrap.append(icon, h3);
 
       const statusChip = document.createElement("span");
       statusChip.className = `cf-verdict ${verdictChipClass}`;
-      statusChip.append(createSvgIcon(suitabilityPass ? "icon-check" : "icon-x", "prism-icon"), document.createTextNode(` ${verdictChipText}`));
+      statusChip.append(createSvgIcon(sourceIsLive ? "icon-check" : "icon-file-text", "prism-icon"), document.createTextNode(` ${verdictChipText}`));
       banner.append(titleWrap, statusChip);
 
       // Body
@@ -7054,7 +7165,7 @@
         anTitle.className = "callout-title";
         anTitle.textContent = "已自动完成前置底稿建档依赖";
         const anText = document.createElement("p");
-        anText.textContent = `系统检测到标的代码 [${cleanCode}] 初始未收录，已自动触发前置依赖补偿机制，从交易所实时快照与财报库完成建档入库与财务比率核算。`;
+        anText.textContent = `系统检测到标的代码 [${cleanCode}] 初始未收录，已按主行情源、备用行情源、静态底稿顺序尝试建档；缺失财务字段保持显式缺失。`;
         anContent.append(anTitle, anText);
         autoNotice.append(anIcon, anContent);
         body.append(autoNotice);
@@ -7062,21 +7173,17 @@
 
       // Callout
       const callout = document.createElement("div");
-      callout.className = suitabilityPass ? "doc-callout doc-callout-info" : "doc-callout doc-callout-danger";
+      callout.className = sourceIsLive ? "doc-callout doc-callout-info" : "doc-callout doc-callout-warning";
       const cIcon = document.createElement("div");
       cIcon.className = "callout-icon";
-      cIcon.append(createSvgIcon(suitabilityPass ? "icon-file-text" : "icon-alert", "prism-icon"));
+      cIcon.append(createSvgIcon(sourceIsLive ? "icon-file-text" : "icon-alert", "prism-icon"));
       const cContent = document.createElement("div");
       cContent.className = "callout-content";
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
-      cTitle.textContent = `基本面与投资者适当性核验（所属行业：${quote.sector} / ${quote.sub_industry || quote.sector}）`;
+      cTitle.textContent = `行情与基本面底稿（所属行业：${quote.sector} / ${quote.sub_industry || quote.sector}）`;
       const cP = document.createElement("p");
-      if (suitabilityPass) {
-        cP.textContent = `${quote.name}（${quote.symbol}）当前最新价 ¥${Number(quote.price_cny).toFixed(2)}，动态市盈率 TTM 为 ${Number(quote.pe_ttm).toFixed(1)} 倍，估值处于历史近五年 ${Number(quote.valuation_quantile_pct).toFixed(1)}% 分位数（${valuationTag}）。财务指标方面，最新审计毛利率 ${Number(quote.gross_margin_pct).toFixed(1)}%，ROE 为 ${Number(quote.roe_pct).toFixed(1)}%，资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。结合 ${persona.name}（${persona.tag}）现有风险预算，建议作为卫星资产适度配置，单标的敞口上限控制在 ${maxAllocCap} 以内。`;
-      } else {
-        cP.textContent = `适当性不匹配风险提示：${quote.name}（${quote.symbol}）市盈率 TTM 达 ${Number(quote.pe_ttm).toFixed(1)} 倍，估值分位数为 ${Number(quote.valuation_quantile_pct).toFixed(1)}%，且属于高弹性成长/硬科技标的。而当前生效的 ${persona.name}（${persona.tag}）风险承受能力偏向稳健防守，配置该标的将突破组合波动率与下行回撤硬闸门，系统建议予以拦截或回避。`;
-      }
+      cP.textContent = `${quote.name}（${quote.symbol}）报价 ¥${Number(quote.price_cny).toFixed(2)}，动态市盈率 TTM ${Number(quote.pe_ttm).toFixed(1)} 倍，底稿估值分位 ${Number(quote.valuation_quantile_pct).toFixed(1)}%。毛利率 ${Number(quote.gross_margin_pct).toFixed(1)}%，ROE ${Number(quote.roe_pct).toFixed(1)}%，资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。本区块只展示供应商返回字段，不在浏览器内计算适当性或配置上限。`;
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
 
@@ -7085,10 +7192,10 @@
       metricsRow.className = "decision-metrics-row";
       const changePrefix = quote.change_pct >= 0 ? "+" : "";
       metricsRow.append(
-        buildCopilotMetricBox("最新报价 / 日涨跌", `¥${Number(quote.price_cny).toFixed(2)} (${changePrefix}${Number(quote.change_pct).toFixed(2)}%)`, false, false, "当前交易所最新撮合交易价格与当日涨跌幅。"),
-        buildCopilotMetricBox("估值历史分位数", `${Number(quote.valuation_quantile_pct).toFixed(1)}% (${valuationTag})`, false, false, `当前动态市盈率 ${Number(quote.pe_ttm).toFixed(1)}x 处于近 5 年历史区间的相对百分位水平。`),
-        buildCopilotMetricBox("建议配置上限", maxAllocCap, false, suitabilityPass, "根据当前画像风险预算分配的单一标的仓位上限约束。"),
-        buildCopilotMetricBox("ROE / 毛利率", `${Number(quote.roe_pct).toFixed(1)}% / ${Number(quote.gross_margin_pct).toFixed(1)}%`, false, false, "最近一期审计财报披露的净资产收益率与营业毛利率。")
+        buildCopilotMetricBox("报价快照 / 日涨跌", `¥${Number(quote.price_cny).toFixed(2)} (${changePrefix}${Number(quote.change_pct).toFixed(2)}%)`, false, sourceIsLive, `供应商层级：${providerTier}`),
+        buildCopilotMetricBox("底稿估值分位", `${Number(quote.valuation_quantile_pct).toFixed(1)}%`, false, false, "展示供应商或静态底稿返回值；未在浏览器重算。"),
+        buildCopilotMetricBox("数据新鲜度", quote.staleness_seconds == null ? "未提供" : `${Number(quote.staleness_seconds).toFixed(1)} 秒`, false, sourceIsLive, "由后端根据 observed_at 确定性计算。"),
+        buildCopilotMetricBox("ROE / 毛利率", `${Number(quote.roe_pct).toFixed(1)}% / ${Number(quote.gross_margin_pct).toFixed(1)}%`, false, false, "展示底稿字段；来源边界以供应商层级和缺失字段为准。")
       );
 
       // Factual audit lineage
@@ -7105,17 +7212,17 @@
       const r1 = document.createElement("li");
       const r1Bold = document.createElement("strong");
       r1Bold.textContent = "底稿验算溯源：";
-      r1.append(r1Bold, document.createTextNode(`行情数据源自交易所撮合实盘快照，财务数据经四轨验算（财报资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%）。`));
+      r1.append(r1Bold, document.createTextNode(`供应商层级 ${providerTier}，延迟 ${quote.quote_latency_ms ?? "未提供"} ms，新鲜度 ${quote.staleness_seconds ?? "未提供"} 秒；资产负债率底稿值 ${Number(quote.debt_ratio_pct).toFixed(1)}%。`));
 
       const r2 = document.createElement("li");
       const r2Bold = document.createElement("strong");
       r2Bold.textContent = "行业与流动性：";
-      r2.append(r2Bold, document.createTextNode(`所属 ${quote.sector} / ${quote.sub_industry || "核心资产"}，总市值约 ¥${(Number(quote.market_cap_cny || 0) / 100000000).toFixed(0)} 亿元，具备充足撮合深度与流动性。`));
+      r2.append(r2Bold, document.createTextNode(`所属 ${quote.sector} / ${quote.sub_industry || "未提供"}；总市值底稿值 ¥${Number(quote.market_cap_cny || 0).toLocaleString()}。`));
 
       const r3 = document.createElement("li");
       const r3Bold = document.createElement("strong");
-      r3Bold.textContent = "合规执行边界：";
-      r3.append(r3Bold, document.createTextNode(`严格执行投资者适当性与单标的 ${maxAllocCap} 集中度硬约束，严禁未经许可的超配。`));
+      r3Bold.textContent = "字段边界：";
+      r3.append(r3Bold, document.createTextNode(`缺失字段：${(quote.missing_fields || []).join("、") || "无显式缺失项"}。投资者适当性与配置上限需进入后端画像和组合计算流程。`));
 
       reasonsList.append(r1, r2, r3);
       reasonsWrap.append(reasonsHead, reasonsList);
@@ -7153,7 +7260,7 @@
     try {
       await runPortfolioOptimization();
       const plan = await runPortfolioRebalancing();
-      if (!plan) throw new Error("后端未返回可用调仓方案");
+      if (!plan) return;
       const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
 
       clear(output);
@@ -7278,31 +7385,27 @@
   }
 
   async function runCustomStressScenario() {
-    const persona = PERSONAS[state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
-    const sectors = persona.sectors || DEFAULT_USER_PROFILE.sectors;
+    await ensureDependency("PORTFOLIO_CONTEXT");
+    if (!state.portfolio) throw new Error("缺少结构化持仓，无法运行五行业压力测试");
+    const token = beginContextRequest("customStressSequence");
+    const portfolio = token.portfolio;
     const shocks = {};
     stressInputs().forEach((input) => { shocks[input.dataset.sector] = Number(input.value); });
-    const weights = {
-      TECHNOLOGY: sectors[0]?.pct || 0,
-      INDUSTRIALS: sectors[1]?.pct || 0,
-      CONSUMER_HEALTHCARE: sectors[2]?.pct || 0,
-      FINANCE_CYCLICAL: sectors[3]?.pct || 0,
-      CASH: sectors[4]?.pct || 0,
-    };
     const response = await fetch("/api/v1/advisor/custom-stress-scenarios", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
+      headers: { "Content-Type": "application/json", "X-Owner-ID": token.ownerId },
       body: JSON.stringify({
         schema_version: "custom-stress-scenario-request.v1",
         request_id: `custom-stress-${Date.now()}`,
-        owner_id: state.ownerId,
-        portfolio_value_cny: Number(String(persona.aum).replace(/[^\d.]/g, "")) || 500000,
-        sector_weights_pct: weights,
+        owner_id: token.ownerId,
+        portfolio,
         sector_shocks_pct: shocks,
       }),
     });
+    if (!isContextRequestCurrent(token)) return null;
     if (!response.ok) throw await apiError(response);
     const data = await response.json();
+    if (!isContextRequestCurrent(token)) return null;
     state.customStressRun = data;
     renderCustomStressResult(data);
     const status = byId("custom-stress-status");
@@ -7318,6 +7421,7 @@
 
     try {
       const data = await runCustomStressScenario();
+      if (!data) return;
 
       clear(output);
       const card = document.createElement("div");
@@ -7725,6 +7829,44 @@
     }
   }
 
+  async function validateAndActivatePortfolio(data, positions = data.positions) {
+    const validationContext = {
+      ownerId: state.ownerId,
+      selectedPersona: state.selectedPersona,
+      dataMode: state.dataMode,
+      contextRevision: state.contextRevision,
+    };
+    const response = await fetch("/api/v1/copilot/validate-portfolio-ocr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": validationContext.ownerId },
+      body: JSON.stringify({
+        owner_id: validationContext.ownerId,
+        positions,
+        cash_cny: data.cash_cny,
+      }),
+    });
+    const validationIsCurrent = () => state.ownerId === validationContext.ownerId
+      && state.selectedPersona === validationContext.selectedPersona
+      && state.dataMode === validationContext.dataMode
+      && state.contextRevision === validationContext.contextRevision;
+    if (!validationIsCurrent()) return null;
+    if (!response.ok) throw await apiError(response);
+    const validated = await response.json();
+    if (!validationIsCurrent()) return null;
+    microStore.transact((store) => {
+      invalidateDerivedState(store);
+      store.ocrPortfolioDraft = validated;
+      store.portfolio = validated.portfolio;
+    });
+    const aumEl = byId("copilot-stat-aum");
+    if (aumEl) aumEl.textContent = `¥ ${Number(validated.total_value_cny).toLocaleString()}`;
+    const pTag = byId("copilot-hero-portfolio-tag");
+    if (pTag) pTag.textContent = `已确认持仓 (${validated.positions.length} 项)`;
+    await ensureDependency("PROFILE_CONTEXT");
+    await refreshPortfolioHealth();
+    return validated;
+  }
+
   async function handleParsePortfolioSubmit() {
     const textarea = byId("portfolio-natural-textarea");
     const statusBox = byId("parsed-portfolio-status");
@@ -7745,15 +7887,16 @@
       const data = await resp.json();
 
       if (data.positions && data.positions.length > 0) {
-        state.portfolio = data;
+        const validated = await validateAndActivatePortfolio(data);
+        if (!validated) return;
         if (statusBox) {
           clear(statusBox);
           const strong = document.createElement("strong");
-          strong.textContent = `✅ 成功识别 ${data.positions.length} 项资产（现金 ¥${data.cash_cny}，总估值 ¥${data.total_value_cny}）：`;
+          strong.textContent = `成功确认 ${validated.positions.length} 项资产（现金 ¥${validated.cash_cny}，总估值 ¥${validated.total_value_cny}）：`;
           const list = document.createElement("ul");
           list.style.margin = "6px 0 0";
           list.style.paddingLeft = "16px";
-          data.positions.forEach(p => {
+          validated.positions.forEach(p => {
             const li = document.createElement("li");
             li.textContent = `${p.name} (${p.asset_id})：${p.quantity}股/份 · 估值 ¥${p.market_value_cny}`;
             list.append(li);
@@ -7761,21 +7904,10 @@
           statusBox.append(strong, list);
         }
 
-        // Update hero numbers
-        const aumEl = byId("copilot-stat-aum");
-        if (aumEl) aumEl.textContent = `¥ ${data.total_value_cny.toLocaleString()}`;
-        const pTag = byId("copilot-hero-portfolio-tag");
-        if (pTag) pTag.textContent = `自定义持仓 (${data.positions.length} 项)`;
-
-        saveUserProfile({
-          aum: `¥ ${data.total_value_cny.toLocaleString()}`,
-          portfolioTag: `真实持仓 (${data.positions.length} 项)`
-        });
-
         setTimeout(() => {
           closePortfolioModal();
-          handleStreamingChat("我已更新了我的持仓，请帮我做一次持仓体检并分析潜在风险");
-        }, 1200);
+          runCopilotHealthCheck();
+        }, 600);
       } else {
         if (statusBox) statusBox.textContent = "未能识别出有效资产，请检查输入格式。";
       }
@@ -7820,7 +7952,7 @@
         body: JSON.stringify({ image_base64: dataUrl }),
       });
       const data = await resp.json();
-      state.portfolio = data;
+      state.ocrPortfolioDraft = data;
       renderPortfolioOcrResult(data);
     } catch (err) {
       if (container) {
@@ -7982,31 +8114,25 @@
     confirmBtn.className = "copilot-action-btn primary";
     confirmBtn.type = "button";
     confirmBtn.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" 确认并载入用户画像"));
-    confirmBtn.addEventListener("click", () => {
-      // Collect updated quantities
-      inputControls.forEach(({ pos, qtyInput }) => {
-        const val = parseInt(qtyInput.value, 10);
-        if (!isNaN(val) && val > 0) {
-          pos.quantity = val;
-          pos.market_value_cny = Math.round(pos.quantity * pos.price * 100) / 100;
-        }
-      });
-
-      const updatedHoldingsVal = data.positions.reduce((acc, p) => acc + p.market_value_cny, 0);
-      const updatedTotal = Math.round((data.cash_cny + updatedHoldingsVal) * 100) / 100;
-
-      const aumEl = byId("copilot-stat-aum");
-      if (aumEl) aumEl.textContent = `¥ ${updatedTotal.toLocaleString()}`;
-      const pTag = byId("copilot-hero-portfolio-tag");
-      if (pTag) pTag.textContent = `真实持仓 (OCR ${data.positions.length}项)`;
-
-      saveUserProfile({
-        aum: `¥ ${updatedTotal.toLocaleString()}`,
-        portfolioTag: `真实持仓 (OCR ${data.positions.length}项)`
-      });
-
-      closePortfolioModal();
-      handleStreamingChat("我已通过券商截图OCR识别录入了最新持仓，请帮我运行组合健康体检并排查隐性集中度风险");
+    confirmBtn.addEventListener("click", async () => {
+      confirmBtn.disabled = true;
+      try {
+        const editedPositions = inputControls.map(({ pos, qtyInput }) => {
+          const val = Number(qtyInput.value);
+          if (!Number.isInteger(val) || val <= 0) throw new Error("持仓数量必须为正整数");
+          return { ...pos, quantity: val };
+        });
+        const validated = await validateAndActivatePortfolio(data, editedPositions);
+        if (!validated) return;
+        closePortfolioModal();
+        await runCopilotHealthCheck();
+      } catch (error) {
+        confirmBtn.disabled = false;
+        const errorNote = document.createElement("p");
+        errorNote.className = "research-boundary";
+        errorNote.textContent = error.message || "持仓校验失败";
+        actions.append(errorNote);
+      }
     });
     actions.append(confirmBtn);
 
@@ -8335,8 +8461,8 @@
       state.scenarioSimulationSequence += 1;
       renderScenarioSimulation(null);
       setScenarioSimulationStatus("需重新运行", "review");
-      if (!state.profileContext) return;
-      state.profileContext = null;
+      if (!state.profile) return;
+      state.profile = null;
       renderConfirmedProfile(null);
       setProfileContextStatus("需重新确认", "review");
       updateVisualCompanion();
@@ -8350,8 +8476,6 @@
   loadUserProfile();
   switchPersona("custom-user");
   loadCopilotChatHistory();
-  loadEvents();
-  loadRecommendationHistory();
   updateVisualCompanion();
   initPortfolioModalTabs();
 })();

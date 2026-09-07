@@ -11,10 +11,19 @@ import base64
 import io
 import re
 import unicodedata
-from decimal import Decimal
+from datetime import UTC, datetime
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
+from app.portfolio.contracts import (
+    AssetType,
+    FundHoldingSnapshot,
+    LookThroughHolding,
+    PortfolioImportBundle,
+    Position,
+    PositionSnapshot,
+)
 
 CONFIDENCE_THRESHOLD = 0.85
 
@@ -37,43 +46,20 @@ def _normalized_name(value: str) -> str:
     return value
 
 
-def _jaro_winkler(left: str, right: str) -> float:
-    if left == right:
+def levenshtein_similarity(left: str, right: str) -> float:
+    """Return a length-aware Levenshtein ratio in the closed interval [0, 1]."""
+    denominator = len(left) + len(right)
+    if denominator == 0:
         return 1.0
-    if not left or not right:
-        return 0.0
-    window = max(len(left), len(right)) // 2 - 1
-    left_match = [False] * len(left)
-    right_match = [False] * len(right)
-    matches = 0
-    for i, char in enumerate(left):
-        for j in range(max(0, i - window), min(i + window + 1, len(right))):
-            if not right_match[j] and char == right[j]:
-                left_match[i] = right_match[j] = True
-                matches += 1
-                break
-    if matches == 0:
-        return 0.0
-    left_chars = [char for i, char in enumerate(left) if left_match[i]]
-    right_chars = [char for i, char in enumerate(right) if right_match[i]]
-    transpositions = sum(a != b for a, b in zip(left_chars, right_chars)) / 2
-    jaro = (matches / len(left) + matches / len(right) + (matches - transpositions) / matches) / 3
-    prefix = 0
-    for a, b in zip(left[:4], right[:4]):
-        if a != b:
-            break
-        prefix += 1
-    return jaro + prefix * 0.1 * (1 - jaro)
+    return 1 - levenshtein_distance(left, right) / denominator
 
 
 def resolve_security_name(tokens: list[str]) -> str | None:
     candidates = []
     for code, info in {**A_SHARE_DATABASE, **ETF_LOOKTHROUGH_DATABASE}.items():
         names = [info.get("name", info.get("fund_name", "")), *info.get("aliases", [])]
-        score = max((max(
-                         1 - levenshtein_distance(_normalized_name(token), _normalized_name(name)) /
-                         max(len(_normalized_name(token)), len(_normalized_name(name)), 1),
-                         _jaro_winkler(_normalized_name(token), _normalized_name(name)),
+        score = max((levenshtein_similarity(
+                         _normalized_name(token), _normalized_name(name)
                      )
                      for token in tokens for name in names), default=0)
         if score >= CONFIDENCE_THRESHOLD:
@@ -113,6 +99,127 @@ def validate_portfolio_values(positions: list[dict[str, Any]], cash_cny: float,
         position.update(needs_review=review, confidence_level="REVIEW_REQUIRED" if review else "HIGH")
     return {"weight_sum": float(weight_sum), "weights_balanced": balanced,
             "has_low_confidence_items": any(p["needs_review"] for p in positions)}
+
+
+def recalculate_portfolio_values(
+    positions: list[dict[str, Any]], cash_cny: Decimal, owner_id: str
+) -> dict[str, Any]:
+    """Recalculate edited OCR rows and build one owner-scoped portfolio contract."""
+    observed_at = datetime.now(UTC)
+    recalculated: list[dict[str, Any]] = []
+    contract_positions: list[Position] = []
+    fund_snapshots: list[FundHoldingSnapshot] = []
+    holdings_total = Decimal("0")
+    for index, raw in enumerate(positions, 1):
+        row = dict(raw)
+        quantity = Decimal(str(row.get("quantity", 0)))
+        price = Decimal(str(row.get("price", row.get("cost_price", 0))))
+        if (
+            not quantity.is_finite()
+            or not price.is_finite()
+            or quantity <= 0
+            or quantity != quantity.to_integral_value()
+            or price <= 0
+        ):
+            raise ValueError("quantity must be a positive integer and price must be positive")
+        market_value = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        asset_id = str(row.get("asset_id", "")).strip().upper()
+        code = asset_id.split(".", 1)[0]
+        is_fund = row.get("asset_class") == "FUND_ETF" or code in ETF_LOOKTHROUGH_DATABASE
+        asset_type = AssetType.ETF if is_fund else AssetType.STOCK
+        security = ETF_LOOKTHROUGH_DATABASE.get(code) if is_fund else A_SHARE_DATABASE.get(code)
+        if not asset_id or security is None:
+            raise ValueError(f"unsupported security: {asset_id or 'missing asset_id'}")
+        name = str(row.get("name") or security.get("fund_name") or security.get("name") or asset_id)
+        sector = None if is_fund else str(security.get("sector") or row.get("sector") or "Unclassified")
+        row["market_value_cny"] = float(market_value)
+        row["price"] = float(price)
+        row["quantity"] = int(quantity)
+        holdings_total += market_value
+        recalculated.append(row)
+        position_id = f"ocr-position-{index}-{code}"
+        contract_positions.append(Position(
+            position_id=position_id,
+            owner_id=owner_id,
+            asset_id=asset_id,
+            asset_type=asset_type,
+            asset_name=name,
+            sector=sector,
+            quantity=quantity,
+            market_value=market_value,
+            currency="CNY",
+            as_of=observed_at,
+            source="user-confirmed OCR import",
+        ))
+        if is_fund:
+            sector_exposure = security.get("sector_exposure", {})
+            if not sector_exposure:
+                raise ValueError(f"missing packaged look-through baseline for {asset_id}")
+            fund_snapshots.append(FundHoldingSnapshot(
+                snapshot_id=f"ocr-lookthrough-{index}-{code}",
+                owner_id=owner_id,
+                parent_asset_id=asset_id,
+                parent_asset_type=AssetType.ETF,
+                as_of=observed_at,
+                source="packaged ETF sector baseline",
+                coverage_pct=Decimal("100"),
+                holdings=tuple(
+                    LookThroughHolding(
+                        holding_id=f"ocr-holding-{index}-{code}-{sector_name}",
+                        parent_asset_id=asset_id,
+                        underlying_asset_id=f"SECTOR:{sector_name.upper()}",
+                        underlying_name=f"{name} / {sector_name}",
+                        asset_type=AssetType.OTHER,
+                        weight_pct=Decimal(str(weight)),
+                        sector=sector_name,
+                        as_of=observed_at,
+                        source="packaged ETF sector baseline",
+                    )
+                    for sector_name, weight in sector_exposure.items()
+                ),
+            ))
+    total = (cash_cny + holdings_total).quantize(Decimal("0.01"))
+    if cash_cny > 0:
+        contract_positions.append(Position(
+            position_id="ocr-position-cash-cny",
+            owner_id=owner_id,
+            asset_id="CASH-CNY",
+            asset_type=AssetType.CASH,
+            asset_name="可用现金",
+            sector="Cash",
+            quantity=cash_cny,
+            market_value=cash_cny,
+            currency="CNY",
+            as_of=observed_at,
+            source="user-confirmed OCR import",
+        ))
+    if not contract_positions:
+        raise ValueError("at least one position is required")
+    snapshot = PositionSnapshot(
+        snapshot_id=f"ocr-position-snapshot-{owner_id}",
+        owner_id=owner_id,
+        as_of=observed_at,
+        base_currency="CNY",
+        source="user-confirmed OCR import",
+        positions=tuple(contract_positions),
+    )
+    portfolio = PortfolioImportBundle(
+        bundle_id=f"ocr-portfolio-{owner_id}",
+        owner_id=owner_id,
+        created_at=observed_at,
+        position_snapshot=snapshot,
+        fund_holdings=tuple(fund_snapshots),
+    )
+    validation = validate_portfolio_values(recalculated, float(cash_cny), float(total))
+    return {
+        "status": "SUCCESS",
+        "positions": recalculated,
+        "cash_cny": float(cash_cny),
+        "total_value_cny": float(total),
+        "parsed_count": len(recalculated),
+        "portfolio": portfolio.model_dump(mode="json"),
+        **validation,
+    }
 
 
 class OCRPortfolioParser:

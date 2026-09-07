@@ -8,6 +8,8 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from app.contracts.evidence import ContractModel, NonEmptyStr
+from app.portfolio import PortfolioImportBundle
+from app.portfolio.health import sector_weights_from_portfolio
 
 
 SECTORS = ("TECHNOLOGY", "INDUSTRIALS", "CONSUMER_HEALTHCARE", "FINANCE_CYCLICAL", "CASH")
@@ -29,18 +31,28 @@ class CustomStressScenarioRequest(ContractModel):
     schema_version: Literal["custom-stress-scenario-request.v1"] = "custom-stress-scenario-request.v1"
     request_id: NonEmptyStr
     owner_id: NonEmptyStr
-    portfolio_value_cny: Decimal = Field(gt=0)
-    sector_weights_pct: dict[str, Decimal]
+    portfolio_value_cny: Decimal | None = Field(default=None, gt=0)
+    portfolio: PortfolioImportBundle | None = None
+    sector_weights_pct: dict[str, Decimal] | None = None
     sector_shocks_pct: dict[str, Decimal]
 
     @model_validator(mode="after")
     def validate_inputs(self) -> Self:
-        if set(self.sector_weights_pct) != set(SECTORS) or set(self.sector_shocks_pct) != set(SECTORS):
-            raise ValueError("sector weights and shocks must contain the five supported sectors")
-        if any(not value.is_finite() or value < 0 or value > 100 for value in self.sector_weights_pct.values()):
-            raise ValueError("sector weights must be finite and between 0 and 100")
-        if abs(sum(self.sector_weights_pct.values()) - Decimal("100")) > Decimal("0.01"):
-            raise ValueError("sector weights must sum to 100% within 0.01%")
+        if self.portfolio is None and self.sector_weights_pct is None:
+            raise ValueError("portfolio or explicit sector weights are required")
+        if self.portfolio is None and self.portfolio_value_cny is None:
+            raise ValueError("portfolio value is required with explicit sector weights")
+        if self.portfolio is not None and self.portfolio.owner_id != self.owner_id:
+            raise ValueError("portfolio owner does not match stress owner")
+        if self.sector_weights_pct is not None:
+            if set(self.sector_weights_pct) != set(SECTORS):
+                raise ValueError("sector weights must contain the five supported sectors")
+            if any(not value.is_finite() or value < 0 or value > 100 for value in self.sector_weights_pct.values()):
+                raise ValueError("sector weights must be finite and between 0 and 100")
+            if abs(sum(self.sector_weights_pct.values()) - Decimal("100")) > Decimal("0.01"):
+                raise ValueError("sector weights must sum to 100% within 0.01%")
+        if set(self.sector_shocks_pct) != set(SECTORS):
+            raise ValueError("sector shocks must contain the five supported sectors")
         if any(not value.is_finite() or value < -30 or value > 30 for value in self.sector_shocks_pct.values()):
             raise ValueError("sector shocks must be finite and between -30% and 30%")
         return self
@@ -74,7 +86,19 @@ def _volatility(weights: dict[str, Decimal]) -> Decimal:
 
 
 def calculate_custom_stress(request: CustomStressScenarioRequest) -> CustomStressScenarioResponse:
-    weights = {key: value / 100 for key, value in request.sector_weights_pct.items()}
+    input_weights = (
+        sector_weights_from_portfolio(request.portfolio, request.portfolio.created_at)
+        if request.portfolio is not None
+        else request.sector_weights_pct
+    )
+    assert input_weights is not None
+    portfolio_value = (
+        sum((position.market_value for position in request.portfolio.position_snapshot.positions), Decimal("0"))
+        if request.portfolio is not None
+        else request.portfolio_value_cny
+    )
+    assert portfolio_value is not None and portfolio_value > 0
+    weights = {key: value / 100 for key, value in input_weights.items()}
     shocks = {key: value / 100 for key, value in request.sector_shocks_pct.items()}
     scenario_return = sum(weights[key] * shocks[key] for key in SECTORS)
     denominator = Decimal(1) + scenario_return
@@ -86,13 +110,13 @@ def calculate_custom_stress(request: CustomStressScenarioRequest) -> CustomStres
     with localcontext() as context:
         context.prec = 28
         daily_scale = _TRADING_DAYS.sqrt()
-    base_var = request.portfolio_value_cny * _VAR_Z_95 * base_vol / daily_scale
-    stressed_value = request.portfolio_value_cny * denominator
+    base_var = portfolio_value * _VAR_Z_95 * base_vol / daily_scale
+    stressed_value = portfolio_value * denominator
     stressed_var = stressed_value * _VAR_Z_95 * stressed_vol / daily_scale
     return CustomStressScenarioResponse(
         request_id=request.request_id, owner_id=request.owner_id,
         scenario_return_pct=_q(scenario_return * 100),
-        scenario_pnl_cny=_q(request.portfolio_value_cny * scenario_return),
+        scenario_pnl_cny=_q(portfolio_value * scenario_return),
         baseline_volatility_pct=_q(base_vol * 100), stressed_volatility_pct=_q(stressed_vol * 100),
         volatility_change_pct_points=_q((stressed_vol - base_vol) * 100),
         baseline_var_95_1d_cny=_q(base_var), stressed_var_95_1d_cny=_q(stressed_var),

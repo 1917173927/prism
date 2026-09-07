@@ -66,6 +66,7 @@ class Position(ContractModel):
     asset_id: NonEmptyStr
     asset_type: AssetType
     asset_name: NonEmptyStr
+    sector: NonEmptyStr | None = None
     quantity: Decimal = Field(gt=Decimal("0"))
     market_value: Decimal = Field(ge=Decimal("0"))
     currency: CurrencyCode

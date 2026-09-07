@@ -71,7 +71,11 @@ from app.rebalancing import (
     PortfolioRebalancingRequest,
     PortfolioRebalancingResponse,
 )
-from app.providers.live_market import CompositeMarketProvider
+from app.providers.live_market import (
+    CompositeMarketProvider,
+    FallbackStaticProvider,
+    MarketDataProvider,
+)
 from app.evaluation import (
     EvaluationDashboardRequest,
     EvaluationDashboardResponse,
@@ -112,6 +116,11 @@ from app.service import (
     AdvancedExplainabilityService,
 )
 from app.portfolio import PortfolioImportBundle
+from app.portfolio.health import (
+    PortfolioHealthRequest,
+    PortfolioHealthResponse,
+    calculate_portfolio_health,
+)
 from app.profile import RiskQuestionnaire
 from app.providers import ProviderServingMode
 from app.store import (
@@ -162,6 +171,12 @@ class CopilotParsePortfolioApiRequest(BaseModel):
 
 class CopilotParsePortfolioOcrApiRequest(BaseModel):
     image_base64: str = Field(description="Base64-encoded image string or data URI")
+
+
+class CopilotValidatePortfolioOcrApiRequest(BaseModel):
+    owner_id: str = Field(min_length=1)
+    positions: list[dict[str, Any]]
+    cash_cny: Decimal = Field(ge=0)
 
 
 class CopilotConfigApiRequest(BaseModel):
@@ -266,6 +281,7 @@ def create_app(
     portfolio_rebalancing_service: PortfolioRebalancingService | None = None,
     evaluation_dashboard_service: EvaluationDashboardService | None = None,
     advanced_explainability_service: AdvancedExplainabilityService | None = None,
+    market_provider: MarketDataProvider | None = None,
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
 
@@ -302,7 +318,7 @@ def create_app(
     active_advanced_explainability = (
         advanced_explainability_service or AdvancedExplainabilityService()
     )
-    active_market_quotes = CompositeMarketProvider()
+    active_market_quotes = market_provider or CompositeMarketProvider()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -1164,14 +1180,17 @@ def create_app(
         return {
             "schema_version": "explainability-template.v1",
             "owner_id": owner_id,
-            "risk_score": "35.00",
-            "risk_level": "BALANCED",
-            "action_type": "HOLD",
-            "asset": "ASSET-TECH-ETF-001",
-            "tech_exposure_pct": "38.50",
-            "tech_cap_pct": "40.00",
-            "top_asset_weight_pct": "35.00",
-            "finding_count": 6,
+            "data_mode": "TEMPLATE_ONLY",
+            "calculation_status": "NOT_CALCULATED",
+            "requires_portfolio_health": True,
+            "risk_score": None,
+            "risk_level": None,
+            "action_type": None,
+            "asset": None,
+            "tech_exposure_pct": None,
+            "tech_cap_pct": None,
+            "top_asset_weight_pct": None,
+            "finding_count": 0,
         }
 
     @api.post(
@@ -1240,6 +1259,24 @@ def create_app(
                     "positions": [],
                     "parsed_count": 0,
                 },
+            )
+
+    @api.post("/api/v1/copilot/validate-portfolio-ocr")
+    def copilot_validate_portfolio_ocr_endpoint(
+        req: CopilotValidatePortfolioOcrApiRequest,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        """Recalculate edited OCR quantities and all dependent values in Python."""
+        from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+        if req.owner_id != owner_id:
+            raise StoreOwnerError("OCR portfolio owner does not match owner scope")
+        try:
+            return JSONResponse(content=recalculate_portfolio_values(req.positions, req.cash_cny, req.owner_id))
+        except (ArithmeticError, TypeError, ValueError) as exc:
+            return JSONResponse(
+                status_code=422,
+                content={"status": "FAILED", "error_code": "OCR_VALUE_VALIDATION_FAILED",
+                         "message": str(exc)},
             )
 
     @api.post("/api/v1/copilot/upload-portfolio-ocr")
@@ -1368,6 +1405,18 @@ def create_app(
             raise StoreOwnerError("custom stress request owner does not match owner scope")
         return calculate_custom_stress(request)
 
+    @api.post(
+        "/api/v1/advisor/portfolio-health",
+        response_model=PortfolioHealthResponse,
+    )
+    def create_portfolio_health(
+        request: PortfolioHealthRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> PortfolioHealthResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("portfolio health request owner does not match owner scope")
+        return calculate_portfolio_health(request)
+
     @api.get("/api/v1/copilot/live-quote")
     async def copilot_live_quote_endpoint(
         symbol: str = "300750",
@@ -1413,7 +1462,7 @@ def create_app(
                     "message": f"证券代码格式无效：标的代码 [{clean_code}] 非沪深北交易所合规证券前缀（合规前缀如 60/688/00/300/8/51/159/11/12）。",
                 },
             )
-        data = A_SHARE_DATABASE.get(clean_code)
+        data = await FallbackStaticProvider().get_quote(clean_code)
         if not data and auto_complete_dependency:
             data = await _auto_complete_security_baseline(clean_code)
 
@@ -1426,18 +1475,6 @@ def create_app(
                     "message": f"未收录标的底稿：当前量化底稿库尚未收录标的 [{clean_code}] 的行情快照或审计财报底稿，拒绝生成未经核验的虚假研判。",
                 },
             )
-        if "provider_tier" not in data:
-            data = {
-                **data,
-                "provider_tier": "STATIC_FALLBACK",
-                "quote_latency_ms": 0.0,
-                "staleness_seconds": None,
-                "observed_at": None,
-                "retrieved_at": datetime.now(UTC).isoformat(),
-                "is_synthetic": True,
-                "missing_fields": ["observed_at"],
-                "fallback_reasons": [],
-            }
         return JSONResponse(
             content={
                 "status": "SUCCESS",

@@ -43,14 +43,14 @@ class WencaiSkillHubProvider(FinancialProvider):
         name: NonEmptyStr = "wencai_skillhub_provider",
         api_key: str | None = None,
         base_url: str | None = None,
-        timeout_seconds: float = 3.0,
+        timeout_seconds: float = 2.0,
     ) -> None:
         self._name = name
         self._api_key = api_key or os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()
         self._base_url = (
             base_url or os.getenv("WENCAI_SKILLHUB_BASE_URL", "https://api.iwencai.com/skillhub/v1")
         ).rstrip("/")
-        self._timeout_seconds = timeout_seconds
+        self._timeout_seconds = min(max(timeout_seconds, 0.001), 2.0)
 
     @property
     def name(self) -> NonEmptyStr:

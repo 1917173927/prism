@@ -163,8 +163,14 @@ class CopilotAgent:
         # Known assets extraction
         for code, info in A_SHARE_DATABASE.items():
             if code in text_clean or info["name"] in text_clean:
-                qty_match = re.search(rf"(?:{code}|{info['name']})\D*?(\d+)\s*(?:股|手|份)", text_clean)
-                qty = int(qty_match.group(1)) if qty_match else 1000
+                asset_pattern = rf"(?:{code}|{re.escape(info['name'])})"
+                qty_match = (
+                    re.search(rf"{asset_pattern}\D*?(\d+)\s*(?:股|手|份)", text_clean)
+                    or re.search(rf"(\d+)\s*(?:股|手|份)\D*?{asset_pattern}", text_clean)
+                )
+                if qty_match is None:
+                    continue
+                qty = int(qty_match.group(1))
                 if "手" in (qty_match.group(0) if qty_match else ""):
                     qty *= 100
                 price = info["price_cny"]
@@ -175,19 +181,24 @@ class CopilotAgent:
                     "sector": info["sector"],
                     "quantity": qty,
                     "cost_price": price,
+                    "price": price,
                     "market_value_cny": round(qty * price, 2),
                 })
 
         for code, info in ETF_LOOKTHROUGH_DATABASE.items():
             if code in text_clean or info["fund_name"] in text_clean or ("科创" in text_clean and code == "588000") or ("半导体" in text_clean and code == "512480") or ("300" in text_clean and code == "510300"):
                 if not any(p["asset_id"] == info["fund_code"] for p in positions):
-                    qty_match = re.search(rf"(?:{code}|{info['fund_name']}|科创|半导体|300)\D*?(\d+)\s*(?:份|股|万份|万元)", text_clean)
-                    qty = 20000
-                    if qty_match:
-                        raw_val = float(qty_match.group(1))
-                        if "万" in qty_match.group(0):
-                            raw_val *= 10000
-                        qty = int(raw_val)
+                    asset_pattern = rf"(?:{code}|{re.escape(info['fund_name'])}|科创|半导体|300)"
+                    qty_match = (
+                        re.search(rf"{asset_pattern}\D*?(\d+)\s*(?:万份|万元|份|股)", text_clean)
+                        or re.search(rf"(\d+)\s*(?:万份|万元|份|股)\D*?{asset_pattern}", text_clean)
+                    )
+                    if qty_match is None:
+                        continue
+                    raw_val = float(qty_match.group(1))
+                    if "万" in qty_match.group(0):
+                        raw_val *= 10000
+                    qty = int(raw_val)
                     nav = info["net_asset_value_cny"]
                     positions.append({
                         "asset_id": info["fund_code"],
@@ -196,36 +207,26 @@ class CopilotAgent:
                         "sector": "Technology" if code in ("588000", "512480") else "Multi-Asset",
                         "quantity": qty,
                         "cost_price": nav,
+                        "price": nav,
                         "market_value_cny": round(qty * nav, 2),
                     })
 
         if not positions:
-            # Fallback default starter portfolio
-            positions.append({
-                "asset_id": "300750.SZ",
-                "name": "宁德时代",
-                "asset_class": "EQUITY",
-                "sector": "Industrials",
-                "quantity": 1000,
-                "cost_price": 250.0,
-                "market_value_cny": 250000.0,
-            })
-            positions.append({
-                "asset_id": "588000.SH",
-                "name": "华夏上证科创板50成份ETF",
-                "asset_class": "FUND_ETF",
-                "sector": "Technology",
-                "quantity": 20000,
-                "cost_price": 1.0,
-                "market_value_cny": 20000.0,
-            })
-            if cash == 0.0:
-                cash = 30000.0
+            return {
+                "status": "EMPTY",
+                "schema_version": "portfolio-text-extraction.v1",
+                "cash_cny": cash,
+                "total_value_cny": cash,
+                "positions": [],
+                "parsed_count": 0,
+                "review_reasons": ["NO_POSITION_WITH_EXPLICIT_QUANTITY"],
+            }
 
         total_val = cash + sum(p["market_value_cny"] for p in positions)
 
         return {
-            "schema_version": "portfolio-import-bundle.v1",
+            "status": "SUCCESS",
+            "schema_version": "portfolio-text-extraction.v1",
             "cash_cny": cash,
             "total_value_cny": round(total_val, 2),
             "positions": positions,
@@ -292,22 +293,17 @@ class CopilotAgent:
         if name == "query_stock_quote":
             symbol = str(args.get("symbol", "300750"))
             clean_code = symbol.split(".")[0].strip()
-            data = A_SHARE_DATABASE.get(clean_code, {
-                "symbol": f"{clean_code}.SZ",
-                "name": f"A股标的 ({clean_code})",
-                "sector": "Technology",
-                "price_cny": 38.5,
-                "change_pct": 1.5,
-                "pe_ttm": 26.2,
-                "pb": 3.4,
-                "roe_pct": 15.2,
-                "gross_margin_pct": 34.0,
-                "debt_ratio_pct": 42.0,
-                "valuation_quantile_pct": 48.0,
-            })
+            data = A_SHARE_DATABASE.get(clean_code)
+            if data is None:
+                return {
+                    "status": "FAILED",
+                    "error_code": "STATIC_BASELINE_UNAVAILABLE",
+                    "message": f"MOCK 底稿未收录 {clean_code}，拒绝补造行情或财务指标。",
+                    "execution_context": {"data_mode": "MOCK", "is_synthetic": True},
+                }
             return {
                 "status": "SUCCESS",
-                "source": "问财实时行情（MOCK 基准沙箱）",
+                "source": "内置行情与财务静态底稿（MOCK）",
                 "data": data,
                 "execution_context": {
                     "data_mode": "MOCK",
@@ -320,10 +316,17 @@ class CopilotAgent:
         elif name == "query_fund_lookthrough":
             fund_code = str(args.get("fund_code", "588000"))
             clean_code = fund_code.split(".")[0].strip()
-            data = ETF_LOOKTHROUGH_DATABASE.get(clean_code, ETF_LOOKTHROUGH_DATABASE["588000"])
+            data = ETF_LOOKTHROUGH_DATABASE.get(clean_code)
+            if data is None:
+                return {
+                    "status": "FAILED",
+                    "error_code": "STATIC_LOOKTHROUGH_UNAVAILABLE",
+                    "message": f"MOCK 底稿未收录 {clean_code}，拒绝套用其他基金穿透数据。",
+                    "execution_context": {"data_mode": "MOCK", "is_synthetic": True},
+                }
             return {
                 "status": "SUCCESS",
-                "source": "公募基金季度持仓穿透（MOCK 基准沙箱）",
+                "source": "内置基金持仓静态底稿（MOCK）",
                 "data": data,
                 "execution_context": {
                     "data_mode": "MOCK",
@@ -334,33 +337,25 @@ class CopilotAgent:
             }
 
         elif name == "run_portfolio_health_check":
-            is_over = persona.get("tag", "").startswith("R3") or "42" in str(persona)
             return {
-                "status": "SUCCESS",
-                "tech_exposure_pct": 42.0 if is_over else 15.0,
-                "budget_cap_pct": float(persona.get("budget_cap", "30.0%").replace("%", "")),
-                "is_over_budget": is_over,
-                "verdict": "REDUCE" if is_over else "HOLD",
+                "status": "BLOCKED",
+                "error_code": "DETERMINISTIC_CONTEXT_REQUIRED",
+                "message": "聊天工具不执行敞口或风控计算；请使用持仓体检入口提交结构化画像与持仓。",
                 "execution_context": {
                     "data_mode": "MOCK",
-                    "provider": "deterministic_portfolio_engine",
+                    "provider": "portfolio_health_api_required",
                     "is_synthetic": True,
                 },
             }
 
         elif name == "generate_portfolio_rebalance":
             return {
-                "status": "SUCCESS",
-                "turnover_pct": 14.0,
-                "volatility_reduction_pct": -2.4,
-                "steps": [
-                    {"step": 1, "action": "SELL", "asset": "科技成长混合基金", "weight_delta": "-5.0%"},
-                    {"step": 2, "action": "SELL", "asset": "半导体主题 ETF", "weight_delta": "-2.0%"},
-                    {"step": 3, "action": "BUY", "asset": "沪深300 宽基 ETF", "weight_delta": "+7.0%"},
-                ],
+                "status": "BLOCKED",
+                "error_code": "DETERMINISTIC_CONTEXT_REQUIRED",
+                "message": "聊天工具不执行调仓数学；请使用调仓计划入口提交结构化目标权重与持仓。",
                 "execution_context": {
                     "data_mode": "MOCK",
-                    "provider": "deterministic_rebalance_engine",
+                    "provider": "portfolio_rebalancing_api_required",
                     "is_synthetic": True,
                 },
             }
@@ -405,23 +400,31 @@ class CopilotAgent:
         rebalance_tool = next((t for t in executed_tools if t["tool"] == "generate_portfolio_rebalance"), None)
 
         if stock_tool:
-            stock = stock_tool["result"]["data"]
-            lines.append(f"### 📊 【个股深度研判】{stock['name']} ({stock['symbol']})")
-            lines.append(f"基于同花顺问财实时行情与财务数据，结合您的 **{tag}** 画像为您提供以下研判：\n")
-            lines.append(f"1. **实时行情与估值**：最新现价 **¥{stock['price_cny']}** (涨跌幅 `{stock['change_pct']:+.2f}%`)，市盈率 PE(TTM) 为 **{stock['pe_ttm']} 倍**，处于近三年历史分位数 **{stock.get('valuation_quantile_pct', 45.2)}%**（估值处于合理区间）。")
-            lines.append(f"2. **财务质地与盈利能力**：ROE 达到 **{stock['roe_pct']}%**，毛利率为 **{stock['gross_margin_pct']}%**，资产负债率 **{stock['debt_ratio_pct']}%** 处于安全边界之内，具备较强抗周期护城河。")
-            lines.append(f"3. **画像适配与仓位建议**：根据您的风险预算，建议单标的配置比例控制在 **5.0% 以内**，适合逢低分批建仓，不建议重仓单押。")
+            stock_result = stock_tool["result"]
+            if stock_result.get("status") != "SUCCESS":
+                return stock_result.get("message", "行情底稿不可用，无法形成研判。")
+            stock = stock_result["data"]
+            lines.append(f"### 个股底稿字段：{stock['name']} ({stock['symbol']})")
+            lines.append("当前返回来自 MOCK 静态底稿。以下数值仅转述工具结果，不代表实时行情、审计结论或投资建议：\n")
+            lines.append(f"1. **行情字段**：价格 **¥{stock['price_cny']}**，涨跌幅 `{stock['change_pct']:+.2f}%`，市盈率 PE(TTM) **{stock['pe_ttm']} 倍**，底稿估值分位 **{stock.get('valuation_quantile_pct', '未提供')}%**。")
+            lines.append(f"2. **财务字段**：ROE **{stock['roe_pct']}%**，毛利率 **{stock['gross_margin_pct']}%**，资产负债率 **{stock['debt_ratio_pct']}%**。")
+            lines.append("3. **计算边界**：聊天层不计算适当性、配置比例或风险闸门；相关结论需提交结构化画像与持仓到后端确定性服务。")
 
         elif fund_tool:
-            fund = fund_tool["result"]["data"]
-            lines.append(f"### 🔍 【基金底层穿透分析】{fund['fund_name']} ({fund['fund_code']})")
-            lines.append(f"最新穿透数据显示，该基金前五大重仓股包括：")
+            fund_result = fund_tool["result"]
+            if fund_result.get("status") != "SUCCESS":
+                return fund_result.get("message", "基金穿透底稿不可用。")
+            fund = fund_result["data"]
+            lines.append(f"### 基金静态底稿：{fund['fund_name']} ({fund['fund_code']})")
+            lines.append("当前 MOCK 底稿列出的重仓项包括：")
             for h in fund["top_holdings"]:
                 lines.append(f"- **{h['name']}** ({h['asset_id']})：权重 **{h['weight_pct']}%** · 行业：{h['sector']}")
-            lines.append(f"\n穿透行业暴露显示 **科技/半导体集中度达 {fund['sector_exposure'].get('Technology', 70)}%**。若您已有科技持仓，请注意隐性重叠风险。")
+            lines.append("\n聊天层只转述底稿字段；基金穿透占比、组合重叠和集中度必须由后端确定性服务计算。")
 
         elif check_tool:
             chk = check_tool["result"]
+            if chk.get("status") != "SUCCESS":
+                return chk.get("message", "结构化持仓体检未执行。")
             is_over = chk.get("is_over_budget", True)
             lines.append(f"### 持仓健康度核查报告")
             lines.append(f"尊敬的 {name}，根据您的 {tag} 画像（回撤容忍 ≤{persona.get('max_drawdown', 15)}%）：\n")
@@ -435,6 +438,8 @@ class CopilotAgent:
 
         elif rebalance_tool:
             reb = rebalance_tool["result"]
+            if reb.get("status") != "SUCCESS":
+                return reb.get("message", "结构化调仓测算未执行。")
             lines.append(f"### 组合再平衡执行清单")
             lines.append(f"依据确定性资产优化模型（CAP_AND_REDISTRIBUTE），计算得出调仓清单（换手率 {reb['turnover_pct']}%，预期降低波动 {reb['volatility_reduction_pct']}%）：\n")
             for s in reb["steps"]:
@@ -442,12 +447,12 @@ class CopilotAgent:
                 lines.append(f"{s['step']}. **{action_text}** {s['asset']}：调整比例 `{s['weight_delta']}`")
 
         else:
-            lines.append(f"### 投资研判结论")
-            lines.append(f"针对咨询事项「{user_message}」并结合 {tag} 适当性约束，系统完成测算分析：全市场流动性与估值分位数处于合理区间，建议遵循多元化分散配置纪律，控制单一行业暴露上限。")
+            lines.append("### 请求处理边界")
+            lines.append(f"已识别咨询事项「{user_message}」和画像标签 {tag}，但当前没有可引用的确定性计算结果，因此不生成行情、敞口、适当性或调仓结论。")
 
         controller = get_runtime_mode_controller()
         mode_label = "LIVE · 官方接口数据" if controller.mode == DataMode.LIVE else "MOCK · 基准合成数据"
-        lines.append(f"\n> 来源核验与审计：数据模式 [{mode_label}] · 决策回执由确定性计算引擎闭环生成")
+        lines.append(f"\n> 数据边界：[{mode_label}] · 聊天层仅转述工具字段；金融计算由结构化确定性服务执行")
         lines.append("\n---\n*风险揭示：证券市场存在风险，投资需谨慎。本报告基于量化模型推导，不作为收益承诺。*")
 
         return "\n".join(lines)
