@@ -43,11 +43,14 @@ from app.convertible_bond import (
     ConvertibleBondResearchTemplateResponse,
 )
 from app.profile import (
+    BehaviorEvent,
+    BehaviorProfile,
     ConflictResolution,
     ProfileDraft,
     ProfileExtractionProposal,
     RiskProfile,
     RiskQuestionnaire,
+    DisplayPolicy,
 )
 from app.service import (
     AdvisorIntentRequest,
@@ -303,6 +306,89 @@ class AdvisorProfileConfirmationResponse(ContractModel):
             self.model_dump_json(), "profile confirmation response"
         )
         return self
+
+
+class BehaviorEventsWriteRequest(ContractModel):
+    schema_version: Literal["behavior-events-write-request.v1"] = "behavior-events-write-request.v1"
+    owner_id: NonEmptyStr
+    events: tuple[BehaviorEvent, ...] = Field(min_length=1, max_length=1000)
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> Self:
+        if any(item.owner_id != self.owner_id for item in self.events):
+            raise ValueError("behavior events must share request owner")
+        if len({item.event_id for item in self.events}) != len(self.events):
+            raise ValueError("behavior event IDs must be unique")
+        return self
+
+
+class BehaviorEventsWriteResponse(ContractModel):
+    schema_version: Literal["behavior-events-write-response.v1"] = "behavior-events-write-response.v1"
+    owner_id: NonEmptyStr
+    accepted_count: int = Field(ge=1)
+    created_count: int = Field(ge=0)
+    event_ids: tuple[NonEmptyStr, ...]
+
+
+class BehaviorProfileRecomputeRequest(ContractModel):
+    schema_version: Literal["behavior-profile-recompute-request.v1"] = "behavior-profile-recompute-request.v1"
+    owner_id: NonEmptyStr
+    calculated_at: datetime
+    questionnaire_profile: RiskProfile
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> Self:
+        if self.calculated_at.tzinfo is None or self.calculated_at.utcoffset() is None:
+            raise ValueError("calculated_at must be timezone-aware")
+        if self.questionnaire_profile.owner_id != self.owner_id:
+            raise ValueError("questionnaire profile owner does not match request owner")
+        return self
+
+
+class BehaviorProfileResponse(ContractModel):
+    schema_version: Literal["behavior-profile-response.v1"] = "behavior-profile-response.v1"
+    profile: BehaviorProfile
+    effective_profile: RiskProfile
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> Self:
+        if self.profile.owner_id != self.effective_profile.owner_id:
+            raise ValueError("behavior and effective profile owners must match")
+        if self.profile.effective_risk_score != self.effective_profile.risk_score:
+            raise ValueError("effective profile score must match behavior profile")
+        return self
+
+
+class BehaviorProfileLookupResponse(ContractModel):
+    schema_version: Literal["behavior-profile-lookup-response.v1"] = "behavior-profile-lookup-response.v1"
+    status: Literal["CALCULATED", "INSUFFICIENT_DATA"]
+    profile: BehaviorProfile | None = None
+
+    @model_validator(mode="after")
+    def validate_state(self) -> Self:
+        if self.status == "CALCULATED" and self.profile is None:
+            raise ValueError("CALCULATED lookup requires a profile")
+        if self.status == "INSUFFICIENT_DATA" and self.profile is not None:
+            raise ValueError("INSUFFICIENT_DATA lookup must not contain a profile")
+        return self
+
+
+class DisplayPolicyUpdateRequest(ContractModel):
+    schema_version: Literal["display-policy-update-request.v1"] = "display-policy-update-request.v1"
+    owner_id: NonEmptyStr
+    trust_score: int = Field(ge=0, le=100)
+    updated_at: datetime
+
+    @model_validator(mode="after")
+    def validate_timestamp(self) -> Self:
+        if self.updated_at.tzinfo is None or self.updated_at.utcoffset() is None:
+            raise ValueError("updated_at must be timezone-aware")
+        return self
+
+
+class DisplayPolicyResponse(ContractModel):
+    schema_version: Literal["display-policy-response.v1"] = "display-policy-response.v1"
+    policy: DisplayPolicy
 
 
 class ResearchScenarioResponse(ContractModel):

@@ -58,6 +58,14 @@ def test_copilot_markup_structure() -> None:
         "profile-edit-modal",
         "btn-save-profile",
         "btn-reset-profile",
+        "behavior-profile-card",
+        "behavior-profile-status",
+        "ai-trust-score",
+        "save-display-policy",
+        "recompute-behavior-profile",
+        "dev-assist",
+        "run-dev-assist",
+        "dev-assist-output",
     ):
         assert f'id="{element_id}"' in markup
 
@@ -103,6 +111,12 @@ def test_copilot_script_personas_and_workflows() -> None:
         "function buildCopilotDrilldownRow(",
         "function buildCopilotMetricBox(",
         "function buildCopilotLoadingCard(",
+        "function renderBehaviorProfile(",
+        "function loadBehaviorProfile(",
+        "function saveDisplayPolicy(",
+        "function recomputeBehaviorProfile(",
+        "function renderDevAssistResult(",
+        "function runDevAssist(",
     ):
         assert token in script
 
@@ -160,6 +174,10 @@ def test_copilot_styles_and_responsive_rules() -> None:
         ".evidence-bar-track",
         ".evidence-process-flow",
         ".evidence-professional-details",
+        ".behavior-profile-card",
+        ".display-policy-control",
+        ".dev-assist-grid",
+        ".chat-audit-details",
     ):
         assert selector in styles
 

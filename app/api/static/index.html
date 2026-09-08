@@ -3,9 +3,10 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c6b5a'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/app.js" defer></script>
@@ -361,6 +362,26 @@
               </div>
               <div id="portfolio-refresh-status" class="portfolio-refresh-status" role="status" aria-live="polite">等待持仓数据</div>
             </div>
+
+            <section class="behavior-profile-card" id="behavior-profile-card" aria-labelledby="behavior-profile-title">
+              <div class="behavior-profile-head">
+                <div>
+                  <span class="eyebrow clay">用户画像 Agent</span>
+                  <h3 id="behavior-profile-title">问卷与历史行为交叉画像</h3>
+                </div>
+                <span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">REVIEW_REQUIRED 数据不足</span>
+              </div>
+              <div id="behavior-profile-content" class="behavior-profile-content" aria-live="polite">
+                <p>导入结构化交易与持仓快照后，系统将计算换手、集中度、回撤和有效风险等级。行为数据只能收紧风险边界，不能提高问卷等级。</p>
+              </div>
+              <div class="display-policy-control">
+                <label for="ai-trust-score">AI 信任度 <strong id="ai-trust-score-value">50</strong></label>
+                <input id="ai-trust-score" type="range" min="0" max="100" value="50" step="1">
+                <button id="save-display-policy" class="copilot-action-btn secondary small" type="button">保存展示策略</button>
+                <button id="recompute-behavior-profile" class="copilot-action-btn secondary small" type="button">重新计算画像</button>
+                <span id="display-policy-mode" class="status-chip">STANDARD</span>
+              </div>
+            </section>
 
             <!-- Codeforces 风格多行业穿透交互环形图微卡 -->
             <div class="cf-status-widget copilot-donut-widget" aria-label="账户画像与多行业穿透风控监控">
@@ -781,6 +802,30 @@
               <p>带虚线边框、标注「开发者可见」的模块只对开发与评审展示（系统架构、原始数据、评测与证据审计）；普通用户看不到它们。点击左下角「退出」即可回到普通视图。</p>
             </div>
           </div>
+          <section class="panel dev-assist-panel" id="dev-assist" aria-labelledby="dev-assist-title">
+            <div class="panel-head">
+              <div>
+                <span class="eyebrow clay">研发辅助</span>
+                <h2 id="dev-assist-title">PRD 与技术方案审查</h2>
+              </div>
+              <span id="dev-assist-status" class="status-chip">待运行</span>
+            </div>
+            <div class="dev-assist-grid">
+              <label>产品 PRD
+                <textarea id="dev-assist-prd" rows="8" placeholder="粘贴 PRD 文本；上传 .docx/.md/.txt 可通过公开 API 完成"></textarea>
+              </label>
+              <label>技术方案
+                <textarea id="dev-assist-technical" rows="8" placeholder="粘贴技术方案文本"></textarea>
+              </label>
+            </div>
+            <div class="context-import-actions">
+              <button id="run-dev-assist" class="query-submit" type="button">生成完善方案与代码骨架</button>
+              <small>输出仅供预览和下载，不写入仓库、不执行代码。</small>
+            </div>
+            <div id="dev-assist-output" class="dev-assist-output" aria-live="polite">
+              <div class="empty-state">提交两份文档后查看冲突、缺口、接口草案和代码骨架。</div>
+            </div>
+          </section>
           <section class="panel advisor-panel" id="advisor" aria-labelledby="advisor-title">
             <div class="panel-head">
               <div>

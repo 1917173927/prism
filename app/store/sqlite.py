@@ -15,6 +15,8 @@ from app.store.contracts import (
     event_content_payload,
 )
 from app.store.context import ContextMemoryRecord
+from app.profile import BehaviorEvent, BehaviorProfile, DisplayPolicy
+from app.portfolio import PortfolioOcrConfirmation
 
 
 class StoreError(RuntimeError):
@@ -62,6 +64,24 @@ class DecisionEventStore(Protocol):
 
     def close(self) -> None: ...
 
+    def save_behavior_events(
+        self, owner_id: str, events: tuple[BehaviorEvent, ...]
+    ) -> tuple[tuple[BehaviorEvent, ...], int]: ...
+
+    def list_behavior_events(self, owner_id: str) -> tuple[BehaviorEvent, ...]: ...
+
+    def save_behavior_profile(self, profile: BehaviorProfile) -> BehaviorProfile: ...
+
+    def get_latest_behavior_profile(self, owner_id: str) -> BehaviorProfile | None: ...
+
+    def save_display_policy(self, policy: DisplayPolicy) -> DisplayPolicy: ...
+
+    def get_display_policy(self, owner_id: str) -> DisplayPolicy | None: ...
+
+    def save_portfolio_ocr_confirmation(
+        self, record: PortfolioOcrConfirmation
+    ) -> tuple[PortfolioOcrConfirmation, bool]: ...
+
 
 _MIGRATION_DIR = Path(__file__).parent / "migrations"
 
@@ -82,6 +102,21 @@ def _canonical_context_memory_json(record: ContextMemoryRecord) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+
+
+def _canonical_contract_json(record: object) -> str:
+    return json.dumps(
+        record.model_dump(mode="json"),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _content_hash(record: object) -> str:
+    from hashlib import sha256
+
+    return sha256(_canonical_contract_json(record).encode("utf-8")).hexdigest()
 
 
 def _validate_owner(owner_id: str) -> str:
@@ -371,6 +406,213 @@ class SQLiteDecisionEventStore:
             reverse=True,
         )
         return tuple(records[:limit])
+
+    @staticmethod
+    def _parse_behavior_event_row(row: sqlite3.Row) -> BehaviorEvent:
+        try:
+            event = BehaviorEvent.model_validate(json.loads(row["payload_json"]))
+            if (
+                event.event_id != row["event_id"]
+                or event.owner_id != row["owner_id"]
+                or event.event_type.value != row["event_type"]
+                or event.occurred_at.isoformat() != row["occurred_at"]
+                or _content_hash(event) != row["content_hash"]
+            ):
+                raise ValueError("row identity does not match payload")
+            return event
+        except Exception as exc:
+            raise StoreCorruptError("stored behavior event failed validation") from exc
+
+    def save_behavior_events(
+        self, owner_id: str, events: tuple[BehaviorEvent, ...]
+    ) -> tuple[tuple[BehaviorEvent, ...], int]:
+        owner_id = _validate_owner(owner_id)
+        normalized = tuple(
+            BehaviorEvent.model_validate(item.model_dump(mode="python")) for item in events
+        )
+        if any(item.owner_id != owner_id for item in normalized):
+            raise StoreOwnerError("behavior event owner does not match owner scope")
+        if len({item.event_id for item in normalized}) != len(normalized):
+            raise StoreConflictError("behavior event batch contains duplicate IDs")
+        created = 0
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                for event in normalized:
+                    row = self._connection.execute(
+                        "SELECT * FROM behavior_events WHERE owner_id = ? AND event_id = ?",
+                        (owner_id, event.event_id),
+                    ).fetchone()
+                    if row is not None:
+                        existing = self._parse_behavior_event_row(row)
+                        if _content_hash(existing) != _content_hash(event):
+                            raise StoreConflictError("behavior event identity already has different content")
+                        continue
+                    self._connection.execute(
+                        """
+                        INSERT INTO behavior_events
+                            (event_id, owner_id, event_type, content_hash, payload_json, occurred_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            event.event_id,
+                            event.owner_id,
+                            event.event_type.value,
+                            _content_hash(event),
+                            _canonical_contract_json(event),
+                            event.occurred_at.isoformat(),
+                        ),
+                    )
+                    created += 1
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return normalized, created
+
+    def list_behavior_events(self, owner_id: str) -> tuple[BehaviorEvent, ...]:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM behavior_events WHERE owner_id = ? ORDER BY occurred_at ASC, event_id ASC",
+                (owner_id,),
+            ).fetchall()
+        return tuple(self._parse_behavior_event_row(row) for row in rows)
+
+    def save_behavior_profile(self, profile: BehaviorProfile) -> BehaviorProfile:
+        normalized = BehaviorProfile.model_validate(profile.model_dump(mode="python"))
+        _validate_owner(normalized.owner_id)
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                existing = self._connection.execute(
+                    "SELECT behavior_profile_id, payload_json FROM behavior_profiles WHERE owner_id = ? AND profile_version = ?",
+                    (normalized.owner_id, normalized.profile_version),
+                ).fetchone()
+                if existing is not None:
+                    stored = BehaviorProfile.model_validate(json.loads(existing["payload_json"]))
+                    if stored != normalized:
+                        raise StoreConflictError("behavior profile version already exists")
+                    self._connection.execute("COMMIT")
+                    return stored
+                self._connection.execute(
+                    """
+                    INSERT INTO behavior_profiles
+                        (behavior_profile_id, owner_id, profile_version, ruleset_version, payload_json, calculated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        normalized.behavior_profile_id,
+                        normalized.owner_id,
+                        normalized.profile_version,
+                        normalized.ruleset_version,
+                        _canonical_contract_json(normalized),
+                        normalized.calculated_at.isoformat(),
+                    ),
+                )
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return normalized
+
+    def get_latest_behavior_profile(self, owner_id: str) -> BehaviorProfile | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT payload_json FROM behavior_profiles
+                WHERE owner_id = ? ORDER BY profile_version DESC, calculated_at DESC LIMIT 1
+                """,
+                (owner_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            profile = BehaviorProfile.model_validate(json.loads(row["payload_json"]))
+            if profile.owner_id != owner_id:
+                raise ValueError("owner mismatch")
+            return profile
+        except Exception as exc:
+            raise StoreCorruptError("stored behavior profile failed validation") from exc
+
+    def save_display_policy(self, policy: DisplayPolicy) -> DisplayPolicy:
+        normalized = DisplayPolicy.model_validate(policy.model_dump(mode="python"))
+        _validate_owner(normalized.owner_id)
+        with self._lock:
+            self._connection.execute(
+                """
+                INSERT INTO display_policies (owner_id, trust_score, mode, payload_json, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(owner_id) DO UPDATE SET
+                    trust_score = excluded.trust_score,
+                    mode = excluded.mode,
+                    payload_json = excluded.payload_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    normalized.owner_id,
+                    normalized.trust_score,
+                    normalized.mode.value,
+                    _canonical_contract_json(normalized),
+                    normalized.updated_at.isoformat(),
+                ),
+            )
+        return normalized
+
+    def get_display_policy(self, owner_id: str) -> DisplayPolicy | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json FROM display_policies WHERE owner_id = ?", (owner_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            policy = DisplayPolicy.model_validate(json.loads(row["payload_json"]))
+            if policy.owner_id != owner_id:
+                raise ValueError("owner mismatch")
+            return policy
+        except Exception as exc:
+            raise StoreCorruptError("stored display policy failed validation") from exc
+
+    def save_portfolio_ocr_confirmation(
+        self, record: PortfolioOcrConfirmation
+    ) -> tuple[PortfolioOcrConfirmation, bool]:
+        normalized = PortfolioOcrConfirmation.model_validate(record.model_dump(mode="python"))
+        _validate_owner(normalized.owner_id)
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                row = self._connection.execute(
+                    "SELECT payload_json FROM portfolio_ocr_confirmations WHERE owner_id = ? AND image_digest = ?",
+                    (normalized.owner_id, normalized.image_digest),
+                ).fetchone()
+                if row is not None:
+                    existing = PortfolioOcrConfirmation.model_validate(json.loads(row["payload_json"]))
+                    if existing.confirmed_payload_hash != normalized.confirmed_payload_hash:
+                        raise StoreConflictError("OCR confirmation digest already has different content")
+                    self._connection.execute("COMMIT")
+                    return existing, False
+                self._connection.execute(
+                    """
+                    INSERT INTO portfolio_ocr_confirmations
+                        (confirmation_id, owner_id, image_digest, payload_json, confirmed_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        normalized.confirmation_id,
+                        normalized.owner_id,
+                        normalized.image_digest,
+                        _canonical_contract_json(normalized),
+                        normalized.confirmed_at.isoformat(),
+                    ),
+                )
+                self._connection.execute("COMMIT")
+                return normalized, True
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
 
     def close(self) -> None:
         with self._lock:

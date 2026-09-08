@@ -72,6 +72,8 @@
     selectedPersona: "custom-user",
     contextRevision: 0,
     profile: null,
+    behaviorProfile: null,
+    displayPolicy: null,
     portfolio: null,
     events: [],
     selected: null,
@@ -128,7 +130,7 @@
     rebalancingSequence: 0,
     customStressRun: null,
     customStressSequence: 0,
-  }, ["ownerId", "selectedPersona", "profile", "portfolio", "dataMode"]);
+  }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
 
   function invalidateDerivedState(store) {
@@ -1385,6 +1387,123 @@
     addMetadata(metadata, "Profile version", profile.profile_version);
     addMetadata(metadata, "Confirmed at", profile.created_at);
     panel.append(metadata);
+  }
+
+  function renderBehaviorProfile(profile) {
+    const panel = byId("behavior-profile-content");
+    const status = byId("behavior-profile-status");
+    if (!panel || !status) return;
+    clear(panel);
+    if (!profile) {
+      const p = document.createElement("p");
+      p.textContent = "尚无行为画像。提交结构化成交与持仓快照后再计算；数据不足不会被模型补齐。";
+      panel.append(p);
+      status.className = "cf-verdict cf-verdict-warning";
+      status.textContent = "REVIEW_REQUIRED 数据不足";
+      return;
+    }
+    const grid = document.createElement("div");
+    grid.className = "behavior-profile-metrics";
+    [
+      ["有效适当性", profile.suitability_level],
+      ["有效风险分", profile.effective_risk_score],
+      ["90 日换手", profile.metrics?.turnover_90d_pct == null ? "数据不足" : `${profile.metrics.turnover_90d_pct}%`],
+      ["最大回撤", profile.metrics?.max_drawdown_pct == null ? "数据不足" : `${profile.metrics.max_drawdown_pct}%`],
+    ].forEach(([label, value]) => {
+      const card = document.createElement("div");
+      card.className = "behavior-profile-metric";
+      const l = document.createElement("span");
+      l.textContent = label;
+      const v = document.createElement("strong");
+      v.textContent = String(value);
+      card.append(l, v);
+      grid.append(card);
+    });
+    const note = document.createElement("p");
+    note.textContent = `${profile.persona} · ${(profile.tags || []).join(" · ")} · 规则 ${profile.ruleset_version}`;
+    panel.append(grid, note);
+    const calculated = profile.evidence_status === "CALCULATED";
+    status.className = calculated ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-warning";
+    status.textContent = calculated ? "CALCULATED 行为已计算" : "REVIEW_REQUIRED 数据不足";
+    const trust = byId("ai-trust-score");
+    const trustValue = byId("ai-trust-score-value");
+    const mode = byId("display-policy-mode");
+    if (trust) trust.value = profile.display_policy?.trust_score ?? 50;
+    if (trustValue) trustValue.textContent = profile.display_policy?.trust_score ?? 50;
+    if (mode) mode.textContent = profile.display_policy?.mode || "STANDARD";
+  }
+
+  async function loadBehaviorProfile() {
+    const owner = state.ownerId;
+    try {
+      const response = await fetch("/api/v1/advisor/behavior/profile", {
+        headers: { "X-Owner-ID": owner },
+      });
+      if (state.ownerId !== owner) return null;
+      if (!response.ok) throw await apiError(response);
+      const payload = await response.json();
+      const profile = payload.profile || null;
+      if (state.ownerId !== owner) return null;
+      if (!profile) {
+        state.behaviorProfile = null;
+        renderBehaviorProfile(null);
+        return null;
+      }
+      state.behaviorProfile = profile;
+      state.displayPolicy = profile.display_policy;
+      renderBehaviorProfile(profile);
+      return profile;
+    } catch (error) {
+      if (state.ownerId === owner) renderBehaviorProfile(null);
+      return null;
+    }
+  }
+
+  async function saveDisplayPolicy() {
+    const trust = Number(byId("ai-trust-score")?.value || 50);
+    const owner = state.ownerId;
+    const response = await fetch("/api/v1/advisor/display-policy", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": owner },
+      body: JSON.stringify({
+        schema_version: "display-policy-update-request.v1",
+        owner_id: owner,
+        trust_score: trust,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (!response.ok) throw await apiError(response);
+    const result = await response.json();
+    state.displayPolicy = result.policy;
+    const mode = byId("display-policy-mode");
+    if (mode) mode.textContent = result.policy.mode;
+    if (state.behaviorProfile) {
+      state.behaviorProfile = { ...state.behaviorProfile, display_policy: result.policy };
+      renderBehaviorProfile(state.behaviorProfile);
+    }
+  }
+
+  async function recomputeBehaviorProfile() {
+    if (!state.profile?.profile) {
+      setError("请先确认风险画像，再计算行为画像。");
+      return null;
+    }
+    const owner = state.ownerId;
+    const response = await fetch("/api/v1/advisor/behavior/recompute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": owner },
+      body: JSON.stringify({
+        schema_version: "behavior-profile-recompute-request.v1",
+        owner_id: owner,
+        calculated_at: new Date().toISOString(),
+        questionnaire_profile: state.profile.profile,
+      }),
+    });
+    if (!response.ok) throw await apiError(response);
+    const result = await response.json();
+    state.behaviorProfile = result.profile;
+    renderBehaviorProfile(result.profile);
+    return result;
   }
 
   function setPortfolioContextStatus(message, className = "") {
@@ -6023,6 +6142,8 @@
       store.selectedPersona = personaId;
       store.ownerId = persona.ownerId;
       store.profile = null;
+      store.behaviorProfile = null;
+      store.displayPolicy = null;
       store.portfolio = null;
       store.queryTemplate = null;
       store.templateContext = null;
@@ -6092,7 +6213,7 @@
     // Refresh underlying state and charts
     renderHeroDonutChart(personaId);
     renderOverviewWorkspace(personaId);
-    Promise.allSettled([loadEvents(), loadRecommendationHistory()])
+    Promise.allSettled([loadEvents(), loadRecommendationHistory(), loadBehaviorProfile()])
       .then(async () => {
         if (state.selectedPersona !== personaId) return;
         await ensureDependency("PROFILE_CONTEXT");
@@ -7833,7 +7954,7 @@
     const thinkingBox = document.createElement("div");
     thinkingBox.className = "chat-thinking-tag";
     thinkingBox.style.display = "none";
-    thinkingBox.textContent = "🧠 正在进行多智能体协同推理与事实校验…";
+    thinkingBox.textContent = "正在核对结构化事实、阈值与证据来源…";
 
     const toolsContainer = document.createElement("div");
     toolsContainer.className = "chat-tools-container";
@@ -7858,9 +7979,13 @@
     try {
       const response = await fetch("/api/v1/copilot/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
         body: JSON.stringify({
           message: query,
+          owner_id: state.ownerId,
+          profile_version: state.profile?.profile?.profile_version || null,
+          behavior_profile_version: state.behaviorProfile?.profile_version || null,
+          portfolio_snapshot_id: state.portfolio?.position_snapshot?.snapshot_id || null,
           persona_id: state.selectedPersona || "custom-user",
           persona_info: {
             name: persona.name,
@@ -7909,7 +8034,38 @@
           }
           try {
             const event = JSON.parse(dataStr);
-            if (event.type === "thinking") {
+            if (event.type === "analysis_context") {
+              const details = document.createElement("details");
+              details.className = "chat-audit-details";
+              const mode = event.display_policy?.mode || "STANDARD";
+              details.open = mode === "AUDIT_EXPANDED" || (event.warnings || []).length > 0;
+              const summary = document.createElement("summary");
+              summary.textContent = `可审计分析链 · ${mode}`;
+              const auditBody = document.createElement("div");
+              auditBody.className = "chat-audit-body";
+              [
+                ["处理步骤", event.analysis_steps],
+                ["已确认事实", event.facts],
+                ["规则阈值", event.thresholds],
+                ["证据引用", event.evidence],
+                ["风险与缺失", event.warnings],
+              ].forEach(([label, values]) => {
+                if (!Array.isArray(values) || !values.length) return;
+                const strong = document.createElement("strong");
+                strong.textContent = label;
+                const list = document.createElement("ul");
+                values.forEach(value => {
+                  const item = document.createElement("li");
+                  item.textContent = String(value);
+                  list.append(item);
+                });
+                auditBody.append(strong, list);
+              });
+              details.append(summary, auditBody);
+              aiBubble.insertBefore(details, contentBox);
+              const policyMode = byId("display-policy-mode");
+              if (policyMode) policyMode.textContent = mode;
+            } else if (event.type === "thinking") {
               setPipelineStepState(s1, "completed");
               setPipelineStepState(s2, "active");
               pipeHead.textContent = "🧠 正在调度工具与事实检索…";
@@ -8108,13 +8264,17 @@
       dataMode: state.dataMode,
       contextRevision: state.contextRevision,
     };
-    const response = await fetch("/api/v1/copilot/validate-portfolio-ocr", {
+    const isScreenshotConfirmation = Boolean(data.image_digest);
+    const response = await fetch(
+      isScreenshotConfirmation ? "/api/v1/advisor/portfolio/ocr/confirm" : "/api/v1/copilot/validate-portfolio-ocr",
+      {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Owner-ID": validationContext.ownerId },
       body: JSON.stringify({
         owner_id: validationContext.ownerId,
         positions,
         cash_cny: data.cash_cny,
+        ...(isScreenshotConfirmation ? { image_digest: data.image_digest } : {}),
       }),
     });
     const validationIsCurrent = () => state.ownerId === validationContext.ownerId
@@ -8189,15 +8349,10 @@
   }
 
   function handlePortfolioOcrFile(fileOrBlob) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      submitPortfolioOcr(dataUrl);
-    };
-    reader.readAsDataURL(fileOrBlob);
+    submitPortfolioOcr(fileOrBlob);
   }
 
-  async function submitPortfolioOcr(dataUrl) {
+  async function submitPortfolioOcr(fileOrBlob) {
     const container = byId("ocr-result-container");
     if (container) {
       clear(container);
@@ -8218,11 +8373,15 @@
     }
 
     try {
-      const resp = await fetch("/api/v1/copilot/parse-portfolio-ocr", {
+      const form = new FormData();
+      const filename = fileOrBlob?.name || "portfolio-screenshot.png";
+      form.append("file", fileOrBlob, filename);
+      const resp = await fetch("/api/v1/advisor/portfolio/ocr", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_base64: dataUrl }),
+        headers: { "X-Owner-ID": state.ownerId },
+        body: form,
       });
+      if (!resp.ok) throw await apiError(resp);
       const data = await resp.json();
       state.ocrPortfolioDraft = data;
       renderPortfolioOcrResult(data);
@@ -8385,7 +8544,7 @@
     const confirmBtn = document.createElement("button");
     confirmBtn.className = "copilot-action-btn primary";
     confirmBtn.type = "button";
-    confirmBtn.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" 确认并载入用户画像"));
+    confirmBtn.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" 确认持仓并开始体检"));
     confirmBtn.addEventListener("click", async () => {
       confirmBtn.disabled = true;
       try {
@@ -8494,6 +8653,63 @@
     });
   }
 
+  function renderDevAssistResult(result) {
+    const output = byId("dev-assist-output");
+    const status = byId("dev-assist-status");
+    if (!output || !status) return;
+    clear(output);
+    status.textContent = result.status;
+    status.className = result.status === "CALCULATED" ? "status-chip pass" : "status-chip review";
+    const grid = document.createElement("div");
+    grid.className = "dev-assist-result-grid";
+    const sections = [
+      ["冲突与缺口", [...(result.conflicts || []), ...(result.gaps || [])].join("\n") || "未发现结构化冲突"],
+      ["完善后的技术方案", result.improved_technical_spec],
+      ["接口草案", (result.api_drafts || []).map(item => `${item.method} ${item.path} — ${item.purpose}`).join("\n")],
+      ["代码骨架", (result.skeleton_files || []).map(item => `# ${item.path}\n${item.content}`).join("\n\n")],
+    ];
+    sections.forEach(([title, value]) => {
+      const card = document.createElement("section");
+      card.className = "dev-assist-result";
+      const h4 = document.createElement("h4");
+      h4.textContent = title;
+      const pre = document.createElement("pre");
+      pre.textContent = value || "无";
+      card.append(h4, pre);
+      grid.append(card);
+    });
+    const boundary = document.createElement("p");
+    boundary.className = "research-boundary";
+    boundary.textContent = "代码骨架仅作为文本返回；服务端未写入仓库，也未执行任何生成代码。";
+    output.append(grid, boundary);
+  }
+
+  async function runDevAssist() {
+    const prd = byId("dev-assist-prd")?.value?.trim();
+    const technical = byId("dev-assist-technical")?.value?.trim();
+    if (!prd || !technical) {
+      setError("研发辅助需要同时提供 PRD 和技术方案文本。");
+      return;
+    }
+    const status = byId("dev-assist-status");
+    if (status) status.textContent = "处理中";
+    const response = await fetch("/api/v1/dev-assist/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
+      body: JSON.stringify({
+        schema_version: "dev-assist-request.v1",
+        run_id: `dev-assist-${Date.now()}`,
+        owner_id: state.ownerId,
+        requested_at: new Date().toISOString(),
+        prd_text: prd,
+        technical_text: technical,
+        target_stack: "Python 3.11, FastAPI, Pydantic, vanilla JavaScript",
+      }),
+    });
+    if (!response.ok) throw await apiError(response);
+    renderDevAssistResult(await response.json());
+  }
+
   // Event bindings for P2 panels
   const refHistBtn = byId("refresh-history");
   if (refHistBtn) refHistBtn.addEventListener("click", loadRecommendationHistory);
@@ -8503,6 +8719,17 @@
   if (runRebBtn) runRebBtn.addEventListener("click", runPortfolioRebalancing);
   const runExpBtn = byId("run-explainability");
   if (runExpBtn) runExpBtn.addEventListener("click", runAdvancedExplainability);
+  const trustScore = byId("ai-trust-score");
+  if (trustScore) trustScore.addEventListener("input", () => {
+    const value = byId("ai-trust-score-value");
+    if (value) value.textContent = trustScore.value;
+  });
+  const savePolicyBtn = byId("save-display-policy");
+  if (savePolicyBtn) savePolicyBtn.addEventListener("click", () => saveDisplayPolicy().catch(error => setError(error.message)));
+  const recomputeBehaviorBtn = byId("recompute-behavior-profile");
+  if (recomputeBehaviorBtn) recomputeBehaviorBtn.addEventListener("click", () => recomputeBehaviorProfile().catch(error => setError(error.message)));
+  const runDevAssistBtn = byId("run-dev-assist");
+  if (runDevAssistBtn) runDevAssistBtn.addEventListener("click", () => runDevAssist().catch(error => setError(error.message)));
   const runEvalBtn = byId("run-evaluation-suite");
   if (runEvalBtn) runEvalBtn.addEventListener("click", runEvaluationSuite);
 

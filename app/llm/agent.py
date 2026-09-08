@@ -112,7 +112,9 @@ class CopilotAgent:
             chunk_type = chunk.get("type")
 
             if chunk_type == "reasoning":
-                yield {"type": "thinking", "text": chunk.get("delta", "")}
+                # Never expose provider chain-of-thought.  The API emits a separate,
+                # deterministic facts/rules/evidence summary for explainability.
+                yield {"type": "thinking", "title": "正在核对结构化事实与规则"}
 
             elif chunk_type == "tool_call":
                 tool_name = chunk.get("name", "")

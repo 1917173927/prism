@@ -13,6 +13,7 @@ from app.portfolio.contracts import (
     PositionImportStatus,
     PositionSnapshot,
 )
+from app.portfolio.confirmation import PortfolioOcrConfirmation
 from app.portfolio.exposure import (
     ExposureBasis,
     ExposureContribution,
@@ -43,6 +44,7 @@ __all__ = [
     "PositionImportResult",
     "PositionImportStatus",
     "PositionSnapshot",
+    "PortfolioOcrConfirmation",
     "ExposureBasis",
     "ExposureContribution",
     "ExposureIssue",

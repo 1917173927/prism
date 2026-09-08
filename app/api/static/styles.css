@@ -3194,6 +3194,52 @@ dd { margin: 2px 0 0; font: 12px var(--mono); color: var(--ink); }
   animation: fadeIn 0.3s ease;
 }
 
+.behavior-profile-card {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--border, #d7dde8);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.behavior-profile-head,
+.display-policy-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.behavior-profile-head h3 { margin: 2px 0 0; }
+.behavior-profile-content { margin-top: 12px; color: var(--text-muted, #5d6677); }
+.behavior-profile-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.behavior-profile-metric { padding: 10px; border: 1px solid #e3e7ef; border-radius: 8px; background: #f8fafc; }
+.behavior-profile-metric span { display: block; color: #667085; font-size: 12px; }
+.behavior-profile-metric strong { display: block; margin-top: 3px; font-size: 16px; }
+.display-policy-control { margin-top: 14px; padding-top: 14px; border-top: 1px solid #e7eaf0; }
+.display-policy-control input[type="range"] { flex: 1; min-width: 180px; }
+
+.dev-assist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dev-assist-grid label { display: grid; gap: 6px; font-weight: 600; }
+.dev-assist-grid textarea { width: 100%; padding: 10px; border: 1px solid #d7dde8; border-radius: 8px; resize: vertical; font: inherit; }
+.dev-assist-output { margin-top: 16px; }
+.dev-assist-result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dev-assist-result { padding: 12px; border: 1px solid #e3e7ef; border-radius: 8px; background: #f8fafc; }
+.dev-assist-result h4 { margin: 0 0 8px; }
+.dev-assist-result pre { max-height: 260px; overflow: auto; white-space: pre-wrap; font-size: 12px; }
+
+.chat-audit-details { margin: 10px 0; border: 1px solid #d7dde8; border-radius: 8px; background: #f8fafc; }
+.chat-audit-details summary { cursor: pointer; padding: 9px 11px; font-weight: 700; }
+.chat-audit-body { padding: 0 11px 11px; font-size: 12px; color: #475467; }
+.chat-audit-body ul { margin: 6px 0; padding-left: 18px; }
+
+@media (max-width: 760px) {
+  .behavior-profile-metrics,
+  .dev-assist-grid,
+  .dev-assist-result-grid { grid-template-columns: 1fr; }
+}
+
 .chat-panel-header {
   display: flex;
   justify-content: space-between;

@@ -10,11 +10,11 @@ from decimal import Decimal
 from pathlib import Path
 import re
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.api.contracts import (
     AdvisorPortfolioContextRequest,
@@ -27,6 +27,13 @@ from app.api.contracts import (
     AdvisorProfileProposalResponse,
     AdvisorQueryResponse,
     AdvisorQueryTemplateResponse,
+    BehaviorEventsWriteRequest,
+    BehaviorEventsWriteResponse,
+    BehaviorProfileRecomputeRequest,
+    BehaviorProfileResponse,
+    BehaviorProfileLookupResponse,
+    DisplayPolicyResponse,
+    DisplayPolicyUpdateRequest,
     DecisionEventListResponse,
     DecisionEventWriteResponse,
     ErrorResponse,
@@ -91,6 +98,20 @@ from app.evaluation import (
 from app.explainability import (
     AdvancedExplainabilityRequest,
     AdvancedExplainabilityResponse,
+)
+from app.profile import (
+    DisplayPolicySource,
+    build_display_policy,
+    calculate_behavior_profile,
+    effective_risk_profile,
+)
+from app.portfolio import PortfolioOcrConfirmation
+from app.dev_assist import (
+    DevAssistError,
+    DevAssistRequest,
+    DevAssistResponse,
+    extract_document_text,
+    run_dev_assist,
 )
 from app.service import (
     AdvisorIntentRequest,
@@ -168,6 +189,7 @@ from app.runtime.mode import (
 )
 from typing import Any
 import json
+from hashlib import sha256
 
 
 class RuntimeDataModeSwitchRequest(BaseModel):
@@ -186,6 +208,10 @@ class LiveProviderQueryRequest(BaseModel):
 
 class CopilotChatApiRequest(BaseModel):
     message: str
+    owner_id: str | None = None
+    profile_version: int | None = None
+    behavior_profile_version: int | None = None
+    portfolio_snapshot_id: str | None = None
     persona_id: str | None = "persona-zhang-r3"
     persona_info: dict[str, Any] | None = None
     portfolio_context: dict[str, Any] | None = None
@@ -206,6 +232,34 @@ class CopilotValidatePortfolioOcrApiRequest(BaseModel):
     owner_id: str = Field(min_length=1)
     positions: list[dict[str, Any]]
     cash_cny: Decimal = Field(ge=0)
+
+
+class ConfirmedOcrPosition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset_id: str = Field(min_length=1)
+    name: str | None = None
+    asset_class: str | None = None
+    sector: str | None = None
+    quantity: Decimal = Field(gt=0)
+    cost_price: Decimal | None = Field(default=None, gt=0)
+    price: Decimal = Field(gt=0)
+    market_value_cny: Decimal | None = Field(default=None, ge=0)
+    confidence: Decimal | None = Field(default=None, ge=0, le=1)
+    confidence_pct: Decimal | None = Field(default=None, ge=0, le=100)
+    needs_review: bool = False
+    original_code: str | None = None
+    review_reasons: list[str] = Field(default_factory=list)
+    weight: Decimal | None = Field(default=None, ge=0, le=1)
+    calculated_market_value_cny: Decimal | None = Field(default=None, ge=0)
+    confidence_level: str | None = None
+
+
+class CopilotConfirmPortfolioOcrApiRequest(CopilotValidatePortfolioOcrApiRequest):
+    model_config = ConfigDict(extra="forbid")
+
+    positions: list[ConfirmedOcrPosition]
+    image_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
 
 
 class CopilotConfigApiRequest(BaseModel):
@@ -527,6 +581,128 @@ def create_app(
             "live_ready": controller.is_live_ready,
             "capabilities": controller.capabilities,
         }
+
+    @api.post(
+        "/api/v1/advisor/behavior/events",
+        response_model=BehaviorEventsWriteResponse,
+    )
+    def write_behavior_events(
+        request: BehaviorEventsWriteRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> BehaviorEventsWriteResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("behavior request owner does not match owner scope")
+        stored, created_count = active_store.save_behavior_events(owner_id, request.events)
+        return BehaviorEventsWriteResponse(
+            owner_id=owner_id,
+            accepted_count=len(stored),
+            created_count=created_count,
+            event_ids=tuple(item.event_id for item in stored),
+        )
+
+    @api.get(
+        "/api/v1/advisor/behavior/profile",
+        response_model=BehaviorProfileLookupResponse,
+    )
+    def get_behavior_profile(
+        owner_id: str = Depends(owner_dependency),
+    ) -> BehaviorProfileLookupResponse:
+        profile = active_store.get_latest_behavior_profile(owner_id)
+        if profile is None:
+            return BehaviorProfileLookupResponse(status="INSUFFICIENT_DATA")
+        return BehaviorProfileLookupResponse(status="CALCULATED", profile=profile)
+
+    @api.post(
+        "/api/v1/advisor/behavior/recompute",
+        response_model=BehaviorProfileResponse,
+    )
+    def recompute_behavior_profile(
+        request: BehaviorProfileRecomputeRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> BehaviorProfileResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("behavior profile owner does not match owner scope")
+        events = active_store.list_behavior_events(owner_id)
+        current = active_store.get_latest_behavior_profile(owner_id)
+        version = 1 if current is None else current.profile_version + 1
+        policy = active_store.get_display_policy(owner_id)
+        profile = calculate_behavior_profile(
+            request.questionnaire_profile,
+            events,
+            calculated_at=request.calculated_at,
+            display_policy=policy,
+            profile_version=version,
+        )
+        active_store.save_behavior_profile(profile)
+        effective = effective_risk_profile(request.questionnaire_profile, profile)
+        return BehaviorProfileResponse(profile=profile, effective_profile=effective)
+
+    @api.patch(
+        "/api/v1/advisor/display-policy",
+        response_model=DisplayPolicyResponse,
+    )
+    def update_display_policy(
+        request: DisplayPolicyUpdateRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> DisplayPolicyResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("display policy owner does not match owner scope")
+        policy = build_display_policy(
+            owner_id,
+            request.trust_score,
+            updated_at=request.updated_at,
+            source=DisplayPolicySource.EXPLICIT,
+        )
+        return DisplayPolicyResponse(policy=active_store.save_display_policy(policy))
+
+    @api.post(
+        "/api/v1/dev-assist/runs",
+        response_model=DevAssistResponse,
+    )
+    def create_dev_assist_run(
+        request: DevAssistRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> DevAssistResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("development assistance owner does not match owner scope")
+        return run_dev_assist(request, generated_at=active_clock())
+
+    @api.post(
+        "/api/v1/dev-assist/runs/upload",
+        response_model=DevAssistResponse,
+    )
+    async def create_dev_assist_upload_run(
+        prd_file: UploadFile = File(...),
+        technical_file: UploadFile = File(...),
+        target_stack: str = Form("Python 3.11, FastAPI, Pydantic, vanilla JavaScript"),
+        owner_id: str = Depends(owner_dependency),
+    ) -> DevAssistResponse:
+        try:
+            prd_content = await prd_file.read()
+            technical_content = await technical_file.read()
+            prd_text = extract_document_text(prd_file.filename or "prd.txt", prd_content)
+            technical_text = extract_document_text(
+                technical_file.filename or "technical.txt", technical_content
+            )
+        except DevAssistError as exc:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "schema_version": "api-error.v1",
+                    "error_code": "DEV_ASSIST_DOCUMENT_INVALID",
+                    "message": str(exc),
+                },
+            )
+        digest = sha256(prd_content + b"\x00" + technical_content).hexdigest()[:24]
+        request = DevAssistRequest(
+            run_id=f"dev-assist:{digest}",
+            owner_id=owner_id,
+            requested_at=active_clock(),
+            prd_text=prd_text,
+            technical_text=technical_text,
+            target_stack=target_stack,
+        )
+        return run_dev_assist(request, generated_at=active_clock())
 
     @api.get("/api/v1/runtime/data-mode")
     async def get_runtime_data_mode():
@@ -1263,9 +1439,62 @@ def create_app(
     )
 
     @api.post("/api/v1/copilot/chat")
-    async def copilot_chat_endpoint(req: CopilotChatApiRequest):
+    async def copilot_chat_endpoint(
+        req: CopilotChatApiRequest,
+        x_owner_id: str | None = Header(default=None, alias="X-Owner-ID"),
+    ):
         """Streaming SSE endpoint for live conversational investment copilot."""
+        scoped_owner = x_owner_id.strip() if x_owner_id and x_owner_id.strip() else req.owner_id
+        if scoped_owner is not None and req.owner_id is not None and scoped_owner != req.owner_id:
+            raise StoreOwnerError("chat owner does not match owner scope")
+        stored_profile = active_store.get_latest_behavior_profile(scoped_owner) if scoped_owner else None
+        stored_policy = active_store.get_display_policy(scoped_owner) if scoped_owner else None
+        if stored_policy is None:
+            stored_policy = build_display_policy(
+                scoped_owner or "anonymous",
+                50,
+                updated_at=active_clock(),
+                source=DisplayPolicySource.DEFAULT,
+            )
+
         async def sse_generator():
+            context_event = {
+                "type": "analysis_context",
+                "display_policy": stored_policy.model_dump(mode="json"),
+                "profile_version": req.profile_version,
+                "behavior_profile_id": stored_profile.behavior_profile_id if stored_profile else None,
+                "behavior_profile_version": stored_profile.profile_version if stored_profile else None,
+                "requested_behavior_profile_version": req.behavior_profile_version,
+                "portfolio_snapshot_id": req.portfolio_snapshot_id,
+                "analysis_steps": [
+                    "解析问题意图与结构化槽位",
+                    "读取已确认画像和持仓快照",
+                    "调用确定性金融工具并核对阈值",
+                    "生成带来源和边界的结论",
+                ],
+                "facts": [
+                    f"有效风险等级：{stored_profile.suitability_level.value}"
+                    if stored_profile else "尚无行为画像快照"
+                ],
+                "thresholds": ["AI 信任度 <35 展开审计链", "AI 信任度 >=65 结论优先"],
+                "evidence": [item.evidence_id for item in stored_profile.evidence] if stored_profile else [],
+                "warnings": [
+                    message
+                    for message in (
+                        "行为数据不足；不得据此提高风险等级"
+                        if stored_profile is None
+                        or stored_profile.evidence_status.value == "INSUFFICIENT_DATA"
+                        else None,
+                        "请求引用的行为画像版本不是当前版本"
+                        if stored_profile is not None
+                        and req.behavior_profile_version is not None
+                        and req.behavior_profile_version != stored_profile.profile_version
+                        else None,
+                    )
+                    if message is not None
+                ],
+            }
+            yield f"data: {json.dumps(context_event, ensure_ascii=False)}\n\n"
             history_objs = [CopilotMessage(role=m.get("role", "user"), content=m.get("content", "")) for m in (req.history or [])]
             async for chunk in copilot_agent.stream_chat(
                 user_message=req.message,
@@ -1350,6 +1579,82 @@ def create_app(
                     "parsed_count": 0,
                 },
             )
+
+    @api.post("/api/v1/advisor/portfolio/ocr")
+    async def advisor_portfolio_ocr_endpoint(
+        file: UploadFile = File(...),
+        owner_id: str = Depends(owner_dependency),
+    ):
+        """Parse a bounded screenshot without persisting the original image."""
+        allowed_types = {"image/png", "image/jpeg", "image/webp"}
+        if file.content_type not in allowed_types:
+            return _error_response(415, "OCR_MEDIA_TYPE", "only PNG, JPEG and WebP images are supported")
+        content = await file.read(5 * 1024 * 1024 + 1)
+        if not content or len(content) > 5 * 1024 * 1024:
+            return _error_response(413, "OCR_FILE_SIZE", "image must be between 1 byte and 5 MiB")
+        image_digest = sha256(content).hexdigest()
+        from app.llm.ocr_portfolio_parser import OCRPortfolioParser
+
+        try:
+            result = OCRPortfolioParser.get_instance().parse_image_bytes(content)
+        except Exception:
+            return _error_response(400, "OCR_PARSE_FAILED", "portfolio screenshot could not be parsed")
+        result.update({
+            "owner_id": owner_id,
+            "image_digest": image_digest,
+            "confirmation_status": "REVIEW_REQUIRED" if result.get("has_low_confidence_items") else "CALCULATED",
+            "original_image_persisted": False,
+        })
+        return JSONResponse(content=result)
+
+    @api.post("/api/v1/advisor/portfolio/ocr/confirm")
+    def advisor_portfolio_ocr_confirm_endpoint(
+        req: CopilotConfirmPortfolioOcrApiRequest,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        """Confirm edited OCR rows, recalculate them, and persist only structured data."""
+        if req.owner_id != owner_id:
+            raise StoreOwnerError("OCR confirmation owner does not match owner scope")
+        from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+
+        try:
+            confirmed_positions = [
+                item.model_dump(mode="json") for item in req.positions
+            ]
+            calculated = recalculate_portfolio_values(confirmed_positions, req.cash_cny, owner_id)
+            portfolio = PortfolioImportBundle.model_validate(calculated["portfolio"])
+            confirmed_at = active_clock()
+            confirmed_payload = json.dumps(
+                {"positions": calculated["positions"], "cash_cny": calculated["cash_cny"]},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            ).encode("utf-8")
+            record = PortfolioOcrConfirmation(
+                confirmation_id="ocr-confirmation:" + sha256(
+                    f"{owner_id}:{req.image_digest}".encode("utf-8")
+                ).hexdigest()[:32],
+                owner_id=owner_id,
+                image_digest=req.image_digest,
+                confirmed_payload_hash=sha256(confirmed_payload).hexdigest(),
+                confirmed_at=confirmed_at,
+                portfolio=portfolio,
+            )
+            stored, created = active_store.save_portfolio_ocr_confirmation(record)
+            if not created:
+                calculated["portfolio"] = stored.portfolio.model_dump(mode="json")
+        except StoreConflictError:
+            raise
+        except (ArithmeticError, TypeError, ValueError, ValidationError):
+            return _error_response(422, "OCR_VALUE_VALIDATION_FAILED", "confirmed OCR rows failed deterministic validation")
+        calculated.update({
+            "confirmation": stored.model_dump(mode="json"),
+            "created": created,
+            "confirmation_status": "CALCULATED",
+            "original_image_persisted": False,
+        })
+        return JSONResponse(content=calculated)
 
     @api.post("/api/v1/copilot/config")
     def copilot_update_config_endpoint(req: CopilotConfigApiRequest):
