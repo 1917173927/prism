@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.access import LocalAccessMiddleware, load_accounts
+from app.service.natural_profile import NaturalProfileRequest, NaturalProfileError, extract_natural_profile
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.api.contracts import (
@@ -1565,6 +1566,15 @@ def create_app(
         live_finance_provider=active_live_finance,
         skillhub_provider=active_wencai_provider,
     )
+
+    @api.post("/api/v1/advisor/profile-extractions")
+    async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
+        if req.owner_id != owner_id:
+            raise StoreOwnerError("profile extraction owner mismatch")
+        try:
+            return await extract_natural_profile(req, copilot_agent.client, active_clock())
+        except NaturalProfileError as exc:
+            return _error_response(422, "PROFILE_EXTRACTION_REFUSED", str(exc))
 
     @api.post("/api/v1/copilot/chat")
     async def copilot_chat_endpoint(

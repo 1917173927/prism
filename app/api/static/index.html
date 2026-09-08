@@ -539,7 +539,7 @@
                 <button id="close-llm-config-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
               </div>
               <div class="copilot-modal-body">
-                <p class="modal-hint">支持直连 DeepSeek、通义千问、OpenAI 或任意兼容接口（配置将保存在本地浏览器）：</p>
+                <p class="modal-hint">支持 DeepSeek、通义千问、OpenAI 或兼容接口；认证模式下浏览器配置仅保留在当前页面：</p>
                 
                 <div style="margin-bottom:12px;">
                   <label for="llm-provider-select" style="font-size:12.5px; font-weight:600; display:block; margin-bottom:4px;">服务商预设：</label>
@@ -1246,28 +1246,11 @@
               <a href="#copilot" class="query-submit secondary">前往设置</a>
             </section>
 
-            <div class="dev-only profile-technical-tools dev-outline">
-              <div class="context-confirm-actions">
-                <div>
-                  <strong>兼容画像契约</strong>
-                  <small>以下六字段表单仅用于旧接口和开发回归，不生成正式 19 题问卷快照。</small>
-                </div>
-                <div class="context-import-actions">
-                  <button id="confirm-profile" class="query-submit" type="button">确认兼容画像</button>
-                  <span id="profile-context-status" class="status-chip">未确认</span>
-                </div>
-              </div>
-              <div id="profile-template-content" class="profile-context" aria-live="polite">
-                <div class="empty-state">读取隔离标识模板后查看兼容画像约束。</div>
-              </div>
-              <div id="profile-confirmation-content" class="profile-confirmation" aria-live="polite">
-                <div class="empty-state">确认后查看兼容契约结果。</div>
-              </div>
               <div class="profile-proposal" aria-labelledby="profile-proposal-title">
                 <div class="context-confirm-actions">
                   <div>
                     <strong id="profile-proposal-title">审阅结构化提取提案</strong>
-                    <small>仅接受已脱敏的结构化值与输入摘要；不解析或保存自然语言原文。</small>
+                    <small>自然语言只生成偏好提案，不替代已确认问卷或改变有效风险等级；原文不保存。</small>
                   </div>
                   <div class="context-import-actions">
                     <button id="preview-profile-proposal" class="query-submit" type="button">预览画像提案</button>
@@ -1275,8 +1258,13 @@
                   </div>
                 </div>
                 <div class="context-import">
-                  <label for="profile-proposal-json">粘贴已脱敏的画像提取提案 JSON</label>
-                  <textarea id="profile-proposal-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 profile-extraction.v1；只保留结构化候选值与 64 位 input_digest"></textarea>
+                  <label for="profile-natural-text">用自己的话描述投资偏好</label>
+                  <textarea id="profile-natural-text" rows="3" maxlength="4000" placeholder="例如：长期投资，没有短期用钱需求，最多接受亏损 15%。请勿输入密码或密钥。"></textarea>
+                  <button id="extract-natural-profile" class="query-submit" type="button">提取偏好供我确认</button>
+                  <div id="profile-natural-evidence" aria-live="polite"></div>
+                  <details><summary>高级结构化输入</summary>
+                  <label for="profile-proposal-json">画像提取提案 JSON</label>
+                  <textarea id="profile-proposal-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 profile-extraction.v1；只保留结构化候选值与 64 位 input_digest"></textarea></details>
                   <small>提案只在当前会话使用；隔离标识必须与上方输入及当前问卷一致。</small>
                 </div>
                 <div id="profile-proposal-content" class="profile-proposal-content" aria-live="polite">
@@ -1295,6 +1283,24 @@
                 <div id="profile-proposal-result" class="profile-proposal-result" aria-live="polite">
                   <div class="empty-state">确认提案后查看保留冲突选择的风险画像。</div>
                 </div>
+              </div>
+
+            <div class="dev-only profile-technical-tools dev-outline">
+              <div class="context-confirm-actions">
+                <div>
+                  <strong>兼容画像契约</strong>
+                  <small>以下六字段表单仅用于旧接口和开发回归，不生成正式 19 题问卷快照。</small>
+                </div>
+                <div class="context-import-actions">
+                  <button id="confirm-profile" class="query-submit" type="button">确认兼容画像</button>
+                  <span id="profile-context-status" class="status-chip">未确认</span>
+                </div>
+              </div>
+              <div id="profile-template-content" class="profile-context" aria-live="polite">
+                <div class="empty-state">读取隔离标识模板后查看兼容画像约束。</div>
+              </div>
+              <div id="profile-confirmation-content" class="profile-confirmation" aria-live="polite">
+                <div class="empty-state">确认后查看兼容契约结果。</div>
               </div>
               <div id="profile-content" class="profile-content">
                 <div class="empty-state">回执会绑定画像版本、持仓快照和风险预算。</div>

@@ -4254,6 +4254,34 @@
     return template;
   }
 
+  async function extractNaturalProfile() {
+    if (!state.profile?.questionnaire) { setError("请先完成并确认风险问卷，再与自然语言偏好进行核对"); return; }
+    const owner = state.ownerId;
+    const revision = state.contextRevision;
+    const input = byId("profile-natural-text").value.trim();
+    const button = byId("extract-natural-profile");
+    if (!input) { setError("请先输入投资偏好"); return; }
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/v1/advisor/profile-extractions", {
+        method:"POST", headers:{"Content-Type":"application/json", "X-Owner-ID":owner},
+        body:JSON.stringify({owner_id:owner, text:input}),
+      });
+      if (!response.ok) throw await apiError(response);
+      const result = await response.json();
+      if (state.ownerId !== owner || state.contextRevision !== revision || byId("profile-natural-text").value.trim() !== input) return;
+      byId("profile-proposal-json").value = JSON.stringify(result.extraction, null, 2);
+      byId("profile-natural-evidence").textContent = [
+        ...result.evidence.map(item => `${profileDimensionLabel(item.field)}：${text(item.value)}；原文「${item.quote}」；置信度 ${item.confidence}`),
+        ...result.warnings, "尚未修改已确认画像。",
+      ].join("\n");
+      if (result.status === "REQUIRES_CONFIRMATION") await previewProfileProposal();
+      else { clearProfileProposal({clearInput:false}); setError("没有足够明确的偏好，请补充或使用风险问卷"); }
+    } catch (error) {
+      if (state.ownerId === owner) setError(error.message || "提取失败，未修改画像");
+    } finally { button.disabled = false; }
+  }
+
   async function previewProfileProposal() {
     const requestOwner = byId("owner-id").value.trim();
     const raw = byId("profile-proposal-json").value.trim();
@@ -4301,7 +4329,7 @@
     try {
       const template = state.queryTemplate || await loadTemplateContext(requestOwner, templateSequence);
       if (!template) return;
-      const questionnaire = buildQuestionnaire(template);
+      const questionnaire = state.profile?.questionnaire || buildQuestionnaire(template);
       const response = await fetch("/api/v1/advisor/profile-proposals", {
         method: "POST",
         headers: {
@@ -5550,6 +5578,7 @@
   byId("confirm-portfolio").addEventListener("click", confirmPortfolioContext);
   byId("confirm-profile").addEventListener("click", confirmProfileContext);
   byId("preview-profile-proposal").addEventListener("click", previewProfileProposal);
+  byId("extract-natural-profile").addEventListener("click", extractNaturalProfile);
   byId("confirm-profile-proposal").addEventListener("click", confirmProfileProposal);
   byId("preview-advisor-plan").addEventListener("click", previewAdvisorPlan);
   byId("intent-type").addEventListener("change", clearAdvisorPlan);
