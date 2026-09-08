@@ -39,3 +39,13 @@ $env:PRISM_AUTH_ACCOUNTS_FILE = (Resolve-Path data/private/accounts.json).Path
 ```
 
 恢复后停止当前服务，将 `PRISM_DB_PATH` 指向恢复的新文件再启动；原库保留，可回退。账户文件和供应商环境变量需单独以安全方式备份，此工具不复制凭据。不要将备份提交到 Git。
+
+## 第4章 真实 HTTP 观测
+
+以下命令通过 TCP/HTTP 请求已经运行的服务，不使用进程内 ASGI。工具只执行 GET；选择路由决定测量范围。认证接口可通过临时环境变量 PRISM_LOAD_USERNAME、PRISM_LOAD_PASSWORD 配置，不把密码放入 URL 或命令参数，使用后清除环境变量。
+
+```powershell
+.venv/Scripts/python.exe tools/http_load_test.py --url http://127.0.0.1:8000/api/v1/advisor/portfolio/current --owner demo-owner --concurrency 100 --requests 100
+```
+
+输出包含时间窗口、P50/P95/P99、HTTP 状态和失败类型。单次全部成功只代表该样本；输出始终标记 sla_verified=false，不能作为长期 99.9% 可用性或扶摇上游性能证明。对外部服务压测前需明确其配额和许可。
