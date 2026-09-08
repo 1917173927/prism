@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.access import LocalAccessMiddleware, load_accounts
 from app.service.natural_profile import NaturalProfileRequest, NaturalProfileError, extract_natural_profile
-from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status
+from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status, fingerprint, SessionAssertionsRequest, check_session_assertions
 from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
 from app.service.semantic_memory import search_context_memories
 from uuid import uuid4
@@ -1657,8 +1657,24 @@ def create_app(
             facts = current_facts(active_store, owner_id, get_runtime_mode_controller().mode.value)
         except TruthInputRequired:
             return _error_response(422, "TRUTH_INPUT_REQUIRED", "请先确认风险问卷与持仓")
+        if req.expected_fingerprint is not None and req.expected_fingerprint != fingerprint(facts):
+            return _error_response(409, "PREMISE_DRIFT", "预览后的分析前提已变化，请重新核对再确认")
         record = active_store.save_session_truth(owner_id, session_id, facts, req.expected_revision, active_clock().isoformat())
         return truth_status(record, facts)
+
+    @api.post("/api/v1/advisor/session-truth/check")
+    def check_truth(req: SessionAssertionsRequest, owner_id: str = Depends(owner_dependency),
+                    session_id: str = Query("workbench", pattern=r"^[A-Za-z0-9_.-]{1,100}$")):
+        record = active_store.get_session_truth(owner_id, session_id)
+        if record is None or record["revision"] != req.expected_revision:
+            return _error_response(409, "TRUTH_REVISION_CONFLICT", "请先锁定或重新读取当前前提版本")
+        try:
+            facts = current_facts(active_store, owner_id, get_runtime_mode_controller().mode.value)
+        except TruthInputRequired:
+            return _error_response(422, "TRUTH_INPUT_REQUIRED", "请先确认风险问卷与持仓")
+        if truth_status(record, facts)["status"] != "LOCKED":
+            return _error_response(409, "PREMISE_DRIFT", "当前前提已变化，不能用旧版本继续核验")
+        return check_session_assertions(record, facts, req, owner_id=owner_id)
 
     @api.post("/api/v1/copilot/chat")
     async def copilot_chat_endpoint(

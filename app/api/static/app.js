@@ -154,21 +154,93 @@
     byId("confirm-session-truth").textContent = result.revision ? "确认使用当前分析前提" : "锁定当前分析前提";
     return result;
   }
+  let truthReview = null;
+  function renderTruthFacts(target, facts, revision) {
+    const panel = byId(target); panel.replaceChildren();
+    if (!facts) {panel.textContent = "请先确认问卷和持仓。"; return;}
+    const rows = [
+      ["版本", String(revision), "会话前提"],
+      ["数据模式", facts.data_mode, "运行模式"],
+      ["风险等级", facts.profile.risk_level, facts.profile.profile_id],
+      ["最大回撤容忍", `${facts.profile.max_drawdown_tolerance_pct}%`, facts.profile.profile_id],
+      ["禁投约束", (facts.profile.exclusions || []).join("、") || "未声明", facts.profile.profile_id],
+    ];
+    for (const p of facts.portfolio.position_snapshot.positions) rows.push([p.asset_name || p.asset_id, p.asset_type === "CASH" ? `金额 ${p.market_value} ${p.currency}` : `${p.quantity ?? "未知"} 股/份 · 市值 ${p.market_value} ${p.currency}`, p.position_id]);
+    for (const [label, value, source] of rows) {
+      const line = document.createElement("p");
+      line.textContent = `${label}：${value}（来源：${source}）`; panel.append(line);
+    }
+  }
+  let truthTurnCounter = 0;
+  function recordTruthTurnAlert(row, message, owner) {
+    if (owner !== state.ownerId) return;
+    const list = byId("truth-turn-alerts");
+    const entry = document.createElement("li");
+    const link = document.createElement("a");
+    row.id = `truth-turn-${++truthTurnCounter}`;
+    link.href = `#${row.id}`;
+    link.textContent = `第 ${truthTurnCounter} 次中断：${message}`;
+    link.addEventListener("click", event => {
+      event.preventDefault(); byId("truth-drawer").close();
+      row.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block:"center"});
+    });
+    entry.append(link); list.append(entry);
+    if (list.children.length > 20) list.firstElementChild.remove();
+  }
+  async function openTruthDrawer() {
+    byId("truth-check-result").textContent = "";
+    const current = await refreshSessionTruth();
+    if (!current) return;
+    renderTruthFacts("truth-facts", current.record?.facts, current.revision);
+    if (current.status !== "LOCKED") byId("truth-check-result").textContent = "PREMISE_DRIFT / INPUT_REQUIRED：请核对并确认当前前提后再检查。";
+    const select = byId("truth-claim-position"); select.replaceChildren();
+    for (const p of current.record?.facts?.portfolio?.position_snapshot?.positions || []) {
+      const option = document.createElement("option"); option.value = p.position_id; option.textContent = p.asset_name || p.asset_id; select.append(option);
+    }
+    byId("truth-drawer").showModal();
+  }
+  async function checkTruthItem(actionOnly = false) {
+    const owner = state.ownerId, revision = sessionTruthState.revision;
+    const output = byId("truth-check-result");
+    const button = byId(actionOnly ? "truth-check-action" : "truth-check-claim");
+    if (sessionTruthState.owner !== owner || sessionTruthState.status !== "LOCKED") {output.textContent = "请先锁定当前前提。"; return;}
+    const path = byId("truth-claim-path").value;
+    const payload = actionOnly ? {actions:[{action:"BUY", asset_id:byId("truth-action-asset").value.trim()}]} :
+      {assertions:[{path, value:byId("truth-claim-value").value.trim(), ...(path.startsWith("portfolio.") ? {position_id:byId("truth-claim-position").value} : {})}]};
+    button.disabled = true; output.textContent = "正在核对…";
+    try {
+      const response = await fetch("/api/v1/advisor/session-truth/check", {method:"POST", headers:{"Content-Type":"application/json","X-Owner-ID":owner}, body:JSON.stringify({expected_revision:revision,...payload})});
+      if (!response.ok) throw await apiError(response);
+      const result = await response.json();
+      if (state.ownerId !== owner || sessionTruthState.revision !== revision) {output.textContent = "前提已变化，请重新核对。"; return;}
+      output.textContent = JSON.stringify(result, null, 2);
+    } catch (error) {output.textContent = error.message || "核验失败";}
+    finally {button.disabled = false;}
+  }
   async function confirmSessionTruth() {
-    const owner = state.ownerId;
-    const button = byId("confirm-session-truth");
-    button.disabled = true;
     try {
       const current = await refreshSessionTruth();
-      if (!current || state.ownerId !== owner) return;
+      if (!current?.current_fingerprint) {setError("请先确认画像和持仓"); return;}
+      truthReview = {...current, owner:state.ownerId};
+      byId("truth-confirm-error").textContent = "";
+      renderTruthFacts("truth-confirm-facts", current.current_facts, current.revision + 1);
+      byId("truth-confirm-dialog").showModal();
+    } catch (error) {setError(error.message || "无法读取前提");}
+  }
+  async function commitSessionTruth() {
+    const review = truthReview;
+    const button = byId("commit-session-truth"); button.disabled = true;
+    try {
+      if (!review || state.ownerId !== review.owner) throw Error("账户已变化，请重新核对前提");
       const response = await fetch("/api/v1/advisor/session-truth", {
-        method:"POST", headers:{"Content-Type":"application/json", "X-Owner-ID":owner},
-        body:JSON.stringify({expected_revision:current.revision}),
+        method:"POST", headers:{"Content-Type":"application/json", "X-Owner-ID":review.owner},
+        body:JSON.stringify({expected_revision:review.revision, expected_fingerprint:review.current_fingerprint}),
       });
       if (!response.ok) throw await apiError(response);
-      if (state.ownerId === owner) await refreshSessionTruth();
-    } catch (error) { setError(error.message || "前提确认失败"); }
-    finally { button.disabled = false; }
+      byId("truth-confirm-dialog").close(); truthReview = null;
+      if (state.ownerId === review.owner) await refreshSessionTruth();
+    } catch (error) {byId("truth-confirm-error").textContent = error.message || "前提确认失败，请重新读取后再确认";}
+    finally {button.disabled = false;}
   }
   const transientStorage = new Map();
   const workspaceStorage = {
@@ -4588,6 +4660,10 @@
   }
 
   function resetOwnerScopedViews() {
+    byId("truth-turn-alerts").replaceChildren();
+    byId("truth-drawer").close();
+    byId("truth-confirm-dialog").close();
+    truthReview = null;
     clearContextMemory();
     clearTemplateContext({ clearConfirmed: true });
     setQueryStatus("待运行");
@@ -5519,6 +5595,7 @@
         closeDataModeConfirmModal();
         syncNavigation();
         await loadSavedPortfolio();
+        await refreshSessionTruth().catch(error => setError(error.message));
       } else if (resp.status === 409) {
         alert(`[模式切换拦截 HTTP 409] ${body.message || "版本修订冲突或凭据缺失"}`);
         closeDataModeConfirmModal();
@@ -6773,6 +6850,8 @@
   }
 
   function switchPersona(personaId) {
+    byId("truth-turn-alerts").replaceChildren();
+    byId("truth-drawer").close(); byId("truth-confirm-dialog").close(); truthReview = null;
     if (authenticatedOwner && personaId !== "custom-user") return;
     const persona = PERSONAS[personaId];
     if (!persona) return;
@@ -8687,6 +8766,7 @@
     const input = byId("copilot-natural-input");
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
+    const chatOwner = state.ownerId;
     let chatTruth;
     try {
       chatTruth = await refreshSessionTruth();
@@ -8908,6 +8988,7 @@
       cursor.remove();
       pipeHead.textContent = "分析未完成";
       contentBox.textContent = `请求未完成：${err.message || "服务连接异常"}`;
+      recordTruthTurnAlert(aiMsgRow, err.message || "服务连接异常", chatOwner);
     }
   }
 
@@ -9853,6 +9934,13 @@
     initPortfolioModalTabs();
   }
   byId("confirm-session-truth").addEventListener("click", confirmSessionTruth);
+  byId("open-session-truth").addEventListener("click", () => openTruthDrawer().catch(error => setError(error.message)));
+  byId("close-truth-drawer").addEventListener("click", () => byId("truth-drawer").close());
+  byId("cancel-session-truth").addEventListener("click", () => {truthReview = null; byId("truth-confirm-dialog").close();});
+  byId("commit-session-truth").addEventListener("click", commitSessionTruth);
+  byId("truth-confirm-dialog").addEventListener("close", () => {truthReview = null;});
+  byId("truth-check-claim").addEventListener("click", () => checkTruthItem());
+  byId("truth-check-action").addEventListener("click", () => checkTruthItem(true));
   byId("refresh-session-truth").addEventListener("click", () => refreshSessionTruth().catch(error => setError(error.message)));
   initializeWorkspace().catch(error => {
     const message = document.createElement("p");

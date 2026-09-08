@@ -18,3 +18,6 @@
 *.jpg binary
 *.jpeg binary
 *.webp binary
+
+# Bundled template literals retain significant SVG whitespace; check the source files.
+app/api/static/workflow-editor.js -whitespace linguist-generated=true

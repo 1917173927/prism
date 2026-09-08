@@ -375,6 +375,7 @@
           <div class="profile-purpose-callout" aria-label="会话分析前提">
             <div><strong>会话分析前提</strong><p id="session-truth-status">尚未锁定；锁定后，画像、持仓或数据模式变化会要求重新确认。</p></div>
             <button id="refresh-session-truth" class="query-submit secondary" type="button">检查前提</button>
+            <button id="open-session-truth" class="query-submit secondary" type="button">查看事实黑板</button>
             <button id="confirm-session-truth" class="query-submit" type="button">锁定当前分析前提</button>
           </div>
           <div class="copilot-query-box">
@@ -927,7 +928,12 @@
               <button id="workflow-save" class="query-submit" type="button">保存工作流</button>
               <button id="workflow-run" class="query-submit" type="button">运行已保存版本</button>
               <p id="workflow-status" role="status">未读取</p>
-              <div style="overflow:auto"><div id="workflow-canvas" style="width:1000px;height:390px;border:1px solid #ccc" aria-label="工作流依赖图"></div></div>
+              <div role="group" aria-label="工作流视图">
+                <button id="workflow-view-pipeline" type="button" class="query-submit secondary" aria-pressed="true">流水线卡片</button>
+                <button id="workflow-view-canvas" type="button" class="query-submit secondary" aria-pressed="false">高级画布</button>
+              </div>
+              <div id="workflow-pipeline" aria-label="工作流流水线">请先读取工作流。</div>
+              <div id="workflow-canvas-wrap" hidden style="overflow:auto"><div id="workflow-canvas" style="width:1000px;height:390px;border:1px solid #ccc" aria-label="工作流依赖图"></div></div>
               <div class="context-import-actions">
                 <label>前置节点<select id="workflow-source"></select></label>
                 <label>后续节点<select id="workflow-target"></select></label>
@@ -1607,5 +1613,32 @@
         </div>
       </div>
     </div>
-  </body>
+  <dialog id="truth-drawer" aria-labelledby="truth-drawer-title" style="margin-right:0;width:min(640px,92vw);height:90vh;overflow:auto;border:1px solid #ccd3ca;border-radius:12px;padding:24px">
+  <h2 id="truth-drawer-title">会话事实黑板</h2>
+  <button id="close-truth-drawer" type="button" class="query-submit secondary">关闭黑板</button>
+  <p>下列事实来自服务端已确认画像和持仓。修改事实请先编辑原始问卷或持仓，再确认新的分析前提。</p>
+  <div id="truth-facts"></div>
+  <h3>本页中断记录</h3>
+  <p>点击定位对应分析；中断不等于已证明存在幻觉。刷新或切换账户后清空，最多保留 20 条。</p>
+  <ul id="truth-turn-alerts"></ul>
+  <h3>核对一项事实</h3>
+  <label>待核对字段<select id="truth-claim-path"><option value="profile.max_drawdown_tolerance_pct">最大回撤容忍（%）</option><option value="profile.risk_score">风险分数</option><option value="portfolio.positions.quantity">证券数量</option><option value="portfolio.positions.market_value">证券市值（元）</option></select></label>
+  <label>持仓条目（核对证券时使用）<select id="truth-claim-position"></select></label>
+  <label>待核对数值<input id="truth-claim-value" type="text" maxlength="200" inputmode="decimal" /></label>
+  <button id="truth-check-claim" type="button" class="query-submit">核对事实</button>
+  <h3>核对买入禁投约束</h3>
+  <label>证券代码<input id="truth-action-asset" type="text" maxlength="200" placeholder="例如 600519.SH" /></label>
+  <button id="truth-check-action" type="button" class="query-submit">核对买入动作</button>
+  <p>仅检查明确禁投约束，不替代完整适当性或交易前审核。不识别整段自然语言中的全部错误；未支持的动作或无法解释的约束保留 UNVERIFIED。</p>
+  <pre id="truth-check-result" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-live="polite"></pre>
+</dialog>
+<dialog id="truth-confirm-dialog" aria-labelledby="truth-confirm-title" style="width:min(600px,92vw);max-height:85vh;overflow:auto;border-radius:12px;padding:24px">
+  <h2 id="truth-confirm-title">核对后更新分析前提</h2>
+  <p>确认会新增会话前提版本，后续对话必须使用此版本；不会修改原始持仓或问卷。预览后事实发生变化时将拒绝确认。</p>
+  <div id="truth-confirm-facts"></div>
+  <p id="truth-confirm-error" role="alert"></p>
+  <button id="commit-session-truth" type="button" class="query-submit">确认这份前提</button>
+  <button id="cancel-session-truth" type="button" class="query-submit secondary">取消</button>
+</dialog>
+</body>
 </html>

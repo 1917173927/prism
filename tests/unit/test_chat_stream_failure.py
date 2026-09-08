@@ -13,16 +13,18 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
     source = Path("app/api/static/app.js").read_text(encoding="utf-8")
     function = re.search(r"  async function handleStreamingChat\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
     function += "\n" + "\n".join(re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
-                                  for name in ["profileLevelText", "currentProfileTag", "activeProfileTag"])
+                                  for name in ["profileLevelText", "currentProfileTag", "activeProfileTag", "recordTruthTurnAlert"])
     probe = r'''
 const assert = require('node:assert/strict');
 class Element {
   constructor(){this.children=[]; this.style={}; this.value='';}
   append(...items){this.children.push(...items);}
   remove(){}
+  addEventListener(){}
   set textContent(value){this.children=[String(value)];}
   get textContent(){return this.children.map(x=>typeof x==='string'?x:x.textContent).join(' ');}
 }
+let truthTurnCounter=0;
 const nodes=new Map();
 const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
 const document={createElement:()=>new Element()};
@@ -51,6 +53,7 @@ const fetch=async()=>new Response(new ReadableStream({start(controller){
   assert.match(byId('copilot-chat-messages').textContent,new RegExp(message));
   assert.equal(chatHistory.filter(x=>x.role==='assistant').length,0);
   assert.equal(completed,0);
+  assert.match(byId('truth-turn-alerts').textContent,new RegExp(message));
  }
 })().catch(error=>{console.error(error);process.exitCode=1;});
 '''

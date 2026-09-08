@@ -78,6 +78,36 @@ def test_lock_blocks_drift_and_binds_chat_to_server_facts(monkeypatch):
         store.close()
 
 
+def test_review_fingerprint_and_assertions_do_not_overwrite_changed_facts(monkeypatch):
+    monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.MOCK))
+    store = SQLiteDecisionEventStore()
+    data = populate(store)
+    try:
+        with TestClient(create_app(store=store)) as client:
+            headers = {"X-Owner-ID":"owner"}
+            endpoint = "/api/v1/advisor/session-truth"
+            preview = client.get(endpoint, headers=headers).json()
+            body = {"expected_revision":0, "expected_fingerprint":preview["current_fingerprint"]}
+            changed = recalculate_portfolio_values([{"asset_id":"600519.SH", "quantity":200, "price":1000}], Decimal(20000), "owner")
+            store.save_current_portfolio("owner", "MOCK", changed)
+            assert client.post(endpoint, headers=headers, json=body).status_code == 409
+            assert store.get_session_truth("owner", "workbench") is None
+            preview = client.get(endpoint, headers=headers).json()
+            body["expected_fingerprint"] = preview["current_fingerprint"]
+            assert client.post(endpoint, headers=headers, json=body).status_code == 200
+            position = changed["portfolio"]["position_snapshot"]["positions"][0]
+            claim = {"expected_revision":1,"assertions":[{"path":"portfolio.positions.quantity","position_id":position["position_id"],"value":"100"}]}
+            response = client.post(endpoint + "/check", headers=headers, json=claim)
+            assert response.status_code == 200, response.text
+            assert response.json()["status"] == "VIOLATION"
+            assert response.json()["results"][0]["status"] == "HALLUCINATED_DATA"
+            assert client.post(endpoint + "/check", headers={"X-Owner-ID":"other"}, json=claim).status_code == 409
+            store.save_current_portfolio("owner", "MOCK", data)
+            assert client.post(endpoint + "/check", headers=headers, json=claim).status_code == 409
+    finally:
+        store.close()
+
+
 def test_stream_is_stopped_if_premises_change_during_generation(monkeypatch):
     monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.MOCK))
     store = SQLiteDecisionEventStore()

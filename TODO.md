@@ -158,13 +158,14 @@
 - [ ] Phase 40: Multi-Agent Graph & Pipeline Workflow Builder (Coze-aligned capabilities)
   - [x] 引入 AntV X6 3.1.8，提供节点拖动与依赖选择编辑；当前固定八节点 MOCK 目录。
   - [x] 支持画布与 `workflow-definition.v1` 双向转换、版本 CAS 和服务端环路校验。
-  - [ ] 提供「高级画布视图」与「流水线卡片视图」双模切换，适配普通用户预置模版与进阶用户自定义投研链。
+  - [x] 提供高级画布与流水线卡片双视图，同一依赖模型；当前固定节点目录，按拓扑阶段显示依赖与执行状态。
   - [x] 将已保存依赖接入既有研究矩阵及 `executor.py`，总超时取消执行，返回节点状态。
 - [ ] Phase 41: Session Truth Blackboard & Hallucination Suppression Panel
   - [x] 以 session-truth 接口锁定服务端已确认画像、持仓、模式与风险前提，追加修订并校验摘要。
-  - [ ] Implement deterministic drift and contradiction detection rules (`PREMISE_DRIFT`, `ACTION_CONFLICT`, `HALLUCINATED_DATA`).
-  - [ ] Add slide-over Session Truth Blackboard drawer with suspicious turn alerts and smooth scroll-to-turn anchors.
-  - [ ] Provide one-click manual premise override modal that commits to `ContextMemory` and enforces negative constraint prompts on subsequent turns.
+  - [x] 实现 PREMISE_DRIFT、白名单结构化数值 HALLUCINATED_DATA 与明确买入禁投 ACTION_CONFLICT；未知约束保留 UNVERIFIED，不宣称通用语义判定。
+  - [x] 增加事实黑板侧栏和本页分析中断记录，点击可滚动定位对话；中断不等于已证明存在幻觉。
+  - [x] 增加显式前提确认预览，指纹变化拒绝提交；修订写入专用 session_truth 审计，后续会话受已锁定事实约束，不重复复制 ContextMemory。
+  - [ ] 自动从通用自然语言提取可疑事实与动作仍需真实模型质量评测。
 
 ## External inputs / decisions
 
