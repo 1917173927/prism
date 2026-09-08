@@ -121,7 +121,11 @@ class PortfolioRebalancingService:
         for action in ordered:
             pos = pos_by_asset.get(action.asset_id)
             if action.asset_type == AssetType.CASH or action.action_type == RebalancingActionType.HOLD:
-                adjusted[action.asset_id] = action.model_copy(update={"cash_delta_cny": Decimal("0.00"), "delta_weight_pct": Decimal("0.00"), "action_type": RebalancingActionType.HOLD, "shares": Decimal(0)})
+                adjusted[action.asset_id] = action.model_copy(update={
+                    "cash_delta_cny": Decimal("0.00"), "delta_weight_pct": Decimal("0.00"),
+                    "action_type": RebalancingActionType.HOLD, "shares": Decimal(0),
+                    "rationale": "现金不直接下单，实际余额由证券交易及费用决定" if action.asset_type == AssetType.CASH else action.rationale,
+                })
                 continue
             if not _exchange_asset(action.asset_id):
                 adjusted[action.asset_id] = action
@@ -138,6 +142,10 @@ class PortfolioRebalancingService:
             shares = (abs(action.cash_delta_cny) / price / lot).to_integral_value(rounding=ROUND_DOWN) * lot
             if selling and pos:
                 shares = pos.quantity if action.target_weight_pct == 0 else min(shares, (pos.quantity // lot) * lot)
+            rationale = action.rationale
+            if shares == 0:
+                rationale = f"目标偏差 {action.target_weight_pct - action.current_weight_pct}% 超过死区，但按 {lot} 股/份交易单位向下取整为 0，本项未执行，目标尚未达到"
+                execution_issues.append(f"{action.asset_id}: {rationale}")
             stock = action.asset_type == AssetType.STOCK
             if not selling:
                 # Bisection finds the largest affordable lot count including minimum fees.
@@ -161,7 +169,7 @@ class PortfolioRebalancingService:
                 "shares": shares, "current_price_cny": price, "cash_delta_cny": delta,
                 "delta_weight_pct": _q2(delta / total_val * 100),
                 "action_type": action.action_type if shares else RebalancingActionType.HOLD,
-                "target_value_cny": action.current_value_cny + delta, **fees})
+                "target_value_cny": action.current_value_cny + delta, "rationale": rationale, **fees})
         actions = [adjusted[a.asset_id] for a in actions]
 
         # Calculate metrics from executable amounts, excluding HOLD deadband drift.
@@ -225,7 +233,14 @@ class PortfolioRebalancingService:
             step_idx += 1
 
         issues: list[str] = execution_issues
-        status = GateStatus.REVIEW_REQUIRED if execution_issues else GateStatus.PASS
+        cash_target = sum((request.target_weights.get(p.asset_id, Decimal(0))
+                           for p in positions if p.asset_type == AssetType.CASH), Decimal(0))
+        if cash_target < request.minimum_cash_pct:
+            issues.append(f"目标现金比例 {cash_target}% 低于体检最低要求 {request.minimum_cash_pct}%；当前目标结构未满足现金约束")
+        cash_after_pct = metrics.cash_after_cny / (total_val - total_fees) * 100 if total_val > total_fees else Decimal(0)
+        if cash_after_pct < request.minimum_cash_pct:
+            issues.append(f"按当前步骤执行并扣费后现金比例 {_q2(cash_after_pct)}% 仍低于最低要求 {request.minimum_cash_pct}%，现金风险未解除")
+        status = GateStatus.REVIEW_REQUIRED if issues else GateStatus.PASS
         if metrics.cash_shortfall_cny > 0:
             status = GateStatus.REVIEW_REQUIRED
             issues.append(f"扣费后现金缺口 {metrics.cash_shortfall_cny} CNY")

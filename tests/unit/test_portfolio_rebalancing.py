@@ -17,6 +17,45 @@ from app.service import (
 NOW = datetime(2026, 9, 2, 3, 0, tzinfo=UTC)
 
 
+def test_sub_lot_reduction_requires_review_instead_of_claiming_ready():
+    from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+    from app.portfolio import PortfolioImportBundle
+
+    bundle = PortfolioImportBundle.model_validate(recalculate_portfolio_values(
+        [{"asset_id": "600519.SH", "quantity": 600, "price": 1309.3}],
+        Decimal("718655"), "lot-owner",
+    )["portfolio"])
+    result = PortfolioRebalancingService().plan_rebalancing(PortfolioRebalancingRequest(
+        request_id="sub-lot", owner_id="lot-owner", generated_at=NOW, bundle=bundle,
+        target_weights={"600519.SH": Decimal("50"), "CASH-CNY": Decimal("50")},
+    ))
+    assert result.execution_steps == ()
+    assert result.metrics.total_turnover_pct == 0
+    assert result.status == GateStatus.REVIEW_REQUIRED
+    assert any("100" in issue and "取整" in issue for issue in result.issues)
+    action = next(a for a in result.actions if a.asset_id == "600519.SH")
+    assert "未执行" in action.rationale
+    assert action.target_weight_pct == 50
+
+
+def test_cash_floor_survives_zero_turnover_and_target_generation():
+    from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+    from app.portfolio import PortfolioImportBundle
+
+    bundle = PortfolioImportBundle.model_validate(recalculate_portfolio_values(
+        [{"asset_id": "600519.SH", "quantity": 100, "price": 1300}],
+        Decimal("2800"), "cash-owner",
+    )["portfolio"])
+    result = PortfolioRebalancingService().plan_rebalancing(PortfolioRebalancingRequest(
+        request_id="cash-floor", owner_id="cash-owner", generated_at=NOW, bundle=bundle,
+        target_weights={"600519.SH": Decimal("96"), "CASH-CNY": Decimal("4")},
+        minimum_cash_pct=Decimal("5"),
+    ))
+    assert result.status == GateStatus.REVIEW_REQUIRED
+    assert any("目标现金比例 4%" in issue for issue in result.issues)
+    assert any("现金风险未解除" in issue for issue in result.issues)
+
+
 def test_rebalancing_plan_deterministic():
     advisor = FixtureAdvisorQueryService()
     template = advisor.query_template("reb-owner-001")

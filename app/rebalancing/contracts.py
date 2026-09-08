@@ -94,6 +94,7 @@ class PortfolioRebalancingRequest(ContractModel):
     target_weights: dict[str, Decimal]
     deadband_pct: Decimal = Field(default=Decimal("0.50"), ge=0, le=100)
     max_turnover_pct: Decimal = Field(default=Decimal("50.00"), ge=0, le=100)
+    minimum_cash_pct: Decimal = Field(default=Decimal("0.00"), ge=0, le=100)
     round_to_lot: bool = True
     prices_cny: dict[str, Decimal] = Field(default_factory=dict)
     asset_types: dict[str, AssetType] = Field(default_factory=dict)

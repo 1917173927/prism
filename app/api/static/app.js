@@ -5755,6 +5755,7 @@
           target_weights: targetWeights,
           deadband_pct: "0.50",
           max_turnover_pct: "50.00",
+          minimum_cash_pct: state.portfolioHealthRun?.cash_minimum_pct || "0.00",
         }),
       });
       if (!isContextRequestCurrent(token)) return null;
@@ -5794,7 +5795,7 @@
       table.className = "rebalancing-table";
       const thead = document.createElement("thead");
       const trh = document.createElement("tr");
-      ["资产代码", "资产名称", "当前权重", "目标权重", "变动权重", "变动金额 (CNY)", "动作"].forEach((tht) => {
+      ["资产代码", "资产名称", "当前权重", "目标权重", "实际变动权重", "实际变动金额 (CNY)", "动作", "原因"].forEach((tht) => {
         const th = document.createElement("th");
         th.textContent = tht;
         trh.append(th);
@@ -5815,7 +5816,8 @@
         b.className = `action-badge ${act.action_type}`;
         b.textContent = act.action_type;
         td7.append(b);
-        tr.append(td1, td2, td3, td4, td5, td6, td7);
+        const td8 = document.createElement("td"); td8.textContent = act.rationale;
+        tr.append(td1, td2, td3, td4, td5, td6, td7, td8);
         tbody.append(tr);
       });
       table.append(tbody);
@@ -5823,6 +5825,7 @@
 
       const stepsPanel = byId("rebalancing-steps-content");
       stepsPanel.textContent = "";
+      stepsPanel.append(buildRebalancingNotice(data));
       data.execution_steps.forEach((step) => {
         const sc = document.createElement("div");
         sc.className = "rebalancing-action-card";
@@ -8236,6 +8239,28 @@
     return card;
   }
 
+  function buildRebalancingNotice(plan) {
+    const notice = document.createElement("div");
+    notice.className = "doc-callout doc-callout-info";
+    const summary = document.createElement("p");
+    summary.textContent = plan.execution_steps.length
+      ? plan.status === "PASS"
+        ? "以下为按目标权重和交易规则测算的步骤，仅供复核，不会自动交易。"
+        : "以下为按目标权重测算的交易步骤；需要复核的约束尚未解除，不能视为组合风险已通过。"
+      : plan.status === "PASS"
+        ? "当前目标偏差未触发交易规则，因此未生成交易步骤。这仅表示本次没有交易，不是收益或整体风险判断。"
+        : "目标尚未落实为可执行交易；请检查下列原因，不能据此判断组合无需调整。";
+    notice.append(summary);
+    const reasons = document.createElement("ul");
+    (plan.issues || []).forEach((issue) => {
+      const item = document.createElement("li");
+      item.textContent = issue;
+      reasons.append(item);
+    });
+    notice.append(reasons);
+    return notice;
+  }
+
   async function runCopilotRebalance() {
     const output = byId("copilot-decision-output");
     if (!output) return;
@@ -8245,6 +8270,8 @@
     output.append(buildCopilotLoadingCard("icon-activity", "正在整理调仓方案…", "正在根据你的风险边界计算目标权重、换手率和调整顺序。"));
 
     try {
+      const health = state.portfolioHealthRun || await refreshPortfolioHealth();
+      if (!health) throw new Error("当前持仓体检未完成，不能确认调仓约束。");
       const optimization = await runPortfolioOptimization();
       if (!optimization?.targets?.length) throw new Error(optimization?.summary || "未能生成目标权重，请检查画像、持仓和缺失数据。");
       const plan = await runPortfolioRebalancing();
@@ -8264,12 +8291,12 @@
       icon.className = "decision-verdict-icon";
       icon.append(createSvgIcon("icon-scale", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = `调仓方案已生成 · 换手率 ${plan.metrics.total_turnover_pct}% · 费用 ¥${plan.metrics.net_turnover_cost}`;
+      h3.textContent = `${plan.execution_steps.length ? "调仓测算结果" : "本次未生成交易"} · 换手率 ${plan.metrics.total_turnover_pct}% · 费用 ¥${plan.metrics.net_turnover_cost}`;
       titleWrap.append(icon, h3);
 
       const statusChip = document.createElement("span");
-      statusChip.className = "cf-verdict cf-verdict-pass";
-      statusChip.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" CALCULATED 测算完成"));
+      statusChip.className = plan.status === "PASS" ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-risk";
+      statusChip.textContent = plan.status === "PASS" ? "CALCULATED 测算完成" : "REVIEW_REQUIRED 需要复核";
       banner.append(titleWrap, statusChip);
 
       // Body
@@ -8329,6 +8356,7 @@
         stepsWrap.append(item);
       });
       body.append(stepsWrap);
+      body.append(buildRebalancingNotice(plan));
 
       // Drilldown links
       body.append(buildCopilotDrilldownRow([

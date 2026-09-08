@@ -243,7 +243,7 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
              "ensureDependency", "confirmProfileContext", "renderCompanionRisk",
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
              "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing",
-             "loadSavedPortfolio", "openPortfolioModal"]
+             "loadSavedPortfolio", "openPortfolioModal", "buildRebalancingNotice"]
     functions = []
     for name in names:
         match = re.search(r"  (?:async )?function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source)
@@ -380,6 +380,12 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     state.portfolio = null;
     renderPortfolioReadiness();
     assert.equal(byId("copilot-hero-portfolio-tag").textContent, "待确认持仓");
+    const noTrade = buildRebalancingNotice({status:"REVIEW_REQUIRED",execution_steps:[],issues:["取整为 0，目标未达到", "现金风险未解除"]});
+    assert.match(noTrade.textContent, /不能据此判断组合无需调整/);
+    assert.match(noTrade.textContent, /取整为 0/);
+    assert.match(noTrade.textContent, /现金风险未解除/);
+    const noDrift = buildRebalancingNotice({status:"PASS",execution_steps:[],issues:[]});
+    assert.match(noDrift.textContent, /未触发交易规则/);
     process.stdout.write("PASS");
   })().catch(error => { console.error(error); process.exitCode = 1; });
 })();
