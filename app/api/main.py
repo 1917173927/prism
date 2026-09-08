@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.access import LocalAccessMiddleware, load_accounts
 from app.service.natural_profile import NaturalProfileRequest, NaturalProfileError, extract_natural_profile
+from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.api.contracts import (
@@ -231,6 +232,8 @@ class CopilotChatApiRequest(BaseModel):
     history: list[dict[str, Any]] | None = None
     stream: bool = True
     llm_config: dict[str, Any] | None = None
+    session_truth_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]{1,100}$")
+    session_truth_revision: int | None = Field(default=None, ge=1)
 
 
 class CopilotParsePortfolioApiRequest(BaseModel):
@@ -1576,6 +1579,27 @@ def create_app(
         except NaturalProfileError as exc:
             return _error_response(422, "PROFILE_EXTRACTION_REFUSED", str(exc))
 
+    @api.get("/api/v1/advisor/session-truth")
+    def read_session_truth(owner_id: str = Depends(owner_dependency),
+                           session_id: str = Query("workbench", pattern=r"^[A-Za-z0-9_.-]{1,100}$")):
+        record = active_store.get_session_truth(owner_id, session_id)
+        try:
+            facts = current_facts(active_store, owner_id, get_runtime_mode_controller().mode.value)
+        except TruthInputRequired:
+            return {"status":"INPUT_REQUIRED", "revision":record["revision"] if record else 0,
+                    "changed_fields":["required_context"], "record":record}
+        return truth_status(record, facts)
+
+    @api.post("/api/v1/advisor/session-truth")
+    def confirm_session_truth(req: TruthConfirmation, owner_id: str = Depends(owner_dependency),
+                              session_id: str = Query("workbench", pattern=r"^[A-Za-z0-9_.-]{1,100}$")):
+        try:
+            facts = current_facts(active_store, owner_id, get_runtime_mode_controller().mode.value)
+        except TruthInputRequired:
+            return _error_response(422, "TRUTH_INPUT_REQUIRED", "请先确认风险问卷与持仓")
+        record = active_store.save_session_truth(owner_id, session_id, facts, req.expected_revision, active_clock().isoformat())
+        return truth_status(record, facts)
+
     @api.post("/api/v1/copilot/chat")
     async def copilot_chat_endpoint(
         req: CopilotChatApiRequest,
@@ -1589,6 +1613,27 @@ def create_app(
         scoped_owner = x_owner_id.strip() if x_owner_id and x_owner_id.strip() else req.owner_id
         if scoped_owner is not None and req.owner_id is not None and scoped_owner != req.owner_id:
             raise StoreOwnerError("chat owner does not match owner scope")
+        if req.session_truth_id:
+            if not scoped_owner:
+                raise StoreOwnerError("session truth requires an owner")
+            record = active_store.get_session_truth(scoped_owner, req.session_truth_id)
+            if not record or record["revision"] != req.session_truth_revision:
+                return _error_response(409, "TRUTH_REVISION_CONFLICT", "分析前提版本已变化，请重新读取并确认")
+            try:
+                facts = current_facts(active_store, scoped_owner, get_runtime_mode_controller().mode.value)
+            except TruthInputRequired:
+                return _error_response(409, "TRUTH_CONTEXT_CHANGED", "当前缺少已锁定的分析前提，请重新确认")
+            if truth_status(record, facts)["status"] != "LOCKED":
+                return _error_response(409, "TRUTH_CONTEXT_CHANGED", "画像、持仓或数据模式已变化，请确认新的分析前提")
+            profile = facts["profile"]
+            bundle = facts["portfolio"]
+            if ((req.portfolio_snapshot_id and req.portfolio_snapshot_id != bundle["position_snapshot"]["snapshot_id"])
+                    or (req.profile_version is not None and req.profile_version != profile["profile_version"])):
+                return _error_response(409, "TRUTH_CLAIM_CONFLICT", "请求引用的画像或持仓版本与锁定前提不一致")
+            req.persona_info = {"name":"当前账户", "tag":profile["risk_level"],
+                                "max_drawdown":profile["max_drawdown_tolerance_pct"], "budget_cap":"以确定性风险闸门为准"}
+            req.portfolio_context = {"session_truth":{"session_id":req.session_truth_id, "revision":record["revision"]},
+                                     "data_mode":facts["data_mode"], "portfolio":bundle}
         stored_profile = active_store.get_latest_behavior_profile(scoped_owner) if scoped_owner else None
         stored_policy = active_store.get_display_policy(scoped_owner) if scoped_owner else None
         if stored_policy is None:
@@ -1638,15 +1683,27 @@ def create_app(
             }
             yield f"data: {json.dumps(context_event, ensure_ascii=False)}\n\n"
             history_objs = [CopilotMessage(role=m.get("role", "user"), content=m.get("content", "")) for m in (req.history or [])]
-            async for chunk in copilot_agent.stream_chat(
+            async with aclosing(copilot_agent.stream_chat(
                 user_message=req.message,
                 history=history_objs,
                 persona_info=req.persona_info,
                 portfolio_context=req.portfolio_context,
                 llm_config=req.llm_config,
-            ):
-                payload_str = json.dumps(chunk, ensure_ascii=False)
-                yield f"data: {payload_str}\n\n"
+            )) as stream:
+                async for chunk in stream:
+                    if req.session_truth_id:
+                        try:
+                            latest = active_store.get_session_truth(scoped_owner, req.session_truth_id)
+                            fresh = current_facts(active_store, scoped_owner, get_runtime_mode_controller().mode.value)
+                            stable = latest and latest["revision"] == req.session_truth_revision and truth_status(latest, fresh)["status"] == "LOCKED"
+                        except (StoreError, TruthInputRequired):
+                            stable = False
+                        if not stable:
+                            yield 'data: {"type":"error","message":"分析前提已变化，本次生成已停止，请重新确认"}\n\n'
+                            yield "data: [DONE]\n\n"
+                            return
+                    payload_str = json.dumps(chunk, ensure_ascii=False)
+                    yield f"data: {payload_str}\n\n"
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(

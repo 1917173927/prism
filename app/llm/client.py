@@ -82,10 +82,9 @@ class AsyncLLMClient:
             try:
                 async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
                     if response.status_code != 200:
-                        err_body = await response.aread()
                         yield {
                             "type": "error",
-                            "message": f"LLM API Error {response.status_code}: {err_body.decode('utf-8', errors='ignore')}",
+                            "message": f"模型服务返回 HTTP {response.status_code}，请检查服务配置或稍后重试。",
                         }
                         return
 
@@ -115,7 +114,7 @@ class AsyncLLMClient:
                         except json.JSONDecodeError:
                             continue
             except Exception as exc:
-                yield {"type": "error", "message": f"LLM Connection Error: {exc}"}
+                yield {"type": "error", "message": f"模型连接未完成（{type(exc).__name__}），请稍后重试。"}
 
     async def _stream_offline_simulation(
         self,

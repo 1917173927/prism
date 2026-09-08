@@ -141,6 +141,35 @@
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
+  let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
+  async function refreshSessionTruth() {
+    const owner = state.ownerId;
+    const response = await fetch("/api/v1/advisor/session-truth", {headers:{"X-Owner-ID":owner}});
+    if (!response.ok) throw await apiError(response);
+    const result = await response.json();
+    if (state.ownerId !== owner) return null;
+    sessionTruthState = {...result, owner};
+    const labels = {LOCKED:"已锁定", NOT_LOCKED:"尚未锁定", DRIFT_DETECTED:"前提已变化，需要重新确认", INPUT_REQUIRED:"请先确认画像和持仓"};
+    byId("session-truth-status").textContent = `${labels[result.status] || result.status} · 第 ${result.revision} 版`;
+    byId("confirm-session-truth").textContent = result.revision ? "确认使用当前分析前提" : "锁定当前分析前提";
+    return result;
+  }
+  async function confirmSessionTruth() {
+    const owner = state.ownerId;
+    const button = byId("confirm-session-truth");
+    button.disabled = true;
+    try {
+      const current = await refreshSessionTruth();
+      if (!current || state.ownerId !== owner) return;
+      const response = await fetch("/api/v1/advisor/session-truth", {
+        method:"POST", headers:{"Content-Type":"application/json", "X-Owner-ID":owner},
+        body:JSON.stringify({expected_revision:current.revision}),
+      });
+      if (!response.ok) throw await apiError(response);
+      if (state.ownerId === owner) await refreshSessionTruth();
+    } catch (error) { setError(error.message || "前提确认失败"); }
+    finally { button.disabled = false; }
+  }
   const transientStorage = new Map();
   const workspaceStorage = {
     getItem(key) { return authenticatedOwner ? transientStorage.get(key) ?? null : localStorage.getItem(key); },
@@ -6788,6 +6817,7 @@
         if (state.profile && state.portfolio) await refreshPortfolioHealth();
         renderPortfolioReadiness();
         updateVisualCompanion();
+        await refreshSessionTruth();
       })
       .catch((error) => setError(error.message || "持仓体检初始化失败"));
     updateVisualCompanion();
@@ -8597,6 +8627,14 @@
     const input = byId("copilot-natural-input");
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
+    let chatTruth;
+    try {
+      chatTruth = await refreshSessionTruth();
+      if (!chatTruth) return;
+      if (chatTruth.revision && chatTruth.status !== "LOCKED") {
+        setError("分析前提已变化，请核对后点击“确认使用当前分析前提”"); return;
+      }
+    } catch (error) { setError(error.message || "无法检查分析前提"); return; }
 
     if (input) input.value = "";
 
@@ -8673,6 +8711,8 @@
         headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
         body: JSON.stringify({
           message: query,
+          session_truth_id: chatTruth.revision ? "workbench" : null,
+          session_truth_revision: chatTruth.revision || null,
           owner_id: state.ownerId,
           profile_version: state.profile?.profile?.profile_version || null,
           behavior_profile_version: state.behaviorProfile?.profile_version || null,
@@ -8694,18 +8734,17 @@
         }),
       });
 
-      if (!response.ok || !response.body) {
-        cursor.remove();
-        pipeHead.textContent = "❌ 服务响应异常";
-        contentBox.textContent = "抱歉，投顾智能体服务响应异常，请稍后重试。";
-        return;
-      }
+      if (!response.ok) throw await apiError(response);
+      if (!response.body) throw new Error("服务未返回分析内容");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let fullText = "";
       let buffer = "";
+      let streamError = null;
+      let receivedDone = false;
 
+      try {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -8719,13 +8758,18 @@
           if (!trimmed || !trimmed.startsWith("data:")) continue;
           const dataStr = trimmed.slice(5).trim();
           if (dataStr === "[DONE]") {
-            setPipelineStepState(s4, "completed");
-            pipeHead.textContent = "✅ 投顾决策研报生成完毕";
+            receivedDone = true;
+            if (!streamError) {
+              setPipelineStepState(s4, "completed");
+              pipeHead.textContent = "分析已完成";
+            }
             break;
           }
           try {
             const event = JSON.parse(dataStr);
-            if (event.type === "analysis_context") {
+            if (event.type === "error") {
+              streamError = event.message || "分析被中止";
+            } else if (event.type === "analysis_context") {
               const details = document.createElement("details");
               details.className = "chat-audit-details";
               const mode = event.display_policy?.mode || "STANDARD";
@@ -8794,15 +8838,16 @@
         }
       }
 
+      } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+      if (streamError) throw new Error(streamError);
+      if (!receivedDone) throw new Error("分析连接提前结束，结果不完整");
       cursor.remove();
       chatHistory.push({ role: "assistant", content: fullText });
       saveCopilotChatHistory();
     } catch (err) {
       cursor.remove();
-      pipeHead.textContent = "❌ 服务连接异常 (Network Error)";
-      contentBox.textContent = `请求失败: 无法连接至投顾分析服务 (${err.message || "Failed to fetch"})。` +
-        ` 当前浏览器访问地址: ${window.location.origin}。` +
-        ` 请确认后端服务进程处于运行状态（默认服务地址为 http://127.0.0.1:8000）。若端口不一致，请使用 ./start_mac.sh 重新启动。`;
+      pipeHead.textContent = "分析未完成";
+      contentBox.textContent = `请求未完成：${err.message || "服务连接异常"}`;
     }
   }
 
@@ -9747,6 +9792,8 @@
     updateVisualCompanion();
     initPortfolioModalTabs();
   }
+  byId("confirm-session-truth").addEventListener("click", confirmSessionTruth);
+  byId("refresh-session-truth").addEventListener("click", () => refreshSessionTruth().catch(error => setError(error.message)));
   initializeWorkspace().catch(error => {
     const message = document.createElement("p");
     message.setAttribute("role", "alert");

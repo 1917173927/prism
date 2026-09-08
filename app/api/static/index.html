@@ -371,6 +371,11 @@
           </div>
 
           <!-- 交互式意图问答框 -->
+          <div class="profile-purpose-callout" aria-label="会话分析前提">
+            <div><strong>会话分析前提</strong><p id="session-truth-status">尚未锁定；锁定后，画像、持仓或数据模式变化会要求重新确认。</p></div>
+            <button id="refresh-session-truth" class="query-submit secondary" type="button">检查前提</button>
+            <button id="confirm-session-truth" class="query-submit" type="button">锁定当前分析前提</button>
+          </div>
           <div class="copilot-query-box">
             <div class="copilot-input-wrapper">
               <span class="copilot-input-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
