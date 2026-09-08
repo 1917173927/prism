@@ -267,11 +267,18 @@ class CopilotAgent:
                 if position["asset_class"] == "FUND_ETF":
                     return {"status": "REVIEW_REQUIRED", "positions": [], "parsed_count": 0,
                             "message": f"请为 {position['name']} 提供现价；基金净值及合成底稿不能替代当前交易价格。"}
-                try:
-                    quote = await self.live_finance_provider.get_quote(position["asset_id"])
-                except FuyaoProviderError as exc:
-                    return {"status": "FAILED", "positions": [], "parsed_count": 0,
-                            "message": exc.safe_message, "error_code": exc.code}
+                for attempt in range(2):
+                    try:
+                        quote = await self.live_finance_provider.get_quote(position["asset_id"])
+                        break
+                    except FuyaoProviderError as exc:
+                        transient = exc.code in {"UPSTREAM_TIMEOUT", "UPSTREAM_UNAVAILABLE"}
+                        if transient and attempt == 0:
+                            continue
+                        retry_note = "已重试一次。" if attempt else ""
+                        return {"status": "FAILED", "positions": [], "parsed_count": 0,
+                                "message": f"{position['name']}（{position['asset_id']}）取价失败：{exc.safe_message}{retry_note}本次持仓未导入；可稍后重试，或为该股票补填现价后重新提交。买入均价不能代替现价。",
+                                "error_code": exc.code}
                 if not quote:
                     return {"status": "REVIEW_REQUIRED", "positions": [], "parsed_count": 0,
                             "message": f"未取得 {position['name']} 行情，请提供现价后重新导入。"}

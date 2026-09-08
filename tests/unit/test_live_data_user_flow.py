@@ -158,6 +158,37 @@ def test_live_text_without_price_uses_quote_and_does_not_invent_etf(monkeypatch)
     assert result["status"] == "REVIEW_REQUIRED"
 
 
+@pytest.mark.parametrize("code", ["UPSTREAM_TIMEOUT", "UPSTREAM_UNAVAILABLE"])
+def test_portfolio_quote_retries_transient_failure_once(monkeypatch, code):
+    from app.providers.fuyao import FuyaoProviderError
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
+    agent = CopilotAgent()
+    quote = AsyncMock(side_effect=[FuyaoProviderError(code, "扶摇数据接口响应超时。"), {"price_cny": 1300}])
+    agent.live_finance_provider = SimpleNamespace(get_quote=quote)
+    result = asyncio.run(agent.parse_portfolio_from_text("600股贵州茅台，买入均价1,680元；现金28,000元"))
+    assert result["status"] == "SUCCESS"
+    assert result["total_value_cny"] == 808000
+    assert result["positions"][0]["cost_price"] == 1680
+    assert quote.await_count == 2
+
+
+@pytest.mark.parametrize("code,attempts", [("UPSTREAM_TIMEOUT", 2), ("FUYAO_2001", 1)])
+def test_portfolio_quote_stops_after_bounded_failure_without_fixture(monkeypatch, code, attempts):
+    from app.providers.fuyao import FuyaoProviderError
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
+    agent = CopilotAgent()
+    quote = AsyncMock(side_effect=FuyaoProviderError(code, "数据请求失败。"))
+    agent.live_finance_provider = SimpleNamespace(get_quote=quote)
+    result = asyncio.run(agent.parse_portfolio_from_text("600股贵州茅台，买入均价1,680元；现金28,000元"))
+    assert result["status"] == "FAILED"
+    assert result["positions"] == []
+    assert result["error_code"] == code
+    assert "贵州茅台（600519.SH）" in result["message"]
+    assert "本次持仓未导入" in result["message"]
+    assert "现价" in result["message"]
+    assert quote.await_count == attempts
+
+
 def test_live_fund_import_does_not_attach_synthetic_sector_coverage():
     positions = [{"asset_id": "510300.SH", "asset_class": "FUND_ETF", "quantity": 15000, "price": 4}]
     live = recalculate_portfolio_values(positions, Decimal("20000"), "test-owner", allow_synthetic_lookthrough=False)
