@@ -1659,7 +1659,10 @@ def create_app(
         if req.owner_id != owner_id:
             raise StoreOwnerError("OCR portfolio owner does not match owner scope")
         try:
-            return JSONResponse(content=recalculate_portfolio_values(req.positions, req.cash_cny, req.owner_id))
+            return JSONResponse(content=recalculate_portfolio_values(
+                req.positions, req.cash_cny, req.owner_id,
+                allow_synthetic_lookthrough=get_runtime_mode_controller().mode == DataMode.MOCK,
+            ))
         except (ArithmeticError, TypeError, ValueError) as exc:
             return JSONResponse(
                 status_code=422,
@@ -1728,7 +1731,10 @@ def create_app(
             confirmed_positions = [
                 item.model_dump(mode="json") for item in req.positions
             ]
-            calculated = recalculate_portfolio_values(confirmed_positions, req.cash_cny, owner_id)
+            calculated = recalculate_portfolio_values(
+                confirmed_positions, req.cash_cny, owner_id,
+                allow_synthetic_lookthrough=get_runtime_mode_controller().mode == DataMode.MOCK,
+            )
             portfolio = PortfolioImportBundle.model_validate(calculated["portfolio"])
             confirmed_at = active_clock()
             confirmed_payload = json.dumps(
@@ -1900,7 +1906,10 @@ def create_app(
     ) -> CustomStressScenarioResponse:
         if request.owner_id != owner_id:
             raise StoreOwnerError("custom stress request owner does not match owner scope")
-        return calculate_custom_stress(request)
+        try:
+            return calculate_custom_stress(request)
+        except ValueError:
+            return _error_response(422, "STRESS_INPUT_INCOMPLETE", "持仓含缺失或未分类的行业暴露，无法执行五行业压力测试；请先补齐穿透数据。")
 
     @api.post(
         "/api/v1/advisor/portfolio-health",

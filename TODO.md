@@ -1,6 +1,6 @@
 # TODO
 
-> Updated: 2026-09-07
+> Updated: 2026-09-08
 >
 > Source of truth for product scope: [Prism.md](Prism.md)
 >
@@ -10,6 +10,8 @@
 > Next phase: External integrations / evaluation hardening.
 
 ## Product UX
+
+- [x] 修复真实数据用户流程：首次使用前置检查、持仓现价、基金数据边界、缺失字段、聊天标的、HHI 渲染、调仓与压力测试失败恢复；全量 572 项测试通过。
 
 - [x] Reorganize the default frontend around user tasks, with detailed research and audit modules available through explicit progressive disclosure.
 - [x] Validate the task-first home, detailed-workbench toggle, analysis view, health-check flow, and responsive layout in a real browser.

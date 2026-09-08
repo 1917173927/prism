@@ -102,7 +102,8 @@ def validate_portfolio_values(positions: list[dict[str, Any]], cash_cny: float,
 
 
 def recalculate_portfolio_values(
-    positions: list[dict[str, Any]], cash_cny: Decimal, owner_id: str
+    positions: list[dict[str, Any]], cash_cny: Decimal, owner_id: str,
+    *, allow_synthetic_lookthrough: bool = True,
 ) -> dict[str, Any]:
     """Recalculate edited OCR rows and build one owner-scoped portfolio contract."""
     observed_at = datetime.now(UTC)
@@ -151,7 +152,7 @@ def recalculate_portfolio_values(
             as_of=observed_at,
             source="user-confirmed OCR import",
         ))
-        if is_fund:
+        if is_fund and allow_synthetic_lookthrough:
             sector_exposure = security.get("sector_exposure", {})
             if not sector_exposure:
                 raise ValueError(f"missing packaged look-through baseline for {asset_id}")

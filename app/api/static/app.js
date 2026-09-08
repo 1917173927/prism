@@ -26,6 +26,7 @@
     "scenarioSimulationSequence",
     "rebalancingSequence",
     "customStressSequence",
+    "copilotResearchSequence",
   ]);
 
   function createMicroStore(initialState, contextKeys = []) {
@@ -135,6 +136,7 @@
     rebalancingSequence: 0,
     customStressRun: null,
     customStressSequence: 0,
+    copilotResearchSequence: 0,
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
 
@@ -202,6 +204,8 @@
     }
     const decisionOutput = byId("copilot-decision-output");
     if (decisionOutput) clear(decisionOutput);
+    renderPortfolioReadiness();
+    updateVisualCompanion();
   }
   microStore.subscribe((store) => {
     document.documentElement.setAttribute("data-prism-owner", store.ownerId || "none");
@@ -1750,6 +1754,8 @@
     renderBehaviorProfile(summary.behavior_profile);
     renderProfileSummary(summary);
     renderQuestionnaire();
+    renderPortfolioReadiness();
+    updateVisualCompanion();
     return summary;
   }
 
@@ -1797,6 +1803,7 @@
       state.questionnairePreview = null;
       await recomputeBehaviorProfile();
       await loadProfileSummary();
+      if (state.portfolio) await refreshPortfolioHealth();
     } catch (error) {
       setQuestionnaireError(error.message || "问卷确认失败。");
     }
@@ -4004,6 +4011,10 @@
   }
 
   async function confirmProfileContext({ silent = false } = {}) {
+    if (state.selectedPersona === "custom-user") {
+      if (!state.profile?.profile) setError("请先在风险画像页面完成并确认问卷。");
+      return state.profile;
+    }
     const requestOwner = byId("owner-id").value.trim() || state.ownerId || "custom-user";
     const submit = byId("confirm-profile");
     if (!silent) {
@@ -4076,6 +4087,7 @@
     }
     if (depType === "PORTFOLIO_CONTEXT") {
       if (state.portfolio) return state.portfolio;
+      if (state.selectedPersona === "custom-user") return null;
       if (state.templateContext?.portfolio) {
         state.portfolio = state.templateContext.portfolio;
         return state.portfolio;
@@ -4868,12 +4880,17 @@
       setError("请先确认风险画像，再生成组合目标结构。");
       return;
     }
+    await ensureDependency("PORTFOLIO_CONTEXT");
+    if (!state.portfolio) {
+      setError("请先添加并确认持仓，再生成组合目标结构。");
+      return null;
+    }
     const requestSequence = ++state.portfolioOptimizationSequence;
     const scenarioId = scenarioSelect.value || "BASELINE_READY";
     const questionnaire = state.profile && state.profile.questionnaire
       ? state.profile.questionnaire
       : template.questionnaire;
-    const portfolio = state.portfolio || template.portfolio;
+    const portfolio = state.portfolio;
     submit.disabled = true;
     scenarioSelect.disabled = true;
     state.portfolioOptimizationRun = null;
@@ -4891,7 +4908,7 @@
           schema_version: "portfolio-optimization-request.v1",
           request_id: "ui-portfolio-optimization-001",
           owner_id: requestOwner,
-          generated_at: template.generated_at,
+          generated_at: new Date().toISOString(),
           questionnaire,
           portfolio,
           scenario_id: scenarioId,
@@ -4905,6 +4922,7 @@
         optimizationStatusClass(state.portfolioOptimizationRun.status),
       );
       renderPortfolioOptimization(state.portfolioOptimizationRun);
+      return state.portfolioOptimizationRun;
     } catch (error) {
       if (state.ownerId !== requestOwner || state.portfolioOptimizationSequence !== requestSequence) return;
       state.portfolioOptimizationRun = null;
@@ -5259,8 +5277,9 @@
         : (liveReady ? `可切换至实时数据；${capabilitySummary}` : "实时数据源尚未就绪"),
     );
 
+    const fundInput = /^(510|512|513|515|588|159)/.test(byId("copilot-stock-input")?.value?.trim() || "");
     const capabilityControls = [
-      ["copilot-btn-stock-research", "stock_quote", "实时 A 股行情权限当前不可用"],
+      ["copilot-btn-stock-research", fundInput ? "fund_lookthrough" : "stock_quote", "此类标的实时数据权限当前不可用"],
     ];
     capabilityControls.forEach(([id, capability, unavailableMessage]) => {
       const control = byId(id);
@@ -5708,6 +5727,10 @@
       if (!state.portfolio) throw new Error("缺少结构化持仓，无法生成调仓计划");
       const token = beginContextRequest("rebalancingSequence");
       const portfolio = token.portfolio;
+      const heldAssets = new Set(portfolio.position_snapshot.positions.map((position) => position.asset_id));
+      if (state.portfolioOptimizationRun.targets.some((target) => !heldAssets.has(target.target_id))) {
+        throw new Error("当前目标包含基金底层穿透资产，不能直接作为账户持仓下单。请在目标权重页面查看暴露结果；本次不生成交易清单。");
+      }
       const targetWeights = Object.fromEntries(
         state.portfolioOptimizationRun.targets.map((target) => [target.target_id, target.target_weight_pct])
       );
@@ -6079,7 +6102,7 @@
     clear(legendContainer);
 
     let items = [];
-    if (state.portfolioOptimizationRun && Array.isArray(state.portfolioOptimizationRun.targets)) {
+    if (state.portfolioOptimizationRun?.targets?.length) {
       items = state.portfolioOptimizationRun.targets.map(t => ({
         label: t.asset_name || t.target_id || "资产",
         weight: parseFloat(t.target_weight_pct) || 0,
@@ -6177,11 +6200,17 @@
     clear(gaugeContainer);
     clear(exposureContainer);
 
-    const lossScore = parseInt(byId("loss-tolerance")?.value || "3", 10);
-    const maxDrawdown = byId("max-drawdown")?.value || "20";
+    const profile = state.profile?.profile;
+    if (!profile) {
+      if (badge) badge.textContent = "未确认画像";
+      exposureContainer.textContent = "请先完成风险问卷；确认持仓并体检后展示实际暴露。";
+      return;
+    }
+    const lossScore = state.profile.questionnaire?.loss_tolerance_score || 1;
+    const maxDrawdown = profile.max_drawdown_tolerance_pct;
 
     if (badge) {
-      badge.textContent = lossScore <= 1 ? "保守型" : lossScore >= 4 ? "进取型" : "平衡型";
+      badge.textContent = displayLabel(profile.risk_level);
       badge.className = `status-chip ${lossScore <= 1 ? "pass" : lossScore >= 4 ? "blocked" : "review"}`;
     }
 
@@ -6247,8 +6276,9 @@
     expDiv.style.width = "100%";
     expDiv.style.fontSize = "11.5px";
 
-    const techExp = { name: "科技行业暴露上限", limit: lossScore >= 4 ? "45%" : lossScore <= 1 ? "15%" : "30%", val: "28.5%" };
-    const ddExp = { name: "最大回撤容忍阈值", limit: `${maxDrawdown}%`, val: `${maxDrawdown}%` };
+    const health = state.portfolioHealthRun;
+    const techExp = { name: "科技行业暴露", value: health ? `${health.technology_weight_pct}% (上限 ${health.technology_limit_pct}%)` : "待体检" };
+    const ddExp = { name: "最大回撤容忍阈值", value: `${maxDrawdown}%` };
 
     [techExp, ddExp].forEach(exp => {
       const row = document.createElement("div");
@@ -6260,7 +6290,7 @@
       const valStrong = document.createElement("strong");
       valStrong.style.fontFamily = "var(--mono)";
       valStrong.style.color = "var(--ink)";
-      valStrong.textContent = `${exp.val} (上限 ${exp.limit})`;
+      valStrong.textContent = exp.value;
       row.append(labelSpan, valStrong);
       expDiv.append(row);
     });
@@ -6276,7 +6306,7 @@
     const nodeReceipt = byId("node-receipt");
 
     if (nodeProfile) {
-      const ok = !!state.profile || !!state.templateContext;
+      const ok = !!state.profile?.profile;
       nodeProfile.classList.toggle("verified", ok);
       const st = nodeProfile.querySelector(".lineage-node-status");
       if (st) st.textContent = ok ? "✓" : "1";
@@ -6368,7 +6398,7 @@
       insights.push({ prefix: "本次结果已保存", body: `当前结果状态：${statusLabel(ev.status)}，之后可以在历史建议中回看。` });
     }
 
-    if (state.portfolioOptimizationRun) {
+    if (state.portfolioOptimizationRun?.targets?.length) {
       insights.push({ prefix: "目标结构已生成", body: "方案已按你的资产和行业上限整理，可继续查看调整顺序。" });
     }
 
@@ -6644,14 +6674,14 @@
 
     // Update stats
     const aum = byId("copilot-stat-aum");
-    if (aum) aum.textContent = "计算中…";
+    if (aum) aum.textContent = "待确认持仓";
     const tech = byId("copilot-stat-tech");
     if (tech) {
-      tech.textContent = "计算中…";
+      tech.textContent = "待体检";
       tech.classList.remove("alert-text", "ok-text");
     }
     const budget = byId("copilot-stat-budget");
-    if (budget) budget.textContent = "计算中…";
+    if (budget) budget.textContent = "待确认画像";
     const evStat = byId("copilot-stat-evidence");
     if (evStat) evStat.textContent = "待计算";
 
@@ -6693,7 +6723,9 @@
         if (state.selectedPersona !== personaId) return;
         await ensureDependency("PORTFOLIO_CONTEXT");
         if (state.selectedPersona !== personaId) return;
-        if (state.profile) await refreshPortfolioHealth();
+        if (state.profile && state.portfolio) await refreshPortfolioHealth();
+        renderPortfolioReadiness();
+        updateVisualCompanion();
       })
       .catch((error) => setError(error.message || "持仓体检初始化失败"));
     updateVisualCompanion();
@@ -6841,6 +6873,35 @@
     };
   }
 
+  function renderPortfolioReadiness() {
+    if (state.portfolioHealthRun) return;
+    const message = !state.profile?.profile ? "请先完成并确认风险问卷" : !state.portfolio ? "请先添加并确认持仓" : "待运行体检";
+    const values = {
+      "copilot-stat-aum": state.portfolio ? "待体检" : "待确认持仓",
+      "copilot-stat-tech": "待体检",
+      "copilot-stat-budget": state.profile?.profile ? "待体检" : "待确认画像",
+      "copilot-stat-evidence": "待计算",
+      "portfolio-refresh-status": message,
+    };
+    Object.entries(values).forEach(([id, value]) => { if (byId(id)) byId(id).textContent = value; });
+    renderHeroDonutChart(state.selectedPersona);
+  }
+
+  function requirePortfolioAnalysisContext(output, needsProfile = true) {
+    const missingProfile = needsProfile && !state.profile?.profile;
+    if (!missingProfile && state.portfolio) return true;
+    const card = document.createElement("div");
+    card.className = "copilot-empty-output";
+    const title = document.createElement("h4");
+    title.textContent = missingProfile ? "请先确认风险画像" : "请先确认持仓";
+    const message = document.createElement("p");
+    message.textContent = missingProfile ? "请在风险画像页面完成并确认问卷，再运行组合分析。" : "请通过添加持仓导入并确认本次分析的数据。";
+    card.append(title, message, buildCopilotDrilldownRow([{href: missingProfile ? "#profile" : "#overview", text: missingProfile ? "填写风险问卷" : "查看我的组合"}]));
+    output.append(card);
+    renderPortfolioReadiness();
+    return false;
+  }
+
   async function refreshPortfolioHealth() {
     if (!state.profile?.profile || !state.portfolio) {
       microStore.transact((store) => {
@@ -6935,11 +6996,12 @@
       tech.classList.toggle("ok-text", topSector?.verdictCode === "PASS");
     }
     const budget = byId("copilot-stat-budget");
-    if (budget) budget.textContent = topSector ? `${topSector.cap}%` : "待计算";
+    if (budget) budget.textContent = topSector ? `${topSector.limitOperator === "MIN" ? "≥" : "≤"} ${topSector.cap}%` : "待计算";
     const evidence = byId("copilot-stat-evidence");
     if (evidence) evidence.textContent = `${health.evidence_count}项穿透贡献 · Python 验算`;
     renderHeroDonutChart(state.selectedPersona);
     renderOverviewWorkspace(state.selectedPersona);
+    updateVisualCompanion();
     return health;
   }
 
@@ -7300,15 +7362,14 @@
     const health = state.portfolioHealthRun;
     const sectors = health?.sectors || [];
     if (!health || !sectors.length) {
-      if (hintEl) hintEl.textContent = "正在等待 Python 持仓穿透结果…";
-      if (verdictBadge) verdictBadge.textContent = "CALCULATING 计算中";
+      if (hintEl) hintEl.textContent = !state.profile?.profile ? "请先完成并确认风险问卷。" : !state.portfolio ? "请先添加并确认持仓。" : "请运行持仓健康体检。";
+      if (verdictBadge) verdictBadge.textContent = "REVIEW_REQUIRED 待体检";
       if (causeCallout) causeCallout.textContent = "画像与持仓确认后，由后端执行穿透与风险闸门。";
       return;
     }
     const overboundList = sectors
       .map(s => ({ sector: s, verdict: getSectorVerdict(s) }))
       .filter(x => x.verdict.isOver);
-    const isAnyOverbound = health.has_breaches;
     const requiresReview = health.status !== "PASS";
 
     if (rankPill) rankPill.textContent = persona.tag;
@@ -7316,12 +7377,14 @@
       clear(verdictBadge);
       verdictBadge.className = requiresReview ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
       const vIcon = createSvgIcon(requiresReview ? "icon-alert" : "icon-check", "prism-icon");
-      if (isAnyOverbound) {
+      if (overboundList.length) {
         const topOver = overboundList[0];
         const breachText = topOver.verdict.isCash
           ? `${topOver.sector.name}不足 (${topOver.verdict.diffVal.toFixed(1)}%)`
           : `${topOver.sector.name}超标 (+${topOver.verdict.diffVal.toFixed(1)}%)`;
         verdictBadge.append(vIcon, document.createTextNode(` OVERBOUND ${breachText}`));
+      } else if (health.hhi_verdict === "OVERBOUND") {
+        verdictBadge.append(vIcon, document.createTextNode(` OVERBOUND 组合集中度 HHI ${health.sector_hhi} 超过 ${health.hhi_limit}`));
       } else if (requiresReview) {
         verdictBadge.append(vIcon, document.createTextNode(` ${health.status} 数据需复核`));
       } else {
@@ -7330,12 +7393,15 @@
     }
 
     if (causeCallout) {
-      if (isAnyOverbound) {
+      if (overboundList.length) {
         causeCallout.className = "donut-cause-callout risk";
         causeCallout.textContent = `风险拦截原因：${overboundList.map(x => x.verdict.isCash
           ? `【${x.sector.name}】实际比例 ${x.sector.pct.toFixed(1)}% 低于最低要求 ${x.sector.cap.toFixed(1)}%（差额 ${x.sector.marginPctPoints.toFixed(1)}%）`
           : `【${x.sector.name}】实际暴露 ${x.sector.pct.toFixed(1)}% 超过画像上限 ${x.sector.cap.toFixed(1)}%（超出 ${x.sector.marginPctPoints.toFixed(1)}%）`
         ).join("；")}。已触发后端风险闸门，需通过调仓服务重新测算。`;
+      } else if (health.hhi_verdict === "OVERBOUND") {
+        causeCallout.className = "donut-cause-callout risk";
+        causeCallout.textContent = `组合集中度 HHI ${health.sector_hhi} 超过后端限额 ${health.hhi_limit}；各行业单项限额未超限，组合仍需复核。`;
       } else if (requiresReview) {
         causeCallout.className = "donut-cause-callout risk";
         causeCallout.textContent = `当前没有数值超限项，但后端状态为 ${health.status}；请先处理缺失或未分类数据。`;
@@ -7511,6 +7577,7 @@
 
     svg.append(centerLabel, centerValue);
     container.append(svg);
+    resetSelection();
   }
 
   function renderOverviewWorkspace(personaId) {
@@ -7561,6 +7628,8 @@
     const output = byId("copilot-decision-output");
     if (!output) return;
     clear(output);
+    state.copilotResearchSequence += 1;
+    if (!requirePortfolioAnalysisContext(output)) return;
     output.append(buildCopilotLoadingCard("icon-activity", "正在检查你的组合…", "正在核对全行业集中度、画像边界、HHI指标和可用证据。"));
 
     try {
@@ -7570,7 +7639,7 @@
       const sectors = health.sectors;
       const hasBreaches = health.has_breaches;
       const requiresReview = health.status !== "PASS";
-      const technologySector = sectors.find((sector) => sector.code === "TECHNOLOGY");
+      const technologySector = sectors.find((sector) => sector.sectorKey === "TECHNOLOGY");
 
       clear(output);
       const card = document.createElement("div");
@@ -7722,6 +7791,7 @@
     const output = byId("copilot-decision-output");
     if (!output) return;
     clear(output);
+    const token = beginContextRequest("copilotResearchSequence");
 
     const stockSymbol = byId("copilot-stock-input")?.value?.trim() || "";
     if (!stockSymbol) {
@@ -7821,11 +7891,25 @@
       return;
     }
 
-    output.append(buildCopilotLoadingCard("icon-activity", `正在核验 ${cleanCode} 交易所底稿…`, "正在查询交易所行情快照、审计财务指标与历史估值分位数，并进行投资者适当性匹配。"));
+    const isFund = /^(510|512|513|515|588|159)/.test(cleanCode);
+    output.append(buildCopilotLoadingCard("icon-activity", `正在查询 ${cleanCode} 数据…`, isFund ? "读取最近一期基金披露持仓；披露数据不代表实时持仓。" : "读取行情快照；未提供的财务指标将明确标记为缺失。"));
 
     try {
-      let resp = await fetch(`/api/v1/copilot/live-quote?symbol=${encodeURIComponent(cleanCode)}`);
+      const endpoint = isFund ? "live-fund?fund_code=" : "live-quote?symbol=";
+      let resp = await fetch(`/api/v1/copilot/${endpoint}${encodeURIComponent(stockSymbol)}`);
+      if (!isContextRequestCurrent(token)) return;
       let autoDependencyCompleted = false;
+
+      if (isFund) {
+        if (!resp.ok) throw await apiError(resp);
+        const result = await resp.json();
+        if (!isContextRequestCurrent(token)) return;
+        clear(output);
+        output.append(buildCopilotFundCard(result));
+        return;
+      }
+
+      if (resp.status === 404 && token.dataMode === "LIVE") throw await apiError(resp);
 
       // 遇到阻碍：如果 404 缺失底稿，自动完成前置依赖（自动建档并重试）
       if (resp.status === 404) {
@@ -7833,8 +7917,10 @@
         output.append(buildCopilotLoadingCard("icon-activity", `正在自动补全 ${cleanCode} 交易所底稿依赖…`, "检测到标的代码初始未建档，正在从交易所实时快照与财报源自动建档入库…"));
         try {
           const autoResp = await fetch(`/api/v1/copilot/auto-index-security?symbol=${encodeURIComponent(cleanCode)}`, { method: "POST" });
+          if (!isContextRequestCurrent(token)) return;
           if (autoResp.ok) {
             const retryResp = await fetch(`/api/v1/copilot/live-quote?symbol=${encodeURIComponent(cleanCode)}`);
+            if (!isContextRequestCurrent(token)) return;
             if (retryResp.ok) {
               resp = retryResp;
               autoDependencyCompleted = true;
@@ -7943,16 +8029,16 @@
 
       if (!resp.ok) {
         const errJson = await resp.json().catch(() => ({}));
-        if (state.dataMode === "LIVE") await fetchRuntimeDataMode();
         throw new Error(errJson.message || `请求失败 HTTP ${resp.status}`);
       }
 
       const res = await resp.json();
+      if (!isContextRequestCurrent(token)) return;
       const quote = res.data;
       if (!quote) throw new Error("未获取到标的底稿数据");
 
       const requiredFinancialFields = ["pe_ttm", "pb", "roe_pct", "valuation_quantile_pct"];
-      const missingFinancialFields = requiredFinancialFields.filter((field) => !Number.isFinite(Number(quote[field])));
+      const missingFinancialFields = requiredFinancialFields.filter((field) => !hasFinancialNumber(quote[field]) || (quote.missing_fields || []).includes(field));
       if (missingFinancialFields.length) {
         clear(output);
         const card = document.createElement("div");
@@ -7968,7 +8054,7 @@
         const body = document.createElement("div");
         body.className = "decision-card-body";
         const message = document.createElement("p");
-        message.textContent = `报价 ¥${quote.price_cny}；来源层级 ${quote.provider_tier || "未知"}；缺少 ${missingFinancialFields.join("、")}，因此不生成估值与配置结论。`;
+        message.textContent = `报价 ¥${quote.price_cny}；数据模式 ${res.execution_context?.data_mode || "未标注"}；来源层级 ${quote.provider_tier || "未知"}；数据时间 ${quote.observed_at || "未提供"}；缺少 ${missingFinancialFields.join("、")}，因此不生成估值与配置结论。`;
         body.append(message);
         card.append(banner, body);
         output.append(card);
@@ -8094,6 +8180,9 @@
       card.append(banner, body);
       output.append(card);
     } catch (err) {
+      if (!isContextRequestCurrent(token)) return;
+      if (token.dataMode === "LIVE") await fetchRuntimeDataMode();
+      if (!isContextRequestCurrent(token)) return;
       clear(output);
       const errCard = document.createElement("div");
       errCard.className = "copilot-empty-output";
@@ -8106,16 +8195,47 @@
     }
   }
 
+  function hasFinancialNumber(value) {
+    return (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) && Number.isFinite(Number(value));
+  }
+
+  function buildCopilotFundCard(result) {
+    const fund = result.data;
+    if (!fund) throw new Error("未返回基金披露持仓。");
+    const card = document.createElement("div");
+    card.className = "copilot-decision-card";
+    const title = document.createElement("h3");
+    title.textContent = `${fund.fund_name} (${fund.fund_code}) · 披露持仓`;
+    const note = document.createElement("p");
+    note.className = "research-boundary";
+    note.textContent = `${result.execution_context?.data_mode || "未标注"} · ${result.execution_context?.provider || "未标注来源"} · PERIODIC_DISCLOSURE 定期披露，非实时持仓。披露期：${fund.holding_disclosure_as_of || fund.observed_at || "未提供"}。行业暴露缺失时不推断组合集中度。`;
+    const table = document.createElement("table");
+    table.className = "rebalancing-table";
+    const head = document.createElement("tr");
+    ["证券代码", "名称", "披露权重", "行业"].forEach((label) => { const cell = document.createElement("th"); cell.textContent = label; head.append(cell); });
+    table.append(head);
+    (fund.top_holdings || []).forEach((holding) => {
+      const row = document.createElement("tr");
+      [holding.asset_id || "未提供", holding.name || "未提供", hasFinancialNumber(holding.weight_pct) ? `${holding.weight_pct}%` : "未提供", holding.sector || "未提供"].forEach((value) => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
+      table.append(row);
+    });
+    card.append(title, note, table);
+    return card;
+  }
+
   async function runCopilotRebalance() {
     const output = byId("copilot-decision-output");
     if (!output) return;
     clear(output);
+    state.copilotResearchSequence += 1;
+    if (!requirePortfolioAnalysisContext(output)) return;
     output.append(buildCopilotLoadingCard("icon-activity", "正在整理调仓方案…", "正在根据你的风险边界计算目标权重、换手率和调整顺序。"));
 
     try {
-      await runPortfolioOptimization();
+      const optimization = await runPortfolioOptimization();
+      if (!optimization?.targets?.length) throw new Error(optimization?.summary || "未能生成目标权重，请检查画像、持仓和缺失数据。");
       const plan = await runPortfolioRebalancing();
-      if (!plan) return;
+      if (!plan) throw new Error("调仓测算未完成，请检查目标权重和持仓输入。");
       const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
 
       clear(output);
@@ -8272,6 +8392,8 @@
     const output = byId("copilot-decision-output");
     if (!output) return;
     clear(output);
+    state.copilotResearchSequence += 1;
+    if (!requirePortfolioAnalysisContext(output, false)) return;
     output.append(buildCopilotLoadingCard("icon-activity", "正在运行自定义压力测试…", "组合损益、波动率与 VaR 均由后端确定性模型计算。"));
 
     try {
@@ -8767,8 +8889,8 @@
     if (aumEl) aumEl.textContent = `¥ ${Number(validated.total_value_cny).toLocaleString()}`;
     const pTag = byId("copilot-hero-portfolio-tag");
     if (pTag) pTag.textContent = `已确认持仓 (${validated.positions.length} 项)`;
-    await ensureDependency("PROFILE_CONTEXT");
-    await refreshPortfolioHealth();
+    if (state.profile?.profile) await refreshPortfolioHealth();
+    else renderPortfolioReadiness();
     return validated;
   }
 
@@ -8791,7 +8913,7 @@
       });
       const data = await resp.json();
 
-      if (data.positions && data.positions.length > 0) {
+      if (resp.ok && data.status === "SUCCESS" && data.positions && data.positions.length > 0) {
         const validated = await validateAndActivatePortfolio(data);
         if (!validated) return;
         if (statusBox) {
@@ -8814,7 +8936,7 @@
           runCopilotHealthCheck();
         }, 600);
       } else {
-        if (statusBox) statusBox.textContent = "未能识别出有效资产，请检查输入格式。";
+        if (statusBox) statusBox.textContent = data.message || "未能识别出有效资产，请检查输入格式。";
       }
     } catch (err) {
       if (statusBox) statusBox.textContent = `解析出错: ${err.message || "请求异常"}`;
@@ -9240,6 +9362,7 @@
   if (copilotHealthBtn) copilotHealthBtn.addEventListener("click", runCopilotHealthCheck);
   const copilotStockBtn = byId("copilot-btn-stock-research");
   if (copilotStockBtn) copilotStockBtn.addEventListener("click", runCopilotStockResearch);
+  byId("copilot-stock-input")?.addEventListener("input", updateRuntimeDataModeUI);
   const copilotRebalanceBtn = byId("copilot-btn-rebalance");
   if (copilotRebalanceBtn) copilotRebalanceBtn.addEventListener("click", runCopilotRebalance);
   const copilotQueryBtn = byId("copilot-submit-query");

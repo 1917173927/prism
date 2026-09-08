@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import os
 from collections.abc import AsyncIterator
 from typing import Any
@@ -135,24 +136,28 @@ class AsyncLLMClient:
         }
 
         # Check intent
-        if any(k in user_msg for k in ("宁德", "300750", "比亚迪", "002594", "寒武纪", "688256", "茅台", "600519", "股票", "个股")):
-            symbol = "300750"
-            for code in ("300750", "688256", "002594", "600519"):
-                if code in user_msg:
-                    symbol = code
-                    break
+        explicit_code = re.search(r"(?<!\d)\d{6}(?:\.(?:SH|SZ|BJ))?(?!\d)", user_msg, re.IGNORECASE)
+        if explicit_code:
+            symbol = explicit_code.group().upper()
+            is_fund = symbol.startswith(("510", "512", "513", "515", "588", "159")) or any(k in user_msg for k in ("基金", "ETF", "etf"))
+            yield {"type": "tool_call", "name": "query_fund_lookthrough" if is_fund else "query_stock_quote",
+                   "arguments": {"fund_code" if is_fund else "symbol": symbol}}
+        elif any(k in user_msg for k in ("宁德", "比亚迪", "寒武纪", "茅台")):
+            symbol = next(code for name, code in (("宁德", "300750"), ("比亚迪", "002594"), ("寒武纪", "688256"), ("茅台", "600519")) if name in user_msg)
             yield {
                 "type": "tool_call",
                 "name": "query_stock_quote",
                 "arguments": {"symbol": symbol},
             }
-        elif any(k in user_msg for k in ("科创50", "588000", "半导体", "512480", "基金", "ETF", "穿透")):
-            code = "588000" if "588000" in user_msg or "科创" in user_msg else "512480"
+        elif any(k in user_msg for k in ("科创50", "半导体ETF", "沪深300ETF")):
+            code = "588000" if "科创50" in user_msg else "510300" if "沪深300ETF" in user_msg else "512480"
             yield {
                 "type": "tool_call",
                 "name": "query_fund_lookthrough",
                 "arguments": {"fund_code": code},
             }
+        elif any(k in user_msg for k in ("股票", "个股", "基金", "ETF", "etf", "穿透")):
+            yield {"type": "content", "delta": "请提供要查询的证券代码，以免查询到其他标的。"}
         elif any(k in user_msg for k in ("体检", "持仓", "风险", "集中度", "超标")):
             yield {
                 "type": "tool_call",

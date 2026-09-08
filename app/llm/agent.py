@@ -7,6 +7,7 @@ import json
 import re
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -162,6 +163,7 @@ class CopilotAgent:
     async def parse_portfolio_from_text(self, text: str) -> dict[str, Any]:
         """Parse natural language into structured portfolio bundle."""
         text_clean = text.strip()
+        request_mode = get_runtime_mode_controller().mode
 
         # Extract cash (supports "2万元现金", "现金2万元", "现金 20000元", etc.)
         cash = 0.0
@@ -206,12 +208,14 @@ class CopilotAgent:
                 })
 
         for code, info in ETF_LOOKTHROUGH_DATABASE.items():
-            if code in text_clean or info["fund_name"] in text_clean or ("科创" in text_clean and code == "588000") or ("半导体" in text_clean and code == "512480") or ("300" in text_clean and code == "510300"):
+            aliases = {"588000": "科创50ETF", "512480": "半导体ETF", "510300": "沪深300ETF"}
+            alias = aliases.get(code, info["fund_name"])
+            if code in text_clean or info["fund_name"] in text_clean or alias in text_clean:
                 if not any(p["asset_id"] == info["fund_code"] for p in positions):
-                    asset_pattern = rf"(?:{code}|{re.escape(info['fund_name'])}|科创|半导体|300)"
+                    asset_pattern = rf"(?:{code}|{re.escape(info['fund_name'])}|{re.escape(alias)})"
                     qty_match = (
-                        re.search(rf"{asset_pattern}\D*?(\d+)\s*(?:万份|万元|份|股)", text_clean)
-                        or re.search(rf"(\d+)\s*(?:万份|万元|份|股)\D*?{asset_pattern}", text_clean)
+                        re.search(rf"{asset_pattern}\D*?(\d+(?:\.\d+)?)\s*(?:万份|份|股)", text_clean)
+                        or re.search(rf"(\d+(?:\.\d+)?)\s*(?:万份|份|股)\D*?{asset_pattern}", text_clean)
                     )
                     if qty_match is None:
                         continue
@@ -241,6 +245,35 @@ class CopilotAgent:
                 "parsed_count": 0,
                 "review_reasons": ["NO_POSITION_WITH_EXPLICIT_QUANTITY"],
             }
+
+        # A typed price is user input, never a reason to substitute fixture prices.
+        # In LIVE mode only the existing equity quote capability can fill a missing price.
+        for position in positions:
+            code = position["asset_id"].split(".")[0]
+            clauses = re.split(r"[；;\n。]+", text_clean)
+            clause = next((part for part in clauses if code in part or position["name"] in part), "")
+            price_match = re.search(r"(?:现价|当前价|市价)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*元?", clause)
+            cost_match = re.search(r"(?:买入均价|买入价格|成本价|成本)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*元?", clause)
+            if price_match:
+                price = Decimal(price_match.group(1))
+            elif request_mode == DataMode.LIVE:
+                if position["asset_class"] == "FUND_ETF":
+                    return {"status": "REVIEW_REQUIRED", "positions": [], "parsed_count": 0,
+                            "message": f"请为 {position['name']} 提供现价；基金净值及合成底稿不能替代当前交易价格。"}
+                try:
+                    quote = await self.live_finance_provider.get_quote(position["asset_id"])
+                except FuyaoProviderError as exc:
+                    return {"status": "FAILED", "positions": [], "parsed_count": 0,
+                            "message": exc.safe_message, "error_code": exc.code}
+                if not quote:
+                    return {"status": "REVIEW_REQUIRED", "positions": [], "parsed_count": 0,
+                            "message": f"未取得 {position['name']} 行情，请提供现价后重新导入。"}
+                price = Decimal(str(quote["price_cny"]))
+            else:
+                price = Decimal(str(position["price"]))
+            position["price"] = float(price)
+            position["cost_price"] = float(Decimal(cost_match.group(1))) if cost_match else position["price"]
+            position["market_value_cny"] = float((Decimal(str(position["quantity"])) * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
         total_val = cash + sum(p["market_value_cny"] for p in positions)
 
@@ -471,15 +504,26 @@ class CopilotAgent:
         check_tool = next((t for t in executed_tools if t["tool"] == "run_portfolio_health_check"), None)
         rebalance_tool = next((t for t in executed_tools if t["tool"] == "generate_portfolio_rebalance"), None)
 
+        selected_tool = stock_tool or fund_tool or check_tool or rebalance_tool
+        context = (selected_tool or {}).get("result", {}).get("execution_context", {})
+        mode_label = context.get("data_mode", "未标注")
+
+        def field(data: dict[str, Any], key: str, suffix: str = "") -> str:
+            value = data.get(key)
+            return "未提供" if value is None or value == "" else f"{value}{suffix}"
+
         if stock_tool:
             stock_result = stock_tool["result"]
             if stock_result.get("status") != "SUCCESS":
                 return stock_result.get("message", "行情底稿不可用，无法形成研判。")
             stock = stock_result["data"]
             lines.append(f"### 个股底稿字段：{stock['name']} ({stock['symbol']})")
-            lines.append("当前返回来自 MOCK 静态底稿。以下数值仅转述工具结果，不代表实时行情、审计结论或投资建议：\n")
-            lines.append(f"1. **行情字段**：价格 **¥{stock['price_cny']}**，涨跌幅 `{stock['change_pct']:+.2f}%`，市盈率 PE(TTM) **{stock['pe_ttm']} 倍**，底稿估值分位 **{stock.get('valuation_quantile_pct', '未提供')}%**。")
-            lines.append(f"2. **财务字段**：ROE **{stock['roe_pct']}%**，毛利率 **{stock['gross_margin_pct']}%**，资产负债率 **{stock['debt_ratio_pct']}%**。")
+            lines.append(f"本次数据模式：{mode_label}；来源：{context.get('provider', '未标注')}。以下仅转述工具字段，缺失项不补值，不代表审计结论或投资建议。\n")
+            change = stock.get("change_pct")
+            change_text = "未提供" if change is None else f"{change:+.2f}%"
+            lines.append(f"1. **行情字段**：价格 **¥{field(stock, 'price_cny')}**，涨跌幅 `{change_text}`，市盈率 PE(TTM) **{field(stock, 'pe_ttm', ' 倍')}**，估值分位 **{field(stock, 'valuation_quantile_pct', '%')}**。")
+            lines.append(f"2. **财务字段**：ROE **{field(stock, 'roe_pct', '%')}**，毛利率 **{field(stock, 'gross_margin_pct', '%')}**，资产负债率 **{field(stock, 'debt_ratio_pct', '%')}**。")
+            lines.append(f"数据时间：{field(stock, 'observed_at')}。")
             lines.append("3. **计算边界**：聊天层不计算适当性、配置比例或风险闸门；相关结论需提交结构化画像与持仓到后端确定性服务。")
 
         elif fund_tool:
@@ -487,10 +531,10 @@ class CopilotAgent:
             if fund_result.get("status") != "SUCCESS":
                 return fund_result.get("message", "基金穿透底稿不可用。")
             fund = fund_result["data"]
-            lines.append(f"### 基金静态底稿：{fund['fund_name']} ({fund['fund_code']})")
-            lines.append("当前 MOCK 底稿列出的重仓项包括：")
+            lines.append(f"### 基金披露持仓：{fund['fund_name']} ({fund['fund_code']})")
+            lines.append(f"本次数据模式：{mode_label}。基金持仓为定期披露，不代表实时持仓；披露期：{field(fund, 'holding_disclosure_as_of')}。")
             for h in fund["top_holdings"]:
-                lines.append(f"- **{h['name']}** ({h['asset_id']})：权重 **{h['weight_pct']}%** · 行业：{h['sector']}")
+                lines.append(f"- **{field(h, 'name')}** ({field(h, 'asset_id')})：权重 **{field(h, 'weight_pct', '%')}** · 行业：{field(h, 'sector')}")
             lines.append("\n聊天层只转述底稿字段；基金穿透占比、组合重叠和集中度必须由后端确定性服务计算。")
 
         elif check_tool:
@@ -522,8 +566,6 @@ class CopilotAgent:
             lines.append("### 请求处理边界")
             lines.append(f"已识别咨询事项「{user_message}」和画像标签 {tag}，但当前没有可引用的确定性计算结果，因此不生成行情、敞口、适当性或调仓结论。")
 
-        controller = get_runtime_mode_controller()
-        mode_label = "LIVE · 官方接口数据" if controller.mode == DataMode.LIVE else "MOCK · 基准合成数据"
         lines.append(f"\n> 数据边界：[{mode_label}] · 聊天层仅转述工具字段；金融计算由结构化确定性服务执行")
         lines.append("\n---\n*风险揭示：证券市场存在风险，投资需谨慎。本报告基于量化模型推导，不作为收益承诺。*")
 
