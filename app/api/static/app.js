@@ -1695,6 +1695,20 @@
     return `${RISK_LEVEL_LABELS[profile.risk_level] || profile.risk_level} · ${Number(profile.risk_score).toFixed(0)} 分`;
   }
 
+  function currentProfileTag(profile) {
+    return profile ? `已确认 · ${profileLevelText(profile)}` : "待确认问卷";
+  }
+
+  function renderCurrentProfileIdentity(profile = null) {
+    const persona = PERSONAS[state.selectedPersona];
+    if (!persona) return;
+    const tag = currentProfileTag(profile);
+    byId("custom-profile-chip-name").textContent = `${persona.name} (${tag})`;
+    byId("btn-custom-profile-chip").title = `当前使用：${persona.name}，${tag}`;
+    const heroTag = byId("copilot-hero-tag");
+    if (heroTag) heroTag.textContent = tag;
+  }
+
   function profileMetricCard(label, value, note = "") {
     const card = document.createElement("article");
     card.className = "profile-summary-card";
@@ -1831,6 +1845,7 @@
       );
     }
     state.behaviorProfile = summary.behavior_profile;
+    renderCurrentProfileIdentity(summary.questionnaire_snapshot ? state.profile.profile : null);
     renderBehaviorProfile(summary.behavior_profile);
     renderProfileSummary(summary);
     renderQuestionnaire();
@@ -6784,9 +6799,9 @@
     const currentProfileAvatar = byId("custom-profile-chip-avatar");
     if (currentProfileAvatar) currentProfileAvatar.textContent = persona.avatar;
     const currentProfileName = byId("custom-profile-chip-name");
-    if (currentProfileName) currentProfileName.textContent = `${persona.name} (${persona.tag})`;
+    if (currentProfileName) currentProfileName.textContent = `${persona.name} (${currentProfileTag(null)})`;
     const currentProfileChip = byId("btn-custom-profile-chip");
-    if (currentProfileChip) currentProfileChip.title = `当前使用：${persona.name}，${persona.tag}`;
+    if (currentProfileChip) currentProfileChip.title = `当前使用：${persona.name}，${currentProfileTag(null)}`;
 
     // Update Hero card
     const heroAvatar = byId("copilot-hero-avatar");
@@ -6794,7 +6809,7 @@
     const heroName = byId("copilot-hero-name");
     if (heroName) heroName.textContent = persona.name;
     const heroTag = byId("copilot-hero-tag");
-    if (heroTag) heroTag.textContent = persona.tag;
+    if (heroTag) heroTag.textContent = currentProfileTag(null);
     const heroPortfolioTag = byId("copilot-hero-portfolio-tag");
     if (heroPortfolioTag) heroPortfolioTag.textContent = persona.portfolioTag;
     const heroDesc = byId("copilot-hero-desc");
