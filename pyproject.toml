@@ -17,6 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+postgres = [
+  "psycopg[binary]>=3.2,<4",
+]
 dev = [
   "httpx>=0.27,<1",
   "pytest>=8.2,<9",
@@ -38,6 +41,7 @@ app = [
   "api/static/*.css",
   "api/static/*.js",
   "api/static/*.png",
+  "api/static/*.txt",
   "fixtures/advisor/*.json",
   "fixtures/advisor/providers/*.json",
   "fixtures/research/*.json",

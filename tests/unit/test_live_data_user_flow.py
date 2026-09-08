@@ -243,7 +243,8 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
              "ensureDependency", "confirmProfileContext", "renderCompanionRisk",
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
              "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing",
-             "loadSavedPortfolio", "openPortfolioModal", "buildRebalancingNotice"]
+             "loadSavedPortfolio", "openPortfolioModal", "buildRebalancingNotice",
+             "profileLevelText", "currentProfileTag", "activeProfileTag"]
     functions = []
     for name in names:
         match = re.search(r"  (?:async )?function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source)

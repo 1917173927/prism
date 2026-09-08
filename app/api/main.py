@@ -378,6 +378,7 @@ def create_app(
     store: DecisionEventStore | None = None,
     *,
     database_path: str | Path = ":memory:",
+    database_url: str | None = None,
     auth_accounts_path: str | Path | None = None,
     clock: Callable[[], datetime] | None = None,
     advisor_service: FixtureAdvisorQueryService | None = None,
@@ -403,9 +404,17 @@ def create_app(
 
     accounts = load_accounts(auth_accounts_path) if auth_accounts_path else {}
     owned_store = store is None
-    if store is None and str(database_path) != ":memory:":
+    if store is not None and database_url is not None:
+        raise ValueError("select either an injected store or database_url")
+    if store is None and database_url is None and str(database_path) != ":memory:":
         Path(database_path).parent.mkdir(parents=True, exist_ok=True)
-    active_store = store or SQLiteDecisionEventStore(database_path)
+    if store is not None:
+        active_store = store
+    elif database_url is not None:
+        from app.store.postgres import PostgresDecisionEventStore
+        active_store = PostgresDecisionEventStore(database_url)
+    else:
+        active_store = SQLiteDecisionEventStore(database_path)
     active_clock = clock or (lambda: datetime.now(UTC))
     active_advisor = advisor_service or FixtureAdvisorQueryService()
     active_specialist = specialist_service or FixtureResearchSpecialistMatrixService()
@@ -2306,6 +2315,7 @@ def create_app(
 
 
 app = create_app(
+    database_url=os.getenv("PRISM_DATABASE_URL") or None,
     database_path=os.getenv("PRISM_DB_PATH") or str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3"),
     auth_accounts_path=os.getenv("PRISM_AUTH_ACCOUNTS_FILE") or None,
 )

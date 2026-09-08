@@ -2,11 +2,12 @@
 
 ## 第1章 运行边界
 
-当前交付运行于本地回环地址，默认 SQLite 保存已确认画像、持仓、决策与上下文。远端 Git 仓库存放代码，不存放账户文件、数据库或供应商密钥。PostgreSQL、正式问财授权和券商接入尚未验收。
+当前交付运行于本地回环地址，默认 SQLite 保存已确认画像、持仓、决策与上下文，可显式选择 PostgreSQL 后端。远端 Git 仓库存放代码，不存放账户文件、数据库或供应商密钥。正式问财授权和券商接入尚未验收。
 
 | 配置 | 默认 | 用途 | 验证边界 |
 |---|---|---|---|
 | `PRISM_DB_PATH` | `data/private/prism.sqlite3` | 本地持久化 | SQLite 回归与备份恢复 |
+| `PRISM_DATABASE_URL` | 未设置 | PostgreSQL 连接配置，设置后优先于 SQLite | 真实 PostgreSQL 17.11 隔离回归；不自动搬迁旧数据 |
 | `PRISM_AUTH_ACCOUNTS_FILE` | 未设置 | 启用 HTTP Basic 账户校验 | 本地回环；跨机器必须先配置 HTTPS |
 | `HITHINK_FINANCE_API_KEY` | 未设置 | 扶摇服务端凭据 | 真实能力探测成功后可用 |
 | `/api/health` | 无认证 | 进程和数据模式健康检查 | 不等于供应商可用性承诺 |
@@ -62,3 +63,28 @@ npm run build:workflow
 ```
 
 上下文记忆中的检索按钮查询当前 owner 最近 100 条显式保存记录，结果附来源、保存时间、摘要哈希和匹配字段。配置服务端模型时，只发送查询和有限描述摘要，不发送持仓数量；未配置模型或模型失败时标注有限关键词匹配。所有结果为 HISTORICAL_ONLY，不自动恢复画像、持仓或决策输入。模型相关性排序不代表事实仍然有效；使用历史信息前应核对当前版本和行情。
+
+## 第6章 可选 PostgreSQL
+
+安装可选驱动后，以安全环境配置提供专用数据库 DSN；不要把含密码的 DSN 写入 Git、URL 或日志。本轮没有切换现有用户 SQLite 数据库。
+
+```powershell
+.venv/Scripts/python.exe -m pip install -e ".[dev,web,postgres]"
+# 由本机安全配置注入 PRISM_DATABASE_URL 后启动服务
+.venv/Scripts/python.exe -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+```
+
+`create_app(database_url=...)` 或入口的 `PRISM_DATABASE_URL` 启用 PostgreSQL；显式配置无效时启动失败，不退回空 SQLite。数据库或专用 schema 必须由使用者预先准备，角色需要该 schema 的建表和读写权限。不要指定已有其他应用的业务 schema。
+
+后端复用现有 owner 与内容校验，按编号执行 SQL 表结构迁移，DDL 与迁移登记在同一事务内。写事务使用数据库范围 advisory lock 保留 CAS 语义，锁等待上限 5 秒、语句上限 15 秒；当前采用单连接和串行写策略，不宣称高并发连接池性能。构造失败会关闭连接，事务失败回滚。
+
+切换数据库不会自动把 SQLite 历史数据复制到 PostgreSQL。现有 SQLite 原库保留；停止服务、移除 PostgreSQL 配置并重新指向原 SQLite 可恢复原本地环境，但 PostgreSQL 期间新增的记录不会反向同步。数据库结构目前只支持向前迁移，不提供破坏性降级命令。第3章备份工具仅支持 SQLite；PostgreSQL 备份需使用其原生备份工具并单独验收。
+
+真实数据库集成测试仅在显式提供测试 DSN 时运行；每项测试在专用测试数据库中新建随机 schema，结束删除该测试 schema。不要提供生产数据库或真实账户数据库。
+
+```powershell
+# 预先通过安全环境配置 PRISM_TEST_POSTGRES_DSN
+.venv/Scripts/python.exe -m pytest tests/integration/test_postgres_store.py
+```
+
+未提供测试 DSN 时这些测试明确跳过，不使用 SQLite 或 mock 代替 PostgreSQL。

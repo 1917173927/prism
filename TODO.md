@@ -8,8 +8,8 @@
 >
 > Overall execution plan: [docs/plans/2026-09-01-foundation.md](docs/plans/2026-09-01-foundation.md)
 >
-> Active phase: P2 Milestones (Phase 34 Recommendation History, Phase 35 Portfolio Rebalancing, Phase 36 Evaluation Dashboard, Phase 37 Advanced Explainability) have been implemented, verified, and accepted.
-> Next phase: External integrations / evaluation hardening.
+> Historical baseline: P2 Phase 34–39 implemented. Current work: local deployment and incremental P3 gap closure; status below is item-specific.
+> External integrations and real model / SLA validation remain evidence-dependent.
 
 ## 本地部署缺口执行
 
@@ -20,7 +20,8 @@
 - [x] 会话事实黑板锁定服务端画像、持仓和数据模式，旧版本/快照冲突拒绝，流式生成期间漂移立即停止；SSE 错误与截断不再显示完成。
 - [x] 历史记忆按 owner 检索最近 100 条显式保存记录，返回来源与摘要，模型不可用时明确降级；不自动应用历史持仓。
 - [x] AntV X6 固定研究节点依赖编辑、版本保存及有界执行；已验证 MOCK 页面路径、环路拒绝、版本冲突及超时取消。
-- [ ] PostgreSQL 兼容与真实数据库回归进行中；正式上游授权、券商环境、真实模型质量及外部长期 SLA 仍需独立验收。
+- [x] 可选 PostgreSQL 后端、原子迁移与失败回滚；真实 17.11 九项数据库回归通过，未切换用户 SQLite 主库。
+- [ ] 正式上游授权、券商环境、真实模型质量及外部长期 SLA 仍需独立验收。
 
 ## Product UX
 
@@ -152,7 +153,7 @@
 - [x] Phase 38: Implement Copilot Interactive Task Center (Optimization Direction 1) featuring Three-Tier Information Architecture, 3 Preset Personas (Zhang R3, Li R2, Wang R4), 3 Core Tasks (Health Check, Asset Deep Dive, Smart Rebalancing), Natural Language Query router, L2 Decision Cards, and 1-Click L3 Expert Audit Drill-downs.
 - [x] Phase 39: Implement Live LLM Cognitive Agent & Real Financial Data Providers (Optimization Direction 2) featuring OpenAI/DeepSeek/Qwen compatible streaming client, ReAct multi-agent tool execution, Live Market Provider (real quotes/PE/ROE), Live Fund Look-Through Provider, Live Wencai SkillHub Provider, and Natural Language Portfolio Parser.
 
-## P3 — Workflow Orchestration & Anti-Hallucination Blackboard (Next Phase)
+## P3 — Workflow Orchestration & Anti-Hallucination Blackboard（部分实现）
 
 - [ ] Phase 40: Multi-Agent Graph & Pipeline Workflow Builder (Coze-aligned capabilities)
   - [x] 引入 AntV X6 3.1.8，提供节点拖动与依赖选择编辑；当前固定八节点 MOCK 目录。
@@ -189,5 +190,4 @@ These inputs block claims of real SkillHub integration or submission readiness, 
 
 ## Next useful action
 
-Optimization Direction 1 (Phase 38) and Optimization Direction 2 (Phase 39) have been fully implemented and verified with 100% test pass rate across 472 automated tests.
-Next targets are Phase 40 (Multi-Agent Graph & Pipeline Workflow Builder, 引入成熟开源图引擎) and Phase 41 (Session Truth Blackboard & Anti-Hallucination Panel) as specified in `docs/architecture.md`.
+当前按 [剩余缺口执行清单](docs/plans/2026-09-08-gap-closure.md) 推进和验收。历史 472 项测试不再代表当前基线；2026-09-08 全量 638 项通过，含临时 PostgreSQL 17.11 的 9 项真实数据库测试。P3 已完成固定 DAG 编辑和结构化会话前提锁定，其余双视图与通用幻觉检查仍未勾选。
