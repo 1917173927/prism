@@ -129,6 +129,7 @@
     dataMode: "MOCK",
     modeRevision: 1,
     liveReady: false,
+    liveConfigured: false,
     wencaiReady: false,
     liveReadinessIssues: [],
     capabilities: null,
@@ -5217,6 +5218,7 @@
             store.dataMode = payload.data.data_mode || "MOCK";
             store.modeRevision = payload.data.revision || 1;
             store.liveReady = payload.data.live_ready === true;
+            store.liveConfigured = payload.data.live_configured === true;
             store.wencaiReady = payload.data.wencai_ready === true;
             store.liveReadinessIssues = payload.data.live_readiness_issues || [];
             store.capabilities = payload.data.capabilities || null;
@@ -5325,8 +5327,10 @@
         warnTitle.textContent = "切换至实时数据";
         warnText.textContent = state.liveReady
           ? `服务端已验证可用能力：${capabilitySummaryForUser()}。普通用户无需填写 API Key；某个数据源失败只会关闭对应能力。`
-          : "服务端尚无已验证的实时数据能力。请由管理员完成数据源配置，浏览器不会接收 API Key。";
-        if (confirmBtn) confirmBtn.disabled = !state.liveReady;
+          : state.liveConfigured
+            ? "数据源已配置，但上次验证失败。确认后重新检测连通性；只有真实请求成功才进入 LIVE。"
+            : "服务端尚无已验证的实时数据能力。请由管理员完成数据源配置，浏览器不会接收 API Key。";
+        if (confirmBtn) confirmBtn.disabled = !state.liveReady && !state.liveConfigured;
       } else {
         warnTitle.textContent = "沙箱仿真环境重置";
         warnText.textContent = "切回 MOCK 模式将加载本地基准沙箱与高质量仿真数据，所有分析结果将标注 MOCK · 合成数据。";
@@ -5350,7 +5354,7 @@
     if (!confirmBtn) return;
 
     const targetMode = (state.dataMode === "MOCK") ? "LIVE" : "MOCK";
-    if (targetMode === "LIVE" && !state.liveReady) {
+    if (targetMode === "LIVE" && !state.liveReady && !state.liveConfigured) {
       alert(`LIVE 不可用：${(state.liveReadinessIssues || []).join("、") || "缺少官方 Provider 配置"}`);
       return;
     }

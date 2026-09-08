@@ -170,7 +170,8 @@ class RuntimeModeController:
         return self._initial_probe_pending
 
     async def apply_fuyao_probe(
-        self, capabilities: dict[str, bool], *, auto_activate: bool = False
+        self, capabilities: dict[str, bool], *, auto_activate: bool = False,
+        errors: dict[str, str | None] | None = None,
     ) -> None:
         """Record a real provider probe and optionally activate LIVE once."""
         async with self._lock:
@@ -183,7 +184,7 @@ class RuntimeModeController:
                 name: checked_at for name in self._fuyao_capabilities
             }
             self._fuyao_capability_errors = {
-                name: None if available else "PROBE_FAILED"
+                name: None if available else (errors or {}).get(name) or "PROBE_FAILED"
                 for name, available in self._fuyao_capabilities.items()
             }
             available_count = sum(self._fuyao_capabilities.values())

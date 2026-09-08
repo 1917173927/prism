@@ -1,6 +1,8 @@
 # TODO
 
 > Updated: 2026-09-08
+
+当前执行清单：[剩余缺口实施与验收](docs/plans/2026-09-08-gap-closure.md)。用户已授权推进其余缺口，明确排除正式 PPT、视频和提交版测试报告；外部授权与生产 SLA 需独立验证。
 >
 > Source of truth for product scope: [Prism.md](Prism.md)
 >

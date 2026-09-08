@@ -822,7 +822,8 @@ def create_app(
             async with live_probe_lock:
                 if controller.needs_initial_probe:
                     capabilities = await active_live_finance.probe_capabilities()
-                    await controller.apply_fuyao_probe(capabilities, auto_activate=True)
+                    await controller.apply_fuyao_probe(capabilities, auto_activate=True,
+                                                       errors=getattr(active_live_finance, "last_probe_errors", None))
         return JSONResponse(content={"status": "SUCCESS", "data": controller.get_status()})
 
     @api.put("/api/v1/runtime/data-mode")
@@ -838,7 +839,8 @@ def create_app(
                 async with live_probe_lock:
                     if not controller.is_fuyao_ready:
                         capabilities = await active_live_finance.probe_capabilities()
-                        await controller.apply_fuyao_probe(capabilities)
+                        await controller.apply_fuyao_probe(capabilities,
+                                                           errors=getattr(active_live_finance, "last_probe_errors", None))
             new_status = await controller.switch_mode(req.target_mode, req.expected_revision)
             return JSONResponse(content={"status": "SUCCESS", "data": new_status})
         except ModeRevisionConflictError as exc:

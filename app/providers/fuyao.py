@@ -78,6 +78,7 @@ class FuyaoFinanceProvider(MarketDataProvider):
         ).rstrip("/")
         self._timeout_seconds = min(max(timeout_seconds, 0.1), 2.0)
         self._transport = transport
+        self.last_probe_errors: dict[str, str | None] = {}
 
     @property
     def api_key(self) -> str:
@@ -342,12 +343,13 @@ class FuyaoFinanceProvider(MarketDataProvider):
             self.get_fund_lookthrough("510300"),
             return_exceptions=True,
         )
-        capabilities["stock_quote"] = (
-            not isinstance(quote_result, BaseException) and quote_result is not None
-        )
-        capabilities["fund_lookthrough"] = (
-            not isinstance(fund_result, BaseException) and fund_result is not None
-        )
+        for name, result in zip(capabilities, (quote_result, fund_result)):
+            capabilities[name] = not isinstance(result, BaseException) and result is not None
+            self.last_probe_errors[name] = (
+                result.code if isinstance(result, FuyaoProviderError)
+                else "PROBE_FAILED" if isinstance(result, BaseException)
+                else "NO_DATA" if result is None else None
+            )
         return capabilities
 
 
