@@ -18,7 +18,9 @@
 - [x] 真实 HTTP 观测工具，本地 100 并发持仓读取 P95 326ms、100/100 成功；外部和长期 SLA 未验收。
 - [x] 自然语言偏好提取及原文证据、否定/冲突处理、显式提案确认；本机有限规则模式已浏览器验证，真实模型通用语言质量待验收。
 - [x] 会话事实黑板锁定服务端画像、持仓和数据模式，旧版本/快照冲突拒绝，流式生成期间漂移立即停止；SSE 错误与截断不再显示完成。
-- [ ] PostgreSQL、真实外部 SLA、自然语言画像、语义记忆、工作流及事实黑板继续按当前清单验收。
+- [x] 历史记忆按 owner 检索最近 100 条显式保存记录，返回来源与摘要，模型不可用时明确降级；不自动应用历史持仓。
+- [x] AntV X6 固定研究节点依赖编辑、版本保存及有界执行；已验证 MOCK 页面路径、环路拒绝、版本冲突及超时取消。
+- [ ] PostgreSQL 兼容与真实数据库回归进行中；正式上游授权、券商环境、真实模型质量及外部长期 SLA 仍需独立验收。
 
 ## Product UX
 
@@ -151,12 +153,12 @@
 ## P3 — Workflow Orchestration & Anti-Hallucination Blackboard (Next Phase)
 
 - [ ] Phase 40: Multi-Agent Graph & Pipeline Workflow Builder (Coze-aligned capabilities)
-  - [ ] 引入成熟开源图引擎（如 AntV X6 / LiteGraph / Flow），构建高表现力节点画布与连线编排面板，避免从零造渲染轮子。
-  - [ ] 支持图引擎拓扑模型与后端 `WorkflowDefinition` (v1) 契约的双向转换与环路校验 (DAG Cycle Detection)。
+  - [x] 引入 AntV X6 3.1.8，提供节点拖动与依赖选择编辑；当前固定八节点 MOCK 目录。
+  - [x] 支持画布与 `workflow-definition.v1` 双向转换、版本 CAS 和服务端环路校验。
   - [ ] 提供「高级画布视图」与「流水线卡片视图」双模切换，适配普通用户预置模版与进阶用户自定义投研链。
-  - [ ] 将可视化导出的工作流配置对接至 `executor.py` 有界并发异步执行器。
+  - [x] 将已保存依赖接入既有研究矩阵及 `executor.py`，总超时取消执行，返回节点状态。
 - [ ] Phase 41: Session Truth Blackboard & Hallucination Suppression Panel
-  - [ ] Define `session-blackboard.v1` contract extracting locked profile baselines, holdings, and risk envelopes per session.
+  - [x] 以 session-truth 接口锁定服务端已确认画像、持仓、模式与风险前提，追加修订并校验摘要。
   - [ ] Implement deterministic drift and contradiction detection rules (`PREMISE_DRIFT`, `ACTION_CONFLICT`, `HALLUCINATED_DATA`).
   - [ ] Add slide-over Session Truth Blackboard drawer with suspicious turn alerts and smooth scroll-to-turn anchors.
   - [ ] Provide one-click manual premise override modal that commits to `ContextMemory` and enforces negative constraint prompts on subsequent turns.

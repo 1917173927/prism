@@ -1206,6 +1206,8 @@
   }
 
   function clearContextMemory() {
+    byId("memory-search-results").textContent = "";
+    byId("memory-search-query").value = "";
     state.contextMemorySequence += 1;
     state.contextMemoryRecords = [];
     state.contextMemorySelected = null;
@@ -1378,6 +1380,44 @@
     } finally {
       submit.disabled = false;
     }
+  }
+
+  async function searchContextMemory() {
+    const requestOwner = state.ownerId;
+    const query = byId("memory-search-query").value.trim();
+    const resultNode = byId("memory-search-results");
+    const button = byId("search-context-memory");
+    if (!requestOwner || !query) {
+      resultNode.textContent = "请先读取账户并填写检索内容。";
+      return;
+    }
+    button.disabled = true;
+    resultNode.textContent = "正在检索历史记录…";
+    try {
+      const response = await fetch("/api/v1/advisor/context-memory/search", {
+        method: "POST", headers: {"Content-Type":"application/json", "X-Owner-ID":requestOwner},
+        body: JSON.stringify({query, limit:10}),
+      });
+      if (!response.ok) throw await apiError(response);
+      const result = await response.json();
+      if (state.ownerId !== requestOwner) { resultNode.textContent = "账户已变化，请重新检索。"; return; }
+      const modes = {NO_CANDIDATES:"暂无历史记录", LIMITED_KEYWORD_MATCH:"有限关键词匹配", MODEL_SEMANTIC_RANKING:"模型相关性排序"};
+      resultNode.replaceChildren();
+      const summary = document.createElement("p");
+      summary.textContent = `HISTORICAL_ONLY · ${modes[result.mode] || result.mode} · ${result.matches.length} 条匹配。${result.notice}`;
+      if (result.degraded_reason && result.degraded_reason !== "MODEL_NOT_CONFIGURED") summary.textContent += " 模型不可用或输出未通过校验，已降级。";
+      resultNode.append(summary);
+      for (const match of result.matches) {
+        const card = document.createElement("details");
+        const title = document.createElement("summary");
+        title.textContent = `${match.saved_at} · ${match.source} · ${match.memory_id}`;
+        const body = document.createElement("pre");
+        body.textContent = JSON.stringify({status:match.status, content_hash:match.content_hash, match_basis:match.match_basis}, null, 2);
+        card.append(title, body); resultNode.append(card);
+      }
+    } catch (error) {
+      resultNode.textContent = state.ownerId === requestOwner ? (error.message || "检索失败") : "账户已变化，请重新检索。";
+    } finally { button.disabled = false; }
   }
 
   async function loadContextMemory(ownerId = state.ownerId) {
@@ -5673,6 +5713,7 @@
     renderAdvancedEvidence();
   });
   byId("save-context-memory").addEventListener("click", saveContextMemory);
+  byId("search-context-memory").addEventListener("click", searchContextMemory);
   byId("load-context-memory").addEventListener("click", () => {
     const nextOwnerId = byId("owner-id").value.trim();
     const ownerChanged = nextOwnerId !== state.ownerId;

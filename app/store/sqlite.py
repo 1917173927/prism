@@ -52,6 +52,10 @@ class DecisionEventStore(Protocol):
     def get_session_truth(self, owner_id: str, session_id: str) -> dict[str, Any] | None: ...
 
     def save_session_truth(self, owner_id: str, session_id: str, facts: dict[str, Any], expected_revision: int, observed_at: str) -> dict[str, Any]: ...
+
+    def get_workflow(self, owner_id: str) -> dict[str, Any] | None: ...
+
+    def save_workflow(self, owner_id: str, definition: dict[str, Any], expected_revision: int, observed_at: str) -> dict[str, Any]: ...
     def save_current_portfolio(self, owner_id: str, data_mode: str, data: dict[str, Any]) -> None: ...
 
     def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None: ...
@@ -199,6 +203,36 @@ class SQLiteDecisionEventStore:
             raise StoreCorruptError("session truth integrity check failed")
         return {"owner_id":owner_id, "session_id":session_id, "revision":row["revision"],
                 "facts":json.loads(row["payload_json"]), "observed_at":row["observed_at"]}
+
+    def get_workflow(self, owner_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._connection.execute("SELECT * FROM workflow_definitions WHERE owner_id=? ORDER BY revision DESC LIMIT 1",
+                                           (_validate_owner(owner_id),)).fetchone()
+        if row is None:
+            return None
+        if sha256(row["payload_json"].encode("utf-8")).hexdigest() != row["content_hash"]:
+            raise StoreCorruptError("workflow integrity check failed")
+        return {"definition":json.loads(row["payload_json"]), "revision":row["revision"], "observed_at":row["observed_at"]}
+
+    def save_workflow(self, owner_id: str, definition: dict[str, Any], expected_revision: int, observed_at: str) -> dict[str, Any]:
+        owner_id = _validate_owner(owner_id)
+        if definition.get("owner_id") != owner_id:
+            raise StoreOwnerError("workflow owner mismatch")
+        payload = json.dumps(definition, ensure_ascii=False, sort_keys=True, allow_nan=False)
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                current = self.get_workflow(owner_id)
+                revision = current["revision"] if current else 0
+                if revision != expected_revision:
+                    raise StoreConflictError("workflow revision changed")
+                self._connection.execute("INSERT INTO workflow_definitions VALUES (?,?,?,?,?)",
+                    (owner_id, revision + 1, payload, sha256(payload.encode("utf-8")).hexdigest(), observed_at))
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return {"definition":definition, "revision":revision + 1, "observed_at":observed_at}
 
     def save_session_truth(self, owner_id: str, session_id: str, facts: dict[str, Any], expected_revision: int, observed_at: str) -> dict[str, Any]:
         owner_id = _validate_owner(owner_id)

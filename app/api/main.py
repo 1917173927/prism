@@ -18,6 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from app.api.access import LocalAccessMiddleware, load_accounts
 from app.service.natural_profile import NaturalProfileRequest, NaturalProfileError, extract_natural_profile
 from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status
+from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
+from app.service.semantic_memory import search_context_memories
+from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.api.contracts import (
@@ -282,6 +285,12 @@ class CopilotConfigApiRequest(BaseModel):
     api_key: str = ""
     base_url: str = "https://api.deepseek.com/v1"
     model: str = "deepseek-chat"
+
+
+class MemorySearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    query: str = Field(min_length=1, max_length=1000)
+    limit: int = Field(default=10, ge=1, le=20)
 
 
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -1579,6 +1588,13 @@ def create_app(
         except NaturalProfileError as exc:
             return _error_response(422, "PROFILE_EXTRACTION_REFUSED", str(exc))
 
+    @api.post("/api/v1/advisor/context-memory/search")
+    async def search_memory(req: MemorySearchRequest, owner_id: str = Depends(owner_dependency)):
+        try:
+            return await search_context_memories(active_store, owner_id, req.query, copilot_agent.client, limit=req.limit)
+        except ValueError:
+            return _error_response(422, "MEMORY_SEARCH_REFUSED", "检索内容无效或包含敏感信息")
+
     @api.get("/api/v1/advisor/session-truth")
     def read_session_truth(owner_id: str = Depends(owner_dependency),
                            session_id: str = Query("workbench", pattern=r"^[A-Za-z0-9_.-]{1,100}$")):
@@ -1589,6 +1605,41 @@ def create_app(
             return {"status":"INPUT_REQUIRED", "revision":record["revision"] if record else 0,
                     "changed_fields":["required_context"], "record":record}
         return truth_status(record, facts)
+
+    @api.get("/api/v1/advisor/workflow")
+    def get_workflow(owner_id: str = Depends(owner_dependency)):
+        matrix = active_specialist.matrix_template(owner_id)
+        saved = active_store.get_workflow(owner_id)
+        return {**(saved or {"revision":0, "definition":default_workflow(matrix).model_dump(mode="json")}),
+                "catalog":[{"node_id":n.node_id, "role":n.role, "subject":n.subject} for n in matrix.nodes],
+                "data_mode":"MOCK", "boundary":"固定研究节点与合成数据的编排演练，不执行交易"}
+
+    @api.post("/api/v1/advisor/workflow")
+    def save_workflow(req: WorkflowSaveRequest, owner_id: str = Depends(owner_dependency)):
+        if req.definition.owner_id != owner_id:
+            raise StoreOwnerError("workflow owner mismatch")
+        try:
+            bind_workflow(req.definition, active_specialist.matrix_template(owner_id))
+        except ValueError:
+            return _error_response(422, "WORKFLOW_INVALID", "节点必须来自当前目录；依赖不能重复、成环或指向未知节点，预算须覆盖节点超时")
+        return active_store.save_workflow(owner_id, req.definition.model_dump(mode="json"), req.expected_revision, active_clock().isoformat())
+
+    @api.post("/api/v1/advisor/workflow-runs")
+    async def run_workflow(req: WorkflowRunRequest, owner_id: str = Depends(owner_dependency)):
+        saved = active_store.get_workflow(owner_id)
+        if not saved or saved["revision"] != req.expected_revision:
+            return _error_response(409, "WORKFLOW_REVISION_CONFLICT", "请重新读取并保存工作流，再执行指定版本")
+        definition = WorkflowDefinition.model_validate(saved["definition"])
+        matrix = bind_workflow(definition, active_specialist.matrix_template(owner_id))
+        request = ResearchSpecialistMatrixRequest(matrix_id=matrix.matrix_id, owner_id=owner_id,
+            request_id="workflow-run:" + uuid4().hex, generated_at=active_clock())
+        try:
+            async with asyncio.timeout(definition.budget_ms / 1000):
+                output = await active_specialist.run(request, matrix_override=matrix)
+        except TimeoutError:
+            return _error_response(408, "WORKFLOW_DEADLINE", "工作流执行超过总预算，已取消")
+        return {"definition_revision":saved["revision"], "data_mode":"MOCK", "is_synthetic":True,
+                "result":output.model_dump(mode="json")}
 
     @api.post("/api/v1/advisor/session-truth")
     def confirm_session_truth(req: TruthConfirmation, owner_id: str = Depends(owner_dependency),

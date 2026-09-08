@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/app.js" defer></script>
+    <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body>
     <!-- SVG 图标库 (CSP 兼容，零外部网络请求) -->
@@ -919,6 +920,22 @@
             <div id="research-matrix-content" class="research-content" aria-live="polite">
               <div class="empty-state">运行矩阵后查看四类节点、独立来源验证与发现（FINDING）→事实（FACT）→证据（EVIDENCE）。</div>
             </div>
+            <details id="workflow-panel">
+              <summary>工作流编排演练 · MOCK 合成数据</summary>
+              <p>调整节点位置与依赖，保存后运行指定版本。节点来源和风控验证规则由服务端固定；本功能不执行交易。</p>
+              <button id="workflow-load" class="query-submit secondary" type="button">读取工作流</button>
+              <button id="workflow-save" class="query-submit" type="button">保存工作流</button>
+              <button id="workflow-run" class="query-submit" type="button">运行已保存版本</button>
+              <p id="workflow-status" role="status">未读取</p>
+              <div style="overflow:auto"><div id="workflow-canvas" style="width:1000px;height:390px;border:1px solid #ccc" aria-label="工作流依赖图"></div></div>
+              <div class="context-import-actions">
+                <label>前置节点<select id="workflow-source"></select></label>
+                <label>后续节点<select id="workflow-target"></select></label>
+                <button id="workflow-add-edge" class="query-submit secondary" type="button">添加依赖</button>
+                <button id="workflow-remove-edge" class="query-submit secondary" type="button">移除依赖</button>
+              </div>
+              <pre id="workflow-result" style="white-space:pre-wrap" aria-live="polite"></pre>
+            </details>
           </section>
 
           <section class="panel stock-research-panel" id="stock-research" aria-labelledby="stock-research-title">
@@ -1042,7 +1059,12 @@
                 <button id="save-context-memory" class="query-submit" type="button">保存当前上下文</button>
               </div>
             </div>
-            <p class="research-boundary">本地 MVP 的隔离标识不是身份认证，也不是云同步；记录不可覆盖、不可删除。恢复必须显式点击，并会清空旧的投顾、研究、组合优化派生结果，之后重新运行。</p>
+            <p class="research-boundary">未启用本地认证时，隔离标识不构成身份认证。记录保存在本地服务端，不是云同步；记录不可覆盖、不可删除。恢复必须显式点击，并会清空旧的投顾、研究、组合优化派生结果，之后重新运行。</p>
+            <label for="memory-search-query">检索历史上下文</label>
+            <input id="memory-search-query" type="text" maxlength="1000" placeholder="例如：之前关于基金的讨论背景" />
+            <button id="search-context-memory" class="query-submit" type="button">检索历史记录</button>
+            <p class="research-boundary">HISTORICAL_ONLY：仅检索最近 100 条显式保存记录，不改变当前画像和持仓；配置模型时会发送问题与资产名称等摘要，未配置时仅做有限关键词匹配。请勿输入凭据。</p>
+            <div id="memory-search-results" aria-live="polite"></div>
             <div id="context-memory-content" class="context-memory-content" aria-live="polite">
               <div class="empty-state">读取隔离标识后查看最近的结构化上下文记忆。</div>
             </div>

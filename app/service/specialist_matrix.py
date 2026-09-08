@@ -476,6 +476,8 @@ class FixtureResearchSpecialistMatrixService:
     async def run(
         self,
         request: ResearchSpecialistMatrixRequest,
+        *,
+        matrix_override: ResearchSpecialistMatrix | None = None,
     ) -> SpecialistMatrixOutput:
         """Execute one owner-scoped, deterministic matrix without side effects."""
 
@@ -494,7 +496,9 @@ class FixtureResearchSpecialistMatrixService:
             raise SpecialistMatrixError("requested research scenario is unavailable")
 
         try:
-            matrix = self.matrix_template(request.owner_id)
+            matrix = matrix_override or self.matrix_template(request.owner_id)
+            if matrix.owner_id != request.owner_id or matrix.matrix_id != request.matrix_id:
+                raise SpecialistMatrixError("workflow matrix scope does not match request")
             plan = self._plan(matrix, request.scenario_id)
             state = create_research_run(
                 plan,

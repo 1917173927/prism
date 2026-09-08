@@ -75,6 +75,26 @@ def test_api_context_memory_is_idempotent_owner_scoped_and_has_no_event_side_eff
     store.close()
 
 
+def test_historical_search_is_scoped_and_never_restores_current_state():
+    client, store = _client()
+    headers = {"X-Owner-ID":"phase29-api-owner"}
+    with client:
+        saved = client.post("/api/v1/advisor/context-memory", headers=headers, json=_payload())
+        assert saved.status_code == 200
+        result = client.post("/api/v1/advisor/context-memory/search", headers=headers, json={"query":"基金"})
+        assert result.status_code == 200
+        body = result.json()
+        assert body["status"] == "HISTORICAL_ONLY"
+        assert body["candidate_count"] == 1
+        assert body["matches"][0]["memory_id"] == saved.json()["record"]["memory_id"]
+        assert store.get_current_portfolio("phase29-api-owner", "MOCK") is None
+        assert store.get_latest_questionnaire_snapshot("phase29-api-owner") is None
+        assert client.post("/api/v1/advisor/context-memory/search", headers={"X-Owner-ID":"other"},
+                           json={"query":"基金"}).json()["candidate_count"] == 0
+        assert client.post("/api/v1/advisor/context-memory/search", headers=headers,
+                           json={"query":"password=test"}).status_code == 422
+
+
 def test_api_context_memory_rejects_cross_owner_sensitive_and_limit_inputs() -> None:
     client, store = _client()
     payload = _payload()
