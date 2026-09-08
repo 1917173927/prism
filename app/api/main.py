@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from app.api.access import LocalAccessMiddleware, load_accounts
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.api.contracts import (
@@ -364,6 +365,7 @@ def create_app(
     store: DecisionEventStore | None = None,
     *,
     database_path: str | Path = ":memory:",
+    auth_accounts_path: str | Path | None = None,
     clock: Callable[[], datetime] | None = None,
     advisor_service: FixtureAdvisorQueryService | None = None,
     specialist_service: FixtureResearchSpecialistMatrixService | None = None,
@@ -386,6 +388,7 @@ def create_app(
     supplies a local database path so confirmed user data survives restarts.
     """
 
+    accounts = load_accounts(auth_accounts_path) if auth_accounts_path else {}
     owned_store = store is None
     if store is None and str(database_path) != ":memory:":
         Path(database_path).parent.mkdir(parents=True, exist_ok=True)
@@ -437,6 +440,8 @@ def create_app(
         redoc_url=None,
         lifespan=lifespan,
     )
+    if accounts:
+        api.add_middleware(LocalAccessMiddleware, accounts=accounts, audit=active_store.record_access)
     api.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     @api.exception_handler(RequestValidationError)
@@ -583,6 +588,16 @@ def create_app(
     @api.get("/", include_in_schema=False)
     def workbench() -> FileResponse:
         return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
+
+    @api.get("/api/v1/auth/context")
+    def auth_context(request: Request):
+        account = getattr(request.state, "account", None)
+        return {"enabled": bool(accounts), "owner_id": account.owner_id if account else None,
+                "admin": account.admin if account else False}
+
+    @api.get("/api/v1/access-audit")
+    def access_audit(owner_id: str = Depends(owner_dependency), limit: int = Query(100, ge=1, le=500)):
+        return {"items": active_store.list_access(owner_id, limit)}
 
     @api.get("/api/health")
     def health() -> dict[str, Any]:
@@ -1554,9 +1569,13 @@ def create_app(
     @api.post("/api/v1/copilot/chat")
     async def copilot_chat_endpoint(
         req: CopilotChatApiRequest,
+        request: Request,
         x_owner_id: str | None = Header(default=None, alias="X-Owner-ID"),
     ):
         """Streaming SSE endpoint for live conversational investment copilot."""
+        account = getattr(request.state, "account", None)
+        if account and not account.admin and req.llm_config:
+            return _error_response(403, "ADMIN_REQUIRED", "custom model configuration requires an administrator")
         scoped_owner = x_owner_id.strip() if x_owner_id and x_owner_id.strip() else req.owner_id
         if scoped_owner is not None and req.owner_id is not None and scoped_owner != req.owner_id:
             raise StoreOwnerError("chat owner does not match owner scope")
@@ -2168,7 +2187,10 @@ def create_app(
     return api
 
 
-app = create_app(database_path=os.getenv("PRISM_DB_PATH", str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3")))
+app = create_app(
+    database_path=os.getenv("PRISM_DB_PATH") or str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3"),
+    auth_accounts_path=os.getenv("PRISM_AUTH_ACCOUNTS_FILE") or None,
+)
 
 
 __all__ = ["app", "create_app"]

@@ -11,6 +11,12 @@
 > Active phase: P2 Milestones (Phase 34 Recommendation History, Phase 35 Portfolio Rebalancing, Phase 36 Evaluation Dashboard, Phase 37 Advanced Explainability) have been implemented, verified, and accepted.
 > Next phase: External integrations / evaluation hardening.
 
+## 本地部署缺口执行
+
+- [x] 可选 HTTP Basic 绑定服务端 owner、管理员权限、跨来源写入拒绝和访问审计；已确认持仓继续服务端持久化，认证模式不缓存聊天或模型密钥。
+- [x] SQLite 在线备份和新路径恢复；防覆盖并执行完整性校验。运行说明见 docs/local-deployment.md。
+- [ ] PostgreSQL、真实外部 SLA、自然语言画像、语义记忆、工作流及事实黑板继续按当前清单验收。
+
 ## Product UX
 
 - [x] 修复调仓不足整手取整为零却返回 PASS、前端固定绿色和原因缺失；传递并检查体检现金下限。当前用户页面复测成功，全量 584 项通过。

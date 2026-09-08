@@ -140,6 +140,16 @@
     copilotResearchSequence: 0,
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
+  let authenticatedOwner = null;
+  const transientStorage = new Map();
+  const workspaceStorage = {
+    getItem(key) { return authenticatedOwner ? transientStorage.get(key) ?? null : localStorage.getItem(key); },
+    setItem(key, value) { if (authenticatedOwner) transientStorage.set(key, value); else localStorage.setItem(key, value); },
+    removeItem(key) { if (authenticatedOwner) transientStorage.delete(key); else localStorage.removeItem(key); },
+  };
+  function ownerStorageKey(key) {
+    return authenticatedOwner ? `${key}:${authenticatedOwner}` : key;
+  }
 
   function invalidateDerivedState(store) {
     store.contextRevision += 1;
@@ -6536,13 +6546,14 @@
 
   function loadUserProfile() {
     try {
-      const saved = localStorage.getItem("prism_custom_user_profile_v2");
+      const saved = workspaceStorage.getItem(ownerStorageKey("prism_custom_user_profile_v2"));
       if (saved) {
         const parsed = JSON.parse(saved);
         PERSONAS["custom-user"] = { ...DEFAULT_USER_PROFILE, ...parsed };
       }
     } catch (e) {}
 
+    if (authenticatedOwner) PERSONAS["custom-user"].ownerId = authenticatedOwner;
     const profile = PERSONAS["custom-user"];
     const chipName = byId("custom-profile-chip-name");
     if (chipName) chipName.textContent = `${profile.name} (${profile.tag})`;
@@ -6550,8 +6561,9 @@
 
   function saveUserProfile(updated) {
     PERSONAS["custom-user"] = { ...PERSONAS["custom-user"], ...updated };
+    if (authenticatedOwner) PERSONAS["custom-user"].ownerId = authenticatedOwner;
     try {
-      localStorage.setItem("prism_custom_user_profile_v2", JSON.stringify(PERSONAS["custom-user"]));
+      workspaceStorage.setItem(ownerStorageKey("prism_custom_user_profile_v2"), JSON.stringify(PERSONAS["custom-user"]));
     } catch (e) {}
 
     const profile = PERSONAS["custom-user"];
@@ -6643,6 +6655,7 @@
   }
 
   function switchPersona(personaId) {
+    if (authenticatedOwner && personaId !== "custom-user") return;
     const persona = PERSONAS[personaId];
     if (!persona) return;
     microStore.transact((store) => {
@@ -8498,7 +8511,7 @@
 
   function loadCopilotChatHistory() {
     try {
-      const saved = localStorage.getItem("prism_copilot_chat_history_v2");
+      const saved = workspaceStorage.getItem(ownerStorageKey("prism_copilot_chat_history_v2"));
       if (!saved) return;
       const parsed = JSON.parse(saved);
       if (!Array.isArray(parsed) || parsed.length === 0) return;
@@ -8530,7 +8543,7 @@
 
   function saveCopilotChatHistory() {
     try {
-      localStorage.setItem("prism_copilot_chat_history_v2", JSON.stringify(chatHistory.slice(-20)));
+      workspaceStorage.setItem(ownerStorageKey("prism_copilot_chat_history_v2"), JSON.stringify(chatHistory.slice(-20)));
     } catch (e) {}
   }
 
@@ -8776,10 +8789,10 @@
 
   // 大模型 API Key 前端直接配置管理
   const llmConfig = {
-    apiKey: localStorage.getItem("prism_llm_api_key") || "",
-    baseUrl: localStorage.getItem("prism_llm_base_url") || "https://api.deepseek.com/v1",
-    model: localStorage.getItem("prism_llm_model") || "deepseek-chat",
-    provider: localStorage.getItem("prism_llm_provider") || "deepseek",
+    apiKey: "",
+    baseUrl: "https://api.deepseek.com/v1",
+    model: "deepseek-chat",
+    provider: "deepseek",
   };
 
   function updateLLMConfigUI() {
@@ -8794,7 +8807,7 @@
     } else {
       if (dot) dot.textContent = "⚪";
       if (label) label.textContent = "大模型配置 (API Key)";
-      if (badge) badge.textContent = "内置分析引擎";
+      if (badge) badge.textContent = authenticatedOwner ? "服务端分析配置" : "内置分析引擎";
     }
 
     const provSel = byId("llm-provider-select");
@@ -8834,10 +8847,10 @@
     llmConfig.model = (modelInput?.value || "deepseek-chat").trim();
     llmConfig.provider = provSel?.value || "custom";
 
-    localStorage.setItem("prism_llm_api_key", llmConfig.apiKey);
-    localStorage.setItem("prism_llm_base_url", llmConfig.baseUrl);
-    localStorage.setItem("prism_llm_model", llmConfig.model);
-    localStorage.setItem("prism_llm_provider", llmConfig.provider);
+    workspaceStorage.setItem(ownerStorageKey("prism_llm_api_key"), llmConfig.apiKey);
+    workspaceStorage.setItem(ownerStorageKey("prism_llm_base_url"), llmConfig.baseUrl);
+    workspaceStorage.setItem(ownerStorageKey("prism_llm_model"), llmConfig.model);
+    workspaceStorage.setItem(ownerStorageKey("prism_llm_provider"), llmConfig.provider);
 
     updateLLMConfigUI();
 
@@ -8871,10 +8884,10 @@
     llmConfig.model = "deepseek-chat";
     llmConfig.provider = "deepseek";
 
-    localStorage.removeItem("prism_llm_api_key");
-    localStorage.removeItem("prism_llm_base_url");
-    localStorage.removeItem("prism_llm_model");
-    localStorage.removeItem("prism_llm_provider");
+    workspaceStorage.removeItem(ownerStorageKey("prism_llm_api_key"));
+    workspaceStorage.removeItem(ownerStorageKey("prism_llm_base_url"));
+    workspaceStorage.removeItem(ownerStorageKey("prism_llm_model"));
+    workspaceStorage.removeItem(ownerStorageKey("prism_llm_provider"));
 
     updateLLMConfigUI();
 
@@ -9467,7 +9480,7 @@
   if (clearChatBtn) {
     clearChatBtn.addEventListener("click", () => {
       chatHistory.length = 0;
-      localStorage.removeItem("prism_copilot_chat_history_v2");
+      workspaceStorage.removeItem(ownerStorageKey("prism_copilot_chat_history_v2"));
       const msgs = byId("copilot-chat-messages");
       if (msgs) clear(msgs);
       const panel = byId("copilot-chat-panel");
@@ -9674,13 +9687,41 @@
     });
   });
 
-  initializeNavigation();
-  checkHealth();
-  updateLLMConfigUI();
-  initRuntimeDataMode();
-  loadUserProfile();
-  switchPersona("custom-user");
-  loadCopilotChatHistory();
-  updateVisualCompanion();
-  initPortfolioModalTabs();
+  async function initializeWorkspace() {
+    const response = await fetch("/api/v1/auth/context");
+    if (!response.ok) throw new Error("无法确认账户身份，请重新登录后刷新");
+    const context = await response.json();
+    authenticatedOwner = context.enabled ? context.owner_id : null;
+    if (context.enabled && !authenticatedOwner) throw new Error("账户身份无效");
+    if (authenticatedOwner) {
+      byId("owner-id").readOnly = true;
+      document.querySelectorAll("[data-persona]").forEach(el => {
+        if (el.dataset.persona !== "custom-user") el.hidden = true;
+      });
+      if (!context.admin) {
+        byId("open-llm-config-btn").hidden = true;
+        byId("global-data-mode-toggle").hidden = true;
+      }
+    }
+    if (!context.enabled || context.admin) {
+      for (const [field, key] of Object.entries({apiKey:"prism_llm_api_key", baseUrl:"prism_llm_base_url", model:"prism_llm_model", provider:"prism_llm_provider"})) {
+        llmConfig[field] = workspaceStorage.getItem(ownerStorageKey(key)) || llmConfig[field];
+      }
+    }
+    initializeNavigation();
+    checkHealth();
+    updateLLMConfigUI();
+    initRuntimeDataMode();
+    loadUserProfile();
+    switchPersona("custom-user");
+    loadCopilotChatHistory();
+    updateVisualCompanion();
+    initPortfolioModalTabs();
+  }
+  initializeWorkspace().catch(error => {
+    const message = document.createElement("p");
+    message.setAttribute("role", "alert");
+    message.textContent = error.message;
+    document.body.prepend(message);
+  });
 })();

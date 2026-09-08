@@ -45,6 +45,9 @@ class ContextMemoryCorruptError(StoreCorruptError):
 
 
 class DecisionEventStore(Protocol):
+    def record_access(self, owner_id: str | None, method: str, route: str, status_code: int) -> None: ...
+
+    def list_access(self, owner_id: str, limit: int = 100) -> list[dict[str, Any]]: ...
     def save_current_portfolio(self, owner_id: str, data_mode: str, data: dict[str, Any]) -> None: ...
 
     def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None: ...
@@ -195,6 +198,21 @@ class SQLiteDecisionEventStore:
                 "ON CONFLICT(owner_id, data_mode) DO UPDATE SET payload_json=excluded.payload_json, content_hash=excluded.content_hash",
                 (owner_id, data_mode, payload, digest),
             )
+
+    def record_access(self, owner_id: str | None, method: str, route: str, status_code: int) -> None:
+        with self._lock:
+            self._connection.execute(
+                "INSERT INTO access_audit(owner_id,method,route,status_code,observed_at) VALUES (?,?,?,?,?)",
+                (owner_id, method, route, status_code, datetime.now(UTC).isoformat()),
+            )
+
+    def list_access(self, owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM access_audit WHERE owner_id=? ORDER BY audit_id DESC LIMIT ?",
+                (_validate_owner(owner_id), max(1, min(limit, 500))),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None:
         owner_id = _validate_owner(owner_id)
