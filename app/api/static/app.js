@@ -5222,8 +5222,11 @@
             store.capabilities = payload.data.capabilities || null;
           });
           if (state.dataMode !== previousMode) {
+            state.portfolio = null;
+            state.ocrPortfolioDraft = null;
             renderInvalidatedDerivedState();
             syncNavigation();
+            if (state.ownerId && state.selectedPersona === "custom-user") await loadSavedPortfolio();
           }
           updateRuntimeDataModeUI();
         }
@@ -5375,12 +5378,15 @@
           store.wencaiReady = body.data.wencai_ready === true;
           store.liveReadinessIssues = body.data.live_readiness_issues || [];
           store.capabilities = body.data.capabilities;
+          store.portfolio = null;
+          store.ocrPortfolioDraft = null;
           invalidateDerivedState(store);
         });
         renderInvalidatedDerivedState();
         updateRuntimeDataModeUI();
         closeDataModeConfirmModal();
         syncNavigation();
+        await loadSavedPortfolio();
       } else if (resp.status === 409) {
         alert(`[模式切换拦截 HTTP 409] ${body.message || "版本修订冲突或凭据缺失"}`);
         closeDataModeConfirmModal();
@@ -6721,6 +6727,10 @@
         if (state.selectedPersona !== personaId) return;
         if (!state.profile && personaId !== "custom-user") await ensureDependency("PROFILE_CONTEXT");
         if (state.selectedPersona !== personaId) return;
+        await fetchRuntimeDataMode();
+        if (state.selectedPersona !== personaId) return;
+        if (personaId === "custom-user") await loadSavedPortfolio();
+        if (state.selectedPersona !== personaId) return;
         await ensureDependency("PORTFOLIO_CONTEXT");
         if (state.selectedPersona !== personaId) return;
         if (state.profile && state.portfolio) await refreshPortfolioHealth();
@@ -6874,6 +6884,9 @@
   }
 
   function renderPortfolioReadiness() {
+    if (!state.portfolio && byId("copilot-hero-portfolio-tag")) {
+      byId("copilot-hero-portfolio-tag").textContent = "待确认持仓";
+    }
     if (state.portfolioHealthRun) return;
     const message = !state.profile?.profile ? "请先完成并确认风险问卷" : !state.portfolio ? "请先添加并确认持仓" : "待运行体检";
     const values = {
@@ -8841,6 +8854,8 @@
   function openPortfolioModal() {
     const modal = byId("portfolio-modal");
     if (modal) {
+      // The entry is global; a hidden workspace must not hide its dialog.
+      document.body.appendChild(modal);
       modal.style.display = "flex";
     }
   }
@@ -8889,9 +8904,38 @@
     if (aumEl) aumEl.textContent = `¥ ${Number(validated.total_value_cny).toLocaleString()}`;
     const pTag = byId("copilot-hero-portfolio-tag");
     if (pTag) pTag.textContent = `已确认持仓 (${validated.positions.length} 项)`;
-    if (state.profile?.profile) await refreshPortfolioHealth();
+    if (state.profile?.profile) {
+      try {
+        await refreshPortfolioHealth();
+      } catch (error) {
+        setError(`持仓已保存；体检未完成：${error.message}`);
+      }
+    }
     else renderPortfolioReadiness();
     return validated;
+  }
+
+  async function loadSavedPortfolio() {
+    const owner = state.ownerId;
+    const mode = state.dataMode;
+    const revision = state.contextRevision;
+    const portfolioBefore = state.portfolio;
+    if (!owner || state.selectedPersona !== "custom-user") return;
+    const response = await fetch("/api/v1/advisor/portfolio/current", {headers: {"X-Owner-ID": owner}});
+    if (!response.ok) throw await apiError(response);
+    const saved = await response.json();
+    if (owner !== state.ownerId || mode !== state.dataMode || saved.data_mode !== mode || revision !== state.contextRevision
+        || state.selectedPersona !== "custom-user" || state.portfolio !== portfolioBefore) return;
+    if (!saved.data) return;
+    microStore.transact((store) => {
+      store.portfolio = saved.data.portfolio;
+      store.ocrPortfolioDraft = saved.data;
+    });
+    const tag = byId("copilot-hero-portfolio-tag");
+    if (tag) tag.textContent = `已确认持仓 (${saved.data.positions.length} 项)`;
+    renderPortfolioReadiness();
+    renderOverviewWorkspace(state.selectedPersona);
+    updateVisualCompanion();
   }
 
   async function handleParsePortfolioSubmit() {
@@ -8902,7 +8946,7 @@
 
     if (statusBox) {
       statusBox.style.display = "block";
-      statusBox.textContent = "⏳ 正在调用大模型解析您的自然语言持仓文本…";
+      statusBox.textContent = "正在识别持仓文本并核对行情价格…";
     }
 
     try {
@@ -9129,7 +9173,7 @@
     const cP = document.createElement("p");
     cP.textContent = data.has_low_confidence_items
       ? "黄色标记项置信度偏低，请核对并可直接在上方表格输入框修正持股数量，确认无误后点击下方按钮载入。"
-      : "所有提取标的与金额均经本地模型严格核验通过，未发现知行冲突与数据异常，点击下方按钮立即载入画像。";
+      : "文字识别置信度已达标，请核对证券代码、数量和价格。识别置信度不代表持仓准确性或风险结论；确认后由后端重新计算金额并执行体检。";
     cContent.append(cTitle, cP);
     callout.append(cIcon, cContent);
 

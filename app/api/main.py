@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+import os
 import re
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
@@ -362,6 +363,7 @@ def _research_matrix_response(output: SpecialistMatrixOutput) -> ResearchMatrixR
 def create_app(
     store: DecisionEventStore | None = None,
     *,
+    database_path: str | Path = ":memory:",
     clock: Callable[[], datetime] | None = None,
     advisor_service: FixtureAdvisorQueryService | None = None,
     specialist_service: FixtureResearchSpecialistMatrixService | None = None,
@@ -380,12 +382,14 @@ def create_app(
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
 
-    The default store is process-local memory, so a caller must inject a path-backed
-    ``SQLiteDecisionEventStore`` when local persistence across restarts is desired.
+    Factory callers default to isolated memory. The desktop module entrypoint
+    supplies a local database path so confirmed user data survives restarts.
     """
 
     owned_store = store is None
-    active_store = store or SQLiteDecisionEventStore(":memory:")
+    if store is None and str(database_path) != ":memory:":
+        Path(database_path).parent.mkdir(parents=True, exist_ok=True)
+    active_store = store or SQLiteDecisionEventStore(database_path)
     active_clock = clock or (lambda: datetime.now(UTC))
     active_advisor = advisor_service or FixtureAdvisorQueryService()
     active_specialist = specialist_service or FixtureResearchSpecialistMatrixService()
@@ -1658,17 +1662,25 @@ def create_app(
         from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
         if req.owner_id != owner_id:
             raise StoreOwnerError("OCR portfolio owner does not match owner scope")
+        mode = get_runtime_mode_controller().mode
         try:
-            return JSONResponse(content=recalculate_portfolio_values(
+            calculated = recalculate_portfolio_values(
                 req.positions, req.cash_cny, req.owner_id,
-                allow_synthetic_lookthrough=get_runtime_mode_controller().mode == DataMode.MOCK,
-            ))
+                allow_synthetic_lookthrough=mode == DataMode.MOCK,
+            )
+            active_store.save_current_portfolio(owner_id, mode.value, calculated)
+            return JSONResponse(content=calculated)
         except (ArithmeticError, TypeError, ValueError) as exc:
             return JSONResponse(
                 status_code=422,
                 content={"status": "FAILED", "error_code": "OCR_VALUE_VALIDATION_FAILED",
                          "message": str(exc)},
             )
+
+    @api.get("/api/v1/advisor/portfolio/current")
+    def get_current_portfolio(owner_id: str = Depends(owner_dependency)):
+        mode = get_runtime_mode_controller().mode.value
+        return {"data_mode": mode, "data": active_store.get_current_portfolio(owner_id, mode)}
 
     @api.post("/api/v1/copilot/upload-portfolio-ocr")
     async def copilot_upload_portfolio_ocr_endpoint(file: UploadFile = File(...)):
@@ -1727,13 +1739,14 @@ def create_app(
             raise StoreOwnerError("OCR confirmation owner does not match owner scope")
         from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
 
+        mode = get_runtime_mode_controller().mode
         try:
             confirmed_positions = [
                 item.model_dump(mode="json") for item in req.positions
             ]
             calculated = recalculate_portfolio_values(
                 confirmed_positions, req.cash_cny, owner_id,
-                allow_synthetic_lookthrough=get_runtime_mode_controller().mode == DataMode.MOCK,
+                allow_synthetic_lookthrough=mode == DataMode.MOCK,
             )
             portfolio = PortfolioImportBundle.model_validate(calculated["portfolio"])
             confirmed_at = active_clock()
@@ -1772,6 +1785,7 @@ def create_app(
             "confirmation_status": "CALCULATED",
             "original_image_persisted": False,
         })
+        active_store.save_current_portfolio(owner_id, mode.value, calculated)
         return JSONResponse(content=calculated)
 
     @api.post("/api/v1/copilot/config")
@@ -2152,7 +2166,7 @@ def create_app(
     return api
 
 
-app = create_app()
+app = create_app(database_path=os.getenv("PRISM_DB_PATH", str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3")))
 
 
 __all__ = ["app", "create_app"]

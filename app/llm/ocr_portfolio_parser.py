@@ -14,6 +14,7 @@ import unicodedata
 from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
+from uuid import uuid4
 
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.portfolio.contracts import (
@@ -196,8 +197,9 @@ def recalculate_portfolio_values(
         ))
     if not contract_positions:
         raise ValueError("at least one position is required")
+    import_id = uuid4().hex
     snapshot = PositionSnapshot(
-        snapshot_id=f"ocr-position-snapshot-{owner_id}",
+        snapshot_id=f"ocr-position-snapshot-{owner_id}-{import_id}",
         owner_id=owner_id,
         as_of=observed_at,
         base_currency="CNY",
@@ -205,7 +207,7 @@ def recalculate_portfolio_values(
         positions=tuple(contract_positions),
     )
     portfolio = PortfolioImportBundle(
-        bundle_id=f"ocr-portfolio-{owner_id}",
+        bundle_id=f"ocr-portfolio-{owner_id}-{import_id}",
         owner_id=owner_id,
         created_at=observed_at,
         position_snapshot=snapshot,

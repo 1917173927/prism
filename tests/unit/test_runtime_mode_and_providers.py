@@ -444,7 +444,8 @@ class TestRuntimeModeApiEndpoints:
 
     def test_get_data_mode_endpoint(self):
         from fastapi.testclient import TestClient
-        from app.api.main import app
+        from app.api.main import create_app
+        app = create_app()
 
         client = TestClient(app)
         resp = client.get("/api/v1/runtime/data-mode")
@@ -456,7 +457,8 @@ class TestRuntimeModeApiEndpoints:
 
     def test_put_data_mode_revision_conflict_409(self):
         from fastapi.testclient import TestClient
-        from app.api.main import app
+        from app.api.main import create_app
+        app = create_app()
 
         client = TestClient(app)
         resp = client.put(
@@ -470,7 +472,8 @@ class TestRuntimeModeApiEndpoints:
 
     def test_put_data_mode_live_without_credentials_409(self):
         from fastapi.testclient import TestClient
-        from app.api.main import app
+        from app.api.main import create_app
+        app = create_app()
 
         client = TestClient(app)
         resp = client.put(
@@ -484,7 +487,8 @@ class TestRuntimeModeApiEndpoints:
 
     def test_put_data_mode_live_with_credentials_serves_fuyao_quote(self):
         from fastapi.testclient import TestClient
-        from app.api.main import app
+        from app.api.main import create_app
+        app = create_app()
 
         os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
         client = TestClient(app)
@@ -559,7 +563,8 @@ class TestRuntimeModeApiEndpoints:
 
     def test_security_auto_index_and_dependency_completion(self):
         from fastapi.testclient import TestClient
-        from app.api.main import app
+        from app.api.main import create_app
+        app = create_app()
 
         client = TestClient(app)
 

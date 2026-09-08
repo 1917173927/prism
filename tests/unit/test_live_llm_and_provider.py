@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 from fastapi.testclient import TestClient
 
-from app.api.main import app
+from app.api.main import create_app
+
+app = create_app()
 from app.llm.agent import CopilotAgent, CopilotMessage
 from app.providers.contracts import FrozenDict, ProviderOperation, ProviderRequest
 from app.providers.live_market import LiveMarketProvider

@@ -518,8 +518,8 @@
 
                 <!-- 模式 2: 自然语言 / 文本 NER 录入 -->
                 <div id="panel-portfolio-text" class="portfolio-tab-panel" style="display:none;">
-                  <p class="modal-hint">支持自然语言录入持仓，大模型将自动解析资产代码、数量与价格：</p>
-                  <textarea id="portfolio-natural-textarea" class="portfolio-textarea" rows="4" placeholder="例如：我持有1000股宁德时代，买入均价240元；还有2万份科创50ETF (588000)，以及5万元现金"></textarea>
+                  <p class="modal-hint">输入证券名称或代码、数量、买入均价；系统识别后校验金额。基金请同时填写现价：</p>
+                  <textarea id="portfolio-natural-textarea" class="portfolio-textarea" rows="4" placeholder="例如：我持有1000股宁德时代，买入均价240元；还有2万份科创50ETF (588000)，现价1元，以及5万元现金"></textarea>
                   <div class="modal-actions">
                     <button id="btn-parse-portfolio" class="copilot-action-btn primary" type="button">
                       <span><svg class="prism-icon"><use href="#icon-compass"/></svg> 智能解析并载入画像</span>

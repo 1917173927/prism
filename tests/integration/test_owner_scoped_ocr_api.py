@@ -123,3 +123,19 @@ def test_owner_scoped_ocr_rejects_sensitive_extra_position_fields() -> None:
             },
         )
         assert response.status_code == 422
+
+
+def test_updated_screenshot_creates_distinct_behavior_snapshot() -> None:
+    store = SQLiteDecisionEventStore(":memory:")
+    with TestClient(create_app(store=store, clock=lambda: NOW)) as client:
+        for digest, quantity in [("c", 100), ("d", 200)]:
+            response = client.post(
+                "/api/v1/advisor/portfolio/ocr/confirm",
+                headers={"X-Owner-ID": OWNER},
+                json={"owner_id": OWNER, "image_digest": digest * 64, "cash_cny": 28000,
+                      "positions": [{"asset_id": "600519.SH", "quantity": quantity, "price": 1300}]},
+            )
+            assert response.status_code == 200, response.text
+        events = store.list_behavior_events(OWNER)
+        assert len(events) == 2
+        assert len({event.event_id for event in events}) == 2

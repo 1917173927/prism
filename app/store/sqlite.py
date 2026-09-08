@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 import sqlite3
 from threading import RLock
-from typing import Protocol
+from typing import Any, Protocol
+from hashlib import sha256
 
 from app.store.contracts import (
     DecisionEvent,
@@ -16,7 +17,7 @@ from app.store.contracts import (
 )
 from app.store.context import ContextMemoryRecord
 from app.profile import BehaviorEvent, BehaviorProfile, DisplayPolicy, QuestionnaireSnapshot
-from app.portfolio import PortfolioOcrConfirmation
+from app.portfolio import PortfolioImportBundle, PortfolioOcrConfirmation
 
 
 class StoreError(RuntimeError):
@@ -44,6 +45,10 @@ class ContextMemoryCorruptError(StoreCorruptError):
 
 
 class DecisionEventStore(Protocol):
+    def save_current_portfolio(self, owner_id: str, data_mode: str, data: dict[str, Any]) -> None: ...
+
+    def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None: ...
+
     def save(self, event: DecisionEvent) -> tuple[DecisionEvent, bool]: ...
 
     def get(self, owner_id: str, event_id: str) -> DecisionEvent | None: ...
@@ -174,6 +179,42 @@ class SQLiteDecisionEventStore:
                 self._connection.execute("PRAGMA journal_mode = WAL")
             self._connection.execute("PRAGMA busy_timeout = 3000")
             self._run_migrations()
+
+    def save_current_portfolio(self, owner_id: str, data_mode: str, data: dict[str, Any]) -> None:
+        owner_id = _validate_owner(owner_id)
+        bundle = PortfolioImportBundle.model_validate(data["portfolio"])
+        if bundle.owner_id != owner_id:
+            raise StoreOwnerError("portfolio owner does not match storage scope")
+        if data_mode not in {"LIVE", "MOCK"}:
+            raise StoreError("invalid portfolio data mode")
+        payload = json.dumps(data, ensure_ascii=False, sort_keys=True, allow_nan=False)
+        digest = sha256(payload.encode("utf-8")).hexdigest()
+        with self._lock:
+            self._connection.execute(
+                "INSERT INTO current_portfolios VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(owner_id, data_mode) DO UPDATE SET payload_json=excluded.payload_json, content_hash=excluded.content_hash",
+                (owner_id, data_mode, payload, digest),
+            )
+
+    def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json, content_hash FROM current_portfolios WHERE owner_id=? AND data_mode=?",
+                (owner_id, data_mode),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            if sha256(row["payload_json"].encode("utf-8")).hexdigest() != row["content_hash"]:
+                raise ValueError("hash mismatch")
+            data = json.loads(row["payload_json"])
+            bundle = PortfolioImportBundle.model_validate(data["portfolio"])
+            if bundle.owner_id != owner_id:
+                raise ValueError("owner mismatch")
+            return data
+        except (ValueError, TypeError, KeyError) as exc:
+            raise StoreCorruptError("stored portfolio failed validation") from exc
 
     def _run_migrations(self) -> None:
         self._connection.execute(

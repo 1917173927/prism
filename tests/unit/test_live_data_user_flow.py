@@ -242,7 +242,8 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
              "requirePortfolioAnalysisContext", "renderPortfolioReadiness",
              "ensureDependency", "confirmProfileContext", "renderCompanionRisk",
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
-             "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing"]
+             "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing",
+             "loadSavedPortfolio", "openPortfolioModal"]
     functions = []
     for name in names:
         match = re.search(r"  (?:async )?function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source)
@@ -255,12 +256,15 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     set textContent(value) { this.children = [String(value)]; }
     get textContent() { return this.children.map(x => typeof x === "string" ? x : x.textContent).join(" "); }
     append(...children) { this.children.push(...children); }
+    appendChild(child) { this.children.push(child); child.parentElement = this; }
     setAttribute() {}
     addEventListener() {}
   }
   const nodes = new Map();
   const byId = id => { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
-  const document = {createElement: () => new Element(), createElementNS: () => new Element(), createTextNode: text => String(text)};
+  const document = {body: new Element(), createElement: () => new Element(), createElementNS: () => new Element(), createTextNode: text => String(text)};
+  const renderOverviewWorkspace = () => {};
+  const updateVisualCompanion = () => {};
   const clear = element => { element.children = []; };
   const createSvgIcon = () => new Element();
   const buildCopilotLoadingCard = () => new Element();
@@ -349,6 +353,33 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     renderCompanionRisk();
     assert.match(byId("companion-exposure-bars").textContent, /42.00% \(上限 25.00%\)/);
     assert.doesNotMatch(byId("companion-exposure-bars").textContent, /28.5/);
+    openPortfolioModal();
+    assert.equal(byId("portfolio-modal").parentElement, document.body);
+    assert.equal(byId("portfolio-modal").style.display, "flex");
+    state.dataMode = "LIVE";
+    state.portfolio = null;
+    const saved = {data_mode:"LIVE", data:{portfolio:{owner_id:"test-owner"}, positions:[{quantity:600,cost_price:1680}],cash_cny:28000}};
+    fetch = async () => ({ok:true,json:async()=>saved});
+    await loadSavedPortfolio();
+    assert.equal(state.portfolio.owner_id, "test-owner");
+    assert.equal(state.ocrPortfolioDraft.cash_cny, 28000);
+    assert.match(byId("copilot-hero-portfolio-tag").textContent, /已确认持仓/);
+    fetch = () => new Promise(resolve => { respond = resolve; });
+    const restoring = loadSavedPortfolio();
+    const newer = {owner_id:"test-owner",updated:true};
+    state.portfolio = newer;
+    respond({ok:true,json:async()=>saved});
+    await restoring;
+    assert.equal(state.portfolio, newer, "late restore overwrote new confirmation");
+    const changedContext = loadSavedPortfolio();
+    state.dataMode = "MOCK";
+    state.dataMode = "LIVE";
+    respond({ok:true,json:async()=>saved});
+    await changedContext;
+    assert.equal(state.portfolio, newer, "late restore crossed a mode transition");
+    state.portfolio = null;
+    renderPortfolioReadiness();
+    assert.equal(byId("copilot-hero-portfolio-tag").textContent, "待确认持仓");
     process.stdout.write("PASS");
   })().catch(error => { console.error(error); process.exitCode = 1; });
 })();
