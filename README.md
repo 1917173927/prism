@@ -176,6 +176,9 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
 - 当前主分支已完成 P2 Phase 34–39 与默认工作台 UX 收敛；下一阶段核心进阶目标为：
   - **Phase 40：多 Agent 工作流可视化编排面板（Workflow Builder）**，对标 Coze，引入成熟工业级开源图引擎（如 AntV X6 / LiteGraph / Flow），支持用户自定义投研 DAG 拓扑连线与参数自由调优，并提供流水线双模视图；
   - **Phase 41：会话全局总览研判面板（Session Truth Blackboard）**，构建会话级防幻觉、自洽性矛盾排查、原点双向溯源核验与一键纠偏控制台。PRD 编制基准详见系统总体架构规范 [系统总体技术架构与方案设计规范](docs/architecture.md)。
+- 个性化投顾完整纵切已接入：行为证据画像与 C1–C5 适当性、owner 隔离的截图确认链、
+  对话展示策略和只返回文本的研发辅助骨架。实现边界、接口和验证矩阵见
+  [个性化投顾智能体纵切技术说明](docs/behavior-profile-ocr-and-dev-assist.md)。
 
 
 

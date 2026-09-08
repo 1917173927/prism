@@ -3,9 +3,10 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c6b5a'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/app.js" defer></script>
@@ -119,7 +120,7 @@
         </div>
 
         <nav class="nav-list" aria-label="工作区分区">
-          <!-- 业务域 1：工作台 -->
+          <!-- 普通用户固定为五个主页面；页面内功能通过顶部子导航切换。 -->
           <div class="nav-section-primary">
             <a class="nav-item nav-item-copilot" href="#copilot" id="nav-copilot">
               <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
@@ -128,69 +129,26 @@
                 <span>工作台与智能问答</span>
               </div>
             </a>
-          </div>
-
-          <!-- 业务域 2：我的组合 -->
-          <div class="nav-section-domain" aria-label="我的组合">
-            <span class="nav-section-label">我的组合</span>
             <a class="nav-item active" href="#overview" aria-current="location">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-              <span>组合总览</span>
+              <span>我的组合</span>
             </a>
-            <a class="nav-item" href="#portfolio">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-briefcase"/></svg></span>
-              <span>持仓明细</span>
-            </a>
-            <a class="nav-item" href="#portfolio-optimization">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
-              <span>组合优化</span>
-            </a>
-            <a class="nav-item" href="#portfolio-rebalancing">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-shuffle"/></svg></span>
-              <span>调仓方案</span>
-            </a>
-            <a class="nav-item" href="#scenario-simulation">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-              <span>情景模拟</span>
-            </a>
-          </div>
-
-          <!-- 业务域 3：标的研究 -->
-          <div class="nav-section-domain" aria-label="标的研究">
-            <span class="nav-section-label">标的研究</span>
             <a class="nav-item" href="#stock-research">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <span>个股研究</span>
+              <span>标的研究</span>
             </a>
-            <a class="nav-item" href="#fund-research">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <span>ETF / 基金研究</span>
-            </a>
-            <a class="nav-item" href="#convertible-bond-research">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-              <span>可转债研究</span>
-            </a>
-          </div>
-
-          <!-- 业务域 4：决策记录 -->
-          <div class="nav-section-domain" aria-label="决策记录">
-            <span class="nav-section-label">决策记录</span>
             <a class="nav-item" href="#recommendation-history">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-              <span>历史建议</span>
+              <span>决策记录</span>
             </a>
-            <a class="nav-item" href="#evidence">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-check"/></svg></span>
-              <span>证据链溯源</span>
-            </a>
-            <a class="nav-item" href="#advanced-explainability">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-scale"/></svg></span>
-              <span>为什么这样判断</span>
+            <a class="nav-item" href="#profile">
+              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+              <span>风险画像</span>
             </a>
           </div>
 
-          <!-- 业务域 5：系统与质量 -->
-          <div class="nav-section-expert collapsed" id="nav-expert-section">
+          <!-- 系统治理仅对开发者模式开放。 -->
+          <div class="nav-section-expert collapsed dev-only" id="nav-expert-section">
             <button class="nav-expert-header" id="nav-expert-toggle" type="button" aria-expanded="false" aria-controls="nav-expert-items" title="展开底层系统工具与评测">
               <span>
                 <span class="nav-group-title">系统治理</span>
@@ -215,9 +173,9 @@
                 <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
                 <span>投顾查询</span>
               </a>
-              <a class="nav-item" href="#profile">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                <span>风险画像</span>
+              <a class="nav-item" href="#dev-assist">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                <span>研发辅助</span>
               </a>
             </div>
           </div>
@@ -361,6 +319,26 @@
               </div>
               <div id="portfolio-refresh-status" class="portfolio-refresh-status" role="status" aria-live="polite">等待持仓数据</div>
             </div>
+
+            <section class="behavior-profile-card" id="behavior-profile-card" aria-labelledby="behavior-profile-title">
+              <div class="behavior-profile-head">
+                <div>
+                  <span class="eyebrow clay">用户画像 Agent</span>
+                  <h3 id="behavior-profile-title">问卷与历史行为交叉画像</h3>
+                </div>
+                <span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">REVIEW_REQUIRED 数据不足</span>
+              </div>
+              <div id="behavior-profile-content" class="behavior-profile-content" aria-live="polite">
+                <p>导入结构化交易与持仓快照后，系统将计算换手、集中度、回撤和有效风险等级。行为数据只能收紧风险边界，不能提高问卷等级。</p>
+              </div>
+              <div class="display-policy-control">
+                <label for="ai-trust-score">AI 信任度与解释偏好 <strong id="ai-trust-score-value">50</strong></label>
+                <input id="ai-trust-score" type="range" min="0" max="100" value="50" step="1">
+                <button id="save-display-policy" class="copilot-action-btn secondary small" type="button">保存展示策略</button>
+                <button id="recompute-behavior-profile" class="copilot-action-btn secondary small" type="button">重新计算画像</button>
+                <span id="display-policy-mode" class="status-chip">标准说明</span>
+              </div>
+            </section>
 
             <!-- Codeforces 风格多行业穿透交互环形图微卡 -->
             <div class="cf-status-widget copilot-donut-widget" aria-label="账户画像与多行业穿透风控监控">
@@ -605,26 +583,16 @@
           <div id="profile-edit-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
             <div class="copilot-modal-content">
               <div class="copilot-modal-header">
-                <h3 id="profile-modal-title"><svg class="prism-icon"><use href="#icon-user"/></svg> 自定义我的投资画像与风控约束</h3>
+                <h3 id="profile-modal-title"><svg class="prism-icon"><use href="#icon-user"/></svg> 我的约束偏好</h3>
                 <button id="close-profile-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
               </div>
               <div class="copilot-modal-body">
-                <p class="modal-hint">设置投资目标与风险上限，作为分析依据。</p>
+                <p class="modal-hint">这里只能收紧仓位、回撤和行业上限。适当性等级由已确认问卷与历史行为共同计算，不能手动修改。</p>
                 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div style="margin-bottom: 12px;">
                   <div>
                     <label for="profile-name-input" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">投资者昵称：</label>
                     <input type="text" id="profile-name-input" class="portfolio-textarea" style="height:36px; padding:6px 10px;" value="我的专属账户" autocomplete="off">
-                  </div>
-                  <div>
-                    <label for="profile-risk-select" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">风险承受能力等级：</label>
-                    <select id="profile-risk-select" class="portfolio-textarea" style="height:36px; padding:6px 10px;">
-                      <option value="R1">R1 保守型 (极低风险)</option>
-                      <option value="R2">R2 稳健型 (低风险)</option>
-                      <option value="R3" selected>R3 平衡型 (中等风险)</option>
-                      <option value="R4">R4 进取型 (中高风险)</option>
-                      <option value="R5">R5 激进型 (高风险)</option>
-                    </select>
                   </div>
                 </div>
 
@@ -659,7 +627,7 @@
                     <span>重置默认</span>
                   </button>
                   <button id="btn-save-profile" class="copilot-action-btn primary" type="button">
-                    <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存我的画像</span>
+                    <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存约束偏好</span>
                   </button>
                 </div>
                 <div id="profile-save-status" class="parsed-portfolio-status" style="display:none;"></div>
@@ -765,6 +733,25 @@
 
         <div id="global-error" class="notice error" role="alert" hidden></div>
 
+        <nav id="workspace-page-tabs" class="workspace-page-tabs" aria-label="当前页面功能" hidden>
+          <a href="#overview" data-domain="portfolio">组合总览</a>
+          <a href="#portfolio" data-domain="portfolio">持仓明细</a>
+          <a href="#portfolio-optimization" data-domain="portfolio">组合优化</a>
+          <a href="#portfolio-rebalancing" data-domain="portfolio">调仓方案</a>
+          <a href="#scenario-simulation" data-domain="portfolio">情景模拟</a>
+          <a href="#stock-research" data-domain="research">个股研究</a>
+          <a href="#fund-research" data-domain="research">ETF / 基金研究</a>
+          <a href="#convertible-bond-research" data-domain="research">可转债研究</a>
+          <a href="#recommendation-history" data-domain="decisions">历史建议</a>
+          <a href="#advanced-explainability" data-domain="decisions">为什么这样判断</a>
+          <a href="#profile" data-domain="profile">问卷与画像</a>
+          <a href="#evaluation-dashboard" data-domain="system" class="dev-only">评测看板</a>
+          <a href="#context-memory" data-domain="system" class="dev-only">上下文记忆</a>
+          <a href="#research-tracks" data-domain="system" class="dev-only">研究轨道</a>
+          <a href="#advisor" data-domain="system" class="dev-only">投顾查询</a>
+          <a href="#dev-assist" data-domain="system" class="dev-only">研发辅助</a>
+        </nav>
+
         <div class="workspace-grid" id="expert-workspace-grid" hidden aria-labelledby="expert-workspace-title">
           <div class="expert-mode-banner">
             <div>
@@ -781,6 +768,30 @@
               <p>带虚线边框、标注「开发者可见」的模块只对开发与评审展示（系统架构、原始数据、评测与证据审计）；普通用户看不到它们。点击左下角「退出」即可回到普通视图。</p>
             </div>
           </div>
+          <section class="panel dev-assist-panel" id="dev-assist" aria-labelledby="dev-assist-title">
+            <div class="panel-head">
+              <div>
+                <span class="eyebrow clay">研发辅助</span>
+                <h2 id="dev-assist-title">PRD 与技术方案审查</h2>
+              </div>
+              <span id="dev-assist-status" class="status-chip">待运行</span>
+            </div>
+            <div class="dev-assist-grid">
+              <label>产品 PRD
+                <textarea id="dev-assist-prd" rows="8" placeholder="粘贴 PRD 文本；上传 .docx/.md/.txt 可通过公开 API 完成"></textarea>
+              </label>
+              <label>技术方案
+                <textarea id="dev-assist-technical" rows="8" placeholder="粘贴技术方案文本"></textarea>
+              </label>
+            </div>
+            <div class="context-import-actions">
+              <button id="run-dev-assist" class="query-submit" type="button">生成完善方案与代码骨架</button>
+              <small>输出仅供预览和下载，不写入仓库、不执行代码。</small>
+            </div>
+            <div id="dev-assist-output" class="dev-assist-output" aria-live="polite">
+              <div class="empty-state">提交两份文档后查看冲突、缺口、接口草案和代码骨架。</div>
+            </div>
+          </section>
           <section class="panel advisor-panel" id="advisor" aria-labelledby="advisor-title">
             <div class="panel-head">
               <div>
@@ -1179,60 +1190,115 @@
             <div class="panel-head">
               <div>
                 <span class="eyebrow">风险画像</span>
-                <h2 id="profile-title">约束上下文</h2>
+                <h2 id="profile-title">问卷与真实行为画像</h2>
               </div>
+              <span id="questionnaire-confirmation-status" class="status-chip">问卷未完成</span>
             </div>
-            <div class="context-confirm-actions">
+
+            <div class="profile-purpose-callout">
               <div>
-                <strong>确认当前风险问卷</strong>
-                <small>沿用现有表单与确定性评分器；确认只在当前会话生效。</small>
-              </div>
-              <div class="context-import-actions">
-                <button id="confirm-profile" class="query-submit" type="button">确认风险画像</button>
-                <span id="profile-context-status" class="status-chip">未确认</span>
+                <strong>画像如何产生</strong>
+                <p>19 题问卷衡量主观承受能力；交易与持仓记录验证真实行为。最终适当性等级取两者中更保守的一方，历史行为不能提高问卷等级。</p>
               </div>
             </div>
-            <div id="profile-template-content" class="profile-context" aria-live="polite">
-              <div class="empty-state">读取隔离标识模板后查看风险问卷约束。</div>
-            </div>
-            <div id="profile-confirmation-content" class="profile-confirmation" aria-live="polite">
-              <div class="empty-state">确认问卷后查看确定性画像结果。</div>
-            </div>
-            <div class="profile-proposal" aria-labelledby="profile-proposal-title">
+
+            <form id="questionnaire-form" class="questionnaire-shell" novalidate>
+              <div class="questionnaire-progress-head">
+                <div>
+                  <strong id="questionnaire-section-title">正在读取问卷</strong>
+                  <span id="questionnaire-progress-text">0 / 19</span>
+                </div>
+                <div class="questionnaire-progress-track" aria-hidden="true">
+                  <span id="questionnaire-progress-bar"></span>
+                </div>
+              </div>
+              <ol id="questionnaire-section-tabs" class="questionnaire-section-tabs" aria-label="问卷部分"></ol>
+              <div id="questionnaire-questions" class="questionnaire-questions" aria-live="polite">
+                <div class="empty-state">正在读取版本化问卷。</div>
+              </div>
+              <div id="questionnaire-error" class="notice error" role="alert" hidden></div>
+              <div class="questionnaire-actions">
+                <button id="questionnaire-prev" class="query-submit secondary" type="button">上一部分</button>
+                <button id="questionnaire-next" class="query-submit" type="button">下一部分</button>
+                <button id="questionnaire-preview" class="query-submit secondary" type="button">预览画像</button>
+                <button id="questionnaire-confirm" class="query-submit" type="submit">确认问卷</button>
+              </div>
+            </form>
+
+            <section class="profile-summary-section" aria-labelledby="profile-summary-title">
+              <div class="profile-summary-heading">
+                <div>
+                  <span class="eyebrow clay">双轨汇总</span>
+                  <h3 id="profile-summary-title">问卷、行为与有效画像</h3>
+                </div>
+                <button id="refresh-profile-summary" class="query-submit secondary" type="button">刷新画像</button>
+              </div>
+              <div id="profile-summary-content" class="profile-summary-content" aria-live="polite">
+                <div class="empty-state">完成问卷后查看画像；补充交易和持仓记录后，系统会交叉验证风险边界。</div>
+              </div>
+            </section>
+
+            <section class="profile-display-preference" aria-labelledby="display-preference-title">
+              <div>
+                <strong id="display-preference-title">AI 信任度与解释偏好</strong>
+                <p>它只决定结论与依据的展开方式，不改变风险分数、适当性等级或告警结果。</p>
+              </div>
+              <a href="#copilot" class="query-submit secondary">前往设置</a>
+            </section>
+
+            <div class="dev-only profile-technical-tools dev-outline">
               <div class="context-confirm-actions">
                 <div>
-                  <strong id="profile-proposal-title">审阅结构化提取提案</strong>
-                  <small>仅接受已脱敏的结构化值与输入摘要；不解析或保存自然语言原文。</small>
+                  <strong>兼容画像契约</strong>
+                  <small>以下六字段表单仅用于旧接口和开发回归，不生成正式 19 题问卷快照。</small>
                 </div>
                 <div class="context-import-actions">
-                  <button id="preview-profile-proposal" class="query-submit" type="button">预览画像提案</button>
-                  <span id="profile-proposal-status" class="status-chip">未预览</span>
+                  <button id="confirm-profile" class="query-submit" type="button">确认兼容画像</button>
+                  <span id="profile-context-status" class="status-chip">未确认</span>
                 </div>
               </div>
-              <div class="context-import">
-                <label for="profile-proposal-json">粘贴已脱敏的画像提取提案 JSON</label>
-                <textarea id="profile-proposal-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 profile-extraction.v1；只保留结构化候选值与 64 位 input_digest"></textarea>
-                <small>提案只在当前会话使用；隔离标识必须与上方输入及当前问卷一致。</small>
+              <div id="profile-template-content" class="profile-context" aria-live="polite">
+                <div class="empty-state">读取隔离标识模板后查看兼容画像约束。</div>
               </div>
-              <div id="profile-proposal-content" class="profile-proposal-content" aria-live="polite">
-                <div class="empty-state">粘贴提案后查看问卷与提取值的冲突。</div>
+              <div id="profile-confirmation-content" class="profile-confirmation" aria-live="polite">
+                <div class="empty-state">确认后查看兼容契约结果。</div>
               </div>
-              <div class="context-confirm-actions profile-proposal-confirm-actions">
-                <div>
-                  <strong>确认提案选择</strong>
-                  <small>所有冲突必须逐项选择；未确认不会生成风险画像。</small>
+              <div class="profile-proposal" aria-labelledby="profile-proposal-title">
+                <div class="context-confirm-actions">
+                  <div>
+                    <strong id="profile-proposal-title">审阅结构化提取提案</strong>
+                    <small>仅接受已脱敏的结构化值与输入摘要；不解析或保存自然语言原文。</small>
+                  </div>
+                  <div class="context-import-actions">
+                    <button id="preview-profile-proposal" class="query-submit" type="button">预览画像提案</button>
+                    <span id="profile-proposal-status" class="status-chip">未预览</span>
+                  </div>
                 </div>
-                <div class="context-import-actions">
-                  <button id="confirm-profile-proposal" class="query-submit" type="button" disabled>确认画像提案</button>
-                  <span id="profile-proposal-confirm-status" class="status-chip">未确认</span>
+                <div class="context-import">
+                  <label for="profile-proposal-json">粘贴已脱敏的画像提取提案 JSON</label>
+                  <textarea id="profile-proposal-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 profile-extraction.v1；只保留结构化候选值与 64 位 input_digest"></textarea>
+                  <small>提案只在当前会话使用；隔离标识必须与上方输入及当前问卷一致。</small>
+                </div>
+                <div id="profile-proposal-content" class="profile-proposal-content" aria-live="polite">
+                  <div class="empty-state">粘贴提案后查看问卷与提取值的冲突。</div>
+                </div>
+                <div class="context-confirm-actions profile-proposal-confirm-actions">
+                  <div>
+                    <strong>确认提案选择</strong>
+                    <small>所有冲突必须逐项选择；未确认不会生成风险画像。</small>
+                  </div>
+                  <div class="context-import-actions">
+                    <button id="confirm-profile-proposal" class="query-submit" type="button" disabled>确认画像提案</button>
+                    <span id="profile-proposal-confirm-status" class="status-chip">未确认</span>
+                  </div>
+                </div>
+                <div id="profile-proposal-result" class="profile-proposal-result" aria-live="polite">
+                  <div class="empty-state">确认提案后查看保留冲突选择的风险画像。</div>
                 </div>
               </div>
-              <div id="profile-proposal-result" class="profile-proposal-result" aria-live="polite">
-                <div class="empty-state">确认提案后查看保留冲突选择的风险画像。</div>
+              <div id="profile-content" class="profile-content">
+                <div class="empty-state">回执会绑定画像版本、持仓快照和风险预算。</div>
               </div>
-            </div>
-            <div id="profile-content" class="profile-content">
-              <div class="empty-state">回执会绑定画像版本、持仓快照和风险预算。</div>
             </div>
           </section>
 
@@ -1331,7 +1397,7 @@
                  <span class="eyebrow clay">系统信息</span>
                  <h2 id="evaluation-title">分析质量</h2>
               </div>
-              <span class="status-chip ready" id="evaluation-pass-chip">100.00% 通过</span>
+              <span class="status-chip" id="evaluation-pass-chip">尚未运行</span>
             </div>
             <div class="context-confirm-actions">
               <div>
