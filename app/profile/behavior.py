@@ -14,7 +14,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from app.contracts.evidence import ContractModel, NonEmptyStr
-from app.portfolio import AssetType
+from app.portfolio import AssetType, PortfolioImportBundle
 from app.profile.contracts import ExperienceLevel, RiskLevel, RiskProfile
 from app.profile.scoring import risk_level_for_score
 
@@ -316,7 +316,7 @@ def calculate_behavior_profile(
         if item.event_type == BehaviorEventType.POSITION_SNAPSHOT and item.occurred_at <= calculated_at
     )
     observations = tuple(sorted((*trades, *snapshots), key=lambda item: (item.occurred_at, item.event_id)))
-    sufficient = len(trades) >= 3 or len(snapshots) >= 2
+    sufficient = len(trades) >= 3 and len(snapshots) >= 2
     portfolio_values = [item.portfolio_value_cny for item in (*trades, *snapshots) if item.portfolio_value_cny]
     mean_portfolio = (
         sum(portfolio_values, Decimal("0")) / Decimal(len(portfolio_values))
@@ -502,6 +502,46 @@ def effective_risk_profile(questionnaire_profile: RiskProfile, behavior_profile:
     })
 
 
+def behavior_event_from_portfolio(
+    portfolio: PortfolioImportBundle,
+    *,
+    source: str = "user-confirmed portfolio snapshot",
+) -> BehaviorEvent:
+    """Convert one confirmed portfolio into an aggregate behaviour observation."""
+    positions = portfolio.position_snapshot.positions
+    total = sum((item.market_value for item in positions), Decimal("0"))
+    if total <= 0:
+        raise ValueError("portfolio value must be positive")
+    invested = tuple(item for item in positions if item.asset_type != AssetType.CASH)
+    equity_types = {AssetType.STOCK, AssetType.ETF, AssetType.MUTUAL_FUND}
+    equity_value = sum(
+        (item.market_value for item in positions if item.asset_type in equity_types),
+        Decimal("0"),
+    )
+    max_position = max(
+        (item.market_value / total * Decimal("100") for item in invested),
+        default=Decimal("0"),
+    )
+    sectors: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+    for item in invested:
+        sectors[item.sector or "UNCLASSIFIED"] += item.market_value
+    max_sector = max(
+        (value / total * Decimal("100") for value in sectors.values()),
+        default=Decimal("0"),
+    )
+    return BehaviorEvent(
+        event_id=f"portfolio-snapshot:{portfolio.position_snapshot.snapshot_id}",
+        owner_id=portfolio.owner_id,
+        event_type=BehaviorEventType.POSITION_SNAPSHOT,
+        occurred_at=portfolio.position_snapshot.as_of,
+        source=source,
+        portfolio_value_cny=_q(total),
+        equity_weight_pct=_q(equity_value / total * Decimal("100")),
+        max_position_weight_pct=_q(max_position),
+        max_sector_weight_pct=_q(max_sector),
+    )
+
+
 __all__ = [
     "RULESET_VERSION",
     "DISPLAY_POLICY_THRESHOLDS",
@@ -520,6 +560,7 @@ __all__ = [
     "SuitabilityLevel",
     "TradeSide",
     "build_display_policy",
+    "behavior_event_from_portfolio",
     "calculate_behavior_profile",
     "display_mode_for_trust",
     "effective_risk_profile",

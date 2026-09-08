@@ -51,6 +51,8 @@ from app.profile import (
     RiskProfile,
     RiskQuestionnaire,
     DisplayPolicy,
+    QuestionnaireAnswer,
+    QuestionnaireSnapshot,
 )
 from app.service import (
     AdvisorIntentRequest,
@@ -391,6 +393,55 @@ class DisplayPolicyResponse(ContractModel):
     policy: DisplayPolicy
 
 
+class QuestionnairePreviewRequest(ContractModel):
+    schema_version: Literal["questionnaire-preview-request.v1"] = "questionnaire-preview-request.v1"
+    owner_id: NonEmptyStr
+    evaluated_at: datetime
+    answers: tuple[QuestionnaireAnswer, ...] = Field(min_length=19, max_length=19)
+
+    @model_validator(mode="after")
+    def validate_timestamp(self) -> Self:
+        if self.evaluated_at.tzinfo is None or self.evaluated_at.utcoffset() is None:
+            raise ValueError("evaluated_at must be timezone-aware")
+        return self
+
+
+class QuestionnaireConfirmationRequest(ContractModel):
+    schema_version: Literal["questionnaire-confirmation-request.v1"] = "questionnaire-confirmation-request.v1"
+    owner_id: NonEmptyStr
+    confirmed_at: datetime
+    answers: tuple[QuestionnaireAnswer, ...] = Field(min_length=19, max_length=19)
+
+    @model_validator(mode="after")
+    def validate_timestamp(self) -> Self:
+        if self.confirmed_at.tzinfo is None or self.confirmed_at.utcoffset() is None:
+            raise ValueError("confirmed_at must be timezone-aware")
+        return self
+
+
+class QuestionnairePreviewResponse(ContractModel):
+    schema_version: Literal["questionnaire-preview-response.v1"] = "questionnaire-preview-response.v1"
+    snapshot: QuestionnaireSnapshot
+    persisted: Literal[False] = False
+
+
+class QuestionnaireConfirmationResponse(ContractModel):
+    schema_version: Literal["questionnaire-confirmation-response.v1"] = "questionnaire-confirmation-response.v1"
+    snapshot: QuestionnaireSnapshot
+    created: bool
+
+
+class ProfileSummaryResponse(ContractModel):
+    schema_version: Literal["profile-summary-response.v1"] = "profile-summary-response.v1"
+    owner_id: NonEmptyStr
+    questionnaire_snapshot: QuestionnaireSnapshot | None = None
+    behavior_profile: BehaviorProfile | None = None
+    effective_profile: RiskProfile | None = None
+    display_policy: DisplayPolicy
+    data_gaps: tuple[NonEmptyStr, ...] = Field(default_factory=tuple)
+    next_actions: tuple[NonEmptyStr, ...] = Field(default_factory=tuple)
+
+
 class ResearchScenarioResponse(ContractModel):
     """Safe catalog metadata for one deterministic research replay."""
 
@@ -552,6 +603,11 @@ __all__ = [
     "AdvisorProfileContextResponse",
     "AdvisorProfileProposalRequest",
     "AdvisorProfileProposalResponse",
+    "QuestionnairePreviewRequest",
+    "QuestionnairePreviewResponse",
+    "QuestionnaireConfirmationRequest",
+    "QuestionnaireConfirmationResponse",
+    "ProfileSummaryResponse",
     "ResearchScenarioResponse",
     "ResearchMatrixTemplateResponse",
     "ResearchMatrixIssueResponse",

@@ -34,6 +34,11 @@ from app.api.contracts import (
     BehaviorProfileLookupResponse,
     DisplayPolicyResponse,
     DisplayPolicyUpdateRequest,
+    ProfileSummaryResponse,
+    QuestionnaireConfirmationRequest,
+    QuestionnaireConfirmationResponse,
+    QuestionnairePreviewRequest,
+    QuestionnairePreviewResponse,
     DecisionEventListResponse,
     DecisionEventWriteResponse,
     ErrorResponse,
@@ -101,7 +106,12 @@ from app.explainability import (
 )
 from app.profile import (
     DisplayPolicySource,
+    QUESTIONNAIRE_TEMPLATE,
+    QuestionnaireTemplate,
+    BehaviorEventType,
+    behavior_event_from_portfolio,
     build_display_policy,
+    build_questionnaire_snapshot,
     calculate_behavior_profile,
     effective_risk_profile,
 )
@@ -654,6 +664,103 @@ def create_app(
             source=DisplayPolicySource.EXPLICIT,
         )
         return DisplayPolicyResponse(policy=active_store.save_display_policy(policy))
+
+    @api.get(
+        "/api/v1/advisor/profile/questionnaire-template",
+        response_model=QuestionnaireTemplate,
+    )
+    def get_questionnaire_template(
+        owner_id: str = Depends(owner_dependency),
+    ):
+        del owner_id
+        return QUESTIONNAIRE_TEMPLATE
+
+    @api.post(
+        "/api/v1/advisor/profile/questionnaire/preview",
+        response_model=QuestionnairePreviewResponse,
+    )
+    def preview_questionnaire(
+        request: QuestionnairePreviewRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> QuestionnairePreviewResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("questionnaire preview owner does not match owner scope")
+        current = active_store.get_latest_questionnaire_snapshot(owner_id)
+        snapshot = build_questionnaire_snapshot(
+            owner_id,
+            request.answers,
+            confirmed_at=request.evaluated_at,
+            snapshot_version=1 if current is None else current.snapshot_version + 1,
+        )
+        return QuestionnairePreviewResponse(snapshot=snapshot)
+
+    @api.post(
+        "/api/v1/advisor/profile/questionnaire/confirm",
+        response_model=QuestionnaireConfirmationResponse,
+    )
+    def confirm_full_questionnaire(
+        request: QuestionnaireConfirmationRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> QuestionnaireConfirmationResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("questionnaire confirmation owner does not match owner scope")
+        current = active_store.get_latest_questionnaire_snapshot(owner_id)
+        snapshot = build_questionnaire_snapshot(
+            owner_id,
+            request.answers,
+            confirmed_at=request.confirmed_at,
+            snapshot_version=1 if current is None else current.snapshot_version + 1,
+        )
+        stored, created = active_store.save_questionnaire_snapshot(snapshot)
+        return QuestionnaireConfirmationResponse(snapshot=stored, created=created)
+
+    @api.get(
+        "/api/v1/advisor/profile/summary",
+        response_model=ProfileSummaryResponse,
+    )
+    def get_profile_summary(
+        owner_id: str = Depends(owner_dependency),
+    ) -> ProfileSummaryResponse:
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+        behavior = active_store.get_latest_behavior_profile(owner_id)
+        policy = active_store.get_display_policy(owner_id) or build_display_policy(
+            owner_id,
+            50,
+            updated_at=active_clock(),
+            source=DisplayPolicySource.DEFAULT,
+        )
+        events = active_store.list_behavior_events(owner_id)
+        trade_count = sum(item.event_type == BehaviorEventType.TRADE for item in events)
+        snapshot_count = sum(item.event_type == BehaviorEventType.POSITION_SNAPSHOT for item in events)
+        gaps: list[str] = []
+        actions: list[str] = []
+        effective = snapshot.profile if snapshot is not None else None
+        if snapshot is None:
+            gaps.append("尚未完成 19 题风险问卷")
+            actions.append("完成风险测评")
+        if trade_count < 3:
+            gaps.append(f"90 日交易记录不足：当前 {trade_count} 条，至少需要 3 条")
+            actions.append("导入交易记录")
+        if snapshot_count < 2:
+            gaps.append(f"持仓快照不足：当前 {snapshot_count} 次，至少需要 2 次")
+            actions.append("确认持仓快照")
+        if snapshot is not None and behavior is not None:
+            if behavior.questionnaire_profile_id == snapshot.profile.profile_id:
+                effective = effective_risk_profile(snapshot.profile, behavior)
+            else:
+                gaps.append("行为画像基于旧问卷，需要重新计算")
+                actions.append("重新计算行为画像")
+        if behavior is not None and behavior.evidence_status.value == "INSUFFICIENT_DATA":
+            gaps.append("行为证据尚未达到计算条件")
+        return ProfileSummaryResponse(
+            owner_id=owner_id,
+            questionnaire_snapshot=snapshot,
+            behavior_profile=behavior,
+            effective_profile=effective,
+            display_policy=policy,
+            data_gaps=tuple(dict.fromkeys(gaps)),
+            next_actions=tuple(dict.fromkeys(actions)),
+        )
 
     @api.post(
         "/api/v1/dev-assist/runs",
@@ -1644,6 +1751,11 @@ def create_app(
             stored, created = active_store.save_portfolio_ocr_confirmation(record)
             if not created:
                 calculated["portfolio"] = stored.portfolio.model_dump(mode="json")
+            behavior_event = behavior_event_from_portfolio(
+                stored.portfolio,
+                source="user-confirmed OCR portfolio",
+            )
+            active_store.save_behavior_events(owner_id, (behavior_event,))
         except StoreConflictError:
             raise
         except (ArithmeticError, TypeError, ValueError, ValidationError):

@@ -15,7 +15,7 @@ from app.store.contracts import (
     event_content_payload,
 )
 from app.store.context import ContextMemoryRecord
-from app.profile import BehaviorEvent, BehaviorProfile, DisplayPolicy
+from app.profile import BehaviorEvent, BehaviorProfile, DisplayPolicy, QuestionnaireSnapshot
 from app.portfolio import PortfolioOcrConfirmation
 
 
@@ -77,6 +77,14 @@ class DecisionEventStore(Protocol):
     def save_display_policy(self, policy: DisplayPolicy) -> DisplayPolicy: ...
 
     def get_display_policy(self, owner_id: str) -> DisplayPolicy | None: ...
+
+    def save_questionnaire_snapshot(
+        self, snapshot: QuestionnaireSnapshot
+    ) -> tuple[QuestionnaireSnapshot, bool]: ...
+
+    def get_latest_questionnaire_snapshot(
+        self, owner_id: str
+    ) -> QuestionnaireSnapshot | None: ...
 
     def save_portfolio_ocr_confirmation(
         self, record: PortfolioOcrConfirmation
@@ -575,6 +583,82 @@ class SQLiteDecisionEventStore:
             return policy
         except Exception as exc:
             raise StoreCorruptError("stored display policy failed validation") from exc
+
+    @staticmethod
+    def _parse_questionnaire_snapshot_row(row: sqlite3.Row) -> QuestionnaireSnapshot:
+        try:
+            snapshot = QuestionnaireSnapshot.model_validate(json.loads(row["payload_json"]))
+            if (
+                snapshot.snapshot_id != row["snapshot_id"]
+                or snapshot.owner_id != row["owner_id"]
+                or snapshot.snapshot_version != row["snapshot_version"]
+                or snapshot.ruleset_version != row["ruleset_version"]
+                or snapshot.confirmed_at.isoformat() != row["confirmed_at"]
+            ):
+                raise ValueError("row identity does not match questionnaire snapshot")
+            return snapshot
+        except Exception as exc:
+            raise StoreCorruptError("stored questionnaire snapshot failed validation") from exc
+
+    def save_questionnaire_snapshot(
+        self, snapshot: QuestionnaireSnapshot
+    ) -> tuple[QuestionnaireSnapshot, bool]:
+        normalized = QuestionnaireSnapshot.model_validate(snapshot.model_dump(mode="python"))
+        _validate_owner(normalized.owner_id)
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                row = self._connection.execute(
+                    "SELECT * FROM questionnaire_snapshots WHERE snapshot_id = ?",
+                    (normalized.snapshot_id,),
+                ).fetchone()
+                if row is not None:
+                    existing = self._parse_questionnaire_snapshot_row(row)
+                    if existing != normalized:
+                        raise StoreConflictError("questionnaire snapshot identity already has different content")
+                    self._connection.execute("COMMIT")
+                    return existing, False
+                version_row = self._connection.execute(
+                    "SELECT snapshot_id FROM questionnaire_snapshots WHERE owner_id = ? AND snapshot_version = ?",
+                    (normalized.owner_id, normalized.snapshot_version),
+                ).fetchone()
+                if version_row is not None:
+                    raise StoreConflictError("questionnaire snapshot version already exists")
+                self._connection.execute(
+                    """
+                    INSERT INTO questionnaire_snapshots
+                        (snapshot_id, owner_id, snapshot_version, ruleset_version, payload_json, confirmed_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        normalized.snapshot_id,
+                        normalized.owner_id,
+                        normalized.snapshot_version,
+                        normalized.ruleset_version,
+                        _canonical_contract_json(normalized),
+                        normalized.confirmed_at.isoformat(),
+                    ),
+                )
+                self._connection.execute("COMMIT")
+                return normalized, True
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+
+    def get_latest_questionnaire_snapshot(
+        self, owner_id: str
+    ) -> QuestionnaireSnapshot | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT * FROM questionnaire_snapshots
+                WHERE owner_id = ?
+                ORDER BY snapshot_version DESC, confirmed_at DESC LIMIT 1
+                """,
+                (owner_id,),
+            ).fetchone()
+        return self._parse_questionnaire_snapshot_row(row) if row is not None else None
 
     def save_portfolio_ocr_confirmation(
         self, record: PortfolioOcrConfirmation

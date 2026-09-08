@@ -46,6 +46,9 @@ def test_owner_scoped_ocr_requires_confirmation_before_persistence() -> None:
         assert result["confirmation_status"] == "CALCULATED"
         assert result["portfolio"]["owner_id"] == OWNER
         assert result["original_image_persisted"] is False
+        behavior_events = store.list_behavior_events(OWNER)
+        assert len(behavior_events) == 1
+        assert behavior_events[0].event_type.value == "POSITION_SNAPSHOT"
         payload = store._connection.execute(
             "SELECT payload_json FROM portfolio_ocr_confirmations"
         ).fetchone()[0]
