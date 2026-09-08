@@ -1302,7 +1302,7 @@ def create_app(
                     "portfolio optimization output owner drifted"
                 )
             try:
-                expected_profile = confirm_questionnaire(request.questionnaire)
+                expected_profile = request.confirmed_profile or confirm_questionnaire(request.questionnaire)
             except ProfileConfirmationError as exc:
                 raise PortfolioOptimizationError(
                     "portfolio optimization profile could not be confirmed"

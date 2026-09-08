@@ -12,6 +12,8 @@ from pydantic import Field, model_validator
 from app.contracts.evidence import ContractModel, NonEmptyStr
 from app.gates import GateStatus
 from app.portfolio.contracts import AssetType, PortfolioImportBundle
+from app.profile import RiskProfile
+from app.portfolio.health import PortfolioHealthResponse
 
 
 class RebalancingActionType(StrEnum):
@@ -95,6 +97,7 @@ class PortfolioRebalancingRequest(ContractModel):
     deadband_pct: Decimal = Field(default=Decimal("0.50"), ge=0, le=100)
     max_turnover_pct: Decimal = Field(default=Decimal("50.00"), ge=0, le=100)
     minimum_cash_pct: Decimal = Field(default=Decimal("0.00"), ge=0, le=100)
+    confirmed_profile: RiskProfile | None = None
     round_to_lot: bool = True
     prices_cny: dict[str, Decimal] = Field(default_factory=dict)
     asset_types: dict[str, AssetType] = Field(default_factory=dict)
@@ -105,6 +108,8 @@ class PortfolioRebalancingRequest(ContractModel):
             raise ValueError("generated_at must be timezone-aware")
         if self.owner_id != self.bundle.position_snapshot.owner_id:
             raise ValueError("request owner_id does not match bundle owner_id")
+        if self.confirmed_profile is not None and self.confirmed_profile.owner_id != self.owner_id:
+            raise ValueError("confirmed profile owner does not match request owner")
         total_target = sum(self.target_weights.values())
         if any(not v.is_finite() or v < 0 or v > 100 for v in self.target_weights.values()):
             raise ValueError("target weights must be finite and between 0 and 100")
@@ -126,5 +131,6 @@ class PortfolioRebalancingResponse(ContractModel):
     actions: tuple[RebalancingAction, ...]
     execution_steps: tuple[RebalancingStep, ...]
     issues: tuple[str, ...] = ()
+    post_trade_health: PortfolioHealthResponse | None = None
     invalidation_conditions: tuple[str, ...] = ()
     disclaimer: str = "调仓方案仅供决策参考（ADVISORY_ONLY），不构成自动交易或委托指令。"

@@ -15,7 +15,7 @@ from pydantic import Field, model_validator
 
 from app.contracts.evidence import ContractModel, NonEmptyStr
 from app.portfolio import PortfolioImportBundle
-from app.profile import RiskLevel, RiskQuestionnaire
+from app.profile import RiskLevel, RiskProfile, RiskQuestionnaire
 from app.providers import FrozenDict
 from app.risk import BudgetAssessmentStatus
 
@@ -124,12 +124,16 @@ class PortfolioOptimizationRequest(ContractModel):
     questionnaire: RiskQuestionnaire
     portfolio: PortfolioImportBundle
     scenario_id: OptimizationScenarioId = OptimizationScenarioId.BASELINE_READY
+    minimum_cash_pct: Decimal = Field(default=Decimal("0.00"), ge=0, le=100)
+    confirmed_profile: RiskProfile | None = None
 
     @model_validator(mode="after")
     def validate_request(self) -> Self:
         _aware(self.generated_at, "generated_at")
         if self.questionnaire.owner_id != self.owner_id:
             raise ValueError("questionnaire owner_id does not match request owner_id")
+        if self.confirmed_profile is not None and self.confirmed_profile.owner_id != self.owner_id:
+            raise ValueError("confirmed profile owner does not match request owner")
         if self.portfolio.owner_id != self.owner_id:
             raise ValueError("portfolio owner_id does not match request owner_id")
         if _sensitive(self.model_dump_json()):

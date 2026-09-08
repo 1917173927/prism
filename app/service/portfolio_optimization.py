@@ -27,6 +27,7 @@ from app.optimization import (
     PortfolioOptimizationTemplateResponse,
 )
 from app.portfolio import (
+    AssetType,
     ExposureBasis,
     ExposureResult,
     ExposureStatus,
@@ -504,6 +505,24 @@ class FixturePortfolioOptimizationService:
             sector_caps[sector] = cap_cents
 
         initial_sector = {sector: min(sector_cents[sector], sector_caps[sector]) for sector in sectors}
+        cash_sectors = {_normal_key(c.sector) for c in report.contributions if c.asset_type == AssetType.CASH}
+        cash_floor = _cents(request.minimum_cash_pct)
+        if cash_floor:
+            if len(cash_sectors) != 1 or sector_caps.get(next(iter(cash_sectors), ""), 0) < cash_floor:
+                return self._failure_response(
+                    request, portfolio, profile_id, profile_version, risk_level, scenario,
+                    OptimizationStatus.BLOCKED, "缺少可用现金持仓或现金上限低于最低要求，无法闭合目标结构。",
+                    (OptimizationIssue(code=OptimizationIssueCode.INFEASIBLE_CONSTRAINTS, safe_message="cash floor cannot be represented within current holdings and caps"),),
+                )
+            cash_sector = next(iter(cash_sectors))
+            initial_sector[cash_sector] = max(initial_sector[cash_sector], cash_floor)
+            excess = max(0, sum(initial_sector.values()) - 10000)
+            for sector in sorted((s for s in sectors if s != cash_sector), key=lambda s: (-initial_sector[s], s)):
+                reduction = min(excess, initial_sector[sector])
+                initial_sector[sector] -= reduction
+                excess -= reduction
+                if not excess:
+                    break
         technology_sectors = sorted(
             sector for sector in sectors if sector in _TECHNOLOGY_SECTORS
         )
@@ -749,7 +768,7 @@ class FixturePortfolioOptimizationService:
             assessment_id=assessment.assessment_id,
             assessment_status=assessment.status,
             status=OptimizationStatus.READY,
-            summary="已按确认画像和风险预算生成确定性目标结构；结果不是交易指令。",
+            summary=f"已按确认画像和风险预算生成确定性目标结构，现金最低要求 {request.minimum_cash_pct}%；结果不是交易指令。",
             targets=tuple(target_rows),
             constraints=tuple(constraints),
             invalidation_conditions=invalidation,
@@ -807,7 +826,7 @@ class FixturePortfolioOptimizationService:
             request = PortfolioOptimizationRequest.model_validate(
                 request.model_dump(mode="python") if isinstance(request, PortfolioOptimizationRequest) else request
             )
-            profile = confirm_questionnaire(request.questionnaire)
+            profile = request.confirmed_profile or confirm_questionnaire(request.questionnaire)
             portfolio = self._scenario_portfolio(request.portfolio, request.scenario_id)
             scenario = _scenario_definition(request.scenario_id)
             if request.scenario_id == OptimizationScenarioId.SOURCE_PARTIAL and not portfolio.fund_holdings:

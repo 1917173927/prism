@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN
+from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, ROUND_UP
 import re
 
 from app.gates import GateStatus
-from app.portfolio.contracts import AssetType, PositionImportStatus
+from app.portfolio.contracts import AssetType, Position, PositionImportStatus
+from app.portfolio.health import PortfolioHealthRequest, calculate_portfolio_health
+from app.portfolio import calculate_exposure
+from app.risk import calculate_concentration, assess_risk_budget
 from app.rebalancing.contracts import (
     PortfolioRebalancingRequest,
     PortfolioRebalancingResponse,
@@ -142,6 +145,11 @@ class PortfolioRebalancingService:
             shares = (abs(action.cash_delta_cny) / price / lot).to_integral_value(rounding=ROUND_DOWN) * lot
             if selling and pos:
                 shares = pos.quantity if action.target_weight_pct == 0 else min(shares, (pos.quantity // lot) * lot)
+                if request.confirmed_profile is not None and request.round_to_lot:
+                    # A profile-constrained sale must reach its target rather than
+                    # silently leave an excess position. The resulting portfolio
+                    # is independently checked below, including fees and turnover.
+                    shares = min(pos.quantity, (abs(action.cash_delta_cny) / price / lot).to_integral_value(rounding=ROUND_UP) * lot)
             rationale = action.rationale
             if shares == 0:
                 rationale = f"目标偏差 {action.target_weight_pct - action.current_weight_pct}% 超过死区，但按 {lot} 股/份交易单位向下取整为 0，本项未执行，目标尚未达到"
@@ -153,7 +161,8 @@ class PortfolioRebalancingService:
                 while low < high:
                     middle = (low + high + 1) // 2
                     amount = _q2(Decimal(middle) * lot * price)
-                    if amount + trade_fees(amount, False, stock)["total_fees_cny"] <= cash_available:
+                    cash_reserve = total_val * request.minimum_cash_pct / 100
+                    if amount + trade_fees(amount, False, stock)["total_fees_cny"] <= cash_available - cash_reserve:
                         low = middle
                     else:
                         high = middle - 1
@@ -249,6 +258,45 @@ class PortfolioRebalancingService:
             status = GateStatus.REVIEW_REQUIRED
             issues.append(f"总换手率 {turnover_pct}% 超出设定上限 {request.max_turnover_pct}%")
 
+        post_trade_health = None
+        if request.confirmed_profile is not None and metrics.cash_shortfall_cny == 0:
+            projected = []
+            for action in actions:
+                if action.asset_type == AssetType.CASH:
+                    continue
+                old = pos_by_asset.get(action.asset_id)
+                value = action.current_value_cny + action.cash_delta_cny
+                if value <= 0:
+                    continue
+                if old is None or not _exchange_asset(action.asset_id):
+                    issues.append(f"{action.asset_id}: 缺少完整证券持仓信息，无法完成交易后体检")
+                    continue
+                quantity = old.quantity + (action.shares or 0) * (-1 if action.cash_delta_cny < 0 else 1)
+                projected.append(old.model_copy(update={"quantity": quantity, "market_value": value}))
+            if metrics.cash_after_cny > 0:
+                projected.append(Position(
+                    position_id=f"post-trade-cash:{request.request_id}", owner_id=request.owner_id,
+                    asset_id="CASH-CNY", asset_type=AssetType.CASH, asset_name="可用现金", sector="Cash",
+                    quantity=metrics.cash_after_cny, market_value=metrics.cash_after_cny, currency="CNY",
+                    as_of=request.generated_at, source="hypothetical rebalancing after fees",
+                ))
+            if projected and not any("无法完成交易后体检" in issue for issue in issues):
+                snapshot = request.bundle.position_snapshot.model_copy(update={"positions": tuple(projected)})
+                bundle = request.bundle.model_copy(update={"position_snapshot": snapshot})
+                post_trade_health = calculate_portfolio_health(PortfolioHealthRequest(
+                    request_id=f"post-trade:{request.request_id}", owner_id=request.owner_id,
+                    calculated_at=request.generated_at, portfolio=bundle, profile=request.confirmed_profile,
+                ))
+                if post_trade_health.status != "PASS":
+                    issues.append("交易后完整体检未通过，尚有行业、集中度、现金或数据质量风险")
+                budget_check = assess_risk_budget(request.confirmed_profile, calculate_concentration(calculate_exposure(bundle)))
+                if budget_check.breaches:
+                    issues.append("交易后仍有资产或行业风险预算超限")
+            else:
+                issues.append("无法构造完整交易后组合，本次方案需要复核")
+            if issues:
+                status = GateStatus.REVIEW_REQUIRED
+
         invalidation_conditions = (
             "组合内任意资产价格变动超过 5.00%",
             "宏观或行业风险预算上限调整",
@@ -263,5 +311,6 @@ class PortfolioRebalancingService:
             actions=tuple(actions),
             execution_steps=tuple(steps),
             issues=tuple(issues),
+            post_trade_health=post_trade_health,
             invalidation_conditions=invalidation_conditions,
         )

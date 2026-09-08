@@ -4911,8 +4911,10 @@
           owner_id: requestOwner,
           generated_at: new Date().toISOString(),
           questionnaire,
+          confirmed_profile: state.profile.profile,
           portfolio,
           scenario_id: scenarioId,
+          minimum_cash_pct: state.portfolioHealthRun?.cash_minimum_pct || "0.00",
         }),
       });
       if (!response.ok) throw await apiError(response);
@@ -5756,6 +5758,7 @@
           owner_id: token.ownerId,
           generated_at: new Date().toISOString(),
           bundle: portfolio,
+          confirmed_profile: state.profile?.profile || null,
           target_weights: targetWeights,
           deadband_pct: "0.50",
           max_turnover_pct: "50.00",
@@ -8262,6 +8265,12 @@
       reasons.append(item);
     });
     notice.append(reasons);
+    if (plan.post_trade_health) {
+      const health = plan.post_trade_health;
+      const result = document.createElement("p");
+      result.textContent = `按本次步骤执行并扣费后的假设体检：${health.status}；现金 ${health.cash_weight_pct}%（最低 ${health.cash_minimum_pct}%）；行业 HHI ${health.sector_hhi}（上限 ${health.hhi_limit}）。实际持仓未被修改。`;
+      notice.append(result);
+    }
     return notice;
   }
 
