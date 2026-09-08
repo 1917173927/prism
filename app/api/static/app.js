@@ -1699,6 +1699,10 @@
     return profile ? `已确认 · ${profileLevelText(profile)}` : "待确认问卷";
   }
 
+  function activeProfileTag() {
+    return currentProfileTag(state.profileSummary?.questionnaire_snapshot ? state.profile?.profile : null);
+  }
+
   function renderCurrentProfileIdentity(profile = null) {
     const persona = PERSONAS[state.selectedPersona];
     if (!persona) return;
@@ -7239,7 +7243,7 @@
     facts.className = "evidence-fact-strip";
     [
       { label: "分析了什么", value: `${health.evidence_count} 项持仓贡献`, note: "含基金底层持仓" },
-      { label: "依据哪套边界", value: persona.tag, note: "来自已确认画像" },
+      { label: "依据哪套边界", value: activeProfileTag(), note: "来自已确认画像" },
       { label: "结果状态", value: needsReview ? "需要复核" : "当前通过", note: "由 Python 后端判定" },
     ].forEach((fact) => {
       const item = document.createElement("div");
@@ -7312,7 +7316,7 @@
     [
       { icon: "icon-file-text", title: "读取持仓", text: "使用你已确认的数量、价格和现金。" },
       { icon: "icon-layers", title: "还原真实占比", text: "股票直接归类，基金继续穿透到底层持仓。" },
-      { icon: "icon-scale", title: "对照风险边界", text: `逐项对照 ${persona.tag} 的行业上限和现金最低要求。` },
+      { icon: "icon-scale", title: "对照风险边界", text: `逐项对照 ${activeProfileTag()} 的行业上限和现金最低要求。` },
       { icon: needsReview ? "icon-alert" : "icon-check", title: "形成判断", text: primaryIssue ? `${primaryIssue.name}触发复核。` : needsReview ? "信息不完整，保留复核状态。" : "没有指标触发硬边界。" },
     ].forEach((step, index, items) => {
       const card = document.createElement("div");
@@ -7523,7 +7527,7 @@
       .filter(x => x.verdict.isOver);
     const requiresReview = health.status !== "PASS";
 
-    if (rankPill) rankPill.textContent = persona.tag;
+    if (rankPill) rankPill.textContent = activeProfileTag();
     if (verdictBadge) {
       clear(verdictBadge);
       verdictBadge.className = requiresReview ? "cf-verdict cf-verdict-risk" : "cf-verdict cf-verdict-pass";
@@ -7558,7 +7562,7 @@
         causeCallout.textContent = `当前没有数值超限项，但后端状态为 ${health.status}；请先处理缺失或未分类数据。`;
       } else {
         causeCallout.className = "donut-cause-callout pass";
-        causeCallout.textContent = `合规状态：后端穿透结果处于 ${persona.tag} 安全限额内，未触发硬闸门拦截。`;
+        causeCallout.textContent = `合规状态：后端穿透结果处于 ${activeProfileTag()} 安全限额内，未触发硬闸门拦截。`;
       }
     }
 
@@ -7627,7 +7631,7 @@
 
       const comparison = document.createElement("p");
       const comparator = v.isCash ? "不低于" : "不高于";
-      comparison.textContent = `实际暴露 ${s.pct.toFixed(1)}%；${persona.tag} 画像要求${comparator} ${s.cap.toFixed(1)}%。`;
+      comparison.textContent = `实际暴露 ${s.pct.toFixed(1)}%；${activeProfileTag()} 画像要求${comparator} ${s.cap.toFixed(1)}%。`;
 
       const result = document.createElement("p");
       result.className = "donut-sector-detail-result";
@@ -8776,7 +8780,7 @@
           persona_id: state.selectedPersona || "custom-user",
           persona_info: {
             name: persona.name,
-            tag: persona.tag,
+            tag: activeProfileTag(),
             max_drawdown: persona.maxDrawdown,
             budget_cap: persona.budgetCap,
           },

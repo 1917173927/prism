@@ -12,6 +12,8 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
         pytest.skip("Node.js required")
     source = Path("app/api/static/app.js").read_text(encoding="utf-8")
     function = re.search(r"  async function handleStreamingChat\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
+    function += "\n" + "\n".join(re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
+                                  for name in ["profileLevelText", "currentProfileTag", "activeProfileTag"])
     probe = r'''
 const assert = require('node:assert/strict');
 class Element {
