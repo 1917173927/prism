@@ -11,6 +11,8 @@
 
 ## Product UX
 
+- [x] 修复自然语言持仓千位逗号截断数量、成本和现金的问题；用户原文浏览器复测成功，相关 37 项测试通过。
+
 - [x] 修复真实数据用户流程：首次使用前置检查、持仓现价、基金数据边界、缺失字段、聊天标的、HHI 渲染、调仓与压力测试失败恢复；全量 572 项测试通过。
 
 - [x] Reorganize the default frontend around user tasks, with detailed research and audit modules available through explicit progressive disclosure.

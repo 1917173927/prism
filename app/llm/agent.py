@@ -163,6 +163,13 @@ class CopilotAgent:
     async def parse_portfolio_from_text(self, text: str) -> dict[str, Any]:
         """Parse natural language into structured portfolio bundle."""
         text_clean = text.strip()
+        # Normalize grouped numbers before extracting quantities, costs and cash.
+        # Keep commas outside valid thousands groups as text delimiters.
+        text_clean = re.sub(
+            r"(?<![\d,])\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d,])",
+            lambda match: match.group(0).replace(",", ""),
+            text_clean,
+        )
         request_mode = get_runtime_mode_controller().mode
 
         # Extract cash (supports "2万元现金", "现金2万元", "现金 20000元", etc.)

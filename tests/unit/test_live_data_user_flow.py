@@ -95,6 +95,52 @@ def test_text_holdings_preserve_explicit_live_price_and_cost(monkeypatch):
     assert result["positions"][0]["price"] == 1400
 
 
+@pytest.mark.parametrize("grouped", [True, False])
+def test_multiline_holdings_with_thousands_separators_confirm_all_values(monkeypatch, grouped):
+    from fastapi.testclient import TestClient
+    from app.api.main import create_app
+
+    text = """我持有 600股 贵州茅台，买入均价 1,680元；
+1,000股 宁德时代，买入均价 225元；
+800股 中国平安，买入均价 48元；
+2,000股 中芯国际（688981），买入均价 58元；
+1,500股 恒瑞医药，买入均价 42元；
+以及 28,000元 现金。"""
+    if not grouped:
+        text = text.replace(",", "")
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
+    quote = AsyncMock(return_value={"price_cny": 100})
+    monkeypatch.setattr("app.providers.fuyao.FuyaoFinanceProvider.get_quote", quote)
+    with TestClient(create_app()) as client:
+        response = client.post("/api/v1/copilot/parse-portfolio", json={"text": text})
+        assert response.status_code == 200
+        parsed = response.json()
+        assert parsed["status"] == "SUCCESS"
+        actual = {p["asset_id"]: (p["quantity"], p["cost_price"]) for p in parsed["positions"]}
+        assert actual == {"600519.SH": (600, 1680), "300750.SZ": (1000, 225),
+                          "601318.SH": (800, 48), "688981.SH": (2000, 58), "600276.SH": (1500, 42)}
+        assert parsed["cash_cny"] == 28000
+        assert parsed["total_value_cny"] == 618000
+        confirmed = client.post("/api/v1/copilot/validate-portfolio-ocr", headers={"X-Owner-ID": "grouped-test"},
+                                json={"owner_id": "grouped-test", "positions": parsed["positions"], "cash_cny": parsed["cash_cny"]})
+        assert confirmed.status_code == 200, confirmed.text
+        assert confirmed.json()["total_value_cny"] == 618000
+
+
+def test_grouped_decimal_prices_and_cash_preserve_sentence_commas(monkeypatch):
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
+    agent = CopilotAgent()
+    agent.live_finance_provider = SimpleNamespace(get_quote=AsyncMock(side_effect=AssertionError("unexpected quote")))
+    parsed = asyncio.run(agent.parse_portfolio_from_text(
+        "600股贵州茅台,现价1,300.25元,买入均价1,680.50元；现金1,028,000.25元"
+    ))
+    assert parsed["positions"][0]["quantity"] == 600
+    assert parsed["positions"][0]["price"] == 1300.25
+    assert parsed["positions"][0]["cost_price"] == 1680.50
+    assert parsed["cash_cny"] == 1028000.25
+    assert parsed["total_value_cny"] == 1808150.25
+
+
 def test_live_text_without_price_uses_quote_and_does_not_invent_etf(monkeypatch):
     monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
     agent = CopilotAgent()
