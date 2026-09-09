@@ -14,6 +14,7 @@ import asyncio
 from datetime import UTC, datetime
 import logging
 import os
+import secrets
 from typing import Any
 
 import httpx
@@ -46,11 +47,20 @@ class WencaiSkillHubProvider(FinancialProvider):
         timeout_seconds: float = 2.0,
     ) -> None:
         self._name = name
-        self._api_key = api_key or os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()
+        self._api_key = (
+            api_key
+            or os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()
+            or os.getenv("IWENCAI_API_KEY", "").strip()
+        )
         self._base_url = (
-            base_url or os.getenv("WENCAI_SKILLHUB_BASE_URL", "https://api.iwencai.com/skillhub/v1")
+            base_url
+            or os.getenv("WENCAI_SKILLHUB_BASE_URL", "").strip()
+            or os.getenv("IWENCAI_BASE_URL", "").strip()
+            or "https://openapi.iwencai.com"
         ).rstrip("/")
         self._timeout_seconds = min(max(timeout_seconds, 0.001), 2.0)
+        self._skill_id = os.getenv("WENCAI_SKILL_ID", "prism-investment-agent").strip()
+        self._skill_version = os.getenv("WENCAI_SKILL_VERSION", "1.0.0").strip()
 
     @property
     def name(self) -> NonEmptyStr:
@@ -94,7 +104,28 @@ class WencaiSkillHubProvider(FinancialProvider):
             )
 
         query = str(request.subject or request.parameters.get("query") or "")
-        endpoint = f"{self._base_url}/semantic/search"
+        is_comprehensive_search = request.operation in {
+            ProviderOperation.SEARCH_NEWS,
+            ProviderOperation.SEARCH_REPORTS,
+        }
+        if is_comprehensive_search:
+            channel = "news" if request.operation == ProviderOperation.SEARCH_NEWS else "report"
+            endpoint = f"{self._base_url}/v1/comprehensive/search"
+            payload = {
+                "channels": [channel],
+                "app_id": "AIME_SKILL",
+                "query": query,
+                "limit": str(request.parameters.get("limit", "10")),
+            }
+        else:
+            endpoint = f"{self._base_url}/v1/query2data"
+            payload = {
+                "query": query,
+                "page": str(request.parameters.get("page", "1")),
+                "limit": str(request.parameters.get("limit", "10")),
+                "is_cache": str(request.parameters.get("is_cache", "1")),
+                "expand_index": str(request.parameters.get("expand_index", "true")).lower(),
+            }
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
@@ -104,19 +135,43 @@ class WencaiSkillHubProvider(FinancialProvider):
                         "Authorization": f"Bearer {self._api_key}",
                         "Content-Type": "application/json",
                         "X-Request-ID": request.request_id,
+                        "X-Claw-Call-Type": "normal",
+                        "X-Claw-Skill-Id": self._skill_id,
+                        "X-Claw-Skill-Version": self._skill_version,
+                        "X-Claw-Plugin-Id": "none",
+                        "X-Claw-Plugin-Version": "none",
+                        "X-Claw-Trace-Id": secrets.token_hex(32),
                     },
-                    json={
-                        "query": query,
-                        "operation": request.operation.value,
-                        "parameters": dict(request.parameters),
-                    },
+                    json=payload,
                 )
                 latency_ms = max(1, int((datetime.now(UTC) - start_time).total_seconds() * 1000))
 
                 if resp.status_code == 200:
                     data = resp.json()
-                    raw_items = data.get("items") or []
-                    if not raw_items and not data.get("summary"):
+                    if not is_comprehensive_search and data.get("status_code", 0) != 0:
+                        return ProviderResult(
+                            request_id=request.request_id,
+                            request_fingerprint=fingerprint,
+                            provider=self._name,
+                            status=ProviderStatus.FAILED,
+                            serving_mode=ProviderServingMode.DIRECT,
+                            retrieved_at=datetime.now(UTC),
+                            records=(),
+                            missing_fields=(),
+                            issues=(ProviderIssue(
+                                code=ProviderIssueCode.INVALID_RESPONSE,
+                                stage="execute",
+                                safe_message=f"Wencai query rejected: {data.get('status_msg', 'unknown error')}",
+                                retriable=False,
+                            ),),
+                            scope_description=f"Wencai query rejected for {query}",
+                            latency_ms=latency_ms,
+                        )
+
+                    raw_items = data.get("data") if is_comprehensive_search else data.get("datas")
+                    raw_items = raw_items or data.get("items") or []
+                    upstream_summary = data.get("summary") or data.get("status_msg")
+                    if not raw_items and not upstream_summary:
                         return ProviderResult(
                             request_id=request.request_id,
                             request_fingerprint=fingerprint,
@@ -137,10 +192,13 @@ class WencaiSkillHubProvider(FinancialProvider):
                         "query": query,
                         "source": "iwencai.com / SkillHub (Official Live)",
                         "retrieved_at": datetime.now(UTC).isoformat(),
-                        "summary": data.get("summary", ""),
+                        "summary": upstream_summary or f"问财查询完成：{query}",
                         "sentiment": data.get("sentiment", "NEUTRAL"),
                         "confidence": str(data.get("confidence", "1.0")),
                         "items": raw_items,
+                        "columns": data.get("columns", []),
+                        "row_count": data.get("row_count", len(raw_items)),
+                        "code_count": data.get("code_count", len(raw_items)),
                     }
                     records.append(
                         ProviderRecord(

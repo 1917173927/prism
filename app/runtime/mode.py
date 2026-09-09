@@ -115,7 +115,10 @@ class RuntimeModeController:
     @property
     def _wencai_configured_and_verified(self) -> bool:
         return (
-            bool(os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip())
+            bool(
+                os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()
+                or os.getenv("IWENCAI_API_KEY", "").strip()
+            )
             and self.is_contract_verified
         )
 

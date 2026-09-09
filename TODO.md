@@ -21,7 +21,7 @@
 - [x] 历史记忆按 owner 检索最近 100 条显式保存记录，返回来源与摘要，模型不可用时明确降级；不自动应用历史持仓。
 - [x] AntV X6 固定研究节点依赖编辑、版本保存及有界执行；已验证 MOCK 页面路径、环路拒绝、版本冲突及超时取消。
 - [x] 可选 PostgreSQL 后端、原子迁移与失败回滚；真实 17.11 九项数据库回归通过，未切换用户 SQLite 主库。
-- [ ] 正式上游授权、券商环境、真实模型质量及外部长期 SLA 仍需独立验收。
+- [ ] 正式上游配额/留存/展示授权、真实模型质量及外部长期 SLA 仍需独立验收；券商同步不在当前范围内。
 
 ## Product UX
 
@@ -175,7 +175,7 @@
 - [x] 接入扶摇服务端金融数据凭据；普通用户无需配置上游 API Key，LIVE 行情与基金披露持仓已完成真实请求验证。
 - [x] 合并扶摇与问财核心能力：各 Provider 独立降级；问财未配置时不阻断扶摇行情、基金披露和基于已确认持仓的确定性组合计算。
 - [ ] 在公开部署或向第三方开放 Prism API 前，确认扶摇多用户展示、缓存、派生结果、调用限额、SLA 与再分发授权。
-- [x] External decision confirmed: 官方 SkillHub 开发文档与测试凭据目前处于「暂时没有」状态。本轮系统架构严格实现真实适配器骨架（LiveWencaiProvider）与离线不可用/降级态（SKELETON_UNAVAILABLE），绝不虚假声称真实接口已测试通过。
+- [x] 已注入用户提供的问财 OpenAPI 服务端凭据并完成真实查询 smoke test；适配器使用 `IWENCAI_BASE_URL`/`IWENCAI_API_KEY`，保留 `WENCAI_SKILLHUB_*` 兼容别名和严格失败降级。
 - [ ] Obtain competition-specific SkillHub development documentation and production credentials when officially issued by the committee.
 - [ ] Confirm SkillHub quotas, caching, retention, attribution and output-display rights.
 - [ ] Obtain the scoring appendix referenced by the competition brief.

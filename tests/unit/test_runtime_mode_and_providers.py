@@ -34,7 +34,10 @@ def clean_env():
     """Ensure clean environment variables for reproducible mode tests."""
     names = (
         "WENCAI_SKILLHUB_API_KEY",
+        "WENCAI_SKILLHUB_BASE_URL",
         "WENCAI_SKILLHUB_CONTRACT_VERIFIED",
+        "IWENCAI_API_KEY",
+        "IWENCAI_BASE_URL",
         "HITHINK_FINANCE_API_KEY",
     )
     old_values = {name: os.environ.get(name) for name in names}
@@ -110,6 +113,13 @@ class TestRuntimeModeController:
             assert capabilities["portfolio_refresh"] is True
 
         asyncio.run(_run())
+
+    def test_iwencai_alias_enables_live_capabilities(self, monkeypatch):
+        monkeypatch.setenv("IWENCAI_API_KEY", "official-test-key")
+        monkeypatch.setenv("WENCAI_SKILLHUB_CONTRACT_VERIFIED", "true")
+        controller = RuntimeModeController()
+        assert controller.is_wencai_ready is True
+        assert controller.get_status()["capabilities"]["LIVE"]["semantic_search"] is True
 
     def test_wencai_runtime_failure_revokes_only_wencai_capabilities(self):
         async def _run():
@@ -249,6 +259,43 @@ class TestWencaiSkillHubProvider:
                 assert len(result.records) == 1
                 assert result.records[0].fields["summary"] == "寒武纪AI芯片产品在算力中心渗透加速"
                 assert result.records[0].fields["sentiment"] == "BULLISH"
+        asyncio.run(_run())
+
+    def test_official_iwencai_alias_and_query_contract(self, monkeypatch):
+        async def _run():
+            monkeypatch.setenv("IWENCAI_API_KEY", "official-test-key")
+            monkeypatch.setenv("IWENCAI_BASE_URL", "https://openapi.iwencai.com")
+            provider = WencaiSkillHubProvider()
+            req = ProviderRequest(
+                request_id="req-iwencai-001",
+                operation=ProviderOperation.MARKET_DATA,
+                subject="今日涨幅最大的5只A股",
+            )
+            mock_resp = httpx.Response(
+                200,
+                json={
+                    "status_code": 0,
+                    "query": req.subject,
+                    "columns": [{"key": "股票代码", "label": "code"}],
+                    "datas": [{"股票代码": "300750.SZ", "股票简称": "宁德时代"}],
+                    "row_count": 1,
+                    "code_count": 1,
+                    "chunks_info": [],
+                },
+                request=httpx.Request("POST", "https://openapi.iwencai.com/v1/query2data"),
+            )
+            with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+                mock_post.return_value = mock_resp
+                result = await provider.execute(req)
+                assert result.status == ProviderStatus.SUCCESS
+                assert result.records[0].fields["items"][0]["股票代码"] == "300750.SZ"
+                called_url = mock_post.call_args.args[0]
+                assert called_url == "https://openapi.iwencai.com/v1/query2data"
+                headers = mock_post.call_args.kwargs["headers"]
+                assert headers["Authorization"] == "Bearer official-test-key"
+                assert headers["X-Claw-Skill-Version"] == "1.0.0"
+                assert mock_post.call_args.kwargs["json"]["query"] == req.subject
+
         asyncio.run(_run())
 
     def test_configured_provider_upstream_429_rate_limit(self):

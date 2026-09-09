@@ -11,12 +11,16 @@ Iwencai SkillHub CLI 只负责安装和管理 Skill，不等于行情、财务�
 LIVE 只读取服务端环境变量，浏览器不会接收凭据：
 
 ```bash
-export WENCAI_SKILLHUB_API_KEY="<server-side-key>"
-export WENCAI_SKILLHUB_BASE_URL="<verified-official-base-url>"
+export IWENCAI_API_KEY="<server-side-key>"
+export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 export WENCAI_SKILLHUB_CONTRACT_VERIFIED="true"
+export WENCAI_SKILL_ID="prism-investment-agent"
+export WENCAI_SKILL_VERSION="1.0.0"
 ```
 
-`WENCAI_SKILLHUB_CONTRACT_VERIFIED=true` 是人工确认闸门，表示当前 Base URL、鉴权方式和响应字段已经根据官方文档或脱敏测试响应完成映射。缺少该变量时，系统保持 MOCK，LIVE 切换返回 409。
+`IWENCAI_*` 与原有 `WENCAI_SKILLHUB_*` 配置均可使用，前者优先用于问财 OpenAPI。`WENCAI_SKILLHUB_CONTRACT_VERIFIED=true` 是人工确认闸门，表示当前 Base URL、鉴权方式和响应字段已经完成映射。缺少该变量时，系统保持 MOCK，LIVE 切换返回 409。
+
+问财 OpenAPI 查询使用 `POST /v1/query2data`；新闻和研报使用 `POST /v1/comprehensive/search`。请求使用服务端 Bearer 鉴权，并附带 Skill 调用标识和 64 位追踪 ID。浏览器不会接收凭据。
 
 ## 3. LIVE 刷新流程
 
@@ -33,4 +37,4 @@ PortfolioImportBundle
 
 ## 4. 当前验证边界
 
-Provider 只接受明确的规范字段，例如 `price_cny`、`observed_at`、`sector` 和基金 `top_holdings`。当前没有注入真实官方凭据和已确认的官方响应契约，因此默认不能宣称 LIVE 已接通。
+Provider 将问财 `datas`/`data` 响应保留为原始结构化记录，并执行字段存在性校验。当前已使用服务端配置完成真实问财查询 smoke test（HTTP 200、`status_code=0`、5 条结果）；配额、留存、展示授权和长期 SLA 仍需单独确认。

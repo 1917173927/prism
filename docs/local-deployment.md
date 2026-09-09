@@ -2,7 +2,7 @@
 
 ## 第1章 运行边界
 
-当前交付运行于本地回环地址，默认 SQLite 保存已确认画像、持仓、决策与上下文，可显式选择 PostgreSQL 后端。远端 Git 仓库存放代码，不存放账户文件、数据库或供应商密钥。正式问财授权和券商接入尚未验收。
+当前交付运行于本地回环地址，默认 SQLite 保存已确认画像、持仓、决策与上下文，可显式选择 PostgreSQL 后端。远端 Git 仓库存放代码，不存放账户文件、数据库或供应商密钥。问财 OpenAPI 已完成本地真实查询 smoke test；券商同步不在当前范围内。
 
 | 配置 | 默认 | 用途 | 验证边界 |
 |---|---|---|---|
@@ -10,6 +10,8 @@
 | `PRISM_DATABASE_URL` | 未设置 | PostgreSQL 连接配置，设置后优先于 SQLite | 真实 PostgreSQL 17.11 隔离回归；不自动搬迁旧数据 |
 | `PRISM_AUTH_ACCOUNTS_FILE` | 未设置 | 启用 HTTP Basic 账户校验 | 本地回环；跨机器必须先配置 HTTPS |
 | `HITHINK_FINANCE_API_KEY` | 未设置 | 扶摇服务端凭据 | 真实能力探测成功后可用 |
+| `IWENCAI_API_KEY` / `IWENCAI_BASE_URL` | 未设置 / `https://openapi.iwencai.com` | 问财 OpenAPI 服务端凭据与地址 | 配置 Skill 版本头并完成真实查询后可用 |
+| `WENCAI_SKILLHUB_CONTRACT_VERIFIED` | `false` | 问财响应契约人工确认闸门 | `true` 后允许问财 LIVE 能力 |
 | `/api/health` | 无认证 | 进程和数据模式健康检查 | 不等于供应商可用性承诺 |
 
 未设置认证文件时为开发模式，`X-Owner-ID` 只是数据命名空间，不构成访问保护。认证开启后所有页面及业务接口需要认证，服务端将身份绑定到固定 owner；普通账户无权修改全局模型和数据模式。认证文件无效时启动失败，不自动回退到开发模式。
