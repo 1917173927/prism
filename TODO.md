@@ -1,6 +1,6 @@
 # TODO
 
-> Updated: 2026-09-08
+> Updated: 2026-09-09
 
 当前执行清单：[剩余缺口实施与验收](docs/plans/2026-09-08-gap-closure.md)。用户已授权推进其余缺口，明确排除正式 PPT、视频和提交版测试报告；外部授权与生产 SLA 需独立验证。
 >
@@ -41,6 +41,9 @@
 - [x] Reorganize the default frontend around user tasks, with detailed research and audit modules available through explicit progressive disclosure.
 - [x] Validate the task-first home, detailed-workbench toggle, analysis view, health-check flow, and responsive layout in a real browser.
 - [x] Connect sector drill-down results below the chart and restore the evidence-lineage modal without changing sidebar or page partition behavior.
+- [x] Make Agent conversation the standalone default home and move portfolio, research, decision history, and profile management to separate pages.
+- [x] Require the formal 19-question investor suitability assessment on first entry and remove questionnaire completion indicators from the returning-user home.
+- [x] Keep behavior-profile context visually secondary and allow bounded profile refinement inside the conversation without raising the formal risk level.
 
 ## 2026-09-07 Engineering Backlog
 

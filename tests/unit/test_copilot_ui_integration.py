@@ -22,9 +22,13 @@ def test_copilot_markup_structure() -> None:
     assert 'data-persona="persona-li-r2"' in markup
     assert 'data-persona="persona-wang-r4"' in markup
 
-    # L1 Copilot task center elements
+    # L1 Agent-first home elements
     for element_id in (
         "copilot",
+        "agent-home-grid",
+        "agent-conversation",
+        "agent-profile-rail",
+        "start-conversation-profile-update",
         "copilot-hero-avatar",
         "copilot-hero-name",
         "copilot-hero-tag",
@@ -37,13 +41,6 @@ def test_copilot_markup_structure() -> None:
         "copilot-natural-input",
         "copilot-submit-query",
         "copilot-quick-tags",
-        "task-card-health",
-        "task-card-research",
-        "task-card-rebalance",
-        "copilot-btn-health-check",
-        "copilot-stock-input",
-        "copilot-btn-stock-research",
-        "copilot-btn-rebalance",
         "copilot-decision-output",
         "copilot-chat-panel",
         "copilot-chat-messages",
@@ -102,6 +99,10 @@ def test_copilot_script_personas_and_workflows() -> None:
         "function runCopilotScenarioShock()",
         "function handleNaturalQuerySubmit()",
         "function handleStreamingChat(",
+        "function applyQuestionnaireGate(",
+        "function startConversationProfileUpdate(",
+        "function renderConversationProfileQuestion(",
+        "function confirmConversationProfileUpdate(",
         "function handleParsePortfolioSubmit(",
         "function openPortfolioModal(",
         "function closePortfolioModal(",
@@ -149,8 +150,11 @@ def test_copilot_styles_and_responsive_rules() -> None:
         ".persona-switcher-bar",
         ".persona-chip.active",
         ".copilot-section",
-        ".copilot-hero-card",
-        ".copilot-stats-grid",
+        ".agent-home-grid",
+        ".agent-conversation",
+        ".agent-profile-rail",
+        ".agent-profile-summary",
+        ".conversation-profile-card",
         ".copilot-query-box",
         ".copilot-natural-input",
         ".copilot-submit-btn",

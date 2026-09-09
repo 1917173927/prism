@@ -12,7 +12,12 @@
     <script src="/static/app.js" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
-  <body>
+  <body class="questionnaire-pending">
+    <div id="questionnaire-entry-loading" class="questionnaire-entry-loading" role="status" aria-live="polite">
+      <span class="questionnaire-entry-mark" aria-hidden="true">P</span>
+      <strong>正在核验风险测评状态</strong>
+      <p>首次使用需要先完成投资者风险测评。</p>
+    </div>
     <!-- SVG 图标库 (CSP 兼容，零外部网络请求) -->
     <svg xmlns="http://www.w3.org/2000/svg" class="svg-sprite" aria-hidden="true">
       <symbol id="icon-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -126,8 +131,8 @@
             <a class="nav-item nav-item-copilot" href="#copilot" id="nav-copilot">
               <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
               <div class="nav-copilot-label">
-                <strong>开始分析</strong>
-                <span>工作台与智能问答</span>
+                <strong>Agent 对话</strong>
+                <span>默认首页</span>
               </div>
             </a>
             <a class="nav-item active" href="#overview" aria-current="location">
@@ -192,8 +197,8 @@
         <header class="topbar">
           <div class="topbar-title-area">
             <span class="eyebrow">个人投资工作台</span>
-            <h1>今天，先解决一个投资问题</h1>
-            <p class="topbar-subtitle">把复杂的信息整理成看得懂、做得到的下一步。</p>
+            <h1>Prism 投资 Agent</h1>
+            <p class="topbar-subtitle">基于你的风险边界组织研究与决策依据。</p>
           </div>
           <div class="persona-switcher-bar" id="persona-switcher-bar" aria-label="投资者画像管理">
             <div class="active-profile-wrap">
@@ -259,229 +264,114 @@
           </div>
         </header>
 
-        <!-- 首屏只保留用户真正要完成的三件事。 -->
+        <!-- Agent 对话是默认首页；专业任务通过侧栏进入各自页面。 -->
         <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">
-          <!-- 文档类面包屑路径导航 -->
-          <nav class="doc-breadcrumbs" aria-label="路径导航">
-            <span class="crumb-item">
-              <svg class="prism-icon"><use href="#icon-compass"/></svg>
-              个人投资工作台
-            </span>
-            <span class="crumb-sep">/</span>
-            <span class="crumb-item">任务中心</span>
-            <span class="crumb-sep">/</span>
-            <span class="crumb-item active" id="current-crumb-task">持仓穿透体检与智能调仓</span>
-          </nav>
-
-          <div class="copilot-intro">
+          <div class="agent-home-heading">
             <div>
-              <span class="eyebrow clay">智能投顾工作台</span>
-              <h2 id="copilot-hero-title">持仓分析与决策指引</h2>
-              <p>结合持仓、风险偏好与研究数据，多维度评估组合风险并生成穿透洞察。</p>
+              <span class="eyebrow clay">Prism 投资 Agent</span>
+              <h2 id="copilot-hero-title">从你的问题开始</h2>
+              <p>结合已确认的风险测评、持仓与可信数据回答；金融计算由确定性服务完成。</p>
             </div>
+            <span class="agent-boundary-note">研究辅助，不执行交易</span>
           </div>
 
-          <!-- 当前画像与组合摘要 (包含 Codeforces 风格风控微卡与多行业分布环形图) -->
-          <div class="copilot-hero-card">
-            <div class="copilot-hero-main">
-              <div class="copilot-persona-badge">
-                <span class="copilot-avatar" id="copilot-hero-avatar"><svg class="prism-icon prism-icon-xl"><use href="#icon-user"/></svg></span>
-                <div>
-                  <div class="copilot-persona-name-row">
-                    <strong id="copilot-hero-name">我的专属账户</strong>
-                    <span class="copilot-tag" id="copilot-hero-tag">待确认问卷</span>
-                    <span class="copilot-portfolio-badge" id="copilot-hero-portfolio-tag">动态自选持仓</span>
+          <div class="agent-home-grid" id="agent-home-grid">
+            <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
+              <div class="copilot-chat-stream-panel" id="copilot-chat-panel">
+                <div class="chat-panel-header">
+                  <div class="chat-panel-title">
+                    <span class="chat-live-pulse" aria-hidden="true"></span>
+                    <strong>专属投资 Agent</strong>
+                    <span class="chat-model-badge" id="chat-model-badge">内置分析引擎</span>
                   </div>
-                  <p class="copilot-persona-desc" id="copilot-hero-desc">
-                    投资目标：控制回撤，稳健增长。
-                  </p>
+                  <button id="btn-clear-chat" class="clear-chat-btn" type="button">清空对话</button>
                 </div>
-              </div>
-              <div class="copilot-stats-grid">
-                <div class="copilot-stat-item">
-                  <span class="stat-label term-tip" data-tooltip="账户当前全部证券资产与可用现金的公允价值总额。">总资产规模 <span class="tip-icon">?</span></span>
-                  <strong class="stat-value" id="copilot-stat-aum">待计算</strong>
-                </div>
-                <div class="copilot-stat-item alert-stat">
-                  <span class="stat-label term-tip" data-tooltip="由后端穿透当前持仓后返回的最高权重产业大类及其比例。">主重仓行业 <span class="tip-icon">?</span></span>
-                  <strong class="stat-value" id="copilot-stat-tech">待计算</strong>
-                </div>
-                <div class="copilot-stat-item">
-                  <span class="stat-label term-tip" data-tooltip="已确认画像对当前最大类别设置的风险边界；行业为上限，现金为最低要求。">主重仓风险边界 <span class="tip-icon">?</span></span>
-                  <strong class="stat-value" id="copilot-stat-budget">30.0%</strong>
-                </div>
-                <div class="copilot-stat-item clickable-stat" id="copilot-stat-evidence-card" role="button" tabindex="0" title="点击查看穿透底稿与4步确定性计算流转过程">
-                  <span class="stat-label term-tip" data-tooltip="查看当前数据模式、供应商层级、确定性公式与证据状态；缺失输入会明确标注。">分析依据 <span class="tip-icon">?</span></span>
-                  <div class="stat-evidence-value-wrap">
-                    <strong class="stat-value" id="copilot-stat-evidence">待计算</strong>
-                    <span class="stat-sub-action" id="btn-show-evidence-lineage">查看过程 →</span>
+                <div class="copilot-chat-messages" id="copilot-chat-messages" aria-live="polite">
+                  <div class="chat-msg assistant agent-welcome-message">
+                    <div class="chat-avatar" aria-hidden="true">P</div>
+                    <div class="chat-bubble">
+                      <strong>你想先了解什么？</strong>
+                      <p>可以直接描述持仓疑问、研究目标或风险顾虑。我会先核对你的画像和数据，再说明结论、依据与边界。</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div id="portfolio-refresh-status" class="portfolio-refresh-status" role="status" aria-live="polite">等待持仓数据</div>
-            </div>
 
-            <section class="behavior-profile-card" id="behavior-profile-card" aria-labelledby="behavior-profile-title">
-              <div class="behavior-profile-head">
-                <div>
-                  <span class="eyebrow clay">用户画像 Agent</span>
-                  <h3 id="behavior-profile-title">问卷与历史行为交叉画像</h3>
+              <div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
+                <span class="tags-label">常用问题</span>
+                <button class="quick-tag-chip" type="button" data-intent="CHECK_PORTFOLIO">我的组合最需要关注什么？</button>
+                <button class="quick-tag-chip" type="button" data-intent="RESEARCH_STOCK" data-target="300750">300750 适合我的画像吗？</button>
+                <button class="quick-tag-chip" type="button" data-intent="REBALANCE_PORTFOLIO">如何降低组合集中度？</button>
+              </div>
+
+              <div class="copilot-query-box">
+                <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
+                <div class="copilot-input-wrapper">
+                  <textarea id="copilot-natural-input" class="copilot-natural-input" rows="2" placeholder="描述你的问题，例如：我更在意控制回撤，这套持仓需要怎么调整？" autocomplete="off"></textarea>
+                  <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
+                    <span>发送</span>
+                    <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
+                  </button>
                 </div>
-                <span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">REVIEW_REQUIRED 数据不足</span>
+                <small>回答会区分已确认事实、确定性计算和仍需补充的信息。</small>
               </div>
-              <div id="behavior-profile-content" class="behavior-profile-content" aria-live="polite">
-                <p>导入结构化交易与持仓快照后，系统将计算换手、集中度、回撤和有效风险等级。行为数据只能收紧风险边界，不能提高问卷等级。</p>
-              </div>
-              <div class="display-policy-control">
-                <label for="ai-trust-score">AI 信任度与解释偏好 <strong id="ai-trust-score-value">50</strong></label>
-                <input id="ai-trust-score" type="range" min="0" max="100" value="50" step="1">
-                <button id="save-display-policy" class="copilot-action-btn secondary small" type="button">保存展示策略</button>
-                <button id="recompute-behavior-profile" class="copilot-action-btn secondary small" type="button">重新计算画像</button>
-                <span id="display-policy-mode" class="status-chip">标准说明</span>
-              </div>
+
+              <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
             </section>
 
-            <!-- Codeforces 风格多行业穿透交互环形图微卡 -->
-            <div class="cf-status-widget copilot-donut-widget" aria-label="账户画像与多行业穿透风控监控">
-              <div class="cf-widget-header">
-                <div class="cf-widget-title">
-                  <span class="cf-rank-pill r3" id="cf-profile-rank-pill">待确认问卷</span>
-                  <span class="cf-widget-user">持仓行业穿透全景</span>
+            <aside class="agent-profile-rail" id="agent-profile-rail" aria-labelledby="behavior-profile-title">
+              <section class="agent-profile-summary">
+                <div class="copilot-persona-badge">
+                  <span class="copilot-avatar" id="copilot-hero-avatar"><svg class="prism-icon prism-icon-xl"><use href="#icon-user"/></svg></span>
+                  <div>
+                    <strong id="copilot-hero-name">我的专属账户</strong>
+                    <div class="agent-profile-tags">
+                      <span class="copilot-tag" id="copilot-hero-tag">R3 平衡型</span>
+                      <span class="copilot-portfolio-badge" id="copilot-hero-portfolio-tag">待加载持仓</span>
+                    </div>
+                  </div>
                 </div>
-                <span class="cf-verdict cf-verdict-pass" id="cf-hero-verdict-badge">
-                  <svg class="prism-icon"><use href="#icon-check"/></svg>
-                  PASS 合规正常
-                </span>
-              </div>
-              <div class="donut-cause-callout pass" id="donut-cause-callout">
-                合规状态：全行业穿透暴露与流动性缓冲均在安全边界内。
-              </div>
-              <div class="cf-widget-body copilot-donut-body">
-                <div class="copilot-donut-chart-wrap">
-                  <div id="copilot-hero-donut-chart" class="copilot-donut-svg-container"></div>
+                <p class="copilot-persona-desc" id="copilot-hero-desc">投资目标：控制回撤，稳健增长。</p>
+                <dl class="agent-constraint-list">
+                  <div><dt>总资产</dt><dd id="copilot-stat-aum">待计算</dd></div>
+                  <div><dt>主重仓</dt><dd id="copilot-stat-tech">待计算</dd></div>
+                  <div><dt>行业上限</dt><dd id="copilot-stat-budget">待计算</dd></div>
+                  <div id="copilot-stat-evidence-card" role="button" tabindex="0"><dt>分析依据</dt><dd id="copilot-stat-evidence">待计算</dd></div>
+                </dl>
+                <span id="btn-show-evidence-lineage" hidden>查看过程</span>
+                <div id="portfolio-refresh-status" class="portfolio-refresh-status" role="status" aria-live="polite">等待持仓数据</div>
+              </section>
+
+              <section class="behavior-profile-card" id="behavior-profile-card">
+                <div class="behavior-profile-head">
+                  <div>
+                    <span class="rail-label">行为画像</span>
+                    <h3 id="behavior-profile-title">对话会逐步了解你</h3>
+                  </div>
+                  <span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">数据不足</span>
                 </div>
-                <div class="copilot-donut-legend-wrap" id="copilot-donut-legend">
-                  <!-- 动态插入行业分布图例 -->
+                <div id="behavior-profile-content" class="behavior-profile-content" aria-live="polite">
+                  <p>可在对话中补充投资目标、期限、流动性需求和回撤顾虑。</p>
                 </div>
-              </div>
-              <div class="copilot-donut-footer">
-                <span class="donut-active-hint" id="donut-active-hint">提示：悬浮或点击扇区可穿透查看具体标的与限额对照</span>
-              </div>
-              <div id="donut-sector-detail" class="donut-sector-detail" hidden aria-live="polite"></div>
-            </div>
-          </div>
-
-          <!-- 交互式意图问答框 -->
-          <div class="profile-purpose-callout" aria-label="会话分析前提">
-            <div><strong>会话分析前提</strong><p id="session-truth-status">尚未锁定；锁定后，画像、持仓或数据模式变化会要求重新确认。</p></div>
-            <button id="refresh-session-truth" class="query-submit secondary" type="button">检查前提</button>
-            <button id="open-session-truth" class="query-submit secondary" type="button">查看事实黑板</button>
-            <button id="confirm-session-truth" class="query-submit" type="button">锁定当前分析前提</button>
-          </div>
-          <div class="copilot-query-box">
-            <div class="copilot-input-wrapper">
-              <span class="copilot-input-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <input type="text" id="copilot-natural-input" class="copilot-natural-input" placeholder="直接问我：这套组合有什么风险？某只 ETF 适合我吗？下一步该怎么调？" autocomplete="off">
-              <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
-                <span>开始分析</span>
-                <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
-              </button>
-            </div>
-            <div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问快捷标签">
-              <span class="tags-label">试试这些：</span>
-              <button class="quick-tag-chip" type="button" data-intent="CHECK_PORTFOLIO">体检我的组合</button>
-              <button class="quick-tag-chip" type="button" data-intent="RESEARCH_STOCK" data-target="300750">研究 300750</button>
-              <button class="quick-tag-chip" type="button" data-intent="REBALANCE_PORTFOLIO">生成调仓方案</button>
-              <button class="quick-tag-chip" type="button" data-intent="SCENARIO_SHOCK">测试下跌 20%</button>
-            </div>
-          </div>
-
-          <!-- 三个结果导向的核心任务 -->
-          <div class="copilot-tasks-grid">
-            <div class="copilot-task-card task-health" id="task-card-health">
-              <div class="task-card-badge">适合第一次使用</div>
-              <div class="task-card-header">
-                <span class="task-card-icon"><svg class="prism-icon prism-icon-lg"><use href="#icon-shield-check"/></svg></span>
-                <div>
-                  <h3>持仓健康体检</h3>
-                  <span class="task-card-sub">识别组合风险</span>
+                <button id="start-conversation-profile-update" class="quiet-profile-action" type="button">在对话中完善</button>
+                <div class="display-policy-control">
+                  <label for="ai-trust-score">解释详细度 <strong id="ai-trust-score-value">50</strong></label>
+                  <input id="ai-trust-score" type="range" min="0" max="100" value="50" step="1">
+                  <button id="save-display-policy" class="quiet-profile-action" type="button">保存</button>
+                  <button id="recompute-behavior-profile" class="quiet-profile-action" type="button">重新核验</button>
+                  <span id="display-policy-mode" class="status-chip">标准说明</span>
                 </div>
-              </div>
-              <p class="task-card-desc">
-                检查行业集中度、基金持仓重叠和风险超限。
-              </p>
-              <div class="task-card-result"><span>你会得到</span><strong>风险清单 + 优先级</strong></div>
-              <div class="task-card-footer">
-                <button id="copilot-btn-health-check" class="copilot-action-btn primary" type="button">
-                  <span>开始体检</span>
-                  <span><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
-                </button>
-              </div>
-            </div>
-
-            <div class="copilot-task-card task-research" id="task-card-research">
-              <div class="task-card-badge">投资前研究</div>
-              <div class="task-card-header">
-                <span class="task-card-icon"><svg class="prism-icon prism-icon-lg"><use href="#icon-search"/></svg></span>
-                <div>
-                  <h3>标的研究</h3>
-                  <span class="task-card-sub">判断一只股票或 ETF 是否适合你</span>
+              </section>
+              <section class="agent-session-truth" aria-label="会话分析前提">
+                <span class="rail-label">事实基线</span>
+                <p id="session-truth-status">尚未锁定；画像、持仓或数据模式变化后需要重新确认。</p>
+                <div class="agent-session-actions">
+                  <button id="refresh-session-truth" class="quiet-profile-action" type="button">检查</button>
+                  <button id="open-session-truth" class="quiet-profile-action" type="button">查看事实</button>
+                  <button id="confirm-session-truth" class="quiet-profile-action" type="button">锁定前提</button>
                 </div>
-              </div>
-              <p class="task-card-desc">
-                输入代码，查看宏观、行业与标的信息。结合风险偏好，评估适配性。
-              </p>
-              <div class="task-card-result"><span>你会得到</span><strong>事实卡片 + 风险提醒</strong></div>
-              <div class="task-card-input-row">
-                <input id="copilot-stock-input" class="copilot-stock-input" aria-label="输入股票或 ETF 代码" placeholder="输入代码，如 300750" value="300750">
-                <button id="copilot-btn-stock-research" class="copilot-action-btn secondary" type="button">
-                  <span>开始研究</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="copilot-task-card task-rebalance" id="task-card-rebalance">
-              <div class="task-card-badge">调整组合</div>
-              <div class="task-card-header">
-                <span class="task-card-icon"><svg class="prism-icon prism-icon-lg"><use href="#icon-scale"/></svg></span>
-                <div>
-                  <h3>调仓计划</h3>
-                  <span class="task-card-sub">按风险上限调整权重</span>
-                </div>
-              </div>
-              <p class="task-card-desc">
-                结合画像与持仓，规划调仓顺序并控制换手率。仅生成计划，不自动下单。
-              </p>
-              <div class="task-card-result"><span>你会得到</span><strong>目标权重 + 执行顺序</strong></div>
-              <div class="task-card-footer">
-                <button id="copilot-btn-rebalance" class="copilot-action-btn primary" type="button">
-                  <span>生成方案</span>
-                  <span><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 只有用户发起问题后才显示对话流。 -->
-          <div class="copilot-chat-stream-panel" id="copilot-chat-panel" style="display:none;">
-            <div class="chat-panel-header">
-              <div class="chat-panel-title">
-                <span class="chat-live-pulse" aria-hidden="true"></span>
-                <strong>分析过程</strong>
-                <span class="chat-model-badge" id="chat-model-badge">内置分析引擎</span>
-              </div>
-              <button id="btn-clear-chat" class="clear-chat-btn" type="button">收起</button>
-            </div>
-            <div class="copilot-chat-messages" id="copilot-chat-messages" aria-live="polite"></div>
-          </div>
-
-          <!-- 结果区：任务完成后显示结论、依据和下一步。 -->
-          <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite">
-            <div class="copilot-empty-output">
-              <span class="empty-icon" aria-hidden="true"><svg class="prism-icon prism-icon-xl"><use href="#icon-compass"/></svg></span>
-              <h4>选择一个任务，先得到一份可执行的分析结果</h4>
-              <p>每份结果都会标明依据和不确定性；这是研究辅助，不是自动交易指令。</p>
-            </div>
+              </section>
+            </aside>
           </div>
 
           <!-- 自定义真实持仓录入弹窗 (支持截图 OCR 与文本 NER 双模) -->
@@ -724,6 +614,34 @@
               </div>
             </div>
           </div>
+
+          <section class="cf-status-widget copilot-donut-widget overview-sector-widget" aria-label="持仓行业穿透风控监控">
+            <div class="cf-widget-header">
+              <div class="cf-widget-title">
+                <span class="cf-rank-pill r3" id="cf-profile-rank-pill">R3 平衡型</span>
+                <span class="cf-widget-user">持仓行业穿透全景</span>
+              </div>
+              <span class="cf-verdict cf-verdict-pass" id="cf-hero-verdict-badge">
+                <svg class="prism-icon"><use href="#icon-check"/></svg>
+                PASS 合规正常
+              </span>
+            </div>
+            <div class="donut-cause-callout pass" id="donut-cause-callout">
+              合规状态：全行业穿透暴露与流动性缓冲均在安全边界内。
+            </div>
+            <div class="cf-widget-body copilot-donut-body">
+              <div class="copilot-donut-chart-wrap">
+                <div id="copilot-hero-donut-chart" class="copilot-donut-svg-container"></div>
+              </div>
+              <div class="copilot-donut-legend-wrap" id="copilot-donut-legend">
+                <!-- 动态插入行业分布图例 -->
+              </div>
+            </div>
+            <div class="copilot-donut-footer">
+              <span class="donut-active-hint" id="donut-active-hint">提示：悬浮或点击扇区可穿透查看具体标的与限额对照</span>
+            </div>
+            <div id="donut-sector-detail" class="donut-sector-detail" hidden aria-live="polite"></div>
+          </section>
 
           <details class="owner-form technical-owner-settings dev-only dev-outline">
             <summary>高级：切换本地数据空间</summary>

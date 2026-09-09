@@ -75,6 +75,7 @@
     profile: null,
     behaviorProfile: null,
     displayPolicy: null,
+    questionnaireGate: "PENDING",
     questionnaireTemplate: null,
     questionnaireAnswers: {},
     questionnaireSectionIndex: 0,
@@ -138,6 +139,8 @@
     customStressRun: null,
     customStressSequence: 0,
     copilotResearchSequence: 0,
+    conversationProfileDraft: null,
+    conversationProfileStep: 0,
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
@@ -1927,6 +1930,7 @@
     renderQuestionnaire();
     renderPortfolioReadiness();
     updateVisualCompanion();
+    applyQuestionnaireGate(summary);
     return summary;
   }
 
@@ -1975,6 +1979,7 @@
       await recomputeBehaviorProfile();
       await loadProfileSummary();
       if (state.portfolio) await refreshPortfolioHealth();
+      window.location.hash = "copilot";
     } catch (error) {
       setQuestionnaireError(error.message || "问卷确认失败。");
     }
@@ -1990,7 +1995,8 @@
       p.textContent = "尚无行为画像。提交结构化成交与持仓快照后再计算；数据不足不会被模型补齐。";
       panel.append(p);
       status.className = "cf-verdict cf-verdict-warning";
-      status.textContent = "REVIEW_REQUIRED 数据不足";
+      status.textContent = "数据不足";
+      renderConversationProfileContext(panel);
       return;
     }
     const grid = document.createElement("div");
@@ -2015,13 +2021,23 @@
     panel.append(grid, note);
     const calculated = profile.evidence_status === "CALCULATED";
     status.className = calculated ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-warning";
-    status.textContent = calculated ? "CALCULATED 行为已计算" : "REVIEW_REQUIRED 数据不足";
+    status.textContent = calculated ? "行为已计算" : "数据不足";
     const trust = byId("ai-trust-score");
     const trustValue = byId("ai-trust-score-value");
     const mode = byId("display-policy-mode");
     if (trust) trust.value = profile.display_policy?.trust_score ?? 50;
     if (trustValue) trustValue.textContent = profile.display_policy?.trust_score ?? 50;
     if (mode) mode.textContent = DISPLAY_MODE_LABELS[profile.display_policy?.mode] || "标准说明";
+    renderConversationProfileContext(panel);
+  }
+
+  function renderConversationProfileContext(panel = byId("behavior-profile-content")) {
+    const saved = PERSONAS["custom-user"]?.conversationProfile;
+    if (!panel || !saved) return;
+    const note = document.createElement("p");
+    note.className = "conversation-profile-context-note";
+    note.textContent = `对话补充：${saved.goalLabel} · ${saved.horizonLabel} · ${saved.liquidityLabel} · 回撤顾虑 ${saved.maxDrawdown}%`;
+    panel.append(note);
   }
 
   async function loadBehaviorProfile() {
@@ -5633,6 +5649,31 @@
     fetchRuntimeDataMode();
   }
 
+  function applyQuestionnaireGate(summary) {
+    const wasPending = state.questionnaireGate === "PENDING";
+    const hasConfirmedQuestionnaire = Boolean(summary?.questionnaire_snapshot);
+    state.questionnaireGate = hasConfirmedQuestionnaire ? "COMPLETE" : "REQUIRED";
+    document.body.classList.remove("questionnaire-pending", "questionnaire-required");
+    document.body.classList.toggle("questionnaire-required", !hasConfirmedQuestionnaire);
+    const profileTitle = byId("profile-title");
+    const profileEyebrow = profileTitle?.closest(".panel-head")?.querySelector(".eyebrow");
+    if (profileTitle) profileTitle.textContent = hasConfirmedQuestionnaire ? "风险测评与行为画像" : "投资者风险测评";
+    if (profileEyebrow) profileEyebrow.textContent = hasConfirmedQuestionnaire ? "风险画像" : "首次使用";
+
+    if (!hasConfirmedQuestionnaire) {
+      if (window.location.hash !== "#profile") {
+        window.history.replaceState(null, "", "#profile");
+      }
+      if (byId("expert-workspace-grid")?.hidden) syncNavigation("profile");
+      return;
+    }
+
+    if (wasPending && (!window.location.hash || window.location.hash === "#profile")) {
+      window.history.replaceState(null, "", "#copilot");
+      syncNavigation("copilot");
+    }
+  }
+
   function syncNavigation(targetId = window.location.hash.replace(/^#/, "")) {
     const aliases = {
       workbench: "copilot",
@@ -5642,6 +5683,7 @@
       "expert-workspace-grid": "stock-research",
     };
     let requestedId = aliases[targetId] || targetId || "copilot";
+    if (state.questionnaireGate === "REQUIRED") requestedId = "profile";
     let domain = DOMAIN_MAP[requestedId] || "copilot";
     if (domain === "system" && !document.body.classList.contains("dev-mode")) {
       requestedId = "copilot";
@@ -6746,6 +6788,13 @@
         const parsed = JSON.parse(saved);
         PERSONAS["custom-user"] = { ...DEFAULT_USER_PROFILE, ...parsed };
       }
+      const conversationProfile = localStorage.getItem("prism_conversation_profile_v1");
+      if (conversationProfile) {
+        PERSONAS["custom-user"] = {
+          ...PERSONAS["custom-user"],
+          conversationProfile: JSON.parse(conversationProfile),
+        };
+      }
     } catch (e) {}
 
     if (authenticatedOwner) PERSONAS["custom-user"].ownerId = authenticatedOwner;
@@ -6945,6 +6994,7 @@
     ])
       .then(async () => {
         if (state.selectedPersona !== personaId) return;
+        if (state.questionnaireGate === "PENDING") applyQuestionnaireGate(null);
         if (!state.profile && personaId !== "custom-user") await ensureDependency("PROFILE_CONTEXT");
         if (state.selectedPersona !== personaId) return;
         await fetchRuntimeDataMode();
@@ -6980,9 +7030,7 @@
       btn.dataset.intent = t.intent;
       if (t.target) btn.dataset.target = t.target;
       btn.addEventListener("click", () => {
-        const input = byId("copilot-natural-input");
-        if (input) input.value = t.label.replace(/^[^\s]+\s*/, "");
-        handleCopilotIntent(t.intent, t.target);
+        handleStreamingChat(t.label);
       });
       container.append(btn);
     });
@@ -8707,6 +8755,182 @@
 
   const chatHistory = [];
 
+  const CONVERSATION_PROFILE_QUESTIONS = Object.freeze([
+    {
+      key: "goal",
+      prompt: "这笔资金目前最重要的目标是什么？",
+      options: [
+        ["PRESERVE", "优先保全本金"],
+        ["BALANCED", "控制波动并稳健增长"],
+        ["GROWTH", "为长期增值承受一定波动"],
+      ],
+    },
+    {
+      key: "investmentHorizon",
+      prompt: "你预计多久以后会用到这笔资金？",
+      options: [["SHORT", "1 年以内"], ["MEDIUM", "1–3 年"], ["LONG", "3 年以上"]],
+    },
+    {
+      key: "liquidityNeed",
+      prompt: "日常情况下，你对这笔资金的流动性要求如何？",
+      options: [["HIGH", "随时可能使用"], ["MEDIUM", "保留部分备用"], ["LOW", "短期无需使用"]],
+    },
+    {
+      key: "maxDrawdown",
+      prompt: "即使正式测评允许更高波动，你现在希望把回撤控制在多少以内？",
+      options: [["5", "5%"], ["8", "8%"], ["10", "10%"], ["15", "15%"], ["20", "20%"]],
+    },
+  ]);
+
+  function appendChatMessage(role, content) {
+    const messages = byId("copilot-chat-messages");
+    if (!messages) return null;
+    const row = document.createElement("div");
+    row.className = `chat-msg ${role}`;
+    const avatar = document.createElement("div");
+    avatar.className = "chat-avatar";
+    avatar.textContent = role === "user" ? "你" : "P";
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+    if (typeof content === "string") bubble.textContent = content;
+    else bubble.append(content);
+    row.append(avatar, bubble);
+    messages.append(row);
+    messages.scrollTop = messages.scrollHeight;
+    return row;
+  }
+
+  function renderChatWelcome() {
+    const content = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = "你想先了解什么？";
+    const description = document.createElement("p");
+    description.textContent = "可以直接描述持仓疑问、研究目标或风险顾虑。我会先核对你的画像和数据，再说明结论、依据与边界。";
+    content.append(title, description);
+    appendChatMessage("assistant", content);
+  }
+
+  function startConversationProfileUpdate() {
+    state.conversationProfileDraft = {};
+    state.conversationProfileStep = 0;
+    renderConversationProfileQuestion();
+  }
+
+  function conversationProfileOptions(question) {
+    if (question.key !== "maxDrawdown") return question.options;
+    const questionnaireLimit = Number(state.profile?.profile?.max_drawdown_tolerance_pct);
+    const ceiling = Number.isFinite(questionnaireLimit) ? questionnaireLimit : 15;
+    const values = new Map(question.options.map(([value, label]) => [Number(value), label]));
+    values.set(ceiling, `${ceiling}%`);
+    return [...values.entries()]
+      .filter(([value]) => value > 0 && value <= ceiling)
+      .sort((left, right) => left[0] - right[0])
+      .map(([value, label]) => [String(value), label]);
+  }
+
+  function conversationProfileLabel(key, value) {
+    const question = CONVERSATION_PROFILE_QUESTIONS.find((item) => item.key === key);
+    return conversationProfileOptions(question).find(([optionValue]) => optionValue === String(value))?.[1] || String(value);
+  }
+
+  function renderConversationProfileQuestion() {
+    const question = CONVERSATION_PROFILE_QUESTIONS[state.conversationProfileStep];
+    if (!question) {
+      const card = document.createElement("div");
+      card.className = "conversation-profile-card";
+      const title = document.createElement("strong");
+      title.textContent = "确认本次对话补充";
+      const note = document.createElement("p");
+      note.textContent = "这些信息用于调整对话背景和收紧风险边界，不会提高正式风险测评等级。";
+      const review = document.createElement("dl");
+      review.className = "conversation-profile-review";
+      [
+        ["投资目标", conversationProfileLabel("goal", state.conversationProfileDraft.goal)],
+        ["资金期限", conversationProfileLabel("investmentHorizon", state.conversationProfileDraft.investmentHorizon)],
+        ["流动性需求", conversationProfileLabel("liquidityNeed", state.conversationProfileDraft.liquidityNeed)],
+        ["回撤顾虑", `${state.conversationProfileDraft.maxDrawdown}%`],
+      ].forEach(([label, value]) => {
+        const row = document.createElement("div");
+        const term = document.createElement("dt");
+        term.textContent = label;
+        const definition = document.createElement("dd");
+        definition.textContent = value;
+        row.append(term, definition);
+        review.append(row);
+      });
+      const actions = document.createElement("div");
+      actions.className = "conversation-profile-options";
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.textContent = "确认并用于后续对话";
+      confirm.addEventListener("click", confirmConversationProfileUpdate);
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "暂不保存";
+      cancel.addEventListener("click", () => {
+        state.conversationProfileDraft = null;
+        appendChatMessage("assistant", "本次补充未保存，正式风险测评保持不变。");
+      });
+      actions.append(confirm, cancel);
+      card.append(title, note, review, actions);
+      appendChatMessage("assistant", card);
+      return;
+    }
+
+    const card = document.createElement("div");
+    card.className = "conversation-profile-card";
+    const prompt = document.createElement("strong");
+    prompt.textContent = question.prompt;
+    const policy = document.createElement("p");
+    policy.textContent = `画像补充 ${state.conversationProfileStep + 1} / ${CONVERSATION_PROFILE_QUESTIONS.length}`;
+    const options = document.createElement("div");
+    options.className = "conversation-profile-options";
+    conversationProfileOptions(question).forEach(([value, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        state.conversationProfileDraft = { ...state.conversationProfileDraft, [question.key]: value };
+        appendChatMessage("user", label);
+        state.conversationProfileStep += 1;
+        renderConversationProfileQuestion();
+      });
+      options.append(button);
+    });
+    card.append(prompt, policy, options);
+    appendChatMessage("assistant", card);
+  }
+
+  function confirmConversationProfileUpdate() {
+    const draft = state.conversationProfileDraft;
+    if (!draft) return;
+    const formalLimit = Number(state.profile?.profile?.max_drawdown_tolerance_pct);
+    const maxDrawdown = Math.min(Number(draft.maxDrawdown), Number.isFinite(formalLimit) ? formalLimit : Number(draft.maxDrawdown));
+    const saved = {
+      goal: draft.goal,
+      goalLabel: conversationProfileLabel("goal", draft.goal),
+      investmentHorizon: draft.investmentHorizon,
+      horizonLabel: conversationProfileLabel("investmentHorizon", draft.investmentHorizon),
+      liquidityNeed: draft.liquidityNeed,
+      liquidityLabel: conversationProfileLabel("liquidityNeed", draft.liquidityNeed),
+      maxDrawdown: String(maxDrawdown),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem("prism_conversation_profile_v1", JSON.stringify(saved));
+    } catch (e) {}
+    state.conversationProfileDraft = null;
+    saveUserProfile({
+      conversationProfile: saved,
+      investmentHorizon: saved.investmentHorizon,
+      liquidityNeed: saved.liquidityNeed,
+      maxDrawdown: saved.maxDrawdown,
+      desc: `${saved.goalLabel} · ${saved.horizonLabel} · ${saved.liquidityLabel} · 回撤边界 ≤${saved.maxDrawdown}%`,
+    });
+    renderBehaviorProfile(state.behaviorProfile);
+    appendChatMessage("assistant", "画像补充已确认。后续回答会使用这些信息；正式风险测评等级没有提高。若信息与测评冲突，系统始终采用更保守的边界。");
+  }
+
   function loadCopilotChatHistory() {
     try {
       const saved = workspaceStorage.getItem(ownerStorageKey("prism_copilot_chat_history_v2"));
@@ -8726,7 +8950,7 @@
         row.className = `chat-msg ${msg.role}`;
         const avatar = document.createElement("div");
         avatar.className = "chat-avatar";
-        avatar.textContent = msg.role === "user" ? "👤" : "🌟";
+        avatar.textContent = msg.role === "user" ? "你" : "P";
         const bubble = document.createElement("div");
         bubble.className = "chat-bubble";
         bubble.textContent = msg.content;
@@ -8788,7 +9012,7 @@
     userMsgRow.className = "chat-msg user";
     const userAvatar = document.createElement("div");
     userAvatar.className = "chat-avatar";
-    userAvatar.textContent = "👤";
+    userAvatar.textContent = "你";
     const userBubble = document.createElement("div");
     userBubble.className = "chat-bubble";
     userBubble.textContent = query;
@@ -8800,7 +9024,7 @@
     aiMsgRow.className = "chat-msg assistant";
     const aiAvatar = document.createElement("div");
     aiAvatar.className = "chat-avatar";
-    aiAvatar.textContent = "🌟";
+    aiAvatar.textContent = "P";
     const aiBubble = document.createElement("div");
     aiBubble.className = "chat-bubble";
 
@@ -9683,7 +9907,7 @@
   const copilotQueryInput = byId("copilot-natural-input");
   if (copilotQueryInput) {
     copilotQueryInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleNaturalQuerySubmit();
       }
@@ -9697,11 +9921,17 @@
       chatHistory.length = 0;
       workspaceStorage.removeItem(ownerStorageKey("prism_copilot_chat_history_v2"));
       const msgs = byId("copilot-chat-messages");
-      if (msgs) clear(msgs);
+      if (msgs) {
+        clear(msgs);
+        renderChatWelcome();
+      }
       const panel = byId("copilot-chat-panel");
-      if (panel) panel.style.display = "none";
+      if (panel) panel.style.display = "block";
     });
   }
+
+  const conversationProfileBtn = byId("start-conversation-profile-update");
+  if (conversationProfileBtn) conversationProfileBtn.addEventListener("click", startConversationProfileUpdate);
 
   const openPortBtn = byId("open-portfolio-modal-btn");
   if (openPortBtn) openPortBtn.addEventListener("click", openPortfolioModal);
