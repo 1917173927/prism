@@ -337,6 +337,11 @@
     INVALID: "无效",
     REVIEW_REQUIRED: "待复核",
     BLOCKED: "已阻断",
+    RUNNING: "运行中",
+    PENDING: "待运行",
+    SUCCESS: "成功",
+    CANCELLED: "已取消",
+    TIMEOUT: "超时",
     COMPLETED: "已完成",
     COMPLETE: "已完成",
     PARTIAL: "部分完成",
@@ -438,18 +443,27 @@
     "Synthetic Finance Basket": "合成金融资产篮子",
     "Synthetic Industrials Basket": "合成工业资产篮子",
     "Synthetic Utilities Basket": "合成公用事业资产篮子",
+    "Synthetic Technology Stock": "示例科技股票",
+    "Synthetic Healthcare Stock": "示例医疗健康股票",
+    "Synthetic Finance Stock": "示例金融股票",
+    "Synthetic Industrials Stock": "示例工业股票",
+    ETF: "ETF基金",
+    PRISM_STOCK_DEMO_F: "示例股票",
+    PRISM_FUND_DEMO_G: "示例基金",
+    PRISM_CONVERTIBLE_BOND_DEMO_H: "示例可转债",
+    BOND_PAR_VALUE: "债券面值",
   });
 
   const DISPLAY_SCENARIO_LABELS = Object.freeze({
-    BASELINE_READY: "基线：完整多资产快照（BASELINE_READY）",
-    TIGHTER_TECH_CAP: "科技限额收紧 10%（TIGHTER_TECH_CAP）",
-    TOP_ASSET_TRIM_10PP: "第一大资产削减 10%（TOP_ASSET_TRIM_10PP）",
-    LOOKTHROUGH_PARTIAL: "基金穿透部分缺失（LOOKTHROUGH_PARTIAL）",
-    SOURCE_PARTIAL: "来源部分缺失（SOURCE_PARTIAL）",
-    SOURCE_DISAGREEMENT: "来源分歧（SOURCE_DISAGREEMENT）",
-    SOURCE_EMPTY: "来源无结果（SOURCE_EMPTY）",
-    SOURCE_FAILED: "来源失败（SOURCE_FAILED）",
-    INFEASIBLE: "不可行：配置上限无法同时满足（INFEASIBLE）",
+    BASELINE_READY: "基线：完整多资产快照",
+    TIGHTER_TECH_CAP: "科技限额收紧 10%",
+    TOP_ASSET_TRIM_10PP: "第一大资产削减 10%",
+    LOOKTHROUGH_PARTIAL: "基金穿透部分缺失",
+    SOURCE_PARTIAL: "来源部分缺失",
+    SOURCE_DISAGREEMENT: "来源分歧",
+    SOURCE_EMPTY: "来源无结果",
+    SOURCE_FAILED: "来源失败",
+    INFEASIBLE: "不可行：配置上限无法同时满足",
   });
 
   const DISPLAY_DESCRIPTIONS = Object.freeze({
@@ -654,7 +668,10 @@
   function displayLabel(value, fallback = "—") {
     if (value === null || value === undefined || value === "") return fallback;
     const rendered = String(value);
-    return DISPLAY_LABELS[rendered] || rendered;
+    return DISPLAY_LABELS[rendered]
+      || DISPLAY_VALUE_LABELS[rendered]
+      || DISPLAY_VALUE_LABELS[rendered.toUpperCase()]
+      || rendered;
   }
 
   function displayDescription(value, fallback = "—") {
@@ -675,7 +692,9 @@
   function displayScenarioLabel(scenario) {
     const value = scenario && typeof scenario === "object" ? scenario.label || scenario.scenario_id : scenario;
     if (value === null || value === undefined || value === "") return "未命名场景";
-    return DISPLAY_SCENARIO_LABELS[String(value)] || text(value, "未命名场景");
+    if (DISPLAY_SCENARIO_LABELS[String(value)]) return DISPLAY_SCENARIO_LABELS[String(value)];
+    const rendered = text(value, "");
+    return /[\u3400-\u9fff]/.test(rendered) ? rendered : "研究场景";
   }
 
   function displayScenarioDescription(scenario) {
@@ -685,14 +704,14 @@
 
   function displayMethodology(value) {
     if (value === null || value === undefined || value === "") return "—";
-    const rendered = String(value);
-    return displayDescription(rendered)
-      .replace(/^deterministic Decimal ratio:/, "确定性 Decimal 比率：")
-      .replace(/^deterministic Decimal threshold:/, "确定性 Decimal 阈值：")
-      .replace(/^deterministic Decimal convertible-bond-formula\.v1;/, "确定性 Decimal 可转债公式（convertible-bond-formula.v1）；")
-      .replace(/^input_fact_ids=/, "输入事实 ID=")
-      .replace(/configured (stock-risk|fund-risk|convertible-bond-risk)\.v1 limit/, "配置的 $1.v1 限值")
-      .replace(/configured (stock-risk|fund-risk|convertible-bond-risk)\.v1/, "配置的 $1.v1")
+    const rendered = localizeResearchTokens(displayDescription(value));
+    const localized = rendered
+      .replace(/^(?:deterministic|确定性)\s+(?:Decimal|精确数值)\s+(?:ratio|比率)\s*:/i, "按确定性比率计算：")
+      .replace(/^(?:deterministic|确定性)\s+(?:Decimal|精确数值)\s+(?:threshold|阈值)\s*:/i, "按确定性阈值判断：")
+      .replace(/^(?:deterministic|确定性)\s+(?:Decimal|精确数值)\s+(?:convertible-bond-formula|可转债计算规则)\.v1\s*;/i, "按确定性可转债公式计算：")
+      .replace(/^(?:input_fact_ids|已验证事实)\s*=/i, "基于已验证事实：")
+      .replace(/configured (stock-risk|fund-risk|convertible-bond-risk)\.v1 limit/gi, "按配置的风险规则限值")
+      .replace(/configured (stock-risk|fund-risk|convertible-bond-risk)\.v1/gi, "按配置的风险规则")
       .replace(/technology weight threshold/g, "科技行业权重阈值")
       .replace(/top10 concentration threshold/g, "前十大持仓集中度阈值")
       .replace(/annualized volatility threshold/g, "年化波动率阈值")
@@ -703,25 +722,198 @@
       .replace(/negative yield threshold/g, "负收益率阈值")
       .replace(/credit rating rank threshold/g, "信用评级序数阈值")
       .replace(/liquidity score threshold/g, "流动性等级序数阈值")
-      .replace(/; stock-risk\.v1$/, "；stock-risk.v1")
-      .replace(/; fund-risk\.v1$/, "；fund-risk.v1")
-      .replace(/; convertible-bond-risk\.v1$/, "；convertible-bond-risk.v1");
+      .replace(/\b(?:stock-risk|fund-risk|convertible-bond-risk)\.v1\b/gi, "风险规则")
+      .replace(/\bDecimal\b/gi, "精确数值")
+      .replace(/\bconvertible-bond-formula\.v1\b/gi, "可转债计算规则")
+      .replace(/\binput_fact_ids\b/gi, "已验证事实")
+      .replace(/\s*\([^()]*[A-Za-z][^()]*\)\s*$/g, "")
+      .replace(/\s+([：:；，。])/g, "$1")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return localized && !/[A-Za-z]/.test(localized)
+      ? localized
+      : "按确定性规则计算，具体依据见证据链。";
   }
 
   const FINDING_KIND_LABELS = Object.freeze({
+    STOCK_ACCOUNTS_RECEIVABLE_FACT: "应收账款事实",
+    STOCK_DEBT_RATIO_FACT: "资产负债率事实",
+    STOCK_GROSS_MARGIN_FACT: "毛利率事实",
+    STOCK_NET_PROFIT_FACT: "净利润事实",
+    STOCK_OPERATING_CASHFLOW_FACT: "经营活动现金流事实",
+    STOCK_REVENUE_FACT: "营业收入事实",
+    STOCK_CASHFLOW_QUALITY_ANOMALY: "经营现金流质量异常",
+    STOCK_RECEIVABLE_QUALITY_ANOMALY: "应收账款质量异常",
     FUND_COST_WARNING: "基金费率偏高",
     FUND_VOLATILITY_RISK: "基金波动率偏高",
     FUND_TOP10_CONCENTRATION: "前十大持仓集中",
     FUND_DRAWDOWN_RISK: "历史回撤偏高",
     FUND_TECHNOLOGY_CONCENTRATION: "科技行业集中",
+    FUND_VOLATILITY_PROFILE: "基金波动率指标",
+    FUND_EXPENSE_PROFILE: "基金费率指标",
+    FUND_DRAWDOWN_PROFILE: "基金回撤指标",
+    FUND_TECHNOLOGY_PROFILE: "基金科技行业暴露",
+    FUND_TOP10_PROFILE: "基金前十大持仓集中度",
+    FUND_TRACKING_ERROR_PROFILE: "基金跟踪误差指标",
     STOCK_VALUATION_RISK: "估值风险",
-    STOCK_LEVERAGE_RISK: "负债风险",
     STOCK_CASH_FLOW_RISK: "现金流风险",
     STOCK_MARGIN_RISK: "盈利能力风险",
+    STOCK_LEVERAGE_RISK: "资产负债风险",
+    CONVERTIBLE_BOND_FLOOR_PROFILE: "债底指标",
+    CONVERTIBLE_BOND_PRICE_PROFILE: "转债价格指标",
+    CONVERTIBLE_CONVERSION_PREMIUM_FORMULA: "转股溢价率计算",
+    CONVERTIBLE_CONVERSION_PRICE_PROFILE: "转股价指标",
+    CONVERTIBLE_CONVERSION_VALUE_FORMULA: "转股价值计算",
+    CONVERTIBLE_CREDIT_PROFILE: "信用情况",
+    CONVERTIBLE_LIQUIDITY_PROFILE: "流动性情况",
+    CONVERTIBLE_UNDERLYING_PROFILE: "正股价格指标",
+    CONVERTIBLE_YIELD_PROFILE: "到期收益率指标",
+    CONVERTIBLE_PREMIUM_WARNING: "转股溢价率风险",
+    CONVERTIBLE_BOND_FLOOR_WARNING: "债底风险",
+    CONVERTIBLE_NEGATIVE_YIELD: "到期收益率风险",
+    CONVERTIBLE_CREDIT_RISK: "信用风险",
+    CONVERTIBLE_LIQUIDITY_RISK: "流动性风险",
+    CONVERSION_VALUE_FORMULA: "转股价值计算",
+    CONVERSION_PREMIUM_PCT_FORMULA: "转股溢价率计算",
+    ETF_TECHNOLOGY_EXPOSURE: "ETF 科技行业暴露",
+    INDUSTRY_GROWTH: "行业增长指标",
+    MACRO_POLICY_RATE: "政策利率指标",
+    STOCK_REVENUE: "个股营业收入指标",
   });
 
   function findingKindLabel(kind) {
-    return FINDING_KIND_LABELS[kind] || "需要关注的风险";
+    if (FINDING_KIND_LABELS[kind]) return FINDING_KIND_LABELS[kind];
+    const normalized = String(kind || "").toUpperCase();
+    if (normalized.endsWith("_ANOMALY")) return "异常项";
+    if (normalized.endsWith("_RISK")) return "风险项";
+    if (normalized.endsWith("_FORMULA")) return "确定性计算";
+    if (normalized.endsWith("_FACT") || normalized.endsWith("_PROFILE")) return "研究事实";
+    return "需要关注的风险";
+  }
+
+  const RESEARCH_TOKEN_LABELS = Object.freeze({
+    accounts_receivable_cny: "应收账款",
+    debt_ratio_pct: "资产负债率",
+    gross_margin_pct: "毛利率",
+    net_profit_cny: "净利润",
+    operating_cash_flow_cny: "经营活动现金流",
+    revenue_cny: "营业收入",
+    annualized_volatility_pct: "年化波动率",
+    expense_ratio_pct: "费率",
+    max_drawdown_pct: "最大回撤",
+    technology_weight_pct: "科技行业权重",
+    top10_weight_pct: "前十大持仓权重",
+    tracking_error_pct: "跟踪误差",
+    bond_floor: "债底",
+    bond_price: "转债价格",
+    conversion_premium_pct: "转股溢价率",
+    conversion_price: "转股价",
+    conversion_value: "转股价值",
+    credit_rating_rank: "信用评级等级",
+    liquidity_score: "流动性等级",
+    underlying_stock_price: "正股价格",
+    yield_to_maturity_pct: "到期收益率",
+    bond_par_value: "债券面值",
+    CNY: "人民币元",
+    pct: "百分比",
+    rating_rank: "评级等级",
+    score: "分数",
+    limit: "限值",
+    threshold: "阈值",
+    liquidity: "流动性",
+    credit: "信用",
+    rating: "评级",
+    rank: "序数",
+    configured: "配置的",
+    deterministic: "确定性",
+    fixed: "固定",
+    ratio: "比率",
+    source: "来源",
+  });
+
+  function localizeResearchTokens(value) {
+    let rendered = value === null || value === undefined ? "" : String(value);
+    Object.entries(RESEARCH_TOKEN_LABELS).forEach(([token, label]) => {
+      rendered = rendered.replace(new RegExp(`\\b${token}\\b`, "gi"), label);
+    });
+    return rendered
+      .replace(/\bCRITICAL\b/g, "高风险")
+      .replace(/\bWARNING\b/g, "警告")
+      .replace(/\bINFO\b/g, "提示")
+      .replace(/\bREADY\b/g, "已完成")
+      .replace(/\bPARTIAL\b/g, "部分完成")
+      .replace(/\bCOMPLETE(?:D)?\b/g, "已完成")
+      .replace(/\bREVIEW_REQUIRED\b/g, "待复核");
+  }
+
+  function researchSubjectLabel(value) {
+    const rendered = text(value, "");
+    if (!rendered) return "未命名标的";
+    if (rendered !== String(value)) return rendered;
+    if (/^PRISM_(?:STOCK|FUND|CONVERTIBLE_BOND)_DEMO_/i.test(rendered)) return "示例标的";
+    return /[\u3400-\u9fff]/.test(rendered) || /^\d+[A-Za-z]*$/.test(rendered) ? rendered : "研究标的";
+  }
+
+  function researchPeriodLabel(value) {
+    const rendered = text(value, "");
+    const match = String(value || "").match(/^(\d{4})-Q([1-4])$/i);
+    return match ? `${match[1]} 年第 ${match[2]} 季度` : rendered || "未提供期间";
+  }
+
+  function researchMetricLabel(value, preferredLabel = "") {
+    const preferred = String(preferredLabel || "");
+    if (preferred && (!/[A-Za-z]/.test(preferred) || /[\u3400-\u9fff]/.test(preferred))) return preferred;
+    const rendered = text(value, "");
+    if (rendered && rendered !== String(value)) return rendered;
+    const localized = localizeResearchTokens(value);
+    return localized && !/[A-Za-z]/.test(localized) ? localized : "研究指标";
+  }
+
+  function researchNodeLabel(value) {
+    const rendered = String(value || "");
+    const slot = rendered.match(/(?:source[-_])([a-z0-9]+)$/i);
+    if (slot) return `数据来源 ${slot[1].toUpperCase()}`;
+    return "研究来源";
+  }
+
+  function researchSourceLabel(value) {
+    const rendered = String(value || "");
+    const slot = rendered.match(/(?:source[-_])([a-z0-9]+)$/i);
+    if (slot) return `来源 ${slot[1].toUpperCase()}`;
+    if (/iwencai|wencai/i.test(rendered)) return "问财数据";
+    if (/fuyao/i.test(rendered)) return "扶摇数据";
+    return "外部数据来源";
+  }
+
+  function researchEvidenceLabel(_evidence, index) {
+    return `证据 ${index + 1}`;
+  }
+
+  function researchFindingLabel(finding, index) {
+    const kindLabel = findingKindLabel(finding?.kind);
+    return kindLabel === "需要关注的风险" ? `研究发现 ${index + 1}` : kindLabel;
+  }
+
+  function researchNarrative(value, fallback = "数据说明暂不可用，需要人工复核。") {
+    const rendered = displayDescription(value, "");
+    if (!rendered) return fallback;
+    const localized = localizeResearchTokens(rendered)
+      .replace(/\boffline\b|\bsynthetic\b|\breplay\b|\bDemo\b/gi, "")
+      .replace(/\bDecimal\b/gi, "精确数值")
+      .replace(/\b(?:stock-risk|fund-risk|convertible-bond-risk)\.v1\b/gi, "风险规则")
+      .replace(/\bconvertible-bond-formula\.v1\b/gi, "可转债计算规则")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    if (!localized || (!/[\u3400-\u9fff]/.test(localized) && /[A-Za-z]/.test(localized))) return fallback;
+    return localized;
+  }
+
+  function researchFormula(value) {
+    const localized = localizeResearchTokens(value);
+    return localized
+      .replace(/\bDecimal\b/gi, "精确数值")
+      .replace(/\bformula\b/gi, "公式")
+      .replace(/\bconvertible-bond-formula\.v1\b/gi, "可转债计算规则");
   }
 
   function humanMetricValue(value, unit = "") {
@@ -781,7 +973,18 @@
   }
 
   function researchStatusLabel(status) {
-    return DISPLAY_VALUE_LABELS[status] || text(status, "待运行");
+    const rendered = DISPLAY_VALUE_LABELS[status] || text(status, "");
+    return rendered && !/^[A-Z][A-Z0-9_-]*$/.test(String(rendered)) ? rendered : "待复核";
+  }
+
+  function researchSeverityLabel(severity) {
+    const rendered = text(severity, "");
+    return rendered && !/^[A-Z][A-Z0-9_-]*$/.test(String(rendered)) ? rendered : "提示";
+  }
+
+  function researchIssueLabel(code) {
+    const rendered = text(code, "");
+    return rendered && rendered !== String(code) ? rendered : "数据校验问题";
   }
 
   function setResearchStatus(message, className = "") {
@@ -828,7 +1031,8 @@
   }
 
   function researchRoleLabel(role) {
-    return DISPLAY_VALUE_LABELS[role] || text(role);
+    const rendered = DISPLAY_VALUE_LABELS[role] || text(role, "");
+    return rendered && !/^[A-Z][A-Z0-9_-]*$/.test(String(rendered)) ? rendered : "研究节点";
   }
 
   function clearResearchScenarioOptions() {
@@ -850,7 +1054,7 @@
       const option = document.createElement("option");
       option.value = scenario.scenario_id || "";
       option.textContent = displayScenarioLabel(scenario);
-      option.title = displayScenarioDescription(scenario);
+      option.title = researchNarrative(displayScenarioDescription(scenario), "该场景暂无补充说明。");
       select.append(option);
     });
     if (!options.length) {
@@ -885,7 +1089,7 @@
       const option = document.createElement("option");
       option.value = scenario.scenario_id || "";
       option.textContent = displayScenarioLabel(scenario);
-      option.title = displayScenarioDescription(scenario);
+      option.title = researchNarrative(displayScenarioDescription(scenario), "该场景暂无补充说明。");
       select.append(option);
     });
     if (!options.length) {
@@ -920,7 +1124,7 @@
       const option = document.createElement("option");
       option.value = scenario.scenario_id || "";
       option.textContent = displayScenarioLabel(scenario);
-      option.title = displayScenarioDescription(scenario);
+      option.title = researchNarrative(displayScenarioDescription(scenario), "该场景暂无补充说明。");
       select.append(option);
     });
     if (!options.length) {
@@ -955,7 +1159,7 @@
       const option = document.createElement("option");
       option.value = scenario.scenario_id || "";
       option.textContent = displayScenarioLabel(scenario);
-      option.title = displayScenarioDescription(scenario);
+      option.title = researchNarrative(displayScenarioDescription(scenario), "该场景暂无补充说明。");
       select.append(option);
     });
     if (!options.length) {
@@ -1138,14 +1342,40 @@
     container.append(item);
   }
 
-  function renderPortfolio(portfolio, sourceLabel = "示例持仓 · 只读") {
-    byId("portfolio-context-label").textContent = sourceLabel;
+  function setPortfolioSourcePresentation(sourceLabel, portfolio) {
+    const renderedSource = sourceLabel || "示例数据 · 只读";
+    const isExample = /示例|MOCK|模板/i.test(renderedSource);
+    const isConfirmed = /已确认/.test(renderedSource);
+    const isLocal = /恢复|本地/.test(renderedSource);
+    const title = byId("portfolio-title");
+    const label = byId("portfolio-context-label");
+    const note = byId("portfolio-source-note");
+    if (title) title.textContent = isExample ? "示例持仓明细" : "持仓明细";
+    if (label) label.textContent = renderedSource;
+    if (!note) return { isExample, isConfirmed, isLocal };
+    note.className = `portfolio-source-note${isConfirmed ? " is-confirmed" : isLocal ? " is-local" : ""}`;
+    note.textContent = isExample
+      ? "当前展示为示例持仓数据，仅用于界面演示，不代表真实账户；确认脱敏持仓后才会替换。"
+      : isConfirmed
+        ? "当前数据来自你确认的脱敏持仓输入，仅在本次会话使用，不会自动连接或操作账户。"
+        : isLocal
+          ? "当前展示为已恢复的本地持仓快照，仅供核对；请以截止时间和来源为准。"
+          : portfolio
+            ? "当前持仓数据仅用于本次分析；请核对截止时间和数据来源。"
+            : "尚未确认真实持仓；页面中的示例数据仅用于演示。";
+    return { isExample, isConfirmed, isLocal };
+  }
+
+  function renderPortfolio(portfolio, sourceLabel = "示例数据 · 只读") {
+    const presentation = setPortfolioSourcePresentation(sourceLabel, portfolio);
     const panel = byId("portfolio-content");
     clear(panel);
     if (!portfolio) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.textContent = "加载后查看持仓明细与基金底层股票。";
+      empty.textContent = presentation.isExample
+        ? "当前为示例持仓；确认脱敏持仓后查看你的持仓明细。"
+        : "加载后查看持仓明细与基金底层股票。";
       panel.append(empty);
       return;
     }
@@ -1161,7 +1391,7 @@
 
     const positionsHeading = document.createElement("h3");
     positionsHeading.className = "context-heading";
-    positionsHeading.textContent = "持仓明细";
+    positionsHeading.textContent = presentation.isExample ? "示例持仓明细" : "持仓明细";
     panel.append(positionsHeading);
     const positions = document.createElement("div");
     positions.className = "position-grid";
@@ -1185,7 +1415,7 @@
 
     const holdingHeading = document.createElement("h3");
     holdingHeading.className = "context-heading";
-    holdingHeading.textContent = "基金穿透持仓";
+    holdingHeading.textContent = presentation.isExample ? "示例基金穿透持仓" : "基金穿透持仓";
     panel.append(holdingHeading);
     if (!(portfolio.fund_holdings || []).length) {
       const empty = document.createElement("div");
@@ -1199,7 +1429,9 @@
       section.className = "holding-section";
       const meta = document.createElement("div");
       meta.className = "holding-meta";
-      meta.textContent = `${text(fund.parent_asset_id)} · 快照 ${text(fund.snapshot_id)} · 覆盖率 ${text(fund.coverage_pct)}% · 截止 ${text(fund.as_of)}`;
+      const parentPosition = (snapshot.positions || []).find((position) => position.asset_id === fund.parent_asset_id);
+      const parentLabel = parentPosition ? text(parentPosition.asset_name) : "基金/ETF";
+      meta.textContent = `${parentLabel} · 穿透覆盖率 ${text(fund.coverage_pct)}% · 截止 ${text(fund.as_of)}`;
       section.append(meta);
       const holdings = document.createElement("div");
       holdings.className = "holding-grid";
@@ -1596,10 +1828,51 @@
   });
 
   const DISPLAY_MODE_LABELS = Object.freeze({
-    AUDIT_EXPANDED: "完整依据",
+    AUDIT_EXPANDED: "详细说明",
     STANDARD: "标准说明",
-    CONCLUSION_FIRST: "结论优先",
+    CONCLUSION_FIRST: "简洁说明",
   });
+
+  // The API and database still store the historical 0-100 trust score.  The
+  // ordinary user only chooses one of these three stable display levels.
+  const DISPLAY_DETAIL_LEVELS = Object.freeze({
+    CONCISE: Object.freeze({ score: 80, mode: "CONCLUSION_FIRST", label: "简洁", hint: "先看结论和关键依据" }),
+    STANDARD: Object.freeze({ score: 50, mode: "STANDARD", label: "标准", hint: "结论与关键依据保持平衡" }),
+    DETAILED: Object.freeze({ score: 20, mode: "AUDIT_EXPANDED", label: "详细", hint: "展开依据、规则、来源和边界" }),
+  });
+
+  const DISPLAY_DETAIL_BY_MODE = Object.freeze(
+    Object.fromEntries(Object.values(DISPLAY_DETAIL_LEVELS).map((level) => [level.mode, level])),
+  );
+
+  function displayDetailLevelForPolicy(policyOrScore) {
+    const policy = policyOrScore && typeof policyOrScore === "object" ? policyOrScore : null;
+    if (policy?.mode && DISPLAY_DETAIL_BY_MODE[policy.mode]) return DISPLAY_DETAIL_BY_MODE[policy.mode];
+    const score = Number(policy?.trust_score ?? policyOrScore);
+    if (Number.isFinite(score) && score >= 65) return DISPLAY_DETAIL_LEVELS.CONCISE;
+    if (Number.isFinite(score) && score <= 34) return DISPLAY_DETAIL_LEVELS.DETAILED;
+    return DISPLAY_DETAIL_LEVELS.STANDARD;
+  }
+
+  function displayDetailLabel(policyOrScore) {
+    return displayDetailLevelForPolicy(policyOrScore).label;
+  }
+
+  function setDisplayPolicyControl(policyOrScore = 50) {
+    const level = displayDetailLevelForPolicy(policyOrScore);
+    const trust = byId("ai-trust-score");
+    const trustValue = byId("ai-trust-score-value");
+    const mode = byId("display-policy-mode");
+    const hint = byId("display-policy-hint");
+    if (trust) trust.value = String(level.score);
+    if (trustValue) trustValue.textContent = level.label;
+    if (mode) mode.textContent = DISPLAY_MODE_LABELS[level.mode];
+    if (hint) hint.textContent = level.hint;
+    document.querySelectorAll('input[name="display-policy-level"]').forEach((input) => {
+      input.checked = input.value === String(level.score);
+    });
+    return level;
+  }
 
   function questionnaireAnsweredCount() {
     return Object.values(state.questionnaireAnswers || {}).filter((answer) => (
@@ -1877,15 +2150,10 @@
     }
     const policy = summary?.display_policy;
     if (policy) {
-      const trust = byId("ai-trust-score");
-      const trustValue = byId("ai-trust-score-value");
-      const mode = byId("display-policy-mode");
-      if (trust) trust.value = policy.trust_score;
-      if (trustValue) trustValue.textContent = policy.trust_score;
-      if (mode) mode.textContent = DISPLAY_MODE_LABELS[policy.mode] || policy.mode;
+      const level = setDisplayPolicyControl(policy);
       const policyNote = document.createElement("p");
       policyNote.className = "profile-policy-note";
-      policyNote.textContent = `当前解释偏好：${DISPLAY_MODE_LABELS[policy.mode] || policy.mode}。风险告警、数据缺失和合规揭示始终展开。`;
+      policyNote.textContent = `当前解释偏好：${level.label}。${level.hint}；风险告警、数据缺失和合规揭示始终展开。`;
       panel.append(policyNote);
     }
   }
@@ -2022,12 +2290,7 @@
     const calculated = profile.evidence_status === "CALCULATED";
     status.className = calculated ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-warning";
     status.textContent = calculated ? "行为已计算" : "数据不足";
-    const trust = byId("ai-trust-score");
-    const trustValue = byId("ai-trust-score-value");
-    const mode = byId("display-policy-mode");
-    if (trust) trust.value = profile.display_policy?.trust_score ?? 50;
-    if (trustValue) trustValue.textContent = profile.display_policy?.trust_score ?? 50;
-    if (mode) mode.textContent = DISPLAY_MODE_LABELS[profile.display_policy?.mode] || "标准说明";
+    setDisplayPolicyControl(profile.display_policy || 50);
     renderConversationProfileContext(panel);
   }
 
@@ -2082,8 +2345,7 @@
     if (!response.ok) throw await apiError(response);
     const result = await response.json();
     state.displayPolicy = result.policy;
-    const mode = byId("display-policy-mode");
-    if (mode) mode.textContent = DISPLAY_MODE_LABELS[result.policy.mode] || result.policy.mode;
+    setDisplayPolicyControl(result.policy);
     if (state.behaviorProfile) {
       state.behaviorProfile = { ...state.behaviorProfile, display_policy: result.policy };
       renderBehaviorProfile(state.behaviorProfile);
@@ -2365,7 +2627,7 @@
       const issueList = document.createElement("ul");
       (result.issues || []).forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        item.textContent = `${researchIssueLabel(issue.code)}: ${displayDescription(issue.safe_message)}`;
         issueList.append(item);
       });
       if (issueList.childElementCount) detail.append(issueList);
@@ -2577,13 +2839,13 @@
       const issueLines = [];
       relatedValidations.forEach((validation) => {
         (validation.issues || []).forEach((issue) => {
-          const line = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+          const line = `${researchIssueLabel(issue.code)}: ${displayDescription(issue.safe_message)}`;
           if (!issueLines.includes(line)) issueLines.push(line);
         });
       });
       if (!relatedValidations.length && resultIssues.length && promotion === "AVAILABLE") {
         resultIssues.forEach((issue) => {
-          const line = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+          const line = `${researchIssueLabel(issue.code)}: ${displayDescription(issue.safe_message)}`;
           if (!issueLines.includes(line)) issueLines.push(line);
         });
       }
@@ -2892,7 +3154,7 @@
     if (!result) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.textContent = "运行矩阵后查看四类节点、独立来源验证与发现（FINDING）→事实（FACT）→证据（EVIDENCE）。";
+      empty.textContent = "运行矩阵后查看四类节点、独立来源验证，以及从发现到事实再到证据的闭合路径。";
       panel.append(empty);
       return;
     }
@@ -2904,11 +3166,11 @@
       chip(`运行：${researchStatusLabel(result.run_status)}`, researchStatusClass(result.run_status)),
     );
     const summaryText = document.createElement("p");
-    summaryText.textContent = `${text(result.matrix_id)} · ${text(result.run_id)} · 隔离标识 ${text(result.owner_id)}`;
+    summaryText.textContent = `研究矩阵 · ${researchPeriodLabel(result.period)} · 当前隔离标识已载入`;
     summary.append(summaryText);
     if (result.scenario) {
       const scenarioText = document.createElement("p");
-      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${displayScenarioDescription(result.scenario)}`;
+      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${researchNarrative(displayScenarioDescription(result.scenario), "该场景暂无补充说明。")}`;
       summary.append(scenarioText);
     }
     panel.append(summary);
@@ -2925,11 +3187,11 @@
       card.append(header);
       const subject = document.createElement("div");
       subject.className = "muted";
-      subject.textContent = text(node.subject);
+      subject.textContent = researchSubjectLabel(node.subject);
       card.append(subject);
       const metadata = document.createElement("dl");
-      addMetadata(metadata, "Node", node.node_id);
-      addMetadata(metadata, "Kind", node.node_kind);
+      addMetadata(metadata, "Node", researchNodeLabel(node.node_id));
+      addMetadata(metadata, "Kind", researchRoleLabel(node.node_kind));
       addMetadata(metadata, "Status", researchStatusLabel(node.status));
       card.append(metadata);
       if (node.issues && node.issues.length) {
@@ -2937,7 +3199,7 @@
         issues.className = "research-issues";
         node.issues.forEach((issue) => {
           const item = document.createElement("li");
-          item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+          item.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
           issues.append(item);
         });
         card.append(issues);
@@ -2949,13 +3211,13 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "研究结果仍需复核，Prism 不展示未验证的事实（FACT）/发现（FINDING），也不会生成可执行建议。";
+      notice.textContent = "研究结果仍需复核，Prism 不展示未验证的事实或发现，也不会生成可执行建议。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "research-issues";
       (result.issues || []).forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        item.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         issues.append(item);
       });
       if (issues.childElementCount) panel.append(issues);
@@ -2970,18 +3232,18 @@
       const row = document.createElement("article");
       row.className = "research-validation";
       const title = document.createElement("strong");
-      title.textContent = `${text(validation.subject)} · ${text(validation.metric)}`;
-      row.append(title, chip(text(validation.status), researchStatusClass(validation.status)));
+      title.textContent = `${researchSubjectLabel(validation.subject)} · ${researchMetricLabel(validation.metric)}`;
+      row.append(title, chip(researchStatusLabel(validation.status), researchStatusClass(validation.status)));
       const meta = document.createElement("div");
       meta.className = "validation-meta";
-      meta.textContent = `预期 ${text(validation.expected_value)} ${text(validation.unit)} · ${text(validation.period)} · ${text(validation.independent_lineage_count)} 条独立来源链 · 支持 ${text((validation.supporting_evidence_ids || []).length, "0")} · 冲突 ${text((validation.contradicting_evidence_ids || []).length, "0")} · 未解决 ${text((validation.unresolved_evidence_ids || []).length, "0")}`;
+      meta.textContent = `预期 ${humanMetricValue(validation.expected_value, validation.unit)} · ${researchPeriodLabel(validation.period)} · ${text(validation.independent_lineage_count, "0")} 条独立来源链 · 支持 ${text((validation.supporting_evidence_ids || []).length, "0")} · 冲突 ${text((validation.contradicting_evidence_ids || []).length, "0")} · 未解决 ${text((validation.unresolved_evidence_ids || []).length, "0")}`;
       row.append(meta);
       if (validation.issues && validation.issues.length) {
         const issues = document.createElement("ul");
         issues.className = "validation-issues";
         validation.issues.forEach((issue) => {
           const item = document.createElement("li");
-          item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+          item.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
           issues.append(item);
         });
         row.append(issues);
@@ -2992,22 +3254,22 @@
 
     if (result.pipeline_status !== "READY") {
       const availableHeading = document.createElement("h3");
-      availableHeading.textContent = "可用证据 · 未升级为事实（FACT）";
+      availableHeading.textContent = "可用证据 · 未升级为事实";
       panel.append(availableHeading);
       const available = document.createElement("div");
       available.className = "research-available-evidence";
-      (result.trace && result.trace.evidence || []).forEach((evidence) => {
+      (result.trace && result.trace.evidence || []).forEach((evidence, index) => {
         const details = document.createElement("details");
         const summaryLine = document.createElement("summary");
-        summaryLine.textContent = `${text(evidence.field)} · ${text(evidence.source)} · ${text(evidence.quality_status)}`;
+        summaryLine.textContent = `${researchMetricLabel(evidence.field)} · ${researchSourceLabel(evidence.source)} · ${researchStatusLabel(evidence.quality_status)}`;
         details.append(summaryLine);
         const metadata = document.createElement("div");
         metadata.className = "research-evidence-meta";
         [
-          `证据（EVIDENCE）：${text(evidence.evidence_id)}`,
-          `数值：${text(evidence.value)} ${text(evidence.unit, "")}`,
-          `期间：${text(evidence.period)}`,
-          `来源链：${text(evidence.lineage_id)}`,
+          `证据：${researchEvidenceLabel(evidence, index)}`,
+          `数值：${humanMetricValue(evidence.value, evidence.unit)}`,
+          `期间：${researchPeriodLabel(evidence.period)}`,
+          `来源：${researchSourceLabel(evidence.source)}`,
         ].forEach((line) => {
           const item = document.createElement("div");
           item.textContent = line;
@@ -3021,34 +3283,34 @@
     }
 
     const evidenceHeading = document.createElement("h3");
-    evidenceHeading.textContent = "发现（FINDING）→事实（FACT）→证据（EVIDENCE）";
+    evidenceHeading.textContent = "发现 → 事实 → 证据";
     panel.append(evidenceHeading);
     const evidencePanel = document.createElement("div");
     evidencePanel.className = "research-evidence";
     const evidenceById = new Map((result.trace && result.trace.evidence || []).map((item) => [item.evidence_id, item]));
     const factsById = new Map((result.trace && result.trace.facts || []).map((item) => [item.fact_id, item]));
-    (result.trace && result.trace.findings || []).forEach((finding) => {
+    (result.trace && result.trace.findings || []).forEach((finding, findingIndex) => {
       const details = document.createElement("details");
       details.open = true;
       const summaryLine = document.createElement("summary");
-      summaryLine.textContent = `${text(finding.kind)} · ${text(finding.statement)}`;
+      summaryLine.textContent = `${researchFindingLabel(finding, findingIndex)} · ${researchNarrative(finding.statement)}`;
       details.append(summaryLine);
       const metadata = document.createElement("div");
       metadata.className = "research-evidence-meta";
       const findingLine = document.createElement("div");
-      findingLine.textContent = `发现（FINDING）：${text(finding.finding_id)} · ${text(finding.severity)}`;
+      findingLine.textContent = `发现：${researchFindingLabel(finding, findingIndex)} · ${researchSeverityLabel(finding.severity)}`;
       metadata.append(findingLine);
       (finding.fact_ids || []).forEach((factId) => {
         const fact = factsById.get(factId);
         if (!fact) return;
         const factLine = document.createElement("div");
-        factLine.textContent = `事实（FACT）：${text(fact.fact_id)} · ${text(fact.metric)} = ${text(fact.value)} ${text(fact.unit)} · ${text(fact.status)}`;
+        factLine.textContent = `事实：${researchMetricLabel(fact.metric)} = ${humanMetricValue(fact.value, fact.unit)} · ${researchStatusLabel(fact.status)}`;
         metadata.append(factLine);
-        (fact.evidence_ids || []).forEach((evidenceId) => {
+        (fact.evidence_ids || []).forEach((evidenceId, evidenceIndex) => {
           const evidence = evidenceById.get(evidenceId);
           if (!evidence) return;
           const evidenceLine = document.createElement("div");
-          evidenceLine.textContent = `证据（EVIDENCE）：${text(evidence.evidence_id)} · ${text(evidence.source)} · ${text(evidence.period)} · ${text(evidence.value)} · 来源链 ${text(evidence.lineage_id)}`;
+          evidenceLine.textContent = `证据：${researchEvidenceLabel(evidence, evidenceIndex)} · ${researchSourceLabel(evidence.source)} · ${researchPeriodLabel(evidence.period)} · ${humanMetricValue(evidence.value, evidence.unit)}`;
           metadata.append(evidenceLine);
         });
       });
@@ -3078,11 +3340,11 @@
       chip(stockRiskStatusLabel(result.risk && result.risk.status), stockRiskStatusClass(result.risk && result.risk.status)),
     );
     const summaryText = document.createElement("p");
-    summaryText.textContent = `${text(result.subject)} · ${text(result.period)}`;
+    summaryText.textContent = `${researchSubjectLabel(result.subject)} · ${researchPeriodLabel(result.period)}`;
     summary.append(summaryText);
     if (result.scenario) {
       const scenarioText = document.createElement("p");
-      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${displayScenarioDescription(result.scenario)}`;
+      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${researchNarrative(displayScenarioDescription(result.scenario), "该场景暂无补充说明。")}`;
       summary.append(scenarioText);
     }
     panel.append(summary);
@@ -3098,25 +3360,25 @@
       card.className = "research-card";
       const header = document.createElement("header");
       const title = document.createElement("strong");
-      title.textContent = text(node.node_id);
+      title.textContent = researchNodeLabel(node.node_id);
       header.append(title, chip(researchStatusLabel(node.status), researchStatusClass(node.status)));
       card.append(header);
       const metadata = document.createElement("dl");
       addMetadata(metadata, "Status", researchStatusLabel(node.status));
       if (node.missing_fields && node.missing_fields.length) {
-        addMetadata(metadata, "Missing", node.missing_fields.join(", "));
+        addMetadata(metadata, "Missing", node.missing_fields.map((field) => researchMetricLabel(field)).join("、"));
       }
       card.append(metadata);
       if (node.scope_description) {
         const scope = document.createElement("div");
         scope.className = "muted";
-        scope.textContent = displayDescription(node.scope_description);
+        scope.textContent = researchNarrative(node.scope_description);
         card.append(scope);
       }
       (node.issues || []).forEach((issue) => {
         const issueLine = document.createElement("div");
         issueLine.className = "muted";
-        issueLine.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        issueLine.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         card.append(issueLine);
       });
       nodeGrid.append(card);
@@ -3132,8 +3394,8 @@
       const row = document.createElement("article");
       row.className = "research-validation";
       const title = document.createElement("strong");
-      title.textContent = `${text(validation.metric)} · ${text(validation.period)}`;
-      row.append(title, chip(text(validation.status), researchStatusClass(validation.status)));
+      title.textContent = `${researchMetricLabel(validation.metric)} · ${researchPeriodLabel(validation.period)}`;
+      row.append(title, chip(researchStatusLabel(validation.status), researchStatusClass(validation.status)));
       const meta = document.createElement("div");
       meta.className = "validation-meta";
       meta.textContent = `${text(validation.independent_lineage_count, "0")} 条独立来源链 · 支持 ${text((validation.supporting_evidence_ids || []).length, "0")} · 冲突 ${text((validation.contradicting_evidence_ids || []).length, "0")} · 未解决 ${text((validation.unresolved_evidence_ids || []).length, "0")}`;
@@ -3141,7 +3403,7 @@
       (validation.issues || []).forEach((issue) => {
         const issueLine = document.createElement("div");
         issueLine.className = "muted";
-        issueLine.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        issueLine.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         row.append(issueLine);
       });
       validations.append(row);
@@ -3151,33 +3413,33 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实（FACT）/发现（FINDING），也不会给出风险结论。";
+      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实或发现，也不会给出风险结论。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "stock-issues";
       (result.issues || []).forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        item.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         issues.append(item);
       });
       if (issues.childElementCount) panel.append(issues);
       const availableHeading = document.createElement("h3");
-      availableHeading.textContent = "可用证据 · 未升级为事实（FACT）";
+      availableHeading.textContent = "可用证据 · 未升级为事实";
       panel.append(availableHeading);
       const available = document.createElement("div");
       available.className = "stock-available-evidence";
-      (result.trace && result.trace.evidence || []).forEach((evidence) => {
+      (result.trace && result.trace.evidence || []).forEach((evidence, index) => {
         const details = document.createElement("details");
         const line = document.createElement("summary");
-        line.textContent = `${text(evidence.field)} · ${text(evidence.source)} · ${text(evidence.quality_status)}`;
+        line.textContent = `${researchMetricLabel(evidence.field)} · ${researchSourceLabel(evidence.source)} · ${researchStatusLabel(evidence.quality_status)}`;
         details.append(line);
         const metadata = document.createElement("div");
         metadata.className = "research-evidence-meta";
         [
-          `证据（EVIDENCE）：${text(evidence.evidence_id)}`,
-          `数值：${text(evidence.value)} ${text(evidence.unit, "")}`,
-          `期间：${text(evidence.period)}`,
-          `来源链：${text(evidence.lineage_id)}`,
+          `证据：${researchEvidenceLabel(evidence, index)}`,
+          `数值：${humanMetricValue(evidence.value, evidence.unit)}`,
+          `期间：${researchPeriodLabel(evidence.period)}`,
+          `来源：${researchSourceLabel(evidence.source)}`,
         ].forEach((lineText) => {
           const item = document.createElement("div");
           item.textContent = lineText;
@@ -3200,13 +3462,13 @@
       const card = document.createElement("article");
       card.className = "stock-fact-card";
       const title = document.createElement("strong");
-      title.textContent = text(metricLabels.get(fact.metric), fact.metric);
+      title.textContent = researchMetricLabel(fact.metric, metricLabels.get(fact.metric));
       const value = document.createElement("div");
       value.className = "stock-fact-value";
       value.textContent = humanMetricValue(fact.value, fact.unit);
       const period = document.createElement("div");
       period.className = "muted";
-      period.textContent = `${text(fact.metric)} · ${text(fact.period)} · ${text(fact.status)}`;
+      period.textContent = `${researchMetricLabel(fact.metric)} · ${researchPeriodLabel(fact.period)} · ${researchStatusLabel(fact.status)}`;
       card.append(title, value, period);
       factGrid.append(card);
     });
@@ -3220,13 +3482,13 @@
     riskHeader.append(riskTitle, chip(stockRiskStatusLabel(result.risk && result.risk.status), stockRiskStatusClass(result.risk && result.risk.status)));
     risk.append(riskHeader);
     const riskText = document.createElement("p");
-    riskText.textContent = text(result.risk && result.risk.summary);
+    riskText.textContent = researchNarrative(result.risk && result.risk.summary, "风险摘要暂不可用，需要人工复核。");
     risk.append(riskText);
     const rules = document.createElement("div");
     rules.className = "stock-rules";
     (state.stockResearchTemplate && state.stockResearchTemplate.risk_rules || []).forEach((rule) => {
       const line = document.createElement("div");
-      line.textContent = `${text(rule.label)} · ${text(rule.operator)} ${text(rule.threshold)} ${text(rule.unit)}`;
+      line.textContent = `${text(rule.label)} · ${text(rule.operator)} ${humanMetricValue(rule.threshold, rule.unit)}`;
       rules.append(line);
     });
     if (rules.childElementCount) risk.append(rules);
@@ -3237,48 +3499,48 @@
     panel.append(anomalyHeading);
     const anomalies = document.createElement("div");
     anomalies.className = "stock-findings";
-    (result.findings || []).filter((finding) => finding.severity !== "INFO").forEach((finding) => {
+    (result.findings || []).filter((finding) => finding.severity !== "INFO").forEach((finding, index) => {
       const details = document.createElement("details");
       details.open = true;
       const line = document.createElement("summary");
-      line.textContent = `${text(finding.kind)} · ${text(finding.statement)}`;
+      line.textContent = `${researchFindingLabel(finding, index)} · ${researchNarrative(finding.statement)}`;
       details.append(line);
       const meta = document.createElement("div");
       meta.className = "research-evidence-meta";
-      meta.textContent = `${text(finding.finding_id)} · ${text(finding.severity)} · ${displayMethodology(finding.methodology)}`;
+      meta.textContent = `${researchFindingLabel(finding, index)} · ${researchSeverityLabel(finding.severity)} · ${displayMethodology(finding.methodology)}`;
       details.append(meta);
       anomalies.append(details);
     });
     if (anomalies.childElementCount) panel.append(anomalies);
 
     const chainHeading = document.createElement("h3");
-    chainHeading.textContent = "发现（FINDING）→事实（FACT）→证据（EVIDENCE）";
+    chainHeading.textContent = "发现 → 事实 → 证据";
     panel.append(chainHeading);
     const chain = document.createElement("div");
     chain.className = "stock-findings";
     const evidenceById = new Map((result.trace && result.trace.evidence || []).map((item) => [item.evidence_id, item]));
     const factsById = new Map((result.trace && result.trace.facts || []).map((item) => [item.fact_id, item]));
-    (result.findings || []).forEach((finding) => {
+    (result.findings || []).forEach((finding, findingIndex) => {
       const details = document.createElement("details");
       const line = document.createElement("summary");
-      line.textContent = `${text(finding.kind)} · ${text(finding.statement)}`;
+      line.textContent = `${researchFindingLabel(finding, findingIndex)} · ${researchNarrative(finding.statement)}`;
       details.append(line);
       const metadata = document.createElement("div");
       metadata.className = "research-evidence-meta";
       const findingLine = document.createElement("div");
-      findingLine.textContent = `发现（FINDING）：${text(finding.finding_id)} · ${text(finding.severity)}`;
+      findingLine.textContent = `发现：${researchFindingLabel(finding, findingIndex)} · ${researchSeverityLabel(finding.severity)}`;
       metadata.append(findingLine);
       (finding.fact_ids || []).forEach((factId) => {
         const fact = factsById.get(factId);
         if (!fact) return;
         const factLine = document.createElement("div");
-        factLine.textContent = `事实（FACT）：${text(fact.fact_id)} · ${text(fact.metric)} = ${text(fact.value)} ${text(fact.unit)} · ${text(fact.status)}`;
+        factLine.textContent = `事实：${researchMetricLabel(fact.metric)} = ${humanMetricValue(fact.value, fact.unit)} · ${researchStatusLabel(fact.status)}`;
         metadata.append(factLine);
-        (fact.evidence_ids || []).forEach((evidenceId) => {
+        (fact.evidence_ids || []).forEach((evidenceId, evidenceIndex) => {
           const evidence = evidenceById.get(evidenceId);
           if (!evidence) return;
           const evidenceLine = document.createElement("div");
-          evidenceLine.textContent = `证据（EVIDENCE）：${text(evidence.evidence_id)} · ${text(evidence.source)} · ${text(evidence.period)} · ${text(evidence.value)} · 来源链 ${text(evidence.lineage_id)}`;
+          evidenceLine.textContent = `证据：${researchEvidenceLabel(evidence, evidenceIndex)} · ${researchSourceLabel(evidence.source)} · ${researchPeriodLabel(evidence.period)} · ${humanMetricValue(evidence.value, evidence.unit)}`;
           metadata.append(evidenceLine);
         });
       });
@@ -3308,11 +3570,11 @@
       chip(fundRiskStatusLabel(result.risk && result.risk.status), fundRiskStatusClass(result.risk && result.risk.status)),
     );
     const summaryText = document.createElement("p");
-    summaryText.textContent = `${text(result.subject)} · ${text(result.period)}`;
+    summaryText.textContent = `${researchSubjectLabel(result.subject)} · ${researchPeriodLabel(result.period)}`;
     summary.append(summaryText);
     if (result.scenario) {
       const scenarioText = document.createElement("p");
-      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${displayScenarioDescription(result.scenario)}`;
+      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${researchNarrative(displayScenarioDescription(result.scenario), "该场景暂无补充说明。")}`;
       summary.append(scenarioText);
     }
     panel.append(summary);
@@ -3328,25 +3590,25 @@
       card.className = "research-card";
       const header = document.createElement("header");
       const title = document.createElement("strong");
-      title.textContent = text(node.node_id);
+      title.textContent = researchNodeLabel(node.node_id);
       header.append(title, chip(researchStatusLabel(node.status), researchStatusClass(node.status)));
       card.append(header);
       const metadata = document.createElement("dl");
       addMetadata(metadata, "Status", researchStatusLabel(node.status));
       if (node.missing_fields && node.missing_fields.length) {
-        addMetadata(metadata, "Missing", node.missing_fields.join(", "));
+        addMetadata(metadata, "Missing", node.missing_fields.map((field) => researchMetricLabel(field)).join("、"));
       }
       card.append(metadata);
       if (node.scope_description) {
         const scope = document.createElement("div");
         scope.className = "muted";
-        scope.textContent = displayDescription(node.scope_description);
+        scope.textContent = researchNarrative(node.scope_description);
         card.append(scope);
       }
       (node.issues || []).forEach((issue) => {
         const issueLine = document.createElement("div");
         issueLine.className = "muted";
-        issueLine.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        issueLine.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         card.append(issueLine);
       });
       nodeGrid.append(card);
@@ -3363,8 +3625,8 @@
       const row = document.createElement("article");
       row.className = "research-validation";
       const title = document.createElement("strong");
-      title.textContent = `${text(validation.metric)} · ${text(validation.period)}`;
-      row.append(title, chip(text(validation.status), researchStatusClass(validation.status)));
+      title.textContent = `${researchMetricLabel(validation.metric)} · ${researchPeriodLabel(validation.period)}`;
+      row.append(title, chip(researchStatusLabel(validation.status), researchStatusClass(validation.status)));
       const meta = document.createElement("div");
       meta.className = "validation-meta";
       meta.textContent = `${text(validation.independent_lineage_count, "0")} 条独立来源链 · 支持 ${text((validation.supporting_evidence_ids || []).length, "0")} · 冲突 ${text((validation.contradicting_evidence_ids || []).length, "0")} · 未解决 ${text((validation.unresolved_evidence_ids || []).length, "0")}`;
@@ -3372,7 +3634,7 @@
       (validation.issues || []).forEach((issue) => {
         const issueLine = document.createElement("div");
         issueLine.className = "muted";
-        issueLine.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        issueLine.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         row.append(issueLine);
       });
       validations.append(row);
@@ -3382,34 +3644,34 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实（FACT）/发现（FINDING），也不会给出风险结论。";
+      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实或发现，也不会给出风险结论。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "fund-issues";
       (result.issues || []).forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = displayDescription(issue.safe_message, "数据暂不可用，需要人工复核。");
+        item.textContent = researchNarrative(issue.safe_message, "数据暂不可用，需要人工复核。");
         issues.append(item);
       });
       if (issues.childElementCount) panel.append(issues);
       const availableHeading = document.createElement("h3");
       availableHeading.className = "dev-only technical-detail";
-      availableHeading.textContent = "技术详情：可用证据 · 未升级为事实（FACT）";
+      availableHeading.textContent = "技术详情：可用证据 · 未升级为事实";
       panel.append(availableHeading);
       const available = document.createElement("div");
       available.className = "fund-available-evidence dev-only technical-detail";
-      (result.trace && result.trace.evidence || []).forEach((evidence) => {
+      (result.trace && result.trace.evidence || []).forEach((evidence, index) => {
         const details = document.createElement("details");
         const line = document.createElement("summary");
-        line.textContent = `${text(evidence.field)} · ${text(evidence.source)} · ${text(evidence.quality_status)}`;
+        line.textContent = `${researchMetricLabel(evidence.field)} · ${researchSourceLabel(evidence.source)} · ${researchStatusLabel(evidence.quality_status)}`;
         details.append(line);
         const metadata = document.createElement("div");
         metadata.className = "research-evidence-meta";
         [
-          `证据（EVIDENCE）：${text(evidence.evidence_id)}`,
-          `数值：${text(evidence.value)} ${text(evidence.unit, "")}`,
-          `期间：${text(evidence.period)}`,
-          `来源链：${text(evidence.lineage_id)}`,
+          `证据：${researchEvidenceLabel(evidence, index)}`,
+          `数值：${humanMetricValue(evidence.value, evidence.unit)}`,
+          `期间：${researchPeriodLabel(evidence.period)}`,
+          `来源：${researchSourceLabel(evidence.source)}`,
         ].forEach((lineText) => {
           const item = document.createElement("div");
           item.textContent = lineText;
@@ -3432,13 +3694,13 @@
       const card = document.createElement("article");
       card.className = "fund-fact-card";
       const title = document.createElement("strong");
-      title.textContent = text(metricLabels.get(fact.metric), fact.metric);
+      title.textContent = researchMetricLabel(fact.metric, metricLabels.get(fact.metric));
       const value = document.createElement("div");
       value.className = "fund-fact-value";
       value.textContent = humanMetricValue(fact.value, fact.unit);
       const period = document.createElement("div");
       period.className = "muted";
-      period.textContent = `数据时间：${text(fact.period)} · 来源已验证`;
+      period.textContent = `数据时间：${researchPeriodLabel(fact.period)} · 来源已验证`;
       card.append(title, value, period);
       factGrid.append(card);
     });
@@ -3452,7 +3714,7 @@
     riskHeader.append(riskTitle, chip(fundRiskStatusLabel(result.risk && result.risk.status), fundRiskStatusClass(result.risk && result.risk.status)));
     risk.append(riskHeader);
     const riskText = document.createElement("p");
-    riskText.textContent = text(result.risk && result.risk.summary);
+    riskText.textContent = researchNarrative(result.risk && result.risk.summary, "风险摘要暂不可用，需要人工复核。");
     risk.append(riskText);
     const rules = document.createElement("div");
     rules.className = "fund-rules";
@@ -3469,15 +3731,15 @@
     panel.append(findingHeading);
     const findings = document.createElement("div");
     findings.className = "fund-findings";
-    (result.findings || []).filter((finding) => finding.severity !== "INFO").forEach((finding) => {
+    (result.findings || []).filter((finding) => finding.severity !== "INFO").forEach((finding, index) => {
       const details = document.createElement("details");
       details.open = true;
       const line = document.createElement("summary");
-      line.textContent = `${findingKindLabel(finding.kind)} · ${text(finding.statement)}`;
+      line.textContent = `${researchFindingLabel(finding, index)} · ${researchNarrative(finding.statement)}`;
       details.append(line);
       const meta = document.createElement("div");
       meta.className = "research-evidence-meta dev-only technical-detail";
-      meta.textContent = `${text(finding.finding_id)} · ${text(finding.severity)} · ${displayMethodology(finding.methodology)}`;
+      meta.textContent = `${researchFindingLabel(finding, index)} · ${researchSeverityLabel(finding.severity)} · ${displayMethodology(finding.methodology)}`;
       details.append(meta);
       findings.append(details);
     });
@@ -3491,27 +3753,27 @@
     chain.className = "fund-findings dev-only technical-detail";
     const evidenceById = new Map((result.trace && result.trace.evidence || []).map((item) => [item.evidence_id, item]));
     const factsById = new Map((result.trace && result.trace.facts || []).map((item) => [item.fact_id, item]));
-    (result.findings || []).forEach((finding) => {
+    (result.findings || []).forEach((finding, findingIndex) => {
       const details = document.createElement("details");
       const line = document.createElement("summary");
-      line.textContent = `${text(finding.kind)} · ${text(finding.statement)}`;
+      line.textContent = `${researchFindingLabel(finding, findingIndex)} · ${researchNarrative(finding.statement)}`;
       details.append(line);
       const metadata = document.createElement("div");
       metadata.className = "research-evidence-meta";
       const findingLine = document.createElement("div");
-      findingLine.textContent = `发现（FINDING）：${text(finding.finding_id)} · ${text(finding.severity)}`;
+      findingLine.textContent = `发现：${researchFindingLabel(finding, findingIndex)} · ${researchSeverityLabel(finding.severity)}`;
       metadata.append(findingLine);
       (finding.fact_ids || []).forEach((factId) => {
         const fact = factsById.get(factId);
         if (!fact) return;
         const factLine = document.createElement("div");
-        factLine.textContent = `事实（FACT）：${text(fact.fact_id)} · ${text(fact.metric)} = ${text(fact.value)} ${text(fact.unit)} · ${text(fact.status)}`;
+        factLine.textContent = `事实：${researchMetricLabel(fact.metric)} = ${humanMetricValue(fact.value, fact.unit)} · ${researchStatusLabel(fact.status)}`;
         metadata.append(factLine);
-        (fact.evidence_ids || []).forEach((evidenceId) => {
+        (fact.evidence_ids || []).forEach((evidenceId, evidenceIndex) => {
           const evidence = evidenceById.get(evidenceId);
           if (!evidence) return;
           const evidenceLine = document.createElement("div");
-          evidenceLine.textContent = `证据（EVIDENCE）：${text(evidence.evidence_id)} · ${text(evidence.source)} · ${text(evidence.period)} · ${text(evidence.value)} · 来源链 ${text(evidence.lineage_id)}`;
+          evidenceLine.textContent = `证据：${researchEvidenceLabel(evidence, evidenceIndex)} · ${researchSourceLabel(evidence.source)} · ${researchPeriodLabel(evidence.period)} · ${humanMetricValue(evidence.value, evidence.unit)}`;
           metadata.append(evidenceLine);
         });
       });
@@ -3541,11 +3803,11 @@
       chip(convertibleBondRiskStatusLabel(result.risk && result.risk.status), convertibleBondRiskStatusClass(result.risk && result.risk.status)),
     );
     const summaryText = document.createElement("p");
-    summaryText.textContent = `${text(result.subject)} · ${text(result.period)}`;
+    summaryText.textContent = `${researchSubjectLabel(result.subject)} · ${researchPeriodLabel(result.period)}`;
     summary.append(summaryText);
     if (result.scenario) {
       const scenarioText = document.createElement("p");
-      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${displayScenarioDescription(result.scenario)}`;
+      scenarioText.textContent = `${displayScenarioLabel(result.scenario)} · ${researchNarrative(displayScenarioDescription(result.scenario), "该场景暂无补充说明。")}`;
       summary.append(scenarioText);
     }
     panel.append(summary);
@@ -3560,23 +3822,23 @@
       card.className = "research-card";
       const header = document.createElement("header");
       const title = document.createElement("strong");
-      title.textContent = text(node.node_id);
+      title.textContent = researchNodeLabel(node.node_id);
       header.append(title, chip(researchStatusLabel(node.status), researchStatusClass(node.status)));
       card.append(header);
       const metadata = document.createElement("dl");
       addMetadata(metadata, "Status", researchStatusLabel(node.status));
-      if (node.missing_fields && node.missing_fields.length) addMetadata(metadata, "Missing", node.missing_fields.join(", "));
+      if (node.missing_fields && node.missing_fields.length) addMetadata(metadata, "Missing", node.missing_fields.map((field) => researchMetricLabel(field)).join("、"));
       card.append(metadata);
       if (node.scope_description) {
         const scope = document.createElement("div");
         scope.className = "muted";
-        scope.textContent = displayDescription(node.scope_description);
+        scope.textContent = researchNarrative(node.scope_description);
         card.append(scope);
       }
       (node.issues || []).forEach((issue) => {
         const issueLine = document.createElement("div");
         issueLine.className = "muted";
-        issueLine.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        issueLine.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         card.append(issueLine);
       });
       nodeGrid.append(card);
@@ -3592,8 +3854,8 @@
       const row = document.createElement("article");
       row.className = "research-validation";
       const title = document.createElement("strong");
-      title.textContent = `${text(validation.metric)} · ${text(validation.period)}`;
-      row.append(title, chip(text(validation.status), researchStatusClass(validation.status)));
+      title.textContent = `${researchMetricLabel(validation.metric)} · ${researchPeriodLabel(validation.period)}`;
+      row.append(title, chip(researchStatusLabel(validation.status), researchStatusClass(validation.status)));
       const meta = document.createElement("div");
       meta.className = "validation-meta";
       meta.textContent = `${text(validation.independent_lineage_count, "0")} 条独立来源链 · 支持 ${text((validation.supporting_evidence_ids || []).length, "0")} · 冲突 ${text((validation.contradicting_evidence_ids || []).length, "0")} · 未解决 ${text((validation.unresolved_evidence_ids || []).length, "0")}`;
@@ -3601,7 +3863,7 @@
       (validation.issues || []).forEach((issue) => {
         const issueLine = document.createElement("div");
         issueLine.className = "muted";
-        issueLine.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        issueLine.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         row.append(issueLine);
       });
       validations.append(row);
@@ -3611,33 +3873,33 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实（FACT）/发现（FINDING），也不会给出风险结论。";
+      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实或发现，也不会给出风险结论。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "convertible-bond-issues";
       (result.issues || []).forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        item.textContent = `${researchIssueLabel(issue.code)}: ${researchNarrative(issue.safe_message)}`;
         issues.append(item);
       });
       if (issues.childElementCount) panel.append(issues);
       const availableHeading = document.createElement("h3");
-      availableHeading.textContent = "可用证据 · 未升级为事实（FACT）";
+      availableHeading.textContent = "可用证据 · 未升级为事实";
       panel.append(availableHeading);
       const available = document.createElement("div");
       available.className = "convertible-bond-available-evidence";
-      (result.trace && result.trace.evidence || []).forEach((evidence) => {
+      (result.trace && result.trace.evidence || []).forEach((evidence, index) => {
         const details = document.createElement("details");
         const line = document.createElement("summary");
-        line.textContent = `${text(evidence.field)} · ${text(evidence.source)} · ${text(evidence.quality_status)}`;
+        line.textContent = `${researchMetricLabel(evidence.field)} · ${researchSourceLabel(evidence.source)} · ${researchStatusLabel(evidence.quality_status)}`;
         details.append(line);
         const metadata = document.createElement("div");
         metadata.className = "research-evidence-meta";
         [
-          `证据（EVIDENCE）：${text(evidence.evidence_id)}`,
-          `数值：${text(evidence.value)} ${text(evidence.unit, "")}`,
-          `期间：${text(evidence.period)}`,
-          `来源链：${text(evidence.lineage_id)}`,
+          `证据：${researchEvidenceLabel(evidence, index)}`,
+          `数值：${humanMetricValue(evidence.value, evidence.unit)}`,
+          `期间：${researchPeriodLabel(evidence.period)}`,
+          `来源：${researchSourceLabel(evidence.source)}`,
         ].forEach((lineText) => {
           const item = document.createElement("div");
           item.textContent = lineText;
@@ -3663,17 +3925,17 @@
       const card = document.createElement("article");
       card.className = "convertible-bond-fact-card";
       const title = document.createElement("strong");
-      title.textContent = text(metricLabels.get(fact.metric), fact.metric);
+      title.textContent = researchMetricLabel(fact.metric, metricLabels.get(fact.metric));
       const value = document.createElement("div");
       value.className = "convertible-bond-fact-value";
       let displayValue = text(fact.value);
       const levelMetric = fact.metric === "credit_rating_rank" || fact.metric === "liquidity_score";
       if (fact.metric === "credit_rating_rank") displayValue = `${text(creditLabels[String(fact.value)], "未知评级")} · 序数 ${displayValue}`;
       if (fact.metric === "liquidity_score") displayValue = `${text(liquidityLabels[String(fact.value)], "未知流动性")} · 分数 ${displayValue}`;
-      value.textContent = levelMetric ? displayValue : `${displayValue} ${text(fact.unit, "")}`;
+      value.textContent = levelMetric ? displayValue : humanMetricValue(fact.value, fact.unit);
       const period = document.createElement("div");
       period.className = "muted";
-      period.textContent = `${text(fact.metric)} · ${text(fact.period)} · ${text(fact.status)}`;
+      period.textContent = `${researchMetricLabel(fact.metric)} · ${researchPeriodLabel(fact.period)} · ${researchStatusLabel(fact.status)}`;
       card.append(title, value, period);
       factGrid.append(card);
     });
@@ -3686,7 +3948,7 @@
     formulas.className = "convertible-bond-formulas";
     (template && template.metrics || []).filter((item) => item.derived).forEach((item) => {
       const line = document.createElement("div");
-      line.textContent = `${text(item.label, item.metric)} · ${text(item.formula)}`;
+      line.textContent = `${researchMetricLabel(item.metric, item.label)} · ${researchFormula(item.formula)}`;
       formulas.append(line);
     });
     if (formulas.childElementCount) panel.append(formulas);
@@ -3699,13 +3961,13 @@
     riskHeader.append(riskTitle, chip(convertibleBondRiskStatusLabel(result.risk && result.risk.status), convertibleBondRiskStatusClass(result.risk && result.risk.status)));
     risk.append(riskHeader);
     const riskText = document.createElement("p");
-    riskText.textContent = text(result.risk && result.risk.summary);
+    riskText.textContent = researchNarrative(result.risk && result.risk.summary, "风险摘要暂不可用，需要人工复核。");
     risk.append(riskText);
     const rules = document.createElement("div");
     rules.className = "convertible-bond-rules";
     (template && template.risk_rules || []).forEach((rule) => {
       const line = document.createElement("div");
-      line.textContent = `${text(rule.label)} · ${text(rule.operator)} ${text(rule.threshold)} ${text(rule.unit)}`;
+      line.textContent = `${text(rule.label)} · ${text(rule.operator)} ${humanMetricValue(rule.threshold, rule.unit)}`;
       rules.append(line);
     });
     if (rules.childElementCount) risk.append(rules);
@@ -3716,48 +3978,48 @@
     panel.append(findingHeading);
     const findings = document.createElement("div");
     findings.className = "convertible-bond-findings";
-    (result.findings || []).filter((finding) => finding.severity !== "INFO").forEach((finding) => {
+    (result.findings || []).filter((finding) => finding.severity !== "INFO").forEach((finding, index) => {
       const details = document.createElement("details");
       details.open = true;
       const line = document.createElement("summary");
-      line.textContent = `${text(finding.kind)} · ${text(finding.statement)}`;
+      line.textContent = `${researchFindingLabel(finding, index)} · ${researchNarrative(finding.statement)}`;
       details.append(line);
       const meta = document.createElement("div");
       meta.className = "research-evidence-meta";
-      meta.textContent = `${text(finding.finding_id)} · ${text(finding.severity)} · ${displayMethodology(finding.methodology)}`;
+      meta.textContent = `${researchFindingLabel(finding, index)} · ${researchSeverityLabel(finding.severity)} · ${displayMethodology(finding.methodology)}`;
       details.append(meta);
       findings.append(details);
     });
     if (findings.childElementCount) panel.append(findings);
 
     const chainHeading = document.createElement("h3");
-    chainHeading.textContent = "发现（FINDING）→事实（FACT）→证据（EVIDENCE）";
+    chainHeading.textContent = "发现 → 事实 → 证据";
     panel.append(chainHeading);
     const chain = document.createElement("div");
     chain.className = "convertible-bond-findings";
     const evidenceById = new Map((result.trace && result.trace.evidence || []).map((item) => [item.evidence_id, item]));
     const factsById = new Map((result.trace && result.trace.facts || []).map((item) => [item.fact_id, item]));
-    (result.findings || []).forEach((finding) => {
+    (result.findings || []).forEach((finding, findingIndex) => {
       const details = document.createElement("details");
       const line = document.createElement("summary");
-      line.textContent = `${text(finding.kind)} · ${text(finding.statement)}`;
+      line.textContent = `${researchFindingLabel(finding, findingIndex)} · ${researchNarrative(finding.statement)}`;
       details.append(line);
       const metadata = document.createElement("div");
       metadata.className = "research-evidence-meta";
       const findingLine = document.createElement("div");
-      findingLine.textContent = `发现（FINDING）：${text(finding.finding_id)} · ${text(finding.severity)}`;
+      findingLine.textContent = `发现：${researchFindingLabel(finding, findingIndex)} · ${researchSeverityLabel(finding.severity)}`;
       metadata.append(findingLine);
       (finding.fact_ids || []).forEach((factId) => {
         const fact = factsById.get(factId);
         if (!fact) return;
         const factLine = document.createElement("div");
-        factLine.textContent = `事实（FACT）：${text(fact.fact_id)} · ${text(fact.metric)} = ${text(fact.value)} ${text(fact.unit)} · ${text(fact.status)}`;
+        factLine.textContent = `事实：${researchMetricLabel(fact.metric)} = ${humanMetricValue(fact.value, fact.unit)} · ${researchStatusLabel(fact.status)}`;
         metadata.append(factLine);
-        (fact.evidence_ids || []).forEach((evidenceId) => {
+        (fact.evidence_ids || []).forEach((evidenceId, evidenceIndex) => {
           const evidence = evidenceById.get(evidenceId);
           if (!evidence) return;
           const evidenceLine = document.createElement("div");
-          evidenceLine.textContent = `证据（EVIDENCE）：${text(evidence.evidence_id)} · ${text(evidence.source)} · ${text(evidence.period)} · ${text(evidence.value)} · 来源链 ${text(evidence.lineage_id)}`;
+          evidenceLine.textContent = `证据：${researchEvidenceLabel(evidence, evidenceIndex)} · ${researchSourceLabel(evidence.source)} · ${researchPeriodLabel(evidence.period)} · ${humanMetricValue(evidence.value, evidence.unit)}`;
           metadata.append(evidenceLine);
         });
       });
@@ -3811,7 +4073,7 @@
       issues.className = "portfolio-optimization-issues";
       result.issues.forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = `${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        item.textContent = `${researchIssueLabel(issue.code)}: ${displayDescription(issue.safe_message)}`;
         issues.append(item);
       });
       panel.append(issues);
@@ -3942,7 +4204,7 @@
       issues.className = "portfolio-optimization-issues";
       result.issues.forEach((issue) => {
         const item = document.createElement("li");
-        item.textContent = `[${text(issue.dimension)}] ${text(issue.code)}: ${displayDescription(issue.safe_message)}`;
+        item.textContent = `[${text(issue.dimension)}] ${researchIssueLabel(issue.code)}: ${displayDescription(issue.safe_message)}`;
         issues.append(item);
       });
       panel.append(issues);
@@ -4353,7 +4615,7 @@
     if (state.ownerId !== ownerId || state.researchSequence !== sequence) return null;
     state.researchTemplate = template;
     renderResearchScenarioOptions(template.scenarios);
-    byId("research-template-meta").textContent = `矩阵 ${text(template.matrix_id)} · ${text(template.node_count)} 个节点 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
+    byId("research-template-meta").textContent = `研究矩阵 · ${text(template.node_count, "0")} 个节点 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
     return template;
   }
 
@@ -4367,7 +4629,7 @@
     if (state.ownerId !== ownerId || state.stockResearchSequence !== sequence) return null;
     state.stockResearchTemplate = template;
     renderStockResearchScenarioOptions(template.scenarios);
-    byId("stock-research-template-meta").textContent = `个股 ${text(template.subject)} · ${text(template.period)} · ${text(template.metrics?.length, "0")} 项指标 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
+    byId("stock-research-template-meta").textContent = `个股 ${researchSubjectLabel(template.subject)} · ${researchPeriodLabel(template.period)} · ${text(template.metrics?.length, "0")} 项指标 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
     return template;
   }
 
@@ -4381,7 +4643,7 @@
     if (state.ownerId !== ownerId || state.fundResearchSequence !== sequence) return null;
     state.fundResearchTemplate = template;
     renderFundResearchScenarioOptions(template.scenarios);
-    byId("fund-research-template-meta").textContent = `基金 ${text(template.subject)} · ${text(template.period)} · ${text(template.metrics?.length, "0")} 项指标 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
+    byId("fund-research-template-meta").textContent = `基金 ${researchSubjectLabel(template.subject)} · ${researchPeriodLabel(template.period)} · ${text(template.metrics?.length, "0")} 项指标 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
     return template;
   }
 
@@ -4395,7 +4657,7 @@
     if (state.ownerId !== ownerId || state.convertibleBondResearchSequence !== sequence) return null;
     state.convertibleBondResearchTemplate = template;
     renderConvertibleBondResearchScenarioOptions(template.scenarios);
-    byId("convertible-bond-research-template-meta").textContent = `可转债 ${text(template.subject)} · ${text(template.period)} · ${text(template.metrics?.length, "0")} 项指标 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
+    byId("convertible-bond-research-template-meta").textContent = `可转债 ${researchSubjectLabel(template.subject)} · ${researchPeriodLabel(template.period)} · ${text(template.metrics?.length, "0")} 项指标 · ${text((template.scenarios || []).length, "0")} 个回放场景 · 生成时间 ${text(template.generated_at)}`;
     return template;
   }
 
@@ -9851,14 +10113,8 @@
   if (runRebBtn) runRebBtn.addEventListener("click", runPortfolioRebalancing);
   const runExpBtn = byId("run-explainability");
   if (runExpBtn) runExpBtn.addEventListener("click", runAdvancedExplainability);
-  const trustScore = byId("ai-trust-score");
-  if (trustScore) trustScore.addEventListener("input", () => {
-    const value = byId("ai-trust-score-value");
-    if (value) value.textContent = trustScore.value;
-    const mode = byId("display-policy-mode");
-    const score = Number(trustScore.value);
-    const key = score < 35 ? "AUDIT_EXPANDED" : score < 65 ? "STANDARD" : "CONCLUSION_FIRST";
-    if (mode) mode.textContent = DISPLAY_MODE_LABELS[key];
+  document.querySelectorAll('input[name="display-policy-level"]').forEach((levelInput) => {
+    levelInput.addEventListener("change", () => setDisplayPolicyControl(Number(levelInput.value)));
   });
   const savePolicyBtn = byId("save-display-policy");
   if (savePolicyBtn) savePolicyBtn.addEventListener("click", () => saveDisplayPolicy().catch(error => setError(error.message)));

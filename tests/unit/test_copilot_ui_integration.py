@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -186,3 +187,71 @@ def test_copilot_styles_and_responsive_rules() -> None:
         assert selector in styles
 
     assert ".copilot-stats-grid, .copilot-tasks-grid, .decision-metrics-row" in styles
+
+
+def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="ai-trust-score" type="range"' not in markup
+    assert re.findall(
+        r'<input type="radio" name="display-policy-level" value="(\d+)"',
+        markup,
+    ) == ["80", "50", "20"]
+    for label in ("简洁", "标准", "详细"):
+        assert f">{label}<" in markup
+
+    # The visible control is discrete, while the historical API/database
+    # contract continues to receive one of the established numeric values.
+    assert "const DISPLAY_DETAIL_LEVELS" in script
+    assert "function setDisplayPolicyControl(" in script
+    assert "trust_score: trust" in script
+    assert 'input[name="display-policy-level"]' in script
+
+
+def test_portfolio_panel_declares_demo_data_and_hides_snapshot_identifiers() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="portfolio-source-note"' in markup
+    assert "示例持仓数据，仅用于界面演示，不代表真实账户" in markup
+    assert "function setPortfolioSourcePresentation(" in script
+    assert "示例持仓明细" in script
+    assert "parentPosition" in script
+    assert "快照 ${text(fund.snapshot_id)}" not in script
+
+
+def test_user_facing_asset_research_localizes_statuses_and_machine_identifiers() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    research_start = script.index("function renderResearchMatrix")
+    research_end = script.index("function renderPortfolioOptimization(result)")
+    research_renderers = script[research_start:research_end]
+
+    for helper in (
+        "researchSubjectLabel",
+        "researchMetricLabel",
+        "researchSourceLabel",
+        "researchEvidenceLabel",
+        "researchFindingLabel",
+        "researchNarrative",
+        "researchStatusLabel",
+        "researchSeverityLabel",
+    ):
+        assert helper in research_renderers
+
+    for raw_render in (
+        "text(node.node_id)",
+        "text(evidence.evidence_id)",
+        "text(evidence.lineage_id)",
+        "text(finding.finding_id)",
+        "text(finding.kind)",
+        "text(validation.metric)",
+        "text(validation.status)",
+        "text(evidence.quality_status)",
+        "text(fact.status)",
+        "text(finding.severity)",
+    ):
+        assert raw_render not in research_renderers
+
+    assert "displayScenarioLabel" in research_renderers
+    assert "发现 → 事实 → 证据" in research_renderers

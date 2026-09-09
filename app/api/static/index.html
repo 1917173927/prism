@@ -355,8 +355,28 @@
                 </div>
                 <button id="start-conversation-profile-update" class="quiet-profile-action" type="button">在对话中完善</button>
                 <div class="display-policy-control">
-                  <label for="ai-trust-score">解释详细度 <strong id="ai-trust-score-value">50</strong></label>
-                  <input id="ai-trust-score" type="range" min="0" max="100" value="50" step="1">
+                  <fieldset class="display-policy-levels">
+                    <legend>解释详细度 <strong id="ai-trust-score-value">标准</strong></legend>
+                    <div class="display-policy-options" role="radiogroup" aria-label="解释详细度">
+                      <label class="display-policy-option">
+                        <input type="radio" name="display-policy-level" value="80">
+                        <span>简洁</span>
+                        <small>先看结论</small>
+                      </label>
+                      <label class="display-policy-option">
+                        <input type="radio" name="display-policy-level" value="50" checked>
+                        <span>标准</span>
+                        <small>结论与关键依据</small>
+                      </label>
+                      <label class="display-policy-option">
+                        <input type="radio" name="display-policy-level" value="20">
+                        <span>详细</span>
+                        <small>展开依据与边界</small>
+                      </label>
+                    </div>
+                    <input id="ai-trust-score" type="hidden" value="50" aria-hidden="true">
+                    <small id="display-policy-hint" class="display-policy-hint">结论与关键依据</small>
+                  </fieldset>
                   <button id="save-display-policy" class="quiet-profile-action" type="button">保存</button>
                   <button id="recompute-behavior-profile" class="quiet-profile-action" type="button">重新核验</button>
                   <span id="display-policy-mode" class="status-chip">标准说明</span>
@@ -835,9 +855,9 @@
               </label>
               <button id="run-research-matrix" class="query-submit" type="button">运行研究矩阵</button>
             </div>
-            <p class="research-boundary">宏观、行业、个股、ETF/基金只展示结构化研究状态与证据链；就绪（READY）不代表可交易建议，退化场景不会升级为事实或发现。</p>
+            <p class="research-boundary">宏观、行业、个股、ETF/基金只展示结构化研究状态与证据链；研究完成不代表可交易建议，退化场景不会升级为事实或发现。</p>
             <div id="research-matrix-content" class="research-content" aria-live="polite">
-              <div class="empty-state">运行矩阵后查看四类节点、独立来源验证与发现（FINDING）→事实（FACT）→证据（EVIDENCE）。</div>
+              <div class="empty-state">运行矩阵后查看四类节点、独立来源验证，以及从发现到事实再到证据的闭合路径。</div>
             </div>
             <details id="workflow-panel">
               <summary>工作流编排演练 · MOCK 合成数据</summary>
@@ -947,10 +967,11 @@
             <div class="panel-head">
               <div>
                 <span class="eyebrow clay">持仓快照</span>
-                <h2 id="portfolio-title">当前持仓</h2>
+                <h2 id="portfolio-title">持仓明细</h2>
               </div>
-              <span id="portfolio-context-label" class="muted">示例持仓 · 只读</span>
+              <span id="portfolio-context-label" class="muted">示例数据 · 只读</span>
             </div>
+            <p id="portfolio-source-note" class="portfolio-source-note">当前展示为示例持仓数据，仅用于界面演示，不代表真实账户；确认脱敏持仓后才会替换。</p>
             <div class="context-import dev-only">
               <label for="portfolio-json">粘贴已脱敏的持仓 JSON</label>
               <textarea id="portfolio-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 portfolio-import-bundle.v1；当前会话只读，不代表真实账户"></textarea>
