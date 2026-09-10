@@ -21,17 +21,18 @@ const state={selectedPersona:'custom'};
 const nodes={};const byId=id=>(nodes[id]??={});
 ''' + functions + '''
 renderCurrentProfileIdentity({risk_level:'GROWTH',risk_score:73});
-assert.equal(byId('custom-profile-chip-name').textContent,'我的账户 (已确认 · 成长型 · 73 分)');
-assert.equal(byId('copilot-hero-tag').textContent,'已确认 · 成长型 · 73 分');
+assert.equal(byId('custom-profile-chip-name').textContent,'成长型 · 73 分');
+assert.equal(byId('profile-menu-current-label').textContent,'成长型 · 73 分');
+assert.equal(byId('copilot-hero-tag').textContent,'成长型 · 73 分');
 renderCurrentProfileIdentity({risk_level:'CONSERVATIVE',risk_score:20});
 assert.match(byId('btn-custom-profile-chip').title,/保守型/);
 renderCurrentProfileIdentity(null);
-assert.equal(byId('copilot-hero-tag').textContent,'待确认问卷');
+assert.equal(byId('copilot-hero-tag').textContent,'完善风险设置');
 assert.doesNotMatch(byId('custom-profile-chip-name').textContent,/R3/);
-assert.equal(activeProfileTag(),'待确认问卷');
+assert.equal(activeProfileTag(),'完善风险设置');
 state.profileSummary={questionnaire_snapshot:{}};
 state.profile={profile:{risk_level:'GROWTH',risk_score:73}};
-assert.equal(activeProfileTag(),'已确认 · 成长型 · 73 分');
+assert.equal(activeProfileTag(),'成长型 · 73 分');
 '''
     result = subprocess.run([node, "-e", script], capture_output=True, text=True, encoding="utf-8")
     assert result.returncode == 0, result.stderr

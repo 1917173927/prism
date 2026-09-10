@@ -278,6 +278,31 @@ def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> Non
     assert 'byId("profile-menu-current-label")' in script
 
 
+def test_prism_ui_v2_scopes_overview_surface_and_table_styles() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "styles.css").read_text(encoding="utf-8")
+
+    for node_id in (
+        "overview-industry-table-body",
+        "overview-metrics-body",
+        "copilot-hero-donut-chart",
+        "copilot-donut-legend",
+        "donut-sector-detail",
+    ):
+        assert markup.count(f'id="{node_id}"') == 1
+
+    assert "/* Prism UI v2 integration: overview */" in styles
+    for selector in (
+        ".prism-ui-v2 #overview .overview-card",
+        ".prism-ui-v2 #overview .cf-status-widget",
+        ".prism-ui-v2 #overview .health-check-matrix-table",
+        ".prism-ui-v2 #overview .overview-health-metric-box",
+        ".prism-ui-v2 #overview .donut-cause-callout",
+        ".prism-ui-v2 #overview .donut-legend-chip",
+    ):
+        assert selector in styles
+
+
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")

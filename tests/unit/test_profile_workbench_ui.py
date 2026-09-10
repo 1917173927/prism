@@ -16,7 +16,7 @@ def test_regular_workbench_has_five_primary_pages_and_profile_questionnaire() ->
 
 
 def test_first_visit_is_guarded_by_the_formal_questionnaire() -> None:
-    assert '<body class="questionnaire-pending">' in INDEX
+    assert '<body class="questionnaire-pending prism-ui-v2">' in INDEX
     assert 'id="questionnaire-entry-loading"' in INDEX
     assert "function applyQuestionnaireGate(" in APP
     assert 'questionnaireGate: "PENDING"' in APP

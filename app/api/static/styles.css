@@ -6519,3 +6519,156 @@ body.questionnaire-required .questionnaire-shell {
   .prism-ui-v2 *::before,
   .prism-ui-v2 *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+/* Prism UI v2 integration: overview */
+.prism-ui-v2 #overview { color: var(--text-primary); }
+.prism-ui-v2 #overview .doc-breadcrumbs { color: var(--text-muted); }
+.prism-ui-v2 #overview .crumb-item.active { color: var(--text-primary); font-weight: 650; }
+.prism-ui-v2 #overview .overview-header-bar {
+  align-items: flex-end;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.prism-ui-v2 #overview .overview-header-bar h2 {
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: clamp(28px, 3vw, 38px);
+  letter-spacing: -0.03em;
+}
+.prism-ui-v2 #overview .overview-subtitle { max-width: 680px; color: var(--text-muted); }
+.prism-ui-v2 #overview .overview-actions { gap: 8px; }
+.prism-ui-v2 #overview .copilot-action-btn {
+  min-height: 38px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+.prism-ui-v2 #overview .copilot-action-btn.primary {
+  border-color: var(--brand-action);
+  color: #fff;
+  background: var(--brand-action);
+}
+.prism-ui-v2 #overview .copilot-action-btn.primary:hover { background: var(--brand-action-hover); transform: none; }
+.prism-ui-v2 #overview .copilot-action-btn.secondary {
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+.prism-ui-v2 #overview .overview-grid { gap: 16px; }
+.prism-ui-v2 #overview .overview-card,
+.prism-ui-v2 #overview .cf-status-widget {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 #overview .overview-card-header,
+.prism-ui-v2 #overview .cf-widget-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+.prism-ui-v2 #overview .overview-card-header h3,
+.prism-ui-v2 #overview .cf-widget-user { color: var(--text-primary); font-family: inherit; }
+.prism-ui-v2 #overview .overview-card-body { padding: 0; overflow-x: auto; }
+.prism-ui-v2 #overview .health-check-matrix-table {
+  width: 100%;
+  border: 0;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+.prism-ui-v2 #overview .health-check-matrix-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.prism-ui-v2 #overview .health-check-matrix-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.prism-ui-v2 #overview .health-check-matrix-table tbody tr:last-child td { border-bottom: 0; }
+.prism-ui-v2 #overview .health-check-matrix-table tbody tr:hover { background: #fffaf5; }
+.prism-ui-v2 #overview .matrix-status-pass,
+.prism-ui-v2 #overview .matrix-status-overbound,
+.prism-ui-v2 #overview .cf-verdict,
+.prism-ui-v2 #overview .status-chip,
+.prism-ui-v2 #overview .donut-chip-badge {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.prism-ui-v2 #overview .matrix-status-pass,
+.prism-ui-v2 #overview .cf-verdict-pass,
+.prism-ui-v2 #overview .donut-chip-badge.pass {
+  border-color: #badbce;
+  color: #0f6a49;
+  background: var(--success-soft);
+}
+.prism-ui-v2 #overview .matrix-status-overbound,
+.prism-ui-v2 #overview .cf-verdict-risk,
+.prism-ui-v2 #overview .donut-chip-badge.overbound {
+  border-color: #e6b9b5;
+  color: #a52c25;
+  background: var(--danger-soft);
+}
+.prism-ui-v2 #overview .overview-health-metrics-grid { gap: 0; padding: 0; }
+.prism-ui-v2 #overview .overview-health-metric-box {
+  min-height: 118px;
+  padding: 18px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 #overview .overview-health-metric-box:nth-child(2n) { border-right: 0; }
+.prism-ui-v2 #overview .overview-health-metric-value { color: var(--text-primary); }
+.prism-ui-v2 #overview .overview-sector-widget { margin-top: 16px; }
+.prism-ui-v2 #overview .donut-cause-callout {
+  margin: 14px 16px 0;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+}
+.prism-ui-v2 #overview .donut-cause-callout.pass { border-left-color: var(--success); }
+.prism-ui-v2 #overview .donut-cause-callout.risk { border-left-color: var(--danger); }
+.prism-ui-v2 #overview .copilot-donut-body { gap: 24px; padding: 18px 16px; }
+.prism-ui-v2 #overview .donut-slice { stroke: var(--surface); stroke-width: 2px; }
+.prism-ui-v2 #overview .donut-slice:hover,
+.prism-ui-v2 #overview .donut-slice.active { filter: brightness(0.96); transform: none; }
+.prism-ui-v2 #overview .donut-legend-chip {
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 #overview .donut-legend-chip:hover,
+.prism-ui-v2 #overview .donut-legend-chip.active { border-color: var(--brand); background: var(--brand-soft); transform: none; }
+.prism-ui-v2 #overview .donut-chip-badge:empty { display: none; }
+.prism-ui-v2 #overview .copilot-donut-footer {
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+}
+.prism-ui-v2 #overview .donut-sector-detail {
+  margin: 0 16px 16px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .prism-ui-v2 #overview .overview-header-bar { align-items: flex-start; }
+  .prism-ui-v2 #overview .overview-actions { width: 100%; }
+  .prism-ui-v2 #overview .overview-actions > * { flex: 1; justify-content: center; }
+  .prism-ui-v2 #overview .overview-health-metric-box { border-right: 0; }
+  .prism-ui-v2 #overview .copilot-donut-body { padding: 14px 12px; }
+}
