@@ -209,6 +209,39 @@ def test_prism_ui_v2_design_tokens_are_semantic_and_legacy_compatible() -> None:
         assert token in styles
 
 
+def test_prism_ui_v2_default_copy_is_user_centered() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    for copy in (
+        "分析你的投资组合",
+        "投资研究会话",
+        "研究信息仅供参考，不会自动执行交易",
+        "投资偏好",
+        "分析资料",
+        "组合概览",
+        "行业分布与设置范围",
+    ):
+        assert copy in markup
+
+    for internal_copy in (
+        "从你的问题开始",
+        "事实基线",
+        "组合全景分析与多维体检",
+        "PASS 合规正常",
+    ):
+        assert internal_copy not in markup
+
+    for dynamic_copy in (
+        'LOCKED:"分析资料已更新"',
+        'DETAILED: Object.freeze({ score: 20, mode: "AUDIT_EXPANDED", label: "详细", hint: "展开结论、依据和数据说明" })',
+        'title.textContent = "从一个具体问题开始"',
+        'document.createTextNode(" 暂无明显问题")',
+        'vBadge.textContent = v.isOver ? "需要关注" : "范围内"',
+    ):
+        assert dynamic_copy in script
+
+
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")

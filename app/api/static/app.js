@@ -152,9 +152,9 @@
     const result = await response.json();
     if (state.ownerId !== owner) return null;
     sessionTruthState = {...result, owner};
-    const labels = {LOCKED:"已锁定", NOT_LOCKED:"尚未锁定", DRIFT_DETECTED:"前提已变化，需要重新确认", INPUT_REQUIRED:"请先确认画像和持仓"};
-    byId("session-truth-status").textContent = `${labels[result.status] || result.status} · 第 ${result.revision} 版`;
-    byId("confirm-session-truth").textContent = result.revision ? "确认使用当前分析前提" : "锁定当前分析前提";
+    const labels = {LOCKED:"分析资料已更新", NOT_LOCKED:"可以更新分析资料", DRIFT_DETECTED:"持仓或风险设置已变化", INPUT_REQUIRED:"请先添加风险设置和持仓"};
+    byId("session-truth-status").textContent = labels[result.status] || "分析资料需要更新";
+    byId("confirm-session-truth").textContent = "更新分析资料";
     return result;
   }
   let truthReview = null;
@@ -1838,7 +1838,7 @@
   const DISPLAY_DETAIL_LEVELS = Object.freeze({
     CONCISE: Object.freeze({ score: 80, mode: "CONCLUSION_FIRST", label: "简洁", hint: "先看结论和关键依据" }),
     STANDARD: Object.freeze({ score: 50, mode: "STANDARD", label: "标准", hint: "结论与关键依据保持平衡" }),
-    DETAILED: Object.freeze({ score: 20, mode: "AUDIT_EXPANDED", label: "详细", hint: "展开依据、规则、来源和边界" }),
+    DETAILED: Object.freeze({ score: 20, mode: "AUDIT_EXPANDED", label: "详细", hint: "展开结论、依据和数据说明" }),
   });
 
   const DISPLAY_DETAIL_BY_MODE = Object.freeze(
@@ -2044,7 +2044,7 @@
   }
 
   function currentProfileTag(profile) {
-    return profile ? `已确认 · ${profileLevelText(profile)}` : "待确认问卷";
+    return profile ? profileLevelText(profile) : "完善风险设置";
   }
 
   function activeProfileTag() {
@@ -2055,8 +2055,8 @@
     const persona = PERSONAS[state.selectedPersona];
     if (!persona) return;
     const tag = currentProfileTag(profile);
-    byId("custom-profile-chip-name").textContent = `${persona.name} (${tag})`;
-    byId("btn-custom-profile-chip").title = `当前使用：${persona.name}，${tag}`;
+    byId("custom-profile-chip-name").textContent = tag;
+    byId("btn-custom-profile-chip").title = `当前风险设置：${persona.name}，${tag}`;
     const heroTag = byId("copilot-hero-tag");
     if (heroTag) heroTag.textContent = tag;
   }
@@ -2153,7 +2153,7 @@
       const level = setDisplayPolicyControl(policy);
       const policyNote = document.createElement("p");
       policyNote.className = "profile-policy-note";
-      policyNote.textContent = `当前解释偏好：${level.label}。${level.hint}；风险告警、数据缺失和合规揭示始终展开。`;
+      policyNote.textContent = `当前回答详细度：${level.label}。${level.hint}；风险提示和数据缺失始终展开。`;
       panel.append(policyNote);
     }
   }
@@ -2260,20 +2260,20 @@
     clear(panel);
     if (!profile) {
       const p = document.createElement("p");
-      p.textContent = "尚无行为画像。提交结构化成交与持仓快照后再计算；数据不足不会被模型补齐。";
+      p.textContent = "这些设置用于让分析更符合你的投资目标。";
       panel.append(p);
       status.className = "cf-verdict cf-verdict-warning";
-      status.textContent = "数据不足";
+      status.textContent = "可完善";
       renderConversationProfileContext(panel);
       return;
     }
     const grid = document.createElement("div");
     grid.className = "behavior-profile-metrics";
     [
-      ["有效适当性", profile.suitability_level],
-      ["有效风险分", profile.effective_risk_score],
-      ["90 日换手", profile.metrics?.turnover_90d_pct == null ? "数据不足" : `${profile.metrics.turnover_90d_pct}%`],
-      ["最大回撤", profile.metrics?.max_drawdown_pct == null ? "数据不足" : `${profile.metrics.max_drawdown_pct}%`],
+      ["风险等级", profile.suitability_level],
+      ["参考风险分", profile.effective_risk_score],
+      ["近 90 日换手", profile.metrics?.turnover_90d_pct == null ? "暂无数据" : `${profile.metrics.turnover_90d_pct}%`],
+      ["历史最大回撤", profile.metrics?.max_drawdown_pct == null ? "暂无数据" : `${profile.metrics.max_drawdown_pct}%`],
     ].forEach(([label, value]) => {
       const card = document.createElement("div");
       card.className = "behavior-profile-metric";
@@ -2285,11 +2285,11 @@
       grid.append(card);
     });
     const note = document.createElement("p");
-    note.textContent = `${profile.persona} · ${(profile.tags || []).join(" · ")}。行为数据只会收紧风险边界。`;
+    note.textContent = "这些信息用于让分析更符合你的投资目标。";
     panel.append(grid, note);
     const calculated = profile.evidence_status === "CALCULATED";
     status.className = calculated ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-warning";
-    status.textContent = calculated ? "行为已计算" : "数据不足";
+    status.textContent = calculated ? "已更新" : "可完善";
     setDisplayPolicyControl(profile.display_policy || 50);
     renderConversationProfileContext(panel);
   }
@@ -7193,9 +7193,9 @@
     const currentProfileAvatar = byId("custom-profile-chip-avatar");
     if (currentProfileAvatar) currentProfileAvatar.textContent = persona.avatar;
     const currentProfileName = byId("custom-profile-chip-name");
-    if (currentProfileName) currentProfileName.textContent = `${persona.name} (${currentProfileTag(null)})`;
+    if (currentProfileName) currentProfileName.textContent = currentProfileTag(null);
     const currentProfileChip = byId("btn-custom-profile-chip");
-    if (currentProfileChip) currentProfileChip.title = `当前使用：${persona.name}，${currentProfileTag(null)}`;
+    if (currentProfileChip) currentProfileChip.title = `当前风险设置：${persona.name}，${currentProfileTag(null)}`;
 
     // Update Hero card
     const heroAvatar = byId("copilot-hero-avatar");
@@ -7592,7 +7592,7 @@
       const title = document.createElement("h4");
       title.textContent = "还没有足够信息生成分析依据";
       const description = document.createElement("p");
-      description.textContent = "先确认投资画像和持仓，系统会用后端模型还原行业占比，再与风险边界逐项对照。";
+      description.textContent = "先添加风险设置和持仓，即可查看行业占比及其与设置范围的对照。";
       empty.append(icon, title, description);
       shell.append(empty);
       content.append(shell);
@@ -7611,19 +7611,19 @@
     const summaryCopy = document.createElement("div");
     const eyebrow = document.createElement("span");
     eyebrow.className = "evidence-answer-eyebrow";
-    eyebrow.textContent = needsReview ? "本次判断 · 需要关注" : "本次判断 · 当前通过";
+    eyebrow.textContent = needsReview ? "本次分析 · 需要关注" : "本次分析 · 暂无明显问题";
     const title = document.createElement("h4");
     const description = document.createElement("p");
     if (primaryIssue) {
-      const direction = primaryIssue.limitOperator === "MIN" ? "低于最低要求" : "超过你的风险上限";
+      const direction = primaryIssue.limitOperator === "MIN" ? "低于你设置的最低比例" : "超过你设置的上限";
       title.textContent = `${primaryIssue.name}${direction}`;
-      description.textContent = `实际为 ${primaryIssue.pct.toFixed(1)}%，你的边界是 ${primaryIssue.limitOperator === "MIN" ? "至少" : "不超过"} ${primaryIssue.cap.toFixed(1)}%。${primaryIssue.differenceLabel}，因此本次结果需要复核。`;
+      description.textContent = `当前为 ${primaryIssue.pct.toFixed(1)}%，你设置的是${primaryIssue.limitOperator === "MIN" ? "至少" : "不超过"} ${primaryIssue.cap.toFixed(1)}%。${primaryIssue.differenceLabel}，建议进一步查看。`;
     } else if (needsReview) {
       title.textContent = "部分持仓信息还不完整";
       description.textContent = "当前没有发现明确的数值超限，但存在缺失或未分类信息，系统不会把未知情况判定为正常。";
     } else {
-      title.textContent = "当前持仓未触发画像中的风险边界";
-      description.textContent = "后端已完成持仓穿透和逐项对照；当前可计算指标均在已确认画像的范围内。";
+      title.textContent = "当前持仓暂无明显问题";
+      description.textContent = "已完成行业占比和设置范围的逐项对照，当前可计算指标均在你设置的范围内。";
     }
     summaryCopy.append(eyebrow, title, description);
     summary.append(summaryIcon, summaryCopy);
@@ -7632,8 +7632,8 @@
     facts.className = "evidence-fact-strip";
     [
       { label: "分析了什么", value: `${health.evidence_count} 项持仓贡献`, note: "含基金底层持仓" },
-      { label: "依据哪套边界", value: activeProfileTag(), note: "来自已确认画像" },
-      { label: "结果状态", value: needsReview ? "需要复核" : "当前通过", note: "由 Python 后端判定" },
+      { label: "使用的风险设置", value: activeProfileTag(), note: "来自你的投资偏好" },
+      { label: "当前情况", value: needsReview ? "需要关注" : "暂无明显问题", note: "基于可用持仓数据" },
     ].forEach((fact) => {
       const item = document.createElement("div");
       item.className = "evidence-fact";
@@ -7651,9 +7651,9 @@
     comparison.className = "evidence-comparison";
     const comparisonHeader = document.createElement("header");
     const comparisonTitle = document.createElement("h4");
-    comparisonTitle.textContent = "实际持仓与风险边界的距离";
+    comparisonTitle.textContent = "当前持仓与设置范围的距离";
     const comparisonHelp = document.createElement("p");
-    comparisonHelp.textContent = "彩色条是当前占比，竖线是你的边界。红色表示已经越过边界。";
+    comparisonHelp.textContent = "彩色条表示当前占比，竖线表示你设置的范围。红色表示需要关注。";
     comparisonHeader.append(comparisonTitle, comparisonHelp);
     const barList = document.createElement("div");
     barList.className = "evidence-bar-list";
@@ -7671,7 +7671,7 @@
       const track = document.createElement("div");
       track.className = "evidence-bar-track";
       track.setAttribute("role", "img");
-      track.setAttribute("aria-label", `${sector.name}实际 ${sector.pct.toFixed(1)}%，边界${sector.limitOperator === "MIN" ? "至少" : "不超过"}${sector.cap.toFixed(1)}%，${verdict.textContent}`);
+      track.setAttribute("aria-label", `${sector.name}当前 ${sector.pct.toFixed(1)}%，设置${sector.limitOperator === "MIN" ? "至少" : "不超过"}${sector.cap.toFixed(1)}%，${verdict.textContent}`);
       const fill = document.createElement("span");
       fill.className = "evidence-bar-fill";
       fill.style.width = `${Math.max(0, Math.min(100, sector.pct))}%`;
@@ -7681,7 +7681,7 @@
       marker.style.left = `${Math.max(0, Math.min(100, sector.cap))}%`;
       const markerLabel = document.createElement("span");
       markerLabel.className = "evidence-limit-label";
-      markerLabel.textContent = "边界";
+      markerLabel.textContent = "设置";
       marker.append(markerLabel);
       track.append(fill, marker);
       const caption = document.createElement("div");
@@ -7705,8 +7705,8 @@
     [
       { icon: "icon-file-text", title: "读取持仓", text: "使用你已确认的数量、价格和现金。" },
       { icon: "icon-layers", title: "还原真实占比", text: "股票直接归类，基金继续穿透到底层持仓。" },
-      { icon: "icon-scale", title: "对照风险边界", text: `逐项对照 ${activeProfileTag()} 的行业上限和现金最低要求。` },
-      { icon: needsReview ? "icon-alert" : "icon-check", title: "形成判断", text: primaryIssue ? `${primaryIssue.name}触发复核。` : needsReview ? "信息不完整，保留复核状态。" : "没有指标触发硬边界。" },
+      { icon: "icon-scale", title: "对照你的设置", text: `逐项对照 ${activeProfileTag()} 的行业上限和现金最低比例。` },
+      { icon: needsReview ? "icon-alert" : "icon-check", title: "形成判断", text: primaryIssue ? `${primaryIssue.name}需要关注。` : needsReview ? "信息不完整，需要补充。" : "当前没有明显问题。" },
     ].forEach((step, index, items) => {
       const card = document.createElement("div");
       card.className = "evidence-process-step";
@@ -7743,7 +7743,7 @@
     } else if (needsReview) {
       nextText.textContent = "补齐缺失或未分类的持仓信息后重新运行体检，再决定是否需要调整。";
     } else {
-      nextText.textContent = "当持仓数量、价格、基金底层持仓或投资画像变化时，再运行一次体检。";
+      nextText.textContent = "当持仓数量、价格、基金底层持仓或风险设置变化时，再更新一次分析。";
     }
     nextCopy.append(nextTitle, nextText);
     next.append(nextIcon, nextCopy);
@@ -7801,7 +7801,7 @@
 
     const thead = document.createElement("thead");
     const hRow = document.createElement("tr");
-    ["行业 / 资产大类", "穿透实际暴露", "画像风控限额", "偏离度", "风控裁决", "核心穿透标的"].forEach(h => {
+    ["行业 / 资产大类", "当前占比", "你设置的范围", "与设置的距离", "当前情况", "主要标的"].forEach(h => {
       const th = document.createElement("th");
       th.textContent = h;
       hRow.append(th);
@@ -7833,13 +7833,13 @@
       const tdDiff = document.createElement("td");
       tdDiff.textContent = v.diffLabel;
       tdDiff.style.fontFamily = "var(--mono)";
-      if (v.isOver) tdDiff.style.color = "#b91c1c";
-      else if (v.isCash) tdDiff.style.color = "#047857";
+      if (v.isOver) tdDiff.style.color = "var(--danger)";
+      else if (v.isCash) tdDiff.style.color = "var(--success)";
 
       const tdVerdict = document.createElement("td");
       const vBadge = document.createElement("span");
       vBadge.className = v.isOver ? "matrix-status-overbound" : "matrix-status-pass";
-      vBadge.textContent = v.verdictCode;
+      vBadge.textContent = v.isOver ? "需要关注" : "范围内";
       tdVerdict.append(vBadge);
 
       const tdHoldings = document.createElement("td");
@@ -7858,10 +7858,10 @@
     const cashSector = (health.sectors || []).find(s => s.sectorKey === "CASH");
 
     const metricsData = [
-      { label: "单一最大行业集中度", value: `${health.top_sector_weight_pct}% (${health.top_sector_name})`, status: `${maxSector?.verdictCode || "REVIEW_REQUIRED"} · Python 风控`, isOk: maxSector?.verdictCode === "PASS" },
-      { label: "组合分散度指数 (HHI)", value: `${health.sector_hhi}`, status: `阈值 ${health.hhi_limit} · ${health.hhi_verdict}`, isOk: health.hhi_verdict === "PASS" },
-      { label: "现金与流动性安全垫", value: `${health.cash_weight_pct}%`, status: `硬性要求 ≥ ${health.cash_minimum_pct}% · ${cashSector?.verdictCode || "REVIEW_REQUIRED"}`, isOk: cashSector?.verdictCode === "PASS" },
-      { label: "底层财务排查", value: "未执行", status: "本次体检未提供财务凭证", isOk: false }
+      { label: "最大行业占比", value: `${health.top_sector_weight_pct}% (${health.top_sector_name})`, status: maxSector?.verdictCode === "PASS" ? "在设置范围内" : "需要关注", isOk: maxSector?.verdictCode === "PASS" },
+      { label: "组合集中度 (HHI)", value: `${health.sector_hhi}`, status: health.hhi_verdict === "PASS" ? `低于参考值 ${health.hhi_limit}` : `超过参考值 ${health.hhi_limit}`, isOk: health.hhi_verdict === "PASS" },
+      { label: "现金与流动性", value: `${health.cash_weight_pct}%`, status: cashSector?.verdictCode === "PASS" ? `达到最低 ${health.cash_minimum_pct}%` : `低于最低 ${health.cash_minimum_pct}%`, isOk: cashSector?.verdictCode === "PASS" },
+      { label: "财务数据", value: "暂未检查", status: "本次分析未包含财务凭证", isOk: false }
     ];
 
     const mGrid = document.createElement("div");
@@ -7878,7 +7878,7 @@
       const st = document.createElement("span");
       st.className = "overview-health-metric-status";
       st.textContent = m.status;
-      st.style.color = m.isOk ? "#047857" : "#b91c1c";
+      st.style.color = m.isOk ? "var(--success)" : "var(--danger)";
       box.append(lbl, val, st);
       mGrid.append(box);
     });
@@ -7906,9 +7906,9 @@
     const health = state.portfolioHealthRun;
     const sectors = health?.sectors || [];
     if (!health || !sectors.length) {
-      if (hintEl) hintEl.textContent = !state.profile?.profile ? "请先完成并确认风险问卷。" : !state.portfolio ? "请先添加并确认持仓。" : "请运行持仓健康体检。";
-      if (verdictBadge) verdictBadge.textContent = "REVIEW_REQUIRED 待体检";
-      if (causeCallout) causeCallout.textContent = "画像与持仓确认后，由后端执行穿透与风险闸门。";
+      if (hintEl) hintEl.textContent = !state.profile?.profile ? "请先完成风险设置。" : !state.portfolio ? "请先添加持仓。" : "请更新组合分析。";
+      if (verdictBadge) verdictBadge.textContent = "等待分析";
+      if (causeCallout) causeCallout.textContent = "添加风险设置与持仓后，可查看行业占比。";
       return;
     }
     const overboundList = sectors
@@ -7926,32 +7926,32 @@
         const breachText = topOver.verdict.isCash
           ? `${topOver.sector.name}不足 (${topOver.verdict.diffVal.toFixed(1)}%)`
           : `${topOver.sector.name}超标 (+${topOver.verdict.diffVal.toFixed(1)}%)`;
-        verdictBadge.append(vIcon, document.createTextNode(` OVERBOUND ${breachText}`));
+        verdictBadge.append(vIcon, document.createTextNode(` 需要关注 · ${breachText}`));
       } else if (health.hhi_verdict === "OVERBOUND") {
-        verdictBadge.append(vIcon, document.createTextNode(` OVERBOUND 组合集中度 HHI ${health.sector_hhi} 超过 ${health.hhi_limit}`));
+        verdictBadge.append(vIcon, document.createTextNode(` 集中度需要关注 · HHI ${health.sector_hhi}`));
       } else if (requiresReview) {
-        verdictBadge.append(vIcon, document.createTextNode(` ${health.status} 数据需复核`));
+        verdictBadge.append(vIcon, document.createTextNode(" 部分数据需补充"));
       } else {
-        verdictBadge.append(vIcon, document.createTextNode(" PASS 合规正常"));
+        verdictBadge.append(vIcon, document.createTextNode(" 暂无明显问题"));
       }
     }
 
     if (causeCallout) {
       if (overboundList.length) {
         causeCallout.className = "donut-cause-callout risk";
-        causeCallout.textContent = `风险拦截原因：${overboundList.map(x => x.verdict.isCash
+        causeCallout.textContent = `需要关注：${overboundList.map(x => x.verdict.isCash
           ? `【${x.sector.name}】实际比例 ${x.sector.pct.toFixed(1)}% 低于最低要求 ${x.sector.cap.toFixed(1)}%（差额 ${x.sector.marginPctPoints.toFixed(1)}%）`
-          : `【${x.sector.name}】实际暴露 ${x.sector.pct.toFixed(1)}% 超过画像上限 ${x.sector.cap.toFixed(1)}%（超出 ${x.sector.marginPctPoints.toFixed(1)}%）`
-        ).join("；")}。已触发后端风险闸门，需通过调仓服务重新测算。`;
+          : `【${x.sector.name}】当前占比 ${x.sector.pct.toFixed(1)}% 超过你设置的上限 ${x.sector.cap.toFixed(1)}%（超出 ${x.sector.marginPctPoints.toFixed(1)}%）`
+        ).join("；")}。如需调整，可进入调仓计划查看方案。`;
       } else if (health.hhi_verdict === "OVERBOUND") {
         causeCallout.className = "donut-cause-callout risk";
-        causeCallout.textContent = `组合集中度 HHI ${health.sector_hhi} 超过后端限额 ${health.hhi_limit}；各行业单项限额未超限，组合仍需复核。`;
+        causeCallout.textContent = `组合集中度 HHI ${health.sector_hhi} 超过参考值 ${health.hhi_limit}；各行业占比仍在设置范围内。`;
       } else if (requiresReview) {
         causeCallout.className = "donut-cause-callout risk";
-        causeCallout.textContent = `当前没有数值超限项，但后端状态为 ${health.status}；请先处理缺失或未分类数据。`;
+        causeCallout.textContent = "当前没有数值超限项，但部分持仓数据缺失或尚未分类，请补充后更新分析。";
       } else {
         causeCallout.className = "donut-cause-callout pass";
-        causeCallout.textContent = `合规状态：后端穿透结果处于 ${activeProfileTag()} 安全限额内，未触发硬闸门拦截。`;
+        causeCallout.textContent = `当前可计算的行业占比均在 ${activeProfileTag()} 的设置范围内。`;
       }
     }
 
@@ -7959,7 +7959,7 @@
     const svg = document.createElementNS(svgNS, "svg");
     svg.setAttribute("viewBox", "0 0 220 220");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "持仓行业穿透分布环形图");
+    svg.setAttribute("aria-label", "持仓行业分布环形图");
 
     const cx = 110, cy = 110, R = 95, r = 62;
     let currentAngle = -Math.PI / 2;
@@ -7968,7 +7968,7 @@
     centerLabel.setAttribute("x", "110");
     centerLabel.setAttribute("y", "106");
     centerLabel.setAttribute("class", "donut-center-label");
-    centerLabel.textContent = "全行业透视";
+    centerLabel.textContent = "行业分布";
 
     const centerValue = document.createElementNS(svgNS, "text");
     centerValue.setAttribute("x", "110");
@@ -7986,17 +7986,17 @@
       centerLabel.textContent = s.name;
       centerValue.textContent = `${s.pct.toFixed(1)}%`;
       if (hintEl) {
-        hintEl.textContent = `【${s.name}】实际暴露 ${s.pct.toFixed(1)}% / 画像限额 ${v.isCash ? "≥" : "≤"}${s.cap.toFixed(1)}% (${v.verdictCode})，主要标的: ${s.topHoldings}`;
+        hintEl.textContent = `${s.name}当前占比 ${s.pct.toFixed(1)}%，你设置的是${v.isCash ? "至少" : "不超过"} ${s.cap.toFixed(1)}%；主要标的：${s.topHoldings}`;
       }
     }
 
     function resetSelection() {
       sliceElements.forEach(el => el.classList.remove("active"));
       chipElements.forEach(el => el.classList.remove("active"));
-      centerLabel.textContent = "全行业透视";
+      centerLabel.textContent = "行业分布";
       centerValue.textContent = `${sectors.length}大类`;
       if (hintEl) {
-        hintEl.textContent = "提示：悬浮或点击扇区可穿透查看具体标的与限额对照";
+        hintEl.textContent = "选择行业查看占比、上限和主要标的";
       }
     }
 
@@ -8012,22 +8012,22 @@
       const header = document.createElement("div");
       header.className = "donut-sector-detail-header";
       const title = document.createElement("strong");
-      title.textContent = `${s.name}穿透结果`;
+      title.textContent = `${s.name}占比`;
       const verdict = document.createElement("span");
       verdict.className = v.isOver ? "donut-chip-badge overbound" : "donut-chip-badge pass";
-      verdict.textContent = v.verdictCode;
+      verdict.textContent = v.isOver ? "需要关注" : "范围内";
       header.append(title, verdict);
 
       const comparison = document.createElement("p");
       const comparator = v.isCash ? "不低于" : "不高于";
-      comparison.textContent = `实际暴露 ${s.pct.toFixed(1)}%；${activeProfileTag()} 画像要求${comparator} ${s.cap.toFixed(1)}%。`;
+      comparison.textContent = `当前占比 ${s.pct.toFixed(1)}%；你的风险设置要求${comparator} ${s.cap.toFixed(1)}%。`;
 
       const result = document.createElement("p");
       result.className = "donut-sector-detail-result";
       if (v.isOver) {
-        result.textContent = `偏离限额 ${s.marginPctPoints} 个百分点，已触发风险复核。`;
+        result.textContent = `超出设置 ${s.marginPctPoints} 个百分点，建议进一步查看。`;
       } else {
-        result.textContent = `距限额仍有 ${s.marginPctPoints} 个百分点缓冲，当前判定合规。`;
+        result.textContent = `距设置上限仍有 ${s.marginPctPoints} 个百分点。`;
       }
 
       const holdings = document.createElement("p");
@@ -8074,7 +8074,7 @@
       chip.className = "donut-legend-chip";
       chip.setAttribute("role", "button");
       chip.setAttribute("tabindex", "0");
-      chip.setAttribute("aria-label", `查看${s.name}行业穿透结果`);
+      chip.setAttribute("aria-label", `查看${s.name}占比`);
       const left = document.createElement("div");
       left.className = "donut-legend-left";
       const dot = document.createElement("span");
@@ -8091,11 +8091,11 @@
       const pct = document.createElement("span");
       pct.className = "donut-legend-pct";
       pct.textContent = `${s.pct.toFixed(0)}%`;
-      if (v.isOver) pct.style.color = "#b91c1c";
+      if (v.isOver) pct.style.color = "var(--danger)";
 
       const badge = document.createElement("span");
       badge.className = v.isOver ? "donut-chip-badge overbound" : "donut-chip-badge pass";
-      badge.textContent = v.verdictCode;
+      badge.textContent = v.isOver ? "需要关注" : "";
 
       right.append(pct, badge);
       chip.append(left, right);
@@ -8136,8 +8136,8 @@
 
     const health = state.portfolioHealthRun;
     if (!health) {
-      tableBody.textContent = "正在等待 Python 持仓穿透结果…";
-      metricsBody.textContent = "画像与持仓确认后生成确定性风险指标。";
+      tableBody.textContent = "添加持仓后，可查看行业分布。";
+      metricsBody.textContent = "添加风险设置与持仓后，可查看组合指标。";
       return;
     }
     const sectors = health.sectors;
@@ -8151,16 +8151,16 @@
         createSvgIcon(requiresReview ? "icon-alert" : "icon-check", "prism-icon"),
         document.createTextNode(
           isAnyOverbound
-            ? " OVERBOUND 限额拦截"
+            ? " 需要关注"
             : requiresReview
-              ? ` ${health.status} 数据复核`
-              : " PASS 合规正常"
+              ? " 部分数据需补充"
+              : " 暂无明显问题"
         )
       );
     }
 
     if (hhiChip) {
-      hhiChip.textContent = `HHI ${health.sector_hhi} (${health.hhi_verdict})`;
+      hhiChip.textContent = health.hhi_verdict === "PASS" ? `HHI ${health.sector_hhi} · 正常` : `HHI ${health.sector_hhi} · 需要关注`;
       hhiChip.className = health.hhi_verdict === "PASS" ? "status-chip ok" : "status-chip alert";
     }
 
@@ -8174,7 +8174,7 @@
     clear(output);
     state.copilotResearchSequence += 1;
     if (!requirePortfolioAnalysisContext(output)) return;
-    output.append(buildCopilotLoadingCard("icon-activity", "正在检查你的组合…", "正在核对全行业集中度、画像边界、HHI指标和可用证据。"));
+    output.append(buildCopilotLoadingCard("icon-activity", "正在检查你的组合…", "正在计算行业占比、集中度和可用现金。"));
 
     try {
       const health = await refreshPortfolioHealth();
@@ -8199,10 +8199,10 @@
       icon.append(createSvgIcon(requiresReview ? "icon-alert" : "icon-shield-check", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
       h3.textContent = hasBreaches
-        ? "持仓体检结论：至少一项确定性风险边界被触发 · 需要复核"
+        ? "发现需要关注的组合风险"
         : requiresReview
-          ? "持仓体检结论：输入数据尚未满足完整计算条件 · 需要复核"
-          : "持仓体检结论：全组合各维度处于当前安全边界内 · 可以继续观察";
+          ? "部分数据需要补充"
+          : "暂未发现需要关注的问题";
       verdictTitleWrap.append(icon, h3);
 
       const statusChip = document.createElement("span");
@@ -8210,10 +8210,10 @@
       if (requiresReview) {
         statusChip.append(
           createSvgIcon("icon-alert", "prism-icon"),
-          document.createTextNode(hasBreaches ? " OVERBOUND 风险拦截" : ` ${health.status} 数据复核`)
+          document.createTextNode(hasBreaches ? " 需要关注" : " 部分数据需补充")
         );
       } else {
-        statusChip.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" PASS 合规通过"));
+        statusChip.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" 暂无明显问题"));
       }
       banner.append(verdictTitleWrap, statusChip);
 
@@ -8234,18 +8234,18 @@
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
       cTitle.textContent = hasBreaches
-        ? "风险拦截：多维体检触发后端硬闸门"
+        ? "部分持仓比例超出你的设置"
         : requiresReview
-          ? "数据复核：部分指标缺少完整输入"
-          : "合规提示：全组合多维健康度处于安全阈值内";
+          ? "部分指标缺少完整数据"
+          : "当前组合暂无明显问题";
       
       const cP = document.createElement("p");
-      cP.textContent = `根据 ${persona.name} 的已确认画像，Python 已对当前持仓执行逐层穿透、集中度计算和风险闸门。` +
+      cP.textContent = `本次分析使用 ${persona.name} 的风险设置，并计算了当前持仓的行业占比和集中度。` +
         (hasBreaches
-          ? "至少一项确定性风险边界被触发，后续调整必须通过调仓服务重新测算。"
+          ? "至少一项比例超出设置范围，可查看明细并评估是否调整。"
           : requiresReview
             ? "当前结果仅覆盖可计算指标；未分类或缺失输入必须补齐后重新计算。"
-            : "当前可计算指标均处于画像边界内；未提供的数据不会推断为正常。" );
+            : "当前可计算指标均在设置范围内；未提供的数据不会被视为正常。" );
       
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
@@ -8254,9 +8254,9 @@
       const metricsRow = document.createElement("div");
       metricsRow.className = "decision-metrics-row";
       metricsRow.append(
-        buildCopilotMetricBox("当前科技暴露", `${health.technology_weight_pct}%`, technologySector?.verdictCode === "OVERBOUND", technologySector?.verdictCode === "PASS", "由 Python 穿透底层基金持仓后计算。"),
-        buildCopilotMetricBox("科技风险上限", `${health.technology_limit_pct}%`, false, false, "来自后端确认画像的风险预算。"),
-        buildCopilotMetricBox("组合 HHI", `${health.sector_hhi}`, health.hhi_verdict === "OVERBOUND", health.hhi_verdict === "PASS", "由后端基于闭合行业权重计算。")
+        buildCopilotMetricBox("当前科技占比", `${health.technology_weight_pct}%`, technologySector?.verdictCode === "OVERBOUND", technologySector?.verdictCode === "PASS", "包含基金底层持仓。"),
+        buildCopilotMetricBox("科技行业上限", `${health.technology_limit_pct}%`, false, false, "来自你的风险设置。"),
+        buildCopilotMetricBox("组合 HHI", `${health.sector_hhi}`, health.hhi_verdict === "OVERBOUND", health.hhi_verdict === "PASS", "用于衡量行业集中度。")
       );
 
       // 全行业穿透对照表
@@ -8265,7 +8265,7 @@
       const mTableTitle = document.createElement("h4");
       mTableTitle.style.margin = "0 0 8px";
       mTableTitle.style.fontSize = "13.5px";
-      mTableTitle.append(createSvgIcon("icon-layers", "prism-icon"), document.createTextNode(" 全行业穿透暴露与画像风控限额对照表："));
+      mTableTitle.append(createSvgIcon("icon-layers", "prism-icon"), document.createTextNode(" 行业分布与设置范围"));
       matrixTableWrap.append(mTableTitle, buildMultiIndustryMatrixTable(sectors));
 
       // 多维健康度评分网格
@@ -8274,7 +8274,7 @@
       const mGridTitle = document.createElement("h4");
       mGridTitle.style.margin = "0 0 8px";
       mGridTitle.style.fontSize = "13.5px";
-      mGridTitle.append(createSvgIcon("icon-shield-check", "prism-icon"), document.createTextNode(" 组合多维健康度评分网格 (Multi-Dimensional)："));
+      mGridTitle.append(createSvgIcon("icon-shield-check", "prism-icon"), document.createTextNode(" 组合集中度与流动性"));
       multiMetricsWrap.append(mGridTitle, buildMultiDimensionalMetricsGrid(health));
 
       // Reasons
@@ -8284,24 +8284,24 @@
       reasonsHead.style.fontSize = "14px";
       const rHeadIcon = createSvgIcon("icon-info", "prism-icon");
       rHeadIcon.style.marginRight = "6px";
-      reasonsHead.append(rHeadIcon, document.createTextNode(" 为什么这样判断（多维因果依据）："));
+      reasonsHead.append(rHeadIcon, document.createTextNode(" 判断依据"));
       const reasonsList = document.createElement("ul");
       reasonsList.className = "decision-reasons-list";
 
       const r1 = document.createElement("li");
       const r1Bold = document.createElement("strong");
-      r1Bold.textContent = "持仓穿透发现：";
-      r1.append(r1Bold, document.createTextNode("后端已将当前持仓归集为可审计的底层贡献，并明确保留未分类或缺失输入。"));
+      r1Bold.textContent = "行业分布：";
+      r1.append(r1Bold, document.createTextNode("已归集股票和基金底层持仓；未分类或缺失信息会单独保留。"));
 
       const r2 = document.createElement("li");
       const r2Bold = document.createElement("strong");
-      r2Bold.textContent = "多行业分散度：";
-      r2.append(r2Bold, document.createTextNode(`组合当前 HHI 指数为 ${health.sector_hhi}，后端裁决为 ${health.hhi_verdict}。`));
+      r2Bold.textContent = "组合集中度：";
+      r2.append(r2Bold, document.createTextNode(`当前 HHI 为 ${health.sector_hhi}，${health.hhi_verdict === "PASS" ? "低于参考值" : "高于参考值"} ${health.hhi_limit}。`));
 
       const r3 = document.createElement("li");
       const r3Bold = document.createElement("strong");
-      r3Bold.textContent = "数据边界：";
-      r3.append(r3Bold, document.createTextNode(`现金权重 ${health.cash_weight_pct}%，最低边界 ${health.cash_minimum_pct}%；本次未执行财务凭证排查。`));
+      r3Bold.textContent = "数据说明：";
+      r3.append(r3Bold, document.createTextNode(`现金占比 ${health.cash_weight_pct}%，你设置的最低比例为 ${health.cash_minimum_pct}%；本次未包含财务凭证。`));
 
       reasonsList.append(r1, r2, r3);
       reasonsWrap.append(reasonsHead, reasonsList);
@@ -8313,7 +8313,7 @@
         { href: "#research-tracks", text: "查看研究来源" },
         { href: "#advanced-explainability", text: "查看判断原因" },
         { href: "#evidence", text: "查看证据" },
-        { href: "#overview", text: "查看边界说明" }
+        { href: "#overview", text: "查看设置范围" }
       ]));
 
       card.append(banner, body);
@@ -9065,9 +9065,9 @@
   function renderChatWelcome() {
     const content = document.createElement("div");
     const title = document.createElement("strong");
-    title.textContent = "你想先了解什么？";
+    title.textContent = "从一个具体问题开始";
     const description = document.createElement("p");
-    description.textContent = "可以直接描述持仓疑问、研究目标或风险顾虑。我会先核对你的画像和数据，再说明结论、依据与边界。";
+    description.textContent = "输入一个具体问题，我会结合你的持仓和投资偏好进行分析。";
     content.append(title, description);
     appendChatMessage("assistant", content);
   }

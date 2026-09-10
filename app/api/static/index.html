@@ -149,7 +149,7 @@
             </a>
             <a class="nav-item" href="#profile">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-              <span>风险画像</span>
+                <span>风险与偏好</span>
             </a>
           </div>
 
@@ -189,7 +189,7 @@
 
         <div class="sidebar-note">
           <span class="eyebrow">使用提示</span>
-          <p>确认画像与持仓即可分析。结果包含依据、风险和行动建议。</p>
+          <p>添加风险设置与持仓即可分析。结果包含结论、依据和可采取的下一步。</p>
         </div>
       </aside>
 
@@ -198,19 +198,19 @@
           <div class="topbar-title-area">
             <span class="eyebrow">个人投资工作台</span>
             <h1>Prism 投资 Agent</h1>
-            <p class="topbar-subtitle">基于你的风险边界组织研究与决策依据。</p>
+            <p class="topbar-subtitle">结合你的持仓、投资偏好与市场信息进行分析。</p>
           </div>
           <div class="persona-switcher-bar" id="persona-switcher-bar" aria-label="投资者画像管理">
             <div class="active-profile-wrap">
-              <span class="switcher-label">当前画像</span>
+              <span class="switcher-label">风险与偏好</span>
               <button class="persona-chip active" id="btn-custom-profile-chip" type="button" data-persona="custom-user" title="查看当前投资画像">
               <span class="persona-avatar" id="custom-profile-chip-avatar"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-              <span class="persona-name" id="custom-profile-chip-name">我的专属画像 (R3 平衡)</span>
+              <span class="persona-name" id="custom-profile-chip-name">R3 平衡型</span>
               </button>
             </div>
-            <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="编辑投资目标、风险边界和期限">
+            <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="修改投资目标、风险设置和期限">
               <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-edit"/></svg></span>
-              <span class="persona-name">编辑画像</span>
+              <span class="persona-name">修改投资偏好</span>
             </button>
             <button class="persona-chip custom-portfolio-chip" id="open-portfolio-modal-btn" type="button" title="导入或描述你的持仓，用于个性化分析">
               <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-plus"/></svg></span>
@@ -269,8 +269,8 @@
           <div class="agent-home-heading">
             <div>
               <span class="eyebrow clay">Prism 投资 Agent</span>
-              <h2 id="copilot-hero-title">从你的问题开始</h2>
-              <p>结合已确认的风险测评、持仓与可信数据回答；金融计算由确定性服务完成。</p>
+              <h2 id="copilot-hero-title">分析你的投资组合</h2>
+              <p>结合你的持仓、投资偏好与可用市场数据回答。</p>
             </div>
             <span class="agent-boundary-note">研究辅助，不执行交易</span>
           </div>
@@ -281,8 +281,8 @@
                 <div class="chat-panel-header">
                   <div class="chat-panel-title">
                     <span class="chat-live-pulse" aria-hidden="true"></span>
-                    <strong>专属投资 Agent</strong>
-                    <span class="chat-model-badge" id="chat-model-badge">内置分析引擎</span>
+                    <strong>投资研究会话</strong>
+                    <span class="chat-model-badge dev-only" id="chat-model-badge">内置分析引擎</span>
                   </div>
                   <button id="btn-clear-chat" class="clear-chat-btn" type="button">清空对话</button>
                 </div>
@@ -290,8 +290,8 @@
                   <div class="chat-msg assistant agent-welcome-message">
                     <div class="chat-avatar" aria-hidden="true">P</div>
                     <div class="chat-bubble">
-                      <strong>你想先了解什么？</strong>
-                      <p>可以直接描述持仓疑问、研究目标或风险顾虑。我会先核对你的画像和数据，再说明结论、依据与边界。</p>
+                      <strong>从一个具体问题开始</strong>
+                      <p>输入一个具体问题，我会结合你的持仓和投资偏好进行分析。</p>
                     </div>
                   </div>
                 </div>
@@ -300,7 +300,7 @@
               <div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
                 <span class="tags-label">常用问题</span>
                 <button class="quick-tag-chip" type="button" data-intent="CHECK_PORTFOLIO">我的组合最需要关注什么？</button>
-                <button class="quick-tag-chip" type="button" data-intent="RESEARCH_STOCK" data-target="300750">300750 适合我的画像吗？</button>
+                <button class="quick-tag-chip" type="button" data-intent="RESEARCH_STOCK" data-target="300750">分析 300750</button>
                 <button class="quick-tag-chip" type="button" data-intent="REBALANCE_PORTFOLIO">如何降低组合集中度？</button>
               </div>
 
@@ -313,13 +313,13 @@
                     <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
                   </button>
                 </div>
-                <small>回答会区分已确认事实、确定性计算和仍需补充的信息。</small>
+                <small>研究信息仅供参考，不会自动执行交易。</small>
               </div>
 
               <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
             </section>
 
-            <aside class="agent-profile-rail" id="agent-profile-rail" aria-labelledby="behavior-profile-title">
+            <aside class="agent-profile-rail" id="agent-profile-rail" aria-label="账户与偏好">
               <section class="agent-profile-summary">
                 <div class="copilot-persona-badge">
                   <span class="copilot-avatar" id="copilot-hero-avatar"><svg class="prism-icon prism-icon-xl"><use href="#icon-user"/></svg></span>
@@ -345,18 +345,18 @@
               <section class="behavior-profile-card" id="behavior-profile-card">
                 <div class="behavior-profile-head">
                   <div>
-                    <span class="rail-label">行为画像</span>
-                    <h3 id="behavior-profile-title">对话会逐步了解你</h3>
+                    <span class="rail-label">投资偏好</span>
+                    <h3 id="behavior-profile-title">用于个性化分析</h3>
                   </div>
-                  <span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">数据不足</span>
+                  <span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">可完善</span>
                 </div>
                 <div id="behavior-profile-content" class="behavior-profile-content" aria-live="polite">
-                  <p>可在对话中补充投资目标、期限、流动性需求和回撤顾虑。</p>
+                  <p>这些设置用于让分析更符合你的投资目标。</p>
                 </div>
-                <button id="start-conversation-profile-update" class="quiet-profile-action" type="button">在对话中完善</button>
+                <button id="start-conversation-profile-update" class="quiet-profile-action" type="button">修改投资偏好</button>
                 <div class="display-policy-control">
                   <fieldset class="display-policy-levels">
-                    <legend>解释详细度 <strong id="ai-trust-score-value">标准</strong></legend>
+                    <legend>回答详细度 <strong id="ai-trust-score-value">标准</strong></legend>
                     <div class="display-policy-options" role="radiogroup" aria-label="解释详细度">
                       <label class="display-policy-option">
                         <input type="radio" name="display-policy-level" value="80">
@@ -371,24 +371,24 @@
                       <label class="display-policy-option">
                         <input type="radio" name="display-policy-level" value="20">
                         <span>详细</span>
-                        <small>展开依据与边界</small>
+                        <small>展开结论与依据</small>
                       </label>
                     </div>
                     <input id="ai-trust-score" type="hidden" value="50" aria-hidden="true">
                     <small id="display-policy-hint" class="display-policy-hint">结论与关键依据</small>
                   </fieldset>
                   <button id="save-display-policy" class="quiet-profile-action" type="button">保存</button>
-                  <button id="recompute-behavior-profile" class="quiet-profile-action" type="button">重新核验</button>
+                  <button id="recompute-behavior-profile" class="quiet-profile-action" type="button">更新偏好</button>
                   <span id="display-policy-mode" class="status-chip">标准说明</span>
                 </div>
               </section>
-              <section class="agent-session-truth" aria-label="会话分析前提">
-                <span class="rail-label">事实基线</span>
-                <p id="session-truth-status">尚未锁定；画像、持仓或数据模式变化后需要重新确认。</p>
+              <section class="agent-session-truth" aria-label="分析资料">
+                <span class="rail-label">分析资料</span>
+                <p id="session-truth-status">添加持仓与风险设置后，可查看本次分析使用的资料。</p>
                 <div class="agent-session-actions">
-                  <button id="refresh-session-truth" class="quiet-profile-action" type="button">检查</button>
-                  <button id="open-session-truth" class="quiet-profile-action" type="button">查看事实</button>
-                  <button id="confirm-session-truth" class="quiet-profile-action" type="button">锁定前提</button>
+                  <button id="refresh-session-truth" class="quiet-profile-action" type="button">刷新</button>
+                  <button id="open-session-truth" class="quiet-profile-action" type="button">查看资料</button>
+                  <button id="confirm-session-truth" class="quiet-profile-action" type="button">更新资料</button>
                 </div>
               </section>
             </aside>
@@ -590,23 +590,23 @@
             <span class="crumb-sep">/</span>
             <span class="crumb-item">常用任务</span>
             <span class="crumb-sep">/</span>
-            <span class="crumb-item active">组合全景分析与多维体检</span>
+            <span class="crumb-item active">组合概览</span>
           </nav>
 
           <div class="overview-header-bar">
             <div>
-              <span class="eyebrow clay">组合穿透与风控视界</span>
-              <h2 id="overview-title">投资分析与组合全景</h2>
-              <p class="overview-subtitle">多维度透视全组合行业分布、重仓集中度、画像限额偏离与财务脆弱性排查。</p>
+              <span class="eyebrow clay">组合管理</span>
+              <h2 id="overview-title">组合概览</h2>
+              <p class="overview-subtitle">查看持仓集中度、行业分布与收益表现。</p>
             </div>
             <div class="overview-actions">
               <a href="#copilot" class="copilot-action-btn secondary" id="btn-overview-back-copilot">
                 <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                <span>返回开始分析</span>
+                <span>返回 Agent</span>
               </a>
               <button type="button" class="copilot-action-btn primary" id="btn-run-full-overview-check">
                 <svg class="prism-icon"><use href="#icon-shield-check"/></svg>
-                <span>更新多维体检报告</span>
+                <span>更新分析</span>
               </button>
             </div>
           </div>
@@ -614,9 +614,9 @@
           <div class="overview-grid">
             <div class="overview-card">
               <div class="overview-card-header">
-                <h3>行业穿透暴露与画像限额对照表</h3>
+                <h3>行业分布与设置范围</h3>
                 <span class="cf-verdict cf-verdict-pass" id="overview-table-verdict">
-                  <svg class="prism-icon"><use href="#icon-check"/></svg> PASS 合规正常
+                  <svg class="prism-icon"><use href="#icon-check"/></svg> 等待分析
                 </span>
               </div>
               <div class="overview-card-body" id="overview-industry-table-body">
@@ -626,8 +626,8 @@
 
             <div class="overview-card">
               <div class="overview-card-header">
-                <h3>组合多维健康指标透视 (Multi-Dimensional)</h3>
-                <span class="status-chip ok" id="overview-hhi-chip">HHI 1,840 优良</span>
+                <h3>组合集中度与流动性</h3>
+                <span class="status-chip" id="overview-hhi-chip">等待分析</span>
               </div>
               <div class="overview-card-body" id="overview-metrics-body">
                 <!-- 动态指标网格挂载点 -->
@@ -635,19 +635,19 @@
             </div>
           </div>
 
-          <section class="cf-status-widget copilot-donut-widget overview-sector-widget" aria-label="持仓行业穿透风控监控">
+          <section class="cf-status-widget copilot-donut-widget overview-sector-widget" aria-label="持仓行业分布">
             <div class="cf-widget-header">
               <div class="cf-widget-title">
                 <span class="cf-rank-pill r3" id="cf-profile-rank-pill">R3 平衡型</span>
-                <span class="cf-widget-user">持仓行业穿透全景</span>
+                <span class="cf-widget-user">行业分布</span>
               </div>
               <span class="cf-verdict cf-verdict-pass" id="cf-hero-verdict-badge">
                 <svg class="prism-icon"><use href="#icon-check"/></svg>
-                PASS 合规正常
+                等待分析
               </span>
             </div>
             <div class="donut-cause-callout pass" id="donut-cause-callout">
-              合规状态：全行业穿透暴露与流动性缓冲均在安全边界内。
+              添加风险设置与持仓后，可查看行业占比。
             </div>
             <div class="cf-widget-body copilot-donut-body">
               <div class="copilot-donut-chart-wrap">
@@ -658,7 +658,7 @@
               </div>
             </div>
             <div class="copilot-donut-footer">
-              <span class="donut-active-hint" id="donut-active-hint">提示：悬浮或点击扇区可穿透查看具体标的与限额对照</span>
+              <span class="donut-active-hint" id="donut-active-hint">选择行业查看占比、上限和主要标的</span>
             </div>
             <div id="donut-sector-detail" class="donut-sector-detail" hidden aria-live="polite"></div>
           </section>

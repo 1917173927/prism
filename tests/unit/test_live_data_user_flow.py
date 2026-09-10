@@ -299,8 +299,8 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
       sector_hhi:5200,hhi_limit:3800,sectors:[{name:"现金",pct:60,cap:5,limitOperator:"MIN",
         verdictCode:"PASS",differencePctPoints:55,marginPctPoints:55,topHoldings:"现金"}]};
     renderHeroDonutChart("custom-user");
-    assert.match(byId("cf-hero-verdict-badge").textContent, /OVERBOUND.*HHI 5200/);
-    assert.match(byId("donut-cause-callout").textContent, /各行业单项限额未超限/);
+    assert.match(byId("cf-hero-verdict-badge").textContent, /集中度需要关注.*HHI 5200/);
+    assert.match(byId("donut-cause-callout").textContent, /各行业占比仍在设置范围内/);
     state.portfolioHealthRun = null;
     state.portfolio = {position_snapshot:{positions:[{asset_id:"510300.SH"}]}};
     state.portfolioOptimizationRun = {targets:[{target_id:"SECTOR:TECHNOLOGY",target_weight_pct:100}]};
