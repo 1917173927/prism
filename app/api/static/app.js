@@ -2057,6 +2057,8 @@
     const tag = currentProfileTag(profile);
     byId("custom-profile-chip-name").textContent = tag;
     byId("btn-custom-profile-chip").title = `当前风险设置：${persona.name}，${tag}`;
+    const menuLabel = byId("profile-menu-current-label");
+    if (menuLabel) menuLabel.textContent = tag;
     const heroTag = byId("copilot-hero-tag");
     if (heroTag) heroTag.textContent = tag;
   }
@@ -7196,6 +7198,8 @@
     if (currentProfileName) currentProfileName.textContent = currentProfileTag(null);
     const currentProfileChip = byId("btn-custom-profile-chip");
     if (currentProfileChip) currentProfileChip.title = `当前风险设置：${persona.name}，${currentProfileTag(null)}`;
+    const menuLabel = byId("profile-menu-current-label");
+    if (menuLabel) menuLabel.textContent = currentProfileTag(null);
 
     // Update Hero card
     const heroAvatar = byId("copilot-hero-avatar");

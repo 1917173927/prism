@@ -200,23 +200,29 @@
             <h1>Prism 投资 Agent</h1>
             <p class="topbar-subtitle">结合你的持仓、投资偏好与市场信息进行分析。</p>
           </div>
-          <div class="persona-switcher-bar" id="persona-switcher-bar" aria-label="投资者画像管理">
-            <div class="active-profile-wrap">
+          <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
+            <summary aria-label="打开风险与偏好菜单">
+              <span class="profile-menu-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+              <span class="profile-menu-copy"><small>风险与偏好</small><strong id="profile-menu-current-label">查看当前设置</strong></span>
+              <span class="profile-menu-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="profile-actions-panel" aria-label="投资者画像管理">
+              <div class="active-profile-wrap">
               <span class="switcher-label">风险与偏好</span>
               <button class="persona-chip active" id="btn-custom-profile-chip" type="button" data-persona="custom-user" title="查看当前投资画像">
               <span class="persona-avatar" id="custom-profile-chip-avatar"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
               <span class="persona-name" id="custom-profile-chip-name">R3 平衡型</span>
               </button>
             </div>
-            <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="修改投资目标、风险设置和期限">
+              <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="修改投资目标、风险设置和期限">
               <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-edit"/></svg></span>
               <span class="persona-name">修改投资偏好</span>
             </button>
-            <button class="persona-chip custom-portfolio-chip" id="open-portfolio-modal-btn" type="button" title="导入或描述你的持仓，用于个性化分析">
+              <button class="persona-chip custom-portfolio-chip" id="open-portfolio-modal-btn" type="button" title="导入或描述你的持仓，用于个性化分析">
               <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-plus"/></svg></span>
               <span class="persona-name">添加持仓</span>
             </button>
-            <details class="persona-library dev-only">
+              <details class="persona-library dev-only">
               <summary>切换示例画像</summary>
               <div class="persona-library-options">
                 <button class="persona-chip" type="button" data-persona="persona-zhang-r3" title="张先生：35岁白领，R3平衡型，科技重仓">
@@ -232,9 +238,15 @@
                   <span class="persona-name">王同学 (R4)</span>
                 </button>
               </div>
-            </details>
-          </div>
-          <div class="topbar-actions">
+              </details>
+            </div>
+          </details>
+          <details class="topbar-actions topbar-more-menu">
+            <summary aria-label="打开更多工具">
+              <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
+              <span>更多</span>
+            </summary>
+            <div class="topbar-more-panel">
             <div class="runtime-mode-switcher-wrap" id="runtime-mode-switcher-wrap" aria-label="数据模式控制">
               <button class="global-data-mode-btn mode-mock" id="global-data-mode-toggle" type="button" title="点击切换运行数据模式 (MOCK / LIVE)">
                 <span class="mode-status-indicator" aria-hidden="true"></span>
@@ -261,7 +273,8 @@
             <div class="health" id="health-status" aria-live="polite">
               <span class="health-dot" aria-hidden="true"></span> 服务正常
             </div>
-          </div>
+            </div>
+          </details>
         </header>
 
         <!-- Agent 对话是默认首页；专业任务通过侧栏进入各自页面。 -->

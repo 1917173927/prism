@@ -242,6 +242,42 @@ def test_prism_ui_v2_default_copy_is_user_centered() -> None:
         assert dynamic_copy in script
 
 
+def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "styles.css").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    assert 'class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar"' in markup
+    assert 'class="topbar-actions topbar-more-menu"' in markup
+    assert 'id="profile-menu-current-label"' in markup
+    for node_id in (
+        "btn-custom-profile-chip",
+        "open-profile-modal-btn",
+        "open-portfolio-modal-btn",
+        "global-data-mode-toggle",
+        "open-companion-btn",
+        "view-mode-toggle",
+        "health-status",
+        "copilot-chat-messages",
+        "copilot-natural-input",
+        "copilot-submit-query",
+        "copilot-decision-output",
+    ):
+        assert markup.count(f'id="{node_id}"') == 1
+
+    assert "/* Prism UI v2 integration: shell, topbar, and Agent home */" in styles
+    for selector in (
+        ".prism-ui-v2 .app-shell",
+        ".prism-ui-v2 .profile-actions-menu",
+        ".prism-ui-v2 .topbar-more-menu",
+        ".prism-ui-v2 .agent-home-grid",
+        ".prism-ui-v2 .agent-conversation",
+        ".prism-ui-v2 .agent-profile-rail",
+    ):
+        assert selector in styles
+    assert 'byId("profile-menu-current-label")' in script
+
+
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")

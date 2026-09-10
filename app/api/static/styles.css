@@ -6264,3 +6264,258 @@ body.questionnaire-required .questionnaire-shell {
   body.questionnaire-required .main { width: min(100% - 20px, 940px); padding-top: 16px; }
   body.questionnaire-required #profile { padding: 18px 14px; }
 }
+
+/* Prism UI v2 integration: shell, topbar, and Agent home */
+.prism-ui-v2 {
+  color: var(--text-primary);
+  background: var(--page);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.prism-ui-v2 .app-shell { grid-template-columns: 220px minmax(0, 1fr); }
+.prism-ui-v2 .sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+.prism-ui-v2 .brand-mark {
+  border: 1px solid #9c4300;
+  border-radius: var(--radius-sm);
+  background: var(--text-primary);
+  box-shadow: none;
+}
+.prism-ui-v2 .brand strong,
+.prism-ui-v2 .topbar-title-area h1,
+.prism-ui-v2 .agent-home-heading h2 { font-family: inherit; }
+.prism-ui-v2 .nav-item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  box-shadow: none;
+}
+.prism-ui-v2 .nav-item:hover,
+.prism-ui-v2 .nav-item:focus-visible {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  background: var(--surface);
+  transform: none;
+}
+.prism-ui-v2 .nav-item.active,
+.prism-ui-v2 .nav-item-copilot.active {
+  border-color: #f0c9aa;
+  color: #7a3500;
+  background: var(--brand-soft);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+.prism-ui-v2 .sidebar-note {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 .main {
+  width: min(100% - 40px, 1480px);
+  padding-top: 24px;
+}
+.prism-ui-v2 .topbar {
+  position: relative;
+  z-index: 30;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  margin-bottom: 26px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+.prism-ui-v2 .topbar-title-area { margin-right: auto; }
+.prism-ui-v2 .topbar-title-area h1 { color: var(--text-primary); font-size: 20px; }
+.prism-ui-v2 .topbar-subtitle { color: var(--text-muted); }
+
+.prism-ui-v2 .profile-actions-menu,
+.prism-ui-v2 .topbar-more-menu { position: relative; flex: 0 0 auto; }
+.prism-ui-v2 .profile-actions-menu > summary,
+.prism-ui-v2 .topbar-more-menu > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--surface);
+  cursor: pointer;
+  list-style: none;
+}
+.prism-ui-v2 .profile-actions-menu > summary::-webkit-details-marker,
+.prism-ui-v2 .topbar-more-menu > summary::-webkit-details-marker { display: none; }
+.prism-ui-v2 .profile-actions-menu > summary:hover,
+.prism-ui-v2 .profile-actions-menu > summary:focus-visible,
+.prism-ui-v2 .topbar-more-menu > summary:hover,
+.prism-ui-v2 .topbar-more-menu > summary:focus-visible {
+  border-color: var(--brand);
+  outline: none;
+}
+.prism-ui-v2 .profile-menu-avatar {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--text-primary);
+}
+.prism-ui-v2 .profile-menu-copy { display: grid; min-width: 110px; line-height: 1.15; }
+.prism-ui-v2 .profile-menu-copy small { color: var(--text-muted); font-size: 10px; }
+.prism-ui-v2 .profile-menu-copy strong { margin-top: 3px; font-size: 12px; }
+.prism-ui-v2 .profile-menu-chevron { color: var(--text-muted); }
+.prism-ui-v2 .profile-actions-panel,
+.prism-ui-v2 .topbar-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 7px;
+  width: 250px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-overlay);
+}
+.prism-ui-v2 .profile-actions-panel .active-profile-wrap { display: grid; gap: 5px; }
+.prism-ui-v2 .profile-actions-panel .persona-chip,
+.prism-ui-v2 .topbar-more-panel > button,
+.prism-ui-v2 .topbar-more-panel .global-data-mode-btn {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 .topbar-more-menu > summary { min-width: 88px; justify-content: center; }
+.prism-ui-v2 .topbar-more-panel { width: 220px; }
+.prism-ui-v2 .topbar-more-panel .runtime-mode-switcher-wrap { width: 100%; }
+.prism-ui-v2 .topbar-more-panel .health { justify-content: flex-start; margin: 2px 4px 0; }
+
+.prism-ui-v2 .agent-home-heading { align-items: flex-end; margin-bottom: 18px; }
+.prism-ui-v2 .agent-home-heading h2 {
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: clamp(28px, 3vw, 38px);
+  letter-spacing: -0.03em;
+}
+.prism-ui-v2 .agent-home-heading p { max-width: 640px; color: var(--text-muted); }
+.prism-ui-v2 .agent-boundary-note {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--surface-subtle);
+}
+.prism-ui-v2 .agent-home-grid { grid-template-columns: minmax(0, 1fr) 310px; gap: 18px; }
+.prism-ui-v2 .agent-conversation,
+.prism-ui-v2 .agent-profile-summary,
+.prism-ui-v2 .behavior-profile-card,
+.prism-ui-v2 .agent-session-truth {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 .agent-conversation { overflow: hidden; }
+.prism-ui-v2 .agent-conversation .copilot-chat-stream-panel { border: 0; background: var(--surface); }
+.prism-ui-v2 .agent-conversation .chat-panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+.prism-ui-v2 .chat-live-pulse { background: var(--success); box-shadow: none; }
+.prism-ui-v2 .agent-conversation .copilot-chat-messages {
+  min-height: 310px;
+  padding: 24px 20px;
+  background: var(--surface);
+}
+.prism-ui-v2 .chat-msg.assistant .chat-bubble {
+  border-color: var(--border);
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+.prism-ui-v2 .agent-conversation .copilot-quick-tags {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+.prism-ui-v2 .agent-conversation .quick-tag-chip {
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+.prism-ui-v2 .agent-conversation .quick-tag-chip:hover,
+.prism-ui-v2 .agent-conversation .quick-tag-chip:focus-visible {
+  border-color: var(--brand);
+  color: #7a3500;
+  background: var(--brand-soft);
+}
+.prism-ui-v2 .agent-conversation .copilot-query-box {
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
+}
+.prism-ui-v2 .agent-conversation .copilot-query-box:focus-within { border-color: var(--border); box-shadow: none; }
+.prism-ui-v2 .agent-conversation .copilot-input-wrapper {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.prism-ui-v2 .agent-conversation .copilot-input-wrapper:focus-within { border-color: var(--brand); }
+.prism-ui-v2 .agent-conversation .copilot-submit-btn {
+  border-radius: var(--radius-sm);
+  color: #fff;
+  background: var(--brand-action);
+  box-shadow: none;
+}
+.prism-ui-v2 .agent-conversation .copilot-submit-btn:hover { background: var(--brand-action-hover); }
+.prism-ui-v2 .agent-profile-rail { gap: 12px; }
+.prism-ui-v2 .agent-profile-summary,
+.prism-ui-v2 .behavior-profile-card,
+.prism-ui-v2 .agent-session-truth { padding: 16px; }
+.prism-ui-v2 .agent-constraint-list > div,
+.prism-ui-v2 .behavior-profile-metric { border-color: var(--border); background: var(--surface-subtle); }
+.prism-ui-v2 .quiet-profile-action {
+  border-color: var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+
+@media (max-width: 1080px) {
+  .prism-ui-v2 .agent-home-grid { grid-template-columns: minmax(0, 1fr); }
+  .prism-ui-v2 .agent-profile-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prism-ui-v2 .agent-session-truth { grid-column: 1 / -1; }
+}
+
+@media (max-width: 700px) {
+  .prism-ui-v2 .main { width: min(100% - 24px, 1480px); padding-top: 12px; }
+  .prism-ui-v2 .topbar { justify-content: flex-end; min-height: 54px; }
+  .prism-ui-v2 .profile-menu-copy { min-width: 92px; }
+  .prism-ui-v2 .profile-actions-panel,
+  .prism-ui-v2 .topbar-more-panel { position: fixed; top: 66px; right: 12px; left: 12px; width: auto; }
+  .prism-ui-v2 .agent-home-heading { align-items: flex-start; }
+  .prism-ui-v2 .agent-home-heading h2 { font-size: 28px; }
+  .prism-ui-v2 .agent-profile-rail { grid-template-columns: 1fr; }
+  .prism-ui-v2 .agent-session-truth { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-ui-v2 *,
+  .prism-ui-v2 *::before,
+  .prism-ui-v2 *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
