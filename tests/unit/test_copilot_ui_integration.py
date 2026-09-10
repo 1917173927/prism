@@ -189,6 +189,26 @@ def test_copilot_styles_and_responsive_rules() -> None:
     assert ".copilot-stats-grid, .copilot-tasks-grid, .decision-metrics-row" in styles
 
 
+def test_prism_ui_v2_design_tokens_are_semantic_and_legacy_compatible() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "styles.css").read_text(encoding="utf-8")
+
+    assert 'class="questionnaire-pending prism-ui-v2"' in markup
+    for token in (
+        "--text-primary: #202124",
+        "--page: #f7f7f8",
+        "--brand: #e86f00",
+        "--market-up: #c83b32",
+        "--market-down: #16805a",
+        "--success: #16805a",
+        "--danger: #c83b32",
+        "--warning: #a66b00",
+        "--info: #356fa8",
+        "--clay: var(--brand)",
+    ):
+        assert token in styles
+
+
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")
