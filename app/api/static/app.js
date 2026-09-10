@@ -1347,23 +1347,26 @@
     const isExample = /示例|MOCK|模板/i.test(renderedSource);
     const isConfirmed = /已确认/.test(renderedSource);
     const isLocal = /恢复|本地/.test(renderedSource);
+    const isLive = state.dataMode === "LIVE" || /实时/.test(renderedSource);
     const title = byId("portfolio-title");
     const label = byId("portfolio-context-label");
     const note = byId("portfolio-source-note");
     if (title) title.textContent = isExample ? "示例持仓明细" : "持仓明细";
     if (label) label.textContent = renderedSource;
-    if (!note) return { isExample, isConfirmed, isLocal };
+    if (!note) return { isExample, isConfirmed, isLocal, isLive };
     note.className = `portfolio-source-note${isConfirmed ? " is-confirmed" : isLocal ? " is-local" : ""}`;
     note.textContent = isExample
       ? "当前展示为示例持仓数据，仅用于界面演示，不代表真实账户；确认脱敏持仓后才会替换。"
       : isConfirmed
-        ? "当前数据来自你确认的脱敏持仓输入，仅在本次会话使用，不会自动连接或操作账户。"
+        ? (isLive
+            ? "当前持仓已接入真实生产环境，行情价格与穿透数据由实时接口提供。"
+            : "当前数据来自你确认的脱敏持仓输入，仅在本次会话使用，不会自动连接或操作账户。")
         : isLocal
           ? "当前展示为已恢复的本地持仓快照，仅供核对；请以截止时间和来源为准。"
           : portfolio
             ? "当前持仓数据仅用于本次分析；请核对截止时间和数据来源。"
             : "尚未确认真实持仓；页面中的示例数据仅用于演示。";
-    return { isExample, isConfirmed, isLocal };
+    return { isExample, isConfirmed, isLocal, isLive };
   }
 
   function renderPortfolio(portfolio, sourceLabel = "示例数据 · 只读") {
@@ -6014,6 +6017,10 @@
     if (requestedId === "profile" && state.ownerId) {
       Promise.allSettled([loadQuestionnaireTemplate(), loadProfileSummary()]);
     }
+    if (requestedId === "portfolio" && state.portfolio) {
+      const sourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
+      renderPortfolio(state.portfolio, sourceTitle);
+    }
 
     const items = [...document.querySelectorAll(".nav-item")];
     if (!items.length) return;
@@ -8138,6 +8145,69 @@
     clear(tableBody);
     clear(metricsBody);
 
+    const ovAum = byId("overview-portfolio-aum");
+    const ovCash = byId("overview-portfolio-cash");
+    const ovPnlVal = byId("overview-pnl-val");
+    const ovPnlPct = byId("overview-pnl-pct");
+    const ovBmVal = byId("overview-benchmark-val");
+    const ovBmSub = byId("overview-benchmark-sub");
+
+    const draft = state.ocrPortfolioDraft;
+    if (ovAum && draft?.total_value_cny) {
+      ovAum.textContent = `¥ ${Number(draft.total_value_cny).toLocaleString()}`;
+    }
+    if (ovCash && draft?.cash_cny != null) {
+      ovCash.textContent = `现金另计 ¥ ${Number(draft.cash_cny).toLocaleString()}`;
+    }
+
+    const positions = draft?.positions || [];
+    let totalCost = 0;
+    let totalStockVal = 0;
+    let hasCost = false;
+    positions.forEach((p) => {
+      const qty = Number(p.quantity || 0);
+      const cost = Number(p.cost_price || 0);
+      const price = Number(p.price || 0);
+      const mval = Number(p.calculated_market_value_cny || p.market_value_cny || (qty * price));
+      if (cost > 0 && qty > 0) {
+        totalCost += cost * qty;
+        totalStockVal += (price > 0 ? price * qty : mval);
+        hasCost = true;
+      }
+    });
+
+    if (ovPnlVal && ovPnlPct) {
+      if (hasCost && totalCost > 0) {
+        const diff = totalStockVal - totalCost;
+        const diffPct = (diff / totalCost) * 100;
+        const isUp = diff >= 0;
+        ovPnlVal.textContent = `${isUp ? "+ " : "− "}¥ ${Math.abs(diff).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${isUp ? "↑" : "↓"}`;
+        ovPnlVal.className = `mono ${isUp ? "market-up" : "market-down"}`;
+        ovPnlPct.textContent = `${isUp ? "+" : "−"}${Math.abs(diffPct).toFixed(2)}% (浮动盈亏)`;
+        ovPnlPct.className = isUp ? "market-up" : "market-down";
+      } else if (positions.length > 0) {
+        ovPnlVal.textContent = "待核算成本";
+        ovPnlVal.className = "mono";
+        ovPnlPct.textContent = "未录入初始成本";
+        ovPnlPct.className = "";
+      } else {
+        ovPnlVal.textContent = "等待分析";
+        ovPnlVal.className = "mono";
+        ovPnlPct.textContent = "添加持仓后查看";
+        ovPnlPct.className = "";
+      }
+    }
+
+    if (ovBmVal && ovBmSub) {
+      if (positions.length > 0) {
+        ovBmVal.textContent = `${positions.length} 只个股标的`;
+        ovBmSub.textContent = `沪深 300 基准 · 100% 穿透`;
+      } else {
+        ovBmVal.textContent = "沪深 300";
+        ovBmSub.textContent = "基准比对 · 待加载持仓";
+      }
+    }
+
     const health = state.portfolioHealthRun;
     if (!health) {
       tableBody.textContent = "添加持仓后，可查看行业分布。";
@@ -8170,6 +8240,8 @@
 
     tableBody.append(buildMultiIndustryMatrixTable(sectors));
     metricsBody.append(buildMultiDimensionalMetricsGrid(health));
+
+    renderHeroDonutChart(personaId || state.selectedPersona);
   }
 
   async function runCopilotHealthCheck() {
@@ -9048,9 +9120,14 @@
     },
   ]);
 
+  function clearChatEmptyState(messages = byId("copilot-chat-messages")) {
+    messages?.querySelector("[data-chat-empty-state]")?.remove();
+  }
+
   function appendChatMessage(role, content) {
     const messages = byId("copilot-chat-messages");
     if (!messages) return null;
+    clearChatEmptyState(messages);
     const row = document.createElement("div");
     row.className = `chat-msg ${role}`;
     const avatar = document.createElement("div");
@@ -9067,13 +9144,21 @@
   }
 
   function renderChatWelcome() {
+    const messages = byId("copilot-chat-messages");
+    if (!messages) return;
+    clear(messages);
     const content = document.createElement("div");
-    const title = document.createElement("strong");
+    content.className = "agent-empty-state";
+    content.setAttribute("data-chat-empty-state", "");
+    const mark = document.createElement("span");
+    mark.className = "empty-mark";
+    mark.textContent = "P";
+    const title = document.createElement("h3");
     title.textContent = "从一个具体问题开始";
     const description = document.createElement("p");
     description.textContent = "输入一个具体问题，我会结合你的持仓和投资偏好进行分析。";
-    content.append(title, description);
-    appendChatMessage("assistant", content);
+    content.append(mark, title, description);
+    messages.append(content);
   }
 
   function startConversationProfileUpdate() {
@@ -9671,6 +9756,8 @@
       }
     }
     else renderPortfolioReadiness();
+    const validatedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
+    renderPortfolio(validated.portfolio, validatedSourceTitle);
     return validated;
   }
 
@@ -9692,6 +9779,8 @@
     });
     const tag = byId("copilot-hero-portfolio-tag");
     if (tag) tag.textContent = `已确认持仓 (${saved.data.positions.length} 项)`;
+    const savedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
+    renderPortfolio(saved.data.portfolio, savedSourceTitle);
     renderPortfolioReadiness();
     renderOverviewWorkspace(state.selectedPersona);
     updateVisualCompanion();
@@ -10195,6 +10284,8 @@
 
   const openPortBtn = byId("open-portfolio-modal-btn");
   if (openPortBtn) openPortBtn.addEventListener("click", openPortfolioModal);
+  const openPortFromPageBtn = byId("open-portfolio-modal-from-page");
+  if (openPortFromPageBtn) openPortFromPageBtn.addEventListener("click", openPortfolioModal);
   const closePortBtn = byId("close-portfolio-modal-btn");
   if (closePortBtn) closePortBtn.addEventListener("click", closePortfolioModal);
   const parsePortBtn = byId("btn-parse-portfolio");
@@ -10416,6 +10507,7 @@
     initializeNavigation();
     checkHealth();
     updateLLMConfigUI();
+    await fetchRuntimeDataMode();
     initRuntimeDataMode();
     loadUserProfile();
     switchPersona("custom-user");

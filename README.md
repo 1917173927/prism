@@ -284,6 +284,7 @@ uv run pytest
 ## 仓库索引
 
 - [主项目规范](Prism.md)
+- [产品 PRD 对接指南](docs/prd-integration-guide.md)
 - [实施架构](docs/architecture.md)
 - [Evidence Contract](docs/archive/evidence-contract.md)
 - [Provider Protocol](docs/archive/provider-protocol.md)

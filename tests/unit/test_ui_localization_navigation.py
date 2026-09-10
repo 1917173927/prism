@@ -27,7 +27,7 @@ def test_primary_navigation_is_chinese_and_has_initial_selection() -> None:
         assert f'href="{href}"' in markup
         assert label in markup
     assert '<nav class="nav-list" aria-label="工作区分区">' in markup
-    assert 'href="#overview" aria-current="location"' in markup
+    assert 'href="#copilot" id="nav-copilot" aria-current="location"' in markup
 
     forbidden_core_labels = (
         "Decision workspace",

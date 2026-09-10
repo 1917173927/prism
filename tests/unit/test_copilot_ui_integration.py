@@ -303,6 +303,85 @@ def test_prism_ui_v2_scopes_overview_surface_and_table_styles() -> None:
         assert selector in styles
 
 
+def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    assert '<link rel="stylesheet" href="/static/styles.css">\n    <link rel="stylesheet" href="/static/prism-v2.css">' in markup
+    agent_start = markup.index('<section class="copilot-section" id="copilot"')
+    agent_end = markup.index('id="portfolio-modal"', agent_start)
+    agent_markup = markup[agent_start:agent_end]
+
+    assert agent_markup.index('id="copilot-chat-messages"') < agent_markup.index('class="copilot-query-box"')
+    assert agent_markup.index('class="copilot-query-box"') < agent_markup.index('id="copilot-quick-tags"')
+    assert agent_markup.index('id="copilot-quick-tags"') < agent_markup.index('id="copilot-decision-output"')
+    assert 'class="agent-empty-state" data-chat-empty-state' in agent_markup
+    assert "agent-welcome-message" not in agent_markup
+    assert '<div class="chat-avatar" aria-hidden="true">P</div>' not in agent_markup
+
+    for node_id in (
+        "copilot",
+        "agent-home-grid",
+        "agent-conversation",
+        "copilot-chat-panel",
+        "copilot-chat-messages",
+        "copilot-natural-input",
+        "copilot-submit-query",
+        "copilot-quick-tags",
+        "copilot-decision-output",
+        "agent-profile-rail",
+        "behavior-profile-card",
+        "behavior-profile-content",
+        "portfolio-refresh-status",
+        "session-truth-status",
+    ):
+        assert markup.count(f'id="{node_id}"') == 1
+
+    assert "function clearChatEmptyState(" in script
+    assert 'messages?.querySelector("[data-chat-empty-state]")?.remove()' in script
+    assert 'content.className = "agent-empty-state"' in script
+
+    assert "Agent home is defined here as a complete composition" in v2_styles
+    for selector in (
+        ".prism-ui-v2 .agent-home-grid",
+        ".prism-ui-v2 .agent-conversation",
+        ".prism-ui-v2 .agent-conversation .chat-panel-header",
+        ".prism-ui-v2 .agent-conversation .copilot-chat-messages",
+        ".prism-ui-v2 .agent-conversation .chat-msg",
+        ".prism-ui-v2 .agent-conversation .chat-bubble",
+        ".prism-ui-v2 .agent-conversation .copilot-query-box",
+        ".prism-ui-v2 .agent-conversation .copilot-natural-input",
+        ".prism-ui-v2 .agent-conversation .copilot-submit-btn",
+        ".prism-ui-v2 .agent-conversation .copilot-quick-tags",
+        ".prism-ui-v2 .agent-conversation .quick-tag-chip",
+        ".prism-ui-v2 .agent-profile-rail",
+        ".prism-ui-v2 .agent-profile-summary",
+        ".prism-ui-v2 .agent-profile-rail .behavior-profile-card",
+        ".prism-ui-v2 .agent-profile-rail .display-policy-option",
+    ):
+        assert selector in v2_styles
+
+    for geometry in (
+        "grid-template-columns: 220px minmax(0, 1fr)",
+        "grid-template-columns: minmax(0, 1fr) 286px",
+        "min-height: 260px",
+        "border-radius: var(--radius-lg)",
+        "box-shadow: none",
+    ):
+        assert geometry in v2_styles
+
+    for legacy_teal in (
+        "rgba(23, 108, 120",
+        "#6d9298",
+        "#eef6f5",
+        "#3d7a86",
+        "#1d6976",
+        "#15535e",
+    ):
+        assert legacy_teal not in v2_styles.lower()
+
+
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")
