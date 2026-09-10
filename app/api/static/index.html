@@ -248,7 +248,7 @@
               <span>更多</span>
             </summary>
             <div class="topbar-more-panel">
-            <div class="runtime-mode-switcher-wrap" id="runtime-mode-switcher-wrap" aria-label="数据模式控制">
+            <div class="runtime-mode-switcher-wrap dev-only" id="runtime-mode-switcher-wrap" aria-label="数据模式控制">
               <button class="global-data-mode-btn mode-mock" id="global-data-mode-toggle" type="button" title="点击切换运行数据模式 (MOCK / LIVE)">
                 <span class="mode-status-indicator" aria-hidden="true"></span>
                 <span class="mode-label-text" id="global-data-mode-label">MOCK · 合成数据</span>
@@ -271,9 +271,7 @@
                 </button>
               </div>
             </details>
-            <div class="health" id="health-status" aria-live="polite">
-              <span class="health-dot" aria-hidden="true"></span> 服务正常
-            </div>
+            <div class="health" id="health-status" aria-live="polite" hidden></div>
             </div>
           </details>
         </header>
@@ -286,7 +284,6 @@
               <h2 id="copilot-hero-title">分析你的投资组合</h2>
               <p>结合你的持仓、投资偏好与可用市场数据回答。</p>
             </div>
-            <span class="agent-boundary-note">研究辅助，不执行交易</span>
           </div>
 
           <div class="agent-home-grid" id="agent-home-grid">
@@ -313,7 +310,7 @@
                 <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
                 <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="我更在意控制回撤，这套持仓需要怎么调整？" autocomplete="off"></textarea>
                 <div class="copilot-composer-meta">
-                  <small>研究信息仅供参考，不会自动执行交易</small>
+                  <small>结合当前持仓与投资偏好进行分析</small>
                   <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
                     <span>发送</span>
                     <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
@@ -341,16 +338,16 @@
                   </div>
                 </div>
                 <dl class="agent-constraint-list">
-                  <div><dt>风险等级</dt><dd><span class="copilot-tag" id="copilot-hero-tag">R3 平衡型</span></dd></div>
+                  <div><dt>风险等级</dt><dd><span class="copilot-tag" id="copilot-hero-tag">完善风险设置</span></dd></div>
                   <div><dt>持仓状态</dt><dd><span class="copilot-portfolio-badge" id="copilot-hero-portfolio-tag">待加载持仓</span></dd></div>
-                  <div><dt>总资产</dt><dd id="copilot-stat-aum">待计算</dd></div>
-                  <div><dt>行业上限</dt><dd id="copilot-stat-budget">待计算</dd></div>
+                  <div><dt>总资产</dt><dd id="copilot-stat-aum">—</dd></div>
+                  <div><dt>行业上限</dt><dd id="copilot-stat-budget">—</dd></div>
                 </dl>
                 <details class="agent-rail-details account-details">
                   <summary>查看账户详情</summary>
                   <div class="agent-detail-stack">
-                    <div class="agent-detail-row"><span>关键组合信息</span><strong id="copilot-stat-tech">待计算</strong></div>
-                    <div id="copilot-stat-evidence-card" role="button" tabindex="0"><span>分析依据</span><strong id="copilot-stat-evidence">待计算</strong></div>
+                    <div class="agent-detail-row"><span>关键组合信息</span><strong id="copilot-stat-tech">—</strong></div>
+                    <div id="copilot-stat-evidence-card" role="button" tabindex="0"><span>分析依据</span><strong id="copilot-stat-evidence">—</strong></div>
                     <span id="btn-show-evidence-lineage" hidden>查看过程</span>
                     <div id="portfolio-refresh-status" class="portfolio-refresh-status" role="status" aria-live="polite">等待持仓数据</div>
                     <section class="agent-session-truth" aria-label="分析资料">
@@ -444,7 +441,7 @@
                     </div>
                     <div class="ocr-dropzone-actions">
                       <button id="btn-trigger-file-select" class="copilot-action-btn secondary small" type="button">选择持仓图片</button>
-                      <button id="btn-load-sample-ocr" class="copilot-action-btn secondary small" type="button">载入测试截图</button>
+                      <button id="btn-load-sample-ocr" class="copilot-action-btn secondary small dev-only" type="button">载入样例截图</button>
                     </div>
                   </div>
 
@@ -633,23 +630,23 @@
           <section class="metric-strip" aria-label="组合摘要">
             <article>
               <span>组合市值</span>
-              <strong class="mono" id="overview-portfolio-aum">¥ 1,505,235</strong>
-              <small id="overview-portfolio-cash">现金另计 ¥ 28,000</small>
+              <strong class="mono" id="overview-portfolio-aum">—</strong>
+              <small id="overview-portfolio-cash">现金另计 —</small>
             </article>
             <article>
               <span id="overview-pnl-label">浮动盈亏</span>
-              <strong class="mono market-up" id="overview-pnl-val">+ ¥ 26,835.00 ↑</strong>
-              <small class="market-up" id="overview-pnl-pct">+1.85% (浮动盈亏)</small>
+              <strong class="mono" id="overview-pnl-val">—</strong>
+              <small id="overview-pnl-pct">等待数据</small>
             </article>
             <article>
               <span id="overview-benchmark-label">标的覆盖</span>
-              <strong class="mono" id="overview-benchmark-val">5 只个股标的</strong>
-              <small id="overview-benchmark-sub">沪深 300 基准 · 100% 穿透</small>
+              <strong class="mono" id="overview-benchmark-val">—</strong>
+              <small id="overview-benchmark-sub">沪深 300 基准</small>
             </article>
             <article>
               <span>组合提示</span>
               <strong><span class="status-chip" id="overview-hhi-chip">等待分析</span></strong>
-              <small id="overview-alert-note">关注持仓集中度与行业边界</small>
+              <small id="overview-alert-note">关注持仓集中度与行业占比上限</small>
             </article>
           </section>
 
@@ -658,7 +655,7 @@
               <header class="surface-head overview-card-header">
                 <div>
                   <h3>行业分布与设置范围</h3>
-                  <p>穿透基金后的真实持仓暴露与限额核验</p>
+                  <p>穿透基金后的持仓分布与行业占比</p>
                 </div>
                 <span class="cf-verdict cf-verdict-pass" id="overview-table-verdict">
                   <svg class="prism-icon"><use href="#icon-check"/></svg> 等待分析
@@ -701,7 +698,7 @@
               <header class="surface-head overview-card-header">
                 <div>
                   <h3>组合集中度与流动性</h3>
-                  <p>多维集中度指数、行业极值与现金冗余度监测</p>
+                  <p>行业集中度、单一标的高低与现金留存</p>
                 </div>
               </header>
               <div class="overview-card-body" id="overview-metrics-body">
@@ -718,7 +715,7 @@
                 <input id="owner-id" value="demo-owner" autocomplete="off" spellcheck="false">
                 <button id="load-events" type="button">读取记录</button>
               </div>
-              <small>仅用于本地演示的数据隔离，不等同于登录身份，也不会上传到云端。</small>
+              <small>用于本地数据空间的记录隔离与快速切换。</small>
             </div>
           </details>
         </section>
@@ -796,12 +793,12 @@
               <div class="query-form-head">
                 <div>
                     <span class="eyebrow clay">进阶选项</span>
-                    <h3>手动调整分析边界</h3>
+                    <h3>手动调整分析参数</h3>
                 </div>
                 <span id="query-status" class="status-chip">待运行</span>
               </div>
               <div class="query-meta" id="query-template-meta">
-                运行时读取合成持仓模板；不会提交自然语言或订单。
+                根据设定的风险参数与偏好进行查询。
               </div>
               <div class="intent-planning">
                 <label for="intent-type">
@@ -873,7 +870,7 @@
               </div>
               <div class="query-form-actions">
                 <button id="run-advisor-query" class="query-submit" type="submit">运行详细分析</button>
-                <span class="query-note">适合需要复核分析条件时使用；不会提交自然语言或发起交易。</span>
+                <span class="query-note">用于自定义各项参数进行精确测算。</span>
               </div>
             </form>
             <div id="event-list" class="event-list" aria-live="polite">
@@ -898,17 +895,16 @@
                 <select id="research-scenario" disabled>
                   <option value="">读取场景目录…</option>
                 </select>
-                <small>仅为离线合成演示，不代表实时行情。</small>
+                <small>离线合成演示</small>
               </label>
               <button id="run-research-matrix" class="query-submit" type="button">运行研究矩阵</button>
             </div>
-            <p class="research-boundary">宏观、行业、个股、ETF/基金只展示结构化研究状态与证据链；研究完成不代表可交易建议，退化场景不会升级为事实或发现。</p>
             <div id="research-matrix-content" class="research-content" aria-live="polite">
               <div class="empty-state">运行矩阵后查看四类节点、独立来源验证，以及从发现到事实再到证据的闭合路径。</div>
             </div>
             <details id="workflow-panel">
               <summary>工作流编排演练 · MOCK 合成数据</summary>
-              <p>调整节点位置与依赖，保存后运行指定版本。节点来源和风控验证规则由服务端固定；本功能不执行交易。</p>
+              <p>调整节点位置与依赖，保存后运行指定版本。</p>
               <button id="workflow-load" class="query-submit secondary" type="button">读取工作流</button>
               <button id="workflow-save" class="query-submit" type="button">保存工作流</button>
               <button id="workflow-run" class="query-submit" type="button">运行已保存版本</button>
@@ -946,11 +942,10 @@
                 <select id="stock-research-scenario" disabled>
                   <option value="">读取场景目录…</option>
                 </select>
-                <small>仅为合成离线回放，不代表实时行情。</small>
+                <small>合成离线回放</small>
               </label>
               <button id="run-stock-research" class="query-submit" type="button">运行个股研究</button>
             </div>
-             <p class="research-boundary">结果用于研究参考，不是买卖建议；信息不足或来源冲突时会明确提示。</p>
             <div id="stock-research-content" class="stock-research-content" aria-live="polite">
               <div class="empty-state">运行研究后查看财务指标、异常项与信息来源。</div>
             </div>
@@ -973,11 +968,10 @@
                 <select id="fund-research-scenario" disabled>
                   <option value="">读取场景目录…</option>
                 </select>
-                <small>仅为合成离线回放，不代表实时行情。</small>
+                <small>合成离线回放</small>
               </label>
               <button id="run-fund-research" class="query-submit" type="button">运行 ETF / 基金研究</button>
             </div>
-             <p class="research-boundary">结果用于研究参考，不是买卖建议；信息不足或来源冲突时会明确提示。</p>
             <div id="fund-research-content" class="fund-research-content" aria-live="polite">
               <div class="empty-state">运行研究后查看基金概况、集中度、费用风险与信息来源。</div>
             </div>
@@ -1000,11 +994,10 @@
                 <select id="convertible-bond-research-scenario" disabled>
                   <option value="">读取场景目录…</option>
                 </select>
-                <small>仅为合成离线回放，不代表实时行情。</small>
+                <small>合成离线回放</small>
               </label>
               <button id="run-convertible-bond-research" class="query-submit" type="button">运行可转债研究</button>
             </div>
-             <p class="research-boundary">结果用于研究参考，不是买卖建议；公式和数据来源会在结果中标明。</p>
             <div id="convertible-bond-research-content" class="convertible-bond-research-content" aria-live="polite">
               <div class="empty-state">运行研究后查看正股、转股价值、信用与流动性指标，附数据来源。</div>
             </div>
@@ -1021,12 +1014,12 @@
 
             <div class="page-heading portfolio-heading">
               <div>
-                <span class="eyebrow">持仓快照</span>
+                <span class="eyebrow">持仓管理</span>
                 <h2 id="portfolio-title">持仓明细</h2>
-                <p class="portfolio-subtitle">查看已确认的真实持仓、个股资产与穿透详情。</p>
+                <p class="portfolio-subtitle">查看当前持仓、个股资产与穿透详情。</p>
               </div>
               <div class="heading-actions">
-                <span id="portfolio-context-label" class="status-chip chip-confirmed">已确认 · 实时数据</span>
+                <span id="portfolio-context-label" class="status-chip">等待数据</span>
                 <a href="#copilot" class="copilot-action-btn secondary button" id="btn-portfolio-back-copilot">
                   <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
                   <span>返回 Agent</span>
@@ -1038,15 +1031,15 @@
               </div>
             </div>
 
-            <p id="portfolio-source-note" class="portfolio-source-note">当前展示为示例持仓数据，仅用于界面演示，不代表真实账户；确认脱敏持仓后才会替换。</p>
+            <p id="portfolio-source-note" class="portfolio-source-note">导入持仓后即可查看持仓明细与基金底层股票。</p>
             <div class="context-import dev-only">
               <label for="portfolio-json">粘贴已脱敏的持仓 JSON</label>
-              <textarea id="portfolio-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 portfolio-import-bundle.v1；当前会话只读，不代表真实账户"></textarea>
+              <textarea id="portfolio-json" rows="7" autocomplete="off" spellcheck="false" placeholder="粘贴 portfolio-import-bundle.v1 格式的持仓数据"></textarea>
               <div class="context-import-actions">
                 <button id="confirm-portfolio" class="query-submit" type="button">验证并加载持仓</button>
                 <span id="portfolio-context-status" class="status-chip">未确认</span>
               </div>
-              <small>本地同源校验，不上传文件、不保存原文；隔离标识必须与上方一致。</small>
+              <small>在本地执行数据校验与结构化解析。</small>
             </div>
             <div id="portfolio-content" class="portfolio-content" aria-live="polite">
               <div class="empty-state">加载后查看持仓明细与基金底层股票。</div>
@@ -1071,11 +1064,11 @@
                 <button id="save-context-memory" class="query-submit" type="button">保存当前上下文</button>
               </div>
             </div>
-            <p class="research-boundary">未启用本地认证时，隔离标识不构成身份认证。记录保存在本地服务端，不是云同步；记录不可覆盖、不可删除。恢复必须显式点击，并会清空旧的投顾、研究、组合优化派生结果，之后重新运行。</p>
+            <p class="research-boundary">记录保存在本地服务端。恢复历史记录后将重新加载对应投顾与分析结果。</p>
             <label for="memory-search-query">检索历史上下文</label>
             <input id="memory-search-query" type="text" maxlength="1000" placeholder="例如：之前关于基金的讨论背景" />
             <button id="search-context-memory" class="query-submit" type="button">检索历史记录</button>
-            <p class="research-boundary">HISTORICAL_ONLY：仅检索最近 100 条显式保存记录，不改变当前画像和持仓；配置模型时会发送问题与资产名称等摘要，未配置时仅做有限关键词匹配。请勿输入凭据。</p>
+            <p class="research-boundary">检索历史保存的上下文记录，供查询回溯使用。</p>
             <div id="memory-search-results" aria-live="polite"></div>
             <div id="context-memory-content" class="context-memory-content" aria-live="polite">
               <div class="empty-state">读取隔离标识后查看最近的结构化上下文记忆。</div>
@@ -1095,7 +1088,7 @@
               <div>
                 <span class="eyebrow">组合工具</span>
                 <h2 id="portfolio-optimization-title">组合目标结构</h2>
-                <p class="portfolio-subtitle">结合风险画像与当前持仓，在行业与个股上限内计算最优目标权重。</p>
+                <p class="portfolio-subtitle">结合投资偏好与当前持仓，在行业与个股上限内计算目标权重建议。</p>
               </div>
               <div class="heading-actions">
                 <span id="portfolio-optimization-status" class="status-chip">待运行</span>
@@ -1112,17 +1105,16 @@
 
             <div class="research-actions dev-only">
               <div id="portfolio-optimization-template-meta" class="query-meta">
-                 结合画像与持仓，在风险上限内计算目标权重。
+                 结合偏好与持仓，计算目标权重。
               </div>
               <label class="research-scenario-picker dev-only" for="portfolio-optimization-scenario">
                 <span>回放场景</span>
                 <select id="portfolio-optimization-scenario" disabled>
                   <option value="">读取场景目录…</option>
                 </select>
-                <small>合成离线回放；不是交易指令。</small>
+                <small>选择需要测算的市场情景</small>
               </label>
             </div>
-            <p class="research-boundary">只计算结构，不预测收益、不接入实时行情，也不会自动下单。</p>
             <div id="portfolio-optimization-content" class="portfolio-optimization-content" aria-live="polite">
               <div class="empty-state">生成后对比当前与目标权重，查看调整依据和适用条件。</div>
             </div>
@@ -1141,7 +1133,7 @@
               <div>
                 <span class="eyebrow">压力分析</span>
                 <h2 id="scenario-simulation-title">情景模拟与压力分析</h2>
-                <p class="scenario-subtitle">模拟极端市场或行业剧烈波动，确定性评估组合回撤与单日 VaR。</p>
+                <p class="scenario-subtitle">模拟市场或行业波动，评估对组合净值、回撤与单日估算风险的影响。</p>
               </div>
               <div class="heading-actions">
                 <span id="scenario-simulation-status" class="status-chip">待运行</span>
@@ -1173,7 +1165,7 @@
               <header class="surface-head custom-stress-heading">
                 <div>
                   <strong id="custom-stress-title">自定义五行业冲击</strong>
-                  <p>范围 -30.0% 至 +30.0%；拖动滑块由后端确定性量化模型即时重算组合敏感度与风险敞口。</p>
+                  <p>范围 -30.0% 至 +30.0%；拖动滑块即时测算对组合净值与风险指标的影响。</p>
                 </div>
                 <span id="custom-stress-status" class="status-chip">待输入</span>
               </header>
@@ -1188,7 +1180,6 @@
                 <div class="empty-state">调整任一滑块后显示组合冲击、年化波动率和 95% 单日 VaR。</div>
               </div>
             </div>
-            <p class="research-boundary">这是“如果……会怎样”的模拟，不会修改已观测数据，也不是交易指令。</p>
             <div id="scenario-simulation-content" class="scenario-simulation-content" aria-live="polite">
               <div class="empty-state">运行后对比模拟前后的风险指标与仓位。</div>
             </div>
@@ -1217,7 +1208,7 @@
             </div>
             <div class="advanced-evidence-intro">
               <strong>只浏览当前隔离标识已加载的证据</strong>
-              <span>陈旧缓存与备用来源会保留原始身份，并明确标记为需复核；不会升级为已验证（VERIFIED）事实。</span>
+              <span>陈旧缓存与备用来源会保留原始标记，供追溯核对。</span>
             </div>
             <div id="advanced-evidence-explorer" class="advanced-evidence-explorer" aria-live="polite">
               <div class="advanced-evidence-controls" aria-label="证据筛选条件">
@@ -1267,16 +1258,16 @@
           <section class="panel profile-panel" id="profile" aria-labelledby="profile-title">
             <div class="panel-head">
               <div>
-                <span class="eyebrow">风险画像</span>
-                <h2 id="profile-title">问卷与真实行为画像</h2>
+                <span class="eyebrow">风险与偏好</span>
+                <h2 id="profile-title">投资偏好与风险设置</h2>
               </div>
               <span id="questionnaire-confirmation-status" class="status-chip">问卷未完成</span>
             </div>
 
             <div class="profile-purpose-callout">
               <div>
-                <strong>画像如何产生</strong>
-                <p>19 题问卷衡量主观承受能力；交易与持仓记录验证真实行为。最终适当性等级取两者中更保守的一方，历史行为不能提高问卷等级。</p>
+                <strong>评级如何确定</strong>
+                <p>19 题问卷用于了解你的风险承受能力；如补充交易记录，系统会结合实际投资行为审慎确定评级。</p>
               </div>
             </div>
 
@@ -1298,7 +1289,7 @@
               <div class="questionnaire-actions">
                 <button id="questionnaire-prev" class="query-submit secondary" type="button">上一部分</button>
                 <button id="questionnaire-next" class="query-submit" type="button">下一部分</button>
-                <button id="questionnaire-preview" class="query-submit secondary" type="button">预览画像</button>
+                <button id="questionnaire-preview" class="query-submit secondary" type="button">预览偏好</button>
                 <button id="questionnaire-confirm" class="query-submit" type="submit">确认问卷</button>
               </div>
             </form>
@@ -1307,12 +1298,12 @@
               <div class="profile-summary-heading">
                 <div>
                   <span class="eyebrow clay">双轨汇总</span>
-                  <h3 id="profile-summary-title">问卷、行为与有效画像</h3>
+                  <h3 id="profile-summary-title">评级与偏好摘要</h3>
                 </div>
-                <button id="refresh-profile-summary" class="query-submit secondary" type="button">刷新画像</button>
+                <button id="refresh-profile-summary" class="query-submit secondary" type="button">刷新偏好</button>
               </div>
               <div id="profile-summary-content" class="profile-summary-content" aria-live="polite">
-                <div class="empty-state">完成问卷后查看画像；补充交易和持仓记录后，系统会交叉验证风险边界。</div>
+                <div class="empty-state">完成测评后可查看风险等级与设置。</div>
               </div>
             </section>
 
@@ -1351,7 +1342,7 @@
                 <div class="context-confirm-actions profile-proposal-confirm-actions">
                   <div>
                     <strong>确认提案选择</strong>
-                    <small>所有冲突必须逐项选择；未确认不会生成风险画像。</small>
+                    <small>逐项核对并确认冲突项后生成风险画像。</small>
                   </div>
                   <div class="context-import-actions">
                     <button id="confirm-profile-proposal" class="query-submit" type="button" disabled>确认画像提案</button>
@@ -1430,9 +1421,9 @@
 
             <div class="page-heading rebalancing-heading">
               <div>
-                <span class="eyebrow">执行推演</span>
-                <h2 id="rebalancing-title">调仓执行方案</h2>
-                <p class="portfolio-subtitle">按当前真实持仓与已确认目标权重安排调仓顺序，测算换手率与现金流变动。仅生成计划，不自动下单。</p>
+                <span class="eyebrow">调仓建议</span>
+                <h2 id="rebalancing-title">调仓方案</h2>
+                <p class="portfolio-subtitle">按当前持仓与目标权重测算调整步骤、换手率与资金变动。</p>
               </div>
               <div class="heading-actions">
                 <span class="status-chip" id="rebalancing-status-chip">未执行</span>
@@ -1451,7 +1442,7 @@
               <div class="surface rebalancing-summary-card">
                 <header class="surface-head">
                   <div>
-                    <strong>换手率与流动性核验</strong>
+                    <strong>调仓资金与换手测算</strong>
                     <p>展示调仓涉及的组合总市值、双向换手率与预计买卖资金流向。</p>
                   </div>
                 </header>
@@ -1475,8 +1466,8 @@
               <div class="surface rebalancing-steps-card">
                 <header class="surface-head">
                   <div>
-                    <strong>执行步骤与顺序</strong>
-                    <p>确定性排序：先卖后买，锁定可用资金，防范日内透支。</p>
+                    <strong>执行步骤与顺序建议</strong>
+                    <p>建议按先卖后买顺序执行，以便回笼资金用于后续买入。</p>
                   </div>
                 </header>
                 <div id="rebalancing-steps-content" class="rebalancing-steps-content" aria-live="polite">
@@ -1497,7 +1488,7 @@
             <div class="context-confirm-actions">
               <div>
                 <strong>关键因素</strong>
-                <small>读取当前画像与持仓的后端体检结果，说明计算步骤、边界与复核条件。</small>
+                <small>查看本次分析的计算依据、影响因素与适用条件。</small>
               </div>
               <div class="context-import-actions">
                 <button id="run-explainability" class="query-submit" type="button">分析决策原因</button>
@@ -1593,8 +1584,8 @@
             <div class="lineage-node" id="node-profile">
               <span class="lineage-node-status">1</span>
               <div>
-                <strong>风险画像与约束</strong>
-                <div class="muted">你的画像与风险边界</div>
+                <strong>投资偏好与设置</strong>
+                <div class="muted">你的风险等级与目标偏好</div>
               </div>
             </div>
             <div class="lineage-node" id="node-intent">
@@ -1614,8 +1605,8 @@
             <div class="lineage-node" id="node-gate">
               <span class="lineage-node-status">4</span>
               <div>
-                <strong>风险边界检查</strong>
-                <div class="muted">检查是否符合你的画像</div>
+                <strong>偏好与设置核对</strong>
+                <div class="muted">核对是否符合你的投资偏好</div>
               </div>
             </div>
             <div class="lineage-node" id="node-receipt">
@@ -1642,15 +1633,15 @@
         <!-- 伴侣智能审计视点 -->
         <section class="companion-card" id="companion-insights-card">
           <div class="companion-card-head">
-          <h4>💡 分析提示</h4>
-          <span class="eyebrow">结果边界</span>
+          <h4>分析提示</h4>
+          <span class="eyebrow">使用须知</span>
           </div>
           <ul id="companion-insights-list" class="companion-insights-list">
             <li class="companion-insight-item">
-              <strong>依据优先</strong>：结果会标明使用了哪些数据，以及哪些地方仍需确认。
+              <strong>依据优先</strong>：标明数据来源与计算依据。
             </li>
             <li class="companion-insight-item">
-              <strong>仅供决策参考</strong>：这里不会替你下单，也不会改变你的真实持仓。
+              <strong>实时联动</strong>：调整投资偏好或持仓后，图表将即时联动更新。
             </li>
           </ul>
         </section>
@@ -1698,9 +1689,9 @@
       </div>
     </div>
   <dialog id="truth-drawer" aria-labelledby="truth-drawer-title" style="margin-right:0;width:min(640px,92vw);height:90vh;overflow:auto;border:1px solid #ccd3ca;border-radius:12px;padding:24px">
-  <h2 id="truth-drawer-title">会话事实黑板</h2>
-  <button id="close-truth-drawer" type="button" class="query-submit secondary">关闭黑板</button>
-  <p>下列事实来自服务端已确认画像和持仓。修改事实请先编辑原始问卷或持仓，再确认新的分析前提。</p>
+  <h2 id="truth-drawer-title">本次分析资料</h2>
+  <button id="close-truth-drawer" type="button" class="query-submit secondary">关闭</button>
+  <p>以下为本次分析使用的持仓与风险设置资料。如需调整，请在持仓或风险偏好中修改。</p>
   <div id="truth-facts"></div>
   <h3>本页中断记录</h3>
   <p>点击定位对应分析；中断不等于已证明存在幻觉。刷新或切换账户后清空，最多保留 20 条。</p>
@@ -1717,11 +1708,11 @@
   <pre id="truth-check-result" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-live="polite"></pre>
 </dialog>
 <dialog id="truth-confirm-dialog" aria-labelledby="truth-confirm-title" style="width:min(600px,92vw);max-height:85vh;overflow:auto;border-radius:12px;padding:24px">
-  <h2 id="truth-confirm-title">核对后更新分析前提</h2>
-  <p>确认会新增会话前提版本，后续对话必须使用此版本；不会修改原始持仓或问卷。预览后事实发生变化时将拒绝确认。</p>
+  <h2 id="truth-confirm-title">更新分析资料</h2>
+  <p>确认后将基于最新持仓与设置重新生成分析建议。</p>
   <div id="truth-confirm-facts"></div>
   <p id="truth-confirm-error" role="alert"></p>
-  <button id="commit-session-truth" type="button" class="query-submit">确认这份前提</button>
+  <button id="commit-session-truth" type="button" class="query-submit">确认使用新资料</button>
   <button id="cancel-session-truth" type="button" class="query-submit secondary">取消</button>
 </dialog>
 </body>

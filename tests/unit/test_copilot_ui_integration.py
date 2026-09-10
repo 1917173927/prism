@@ -216,7 +216,7 @@ def test_prism_ui_v2_default_copy_is_user_centered() -> None:
     for copy in (
         "分析你的投资组合",
         "投资研究会话",
-        "研究信息仅供参考，不会自动执行交易",
+        "结合当前持仓与投资偏好进行分析",
         "投资偏好",
         "分析资料",
         "组合概览",
@@ -229,6 +229,8 @@ def test_prism_ui_v2_default_copy_is_user_centered() -> None:
         "事实基线",
         "组合全景分析与多维体检",
         "PASS 合规正常",
+        "不会自动执行交易",
+        "不会自动下单",
     ):
         assert internal_copy not in markup
 
@@ -407,7 +409,7 @@ def test_portfolio_panel_declares_demo_data_and_hides_snapshot_identifiers() -> 
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     assert 'id="portfolio-source-note"' in markup
-    assert "示例持仓数据，仅用于界面演示，不代表真实账户" in markup
+    assert "导入持仓后即可查看持仓明细与基金底层股票。" in markup
     assert "function setPortfolioSourcePresentation(" in script
     assert "示例持仓明细" in script
     assert "parentPosition" in script

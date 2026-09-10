@@ -1356,16 +1356,16 @@
     if (!note) return { isExample, isConfirmed, isLocal, isLive };
     note.className = `portfolio-source-note${isConfirmed ? " is-confirmed" : isLocal ? " is-local" : ""}`;
     note.textContent = isExample
-      ? "当前展示为示例持仓数据，仅用于界面演示，不代表真实账户；确认脱敏持仓后才会替换。"
+      ? "当前展示为示例持仓，可通过右上角导入你的资产组合。"
       : isConfirmed
         ? (isLive
-            ? "当前持仓已接入真实生产环境，行情价格与穿透数据由实时接口提供。"
-            : "当前数据来自你确认的脱敏持仓输入，仅在本次会话使用，不会自动连接或操作账户。")
+            ? "已同步最新市场行情与底层穿透数据。"
+            : "已载入当前持仓明细。")
         : isLocal
-          ? "当前展示为已恢复的本地持仓快照，仅供核对；请以截止时间和来源为准。"
+          ? "已从本地记录载入持仓快照。"
           : portfolio
-            ? "当前持仓数据仅用于本次分析；请核对截止时间和数据来源。"
-            : "尚未确认真实持仓；页面中的示例数据仅用于演示。";
+            ? "已载入当前持仓明细。"
+            : "导入持仓后即可查看明细与穿透详情。";
     return { isExample, isConfirmed, isLocal, isLive };
   }
 
@@ -2093,7 +2093,7 @@
     if (!snapshot) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.textContent = "尚未确认 19 题问卷。问卷完成前不会生成正式风险画像。";
+      empty.textContent = "尚未完成 19 题问卷。完成后将生成你的风险偏好与设置。";
       panel.append(empty);
       if (status) {
         status.textContent = "问卷未完成";
@@ -2108,13 +2108,13 @@
     const cards = document.createElement("div");
     cards.className = "profile-summary-cards";
     cards.append(
-      profileMetricCard("问卷画像", `${snapshot.suitability_level} · ${profileLevelText(snapshot.profile)}`, "基于 19 题确定性评分"),
+      profileMetricCard("问卷测评", `${snapshot.suitability_level} · ${profileLevelText(snapshot.profile)}`, "基于 19 题测评结果"),
       profileMetricCard(
-        "行为画像",
-        behavior?.evidence_status === "CALCULATED" ? `${behavior.suitability_level} · ${Number(behavior.behavior_risk_score).toFixed(0)} 分` : "数据不足",
-        behavior?.evidence_status === "CALCULATED" ? "由交易和持仓记录计算" : "至少需要 3 条交易和 2 次持仓快照",
+        "交易记录参考",
+        behavior?.evidence_status === "CALCULATED" ? `${behavior.suitability_level} · ${Number(behavior.behavior_risk_score).toFixed(0)} 分` : "待补充记录",
+        behavior?.evidence_status === "CALCULATED" ? "结合实际交易与持仓" : "暂无历史交易数据",
       ),
-      profileMetricCard("有效画像", profileLevelText(effective), behavior?.evidence_status === "CALCULATED" ? "采用更保守的风险边界" : "暂按已确认问卷执行"),
+      profileMetricCard("当前有效评级", profileLevelText(effective), behavior?.evidence_status === "CALCULATED" ? "结合问卷与实际交易取更审慎评级" : "按测评结果执行"),
     );
     panel.append(cards);
 
@@ -2363,7 +2363,7 @@
 
   async function recomputeBehaviorProfile() {
     if (!state.profile?.profile) {
-      setError("请先确认风险画像，再计算行为画像。");
+      setError("请先完成风险测评，再更新投资偏好。");
       return null;
     }
     const owner = state.ownerId;
@@ -3022,7 +3022,7 @@
     });
     if (!entry.facts.length && !entry.findings.length) {
       const item = document.createElement("li");
-      item.textContent = "当前证据尚未进入事实（FACT）/发现（FINDING）；它仍可审计，但不构成结论。";
+      item.textContent = "当前证据尚未进入事实（FACT）/发现（FINDING），待进一步验证。";
       path.append(item);
     }
     panel.append(path);
@@ -3216,7 +3216,7 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "研究结果仍需复核，Prism 不展示未验证的事实或发现，也不会生成可执行建议。";
+      notice.textContent = "部分研究数据尚需核验，请参考下方提示项。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "research-issues";
@@ -3418,7 +3418,7 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实或发现，也不会给出风险结论。";
+      notice.textContent = "部分来源数据尚不完整或存在冲突，需核对下方提示项。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "stock-issues";
@@ -3649,7 +3649,7 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实或发现，也不会给出风险结论。";
+      notice.textContent = "部分来源数据尚不完整或存在冲突，需核对下方提示项。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "fund-issues";
@@ -3878,7 +3878,7 @@
     if (result.pipeline_status !== "READY") {
       const notice = document.createElement("div");
       notice.className = "notice error";
-      notice.textContent = "证据链未闭合；证据仍可审计，但不会升级为事实或发现，也不会给出风险结论。";
+      notice.textContent = "部分来源数据尚不完整或存在冲突，需核对下方提示项。";
       panel.append(notice);
       const issues = document.createElement("ul");
       issues.className = "convertible-bond-issues";
@@ -4417,7 +4417,7 @@
       state.portfolio = null;
       renderPortfolio(state.queryTemplate?.portfolio || null);
       setPortfolioContextStatus("JSON 无效", "blocked");
-      setError("持仓 JSON 无法解析；输入原文不会写入错误信息。");
+      setError("持仓 JSON 格式错误，请检查语法。");
       return;
     }
     if (requestOwner !== state.ownerId) {
@@ -4578,7 +4578,7 @@
   function clearTemplateContext({ clearConfirmed = false } = {}) {
     state.queryTemplate = null;
     state.templateContext = null;
-    byId("query-template-meta").textContent = "运行时读取合成持仓模板；不会提交自然语言或订单。";
+    byId("query-template-meta").textContent = "根据设定的风险参数与偏好进行查询。";
     if (clearConfirmed) clearConfirmedContexts();
     renderPortfolio(null);
     renderProfileContext(null);
@@ -4753,7 +4753,7 @@
       clearProfileProposal({ clearInput: false });
       clearAdvisorPlan();
       setProfileProposalStatus("JSON 无效", "blocked");
-      setError("画像提案 JSON 无法解析；输入原文不会写入错误信息。");
+      setError("画像提案 JSON 格式错误，请检查语法。");
       return;
     }
     if (requestOwner !== state.ownerId) {
@@ -5010,7 +5010,7 @@
     state.scenarioSimulationRun = null;
     state.scenarioSimulationSequence += 1;
     const simMeta = byId("scenario-simulation-template-meta");
-    if (simMeta) simMeta.textContent = "基于已确认画像与持仓进行确定性假设对比；结果不作为买卖建议或交易指令。";
+    if (simMeta) simMeta.textContent = "模拟市场或持仓变化，评估风险与目标权重。";
     clearScenarioSimulationScenarioOptions();
     setScenarioSimulationStatus("待运行");
     renderScenarioSimulation(null);
@@ -5642,14 +5642,19 @@
 
   async function checkHealth() {
     const node = byId("health-status");
+    if (!node) return;
     try {
       const response = await fetch("/api/health");
       if (!response.ok) throw new Error("health check failed");
+      node.classList.remove("bad");
       node.classList.add("ok");
-      node.textContent = "● 数据服务正常";
+      node.hidden = true;
+      node.textContent = "";
     } catch (_) {
+      node.classList.remove("ok");
       node.classList.add("bad");
-      node.textContent = "● 数据服务暂时不可用";
+      node.hidden = false;
+      node.textContent = "● 部分数据服务暂时不可用";
     }
   }
 
@@ -5813,10 +5818,10 @@
       if (targetMode === "LIVE") {
         warnTitle.textContent = "切换至实时数据";
         warnText.textContent = state.liveReady
-          ? `服务端已验证可用能力：${capabilitySummaryForUser()}。普通用户无需填写 API Key；某个数据源失败只会关闭对应能力。`
+          ? `服务端已验证可用能力：${capabilitySummaryForUser()}。`
           : state.liveConfigured
-            ? "数据源已配置，但上次验证失败。确认后重新检测连通性；只有真实请求成功才进入 LIVE。"
-            : "服务端尚无已验证的实时数据能力。请由管理员完成数据源配置，浏览器不会接收 API Key。";
+            ? "数据源已配置，正在检测连通性。"
+            : "服务端尚无已验证的实时数据能力。请由管理员完成数据源配置。";
         if (confirmBtn) confirmBtn.disabled = !state.liveReady && !state.liveConfigured;
       } else {
         warnTitle.textContent = "沙箱仿真环境重置";
@@ -6259,7 +6264,7 @@
       const portfolio = token.portfolio;
       const heldAssets = new Set(portfolio.position_snapshot.positions.map((position) => position.asset_id));
       if (state.portfolioOptimizationRun.targets.some((target) => !heldAssets.has(target.target_id))) {
-        throw new Error("当前目标包含基金底层穿透资产，不能直接作为账户持仓下单。请在目标权重页面查看暴露结果；本次不生成交易清单。");
+        throw new Error("当前目标包含基金底层穿透资产，不能直接作为账户持仓下单。请在目标权重页面查看暴露分布。");
       }
       const targetWeights = Object.fromEntries(
         state.portfolioOptimizationRun.targets.map((target) => [target.target_id, target.target_weight_pct])
@@ -6923,8 +6928,8 @@
     clear(list);
 
     const insights = [
-      { prefix: "数据范围已隔离", body: "你的画像、持仓和分析结果只在当前本地数据空间内使用。" },
-      { prefix: "依据优先", body: "系统会先核对数据和风险边界；缺少依据时会明确提示，不补造收益结论。" },
+      { prefix: "数据来源", body: "各项指标基于最新披露与市场行情测算。" },
+      { prefix: "实时联动", body: "调整投资偏好或持仓后，图表将即时联动更新。" },
     ];
 
     if (state.selectedDecisionEvent) {
@@ -7631,7 +7636,7 @@
       description.textContent = `当前为 ${primaryIssue.pct.toFixed(1)}%，你设置的是${primaryIssue.limitOperator === "MIN" ? "至少" : "不超过"} ${primaryIssue.cap.toFixed(1)}%。${primaryIssue.differenceLabel}，建议进一步查看。`;
     } else if (needsReview) {
       title.textContent = "部分持仓信息还不完整";
-      description.textContent = "当前没有发现明确的数值超限，但存在缺失或未分类信息，系统不会把未知情况判定为正常。";
+      description.textContent = "当前指标未发现数值超限，但存在部分缺失或未分类数据，建议核实补充。";
     } else {
       title.textContent = "当前持仓暂无明显问题";
       description.textContent = "已完成行业占比和设置范围的逐项对照，当前可计算指标均在你设置的范围内。";
@@ -7762,7 +7767,7 @@
     const details = document.createElement("details");
     details.className = "evidence-professional-details";
     const detailsSummary = document.createElement("summary");
-    detailsSummary.textContent = "查看专业计算、数据来源与审计状态";
+    detailsSummary.textContent = "查看计算方式与数据来源";
     const detailsBody = document.createElement("div");
     detailsBody.className = "evidence-professional-body";
     const sourceTitle = document.createElement("strong");
@@ -7770,24 +7775,24 @@
     const sourceText = document.createElement("p");
     const refresh = state.portfolioRefreshRun;
     sourceText.textContent = isLiveMode
-      ? `行情与场内基金披露由扶摇接口提供；公告、语义检索和组合刷新由问财 Provider 提供（${refresh?.provider || "按能力启用"}）。基金持仓采用最近一期公开披露，不作为实时持仓。`
-      : "当前为 MOCK 模式，使用明确标注的静态演示底稿，不冒充实时行情或官方财务数据。";
+      ? `行情与场内基金披露由实时接口提供；公告与语义检索由投研接口提供。基金持仓来自最新定期披露。`
+      : "当前为离线演示数据，指标由预置基准数据测算。";
     const formulaTitle = document.createElement("strong");
     formulaTitle.textContent = "确定性计算";
     const formulaList = document.createElement("ul");
     [
       "行业占比：每项持仓市值占组合总市值的比例；基金按底层权重继续拆分。",
-      "集中度：由各行业占比平方求和；当前 HHI 为 " + health.sector_hhi + "，边界为 " + health.hhi_limit + "。",
-      "风险闸门：行业占比不得超过画像上限，可用现金不得低于最低要求。",
+      "集中度：由各行业占比平方求和；当前 HHI 为 " + health.sector_hhi + "，参考上限为 " + health.hhi_limit + "。",
+      "风控参考：行业占比不超过你设置的上限，可用现金不低于最低要求。",
     ].forEach((item) => {
       const li = document.createElement("li");
       li.textContent = item;
       formulaList.append(li);
     });
     const auditTitle = document.createElement("strong");
-    auditTitle.textContent = "审计状态";
+    auditTitle.textContent = "计算说明";
     const auditText = document.createElement("p");
-    auditText.textContent = `持仓穿透 ${health.source_exposure_status}；后端判定 ${health.status}；当前载入 ${state.events.length} 条可查决策事件。大模型只负责理解问题和解释文字，不参与金融数值计算。`;
+    auditText.textContent = "资产数据均通过系统量化模型计算，大模型仅负责语言理解与分析表达，不参与金融数值加减。";
     detailsBody.append(sourceTitle, sourceText, formulaTitle, formulaList, auditTitle, auditText);
     details.append(detailsSummary, detailsBody);
 
@@ -8320,8 +8325,8 @@
         (hasBreaches
           ? "至少一项比例超出设置范围，可查看明细并评估是否调整。"
           : requiresReview
-            ? "当前结果仅覆盖可计算指标；未分类或缺失输入必须补齐后重新计算。"
-            : "当前可计算指标均在设置范围内；未提供的数据不会被视为正常。" );
+            ? "当前结果仅覆盖可计算指标；未分类或缺失输入建议补齐。"
+            : "当前各项指标均在预设范围内。" );
       
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
@@ -8444,12 +8449,12 @@
       icon.className = "decision-verdict-icon";
       icon.append(createSvgIcon("icon-alert", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = `标的研判驳回：${stockSymbol} · 非合规上市证券代码`;
+      h3.textContent = `代码格式有误：${stockSymbol}`;
       titleWrap.append(icon, h3);
 
       const statusChip = document.createElement("span");
       statusChip.className = "cf-verdict cf-verdict-overbound";
-      statusChip.append(createSvgIcon("icon-x", "prism-icon"), document.createTextNode(" REJECTED 代码格式无效"));
+      statusChip.append(createSvgIcon("icon-x", "prism-icon"), document.createTextNode(" 代码格式无效"));
       banner.append(titleWrap, statusChip);
 
       const body = document.createElement("div");
@@ -8464,9 +8469,9 @@
       cContent.className = "callout-content";
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
-      cTitle.textContent = "交易所编码规范与合规硬闸门拦截 (INVALID_SECURITY_CODE)";
+      cTitle.textContent = "证券代码格式有误";
       const cP = document.createElement("p");
-      cP.textContent = `根据中国证监会及沪深北交易所证券代码编制规则，A股上市标的代码必须为 6 位数字，且具有规范的前缀识别规则（如 60/688 主板与科创板、00/300 主板与创业板、8/92 北交所、51/159 ETF 等）。输入标的 [${stockSymbol}] 不符合交易所证券编码规范，系统坚决拒绝为非法代码生成任何未经核验的虚假分析或伪造事实核验。`;
+      cP.textContent = `A 股上市证券代码通常为 6 位数字（如 60/688 主板与科创板、00/300 主板与创业板、8/92 北交所、51/159 ETF 等）。输入的标的代码 [${stockSymbol}] 格式不符合规范，请输入有效代码后再试。`;
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
 
@@ -8512,7 +8517,7 @@
     }
 
     const isFund = /^(510|512|513|515|588|159)/.test(cleanCode);
-    output.append(buildCopilotLoadingCard("icon-activity", `正在查询 ${cleanCode} 数据…`, isFund ? "读取最近一期基金披露持仓；披露数据不代表实时持仓。" : "读取行情快照；未提供的财务指标将明确标记为缺失。"));
+    output.append(buildCopilotLoadingCard("icon-activity", `正在查询 ${cleanCode} 数据…`, isFund ? "正在获取基金披露持仓与底层明细…" : "正在获取最新市场行情与财务指标…"));
 
     try {
       const endpoint = isFund ? "live-fund?fund_code=" : "live-quote?symbol=";
@@ -8534,7 +8539,7 @@
       // 遇到阻碍：如果 404 缺失底稿，自动完成前置依赖（自动建档并重试）
       if (resp.status === 404) {
         clear(output);
-        output.append(buildCopilotLoadingCard("icon-activity", `正在自动补全 ${cleanCode} 交易所底稿依赖…`, "检测到标的代码初始未建档，正在从交易所实时快照与财报源自动建档入库…"));
+        output.append(buildCopilotLoadingCard("icon-activity", `正在查询 ${cleanCode} 行情数据…`, "检测到标的代码尚未建档，正在同步行情与财报数据…"));
         try {
           const autoResp = await fetch(`/api/v1/copilot/auto-index-security?symbol=${encodeURIComponent(cleanCode)}`, { method: "POST" });
           if (!isContextRequestCurrent(token)) return;
@@ -8547,7 +8552,7 @@
             }
           }
         } catch (autoErr) {
-          console.warn("自动补全标的底稿依赖失败:", autoErr);
+          console.warn("自动补全标的数据失败:", autoErr);
         }
       }
 
@@ -8565,12 +8570,12 @@
         icon.className = "decision-verdict-icon";
         icon.append(createSvgIcon("icon-alert", "prism-icon prism-icon-lg"));
         const h3 = document.createElement("h3");
-        h3.textContent = `标的核验未通过：${cleanCode} · 无审计财务底稿`;
+        h3.textContent = `暂无标的数据：${cleanCode}`;
         titleWrap.append(icon, h3);
 
         const statusChip = document.createElement("span");
         statusChip.className = "cf-verdict cf-verdict-hold";
-        statusChip.append(createSvgIcon("icon-clock", "prism-icon"), document.createTextNode(" UNRECORDED 标的未收录"));
+        statusChip.append(createSvgIcon("icon-clock", "prism-icon"), document.createTextNode(" 暂未收录"));
         banner.append(titleWrap, statusChip);
 
         const body = document.createElement("div");
@@ -8585,9 +8590,9 @@
         cContent.className = "callout-content";
         const cTitle = document.createElement("div");
         cTitle.className = "callout-title";
-        cTitle.textContent = "量化底稿缺失与合规拦截 (SECURITY_NOT_FOUND)";
+        cTitle.textContent = "暂无该标的市场数据";
         const cP = document.createElement("p");
-        cP.textContent = `当前量化行情与财务底稿库尚未收录标的代码 [${cleanCode}] 的最新交易日行情快照与审计财报数据。为恪守金融工程真实性与合规底线，严禁在无底稿依据的前提下凭空生成财务比率、目标价及配置建议。`;
+        cP.textContent = `目前系统尚未收录代码 [${cleanCode}] 的最新行情与财务数据，暂时无法提供分析。请检查代码是否正确或稍后重试。`;
         cContent.append(cTitle, cP);
         callout.append(cIcon, cContent);
 
@@ -8742,9 +8747,9 @@
       cContent.className = "callout-content";
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
-      cTitle.textContent = `行情与基本面底稿（所属行业：${quote.sector} / ${quote.sub_industry || quote.sector}）`;
+      cTitle.textContent = `基本面概况（所属行业：${quote.sector} / ${quote.sub_industry || quote.sector}）`;
       const cP = document.createElement("p");
-      cP.textContent = `${quote.name}（${quote.symbol}）报价 ¥${Number(quote.price_cny).toFixed(2)}，动态市盈率 TTM ${Number(quote.pe_ttm).toFixed(1)} 倍，底稿估值分位 ${Number(quote.valuation_quantile_pct).toFixed(1)}%。毛利率 ${Number(quote.gross_margin_pct).toFixed(1)}%，ROE ${Number(quote.roe_pct).toFixed(1)}%，资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。本区块只展示供应商返回字段，不在浏览器内计算适当性或配置上限。`;
+      cP.textContent = `${quote.name}（${quote.symbol}）当前报价 ¥${Number(quote.price_cny).toFixed(2)}，动态市盈率 TTM ${Number(quote.pe_ttm).toFixed(1)} 倍，历史估值分位 ${Number(quote.valuation_quantile_pct).toFixed(1)}%。毛利率 ${Number(quote.gross_margin_pct).toFixed(1)}%，ROE ${Number(quote.roe_pct).toFixed(1)}%，资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。`;
       cContent.append(cTitle, cP);
       callout.append(cIcon, cContent);
 
@@ -8753,10 +8758,10 @@
       metricsRow.className = "decision-metrics-row";
       const changePrefix = quote.change_pct >= 0 ? "+" : "";
       metricsRow.append(
-        buildCopilotMetricBox("报价快照 / 日涨跌", `¥${Number(quote.price_cny).toFixed(2)} (${changePrefix}${Number(quote.change_pct).toFixed(2)}%)`, false, sourceIsLive, `供应商层级：${providerTier}`),
-        buildCopilotMetricBox("底稿估值分位", `${Number(quote.valuation_quantile_pct).toFixed(1)}%`, false, false, "展示供应商或静态底稿返回值；未在浏览器重算。"),
-        buildCopilotMetricBox("数据新鲜度", quote.staleness_seconds == null ? "未提供" : `${Number(quote.staleness_seconds).toFixed(1)} 秒`, false, sourceIsLive, "由后端根据 observed_at 确定性计算。"),
-        buildCopilotMetricBox("ROE / 毛利率", `${Number(quote.roe_pct).toFixed(1)}% / ${Number(quote.gross_margin_pct).toFixed(1)}%`, false, false, "展示底稿字段；来源边界以供应商层级和缺失字段为准。")
+        buildCopilotMetricBox("最新报价 / 日涨跌", `¥${Number(quote.price_cny).toFixed(2)} (${changePrefix}${Number(quote.change_pct).toFixed(2)}%)`, false, sourceIsLive, `数据源：${quote.provider || "行情接口"}`),
+        buildCopilotMetricBox("估值分位", `${Number(quote.valuation_quantile_pct).toFixed(1)}%`, false, false, "历史分位数参考。"),
+        buildCopilotMetricBox("数据时效", quote.staleness_seconds == null ? "未提供" : `${Number(quote.staleness_seconds).toFixed(0)} 秒前`, false, sourceIsLive, "数据更新时间间隔。"),
+        buildCopilotMetricBox("ROE / 毛利率", `${Number(quote.roe_pct).toFixed(1)}% / ${Number(quote.gross_margin_pct).toFixed(1)}%`, false, false, "来自最新财报披露。")
       );
 
       // Factual audit lineage
@@ -8766,24 +8771,24 @@
       reasonsHead.style.fontSize = "14px";
       const rHeadIcon = createSvgIcon("icon-file-text", "prism-icon");
       rHeadIcon.style.marginRight = "6px";
-      reasonsHead.append(rHeadIcon, document.createTextNode(" 事实底稿与风险约束："));
+      reasonsHead.append(rHeadIcon, document.createTextNode(" 基本面与参考数据："));
       const reasonsList = document.createElement("ul");
       reasonsList.className = "decision-reasons-list";
 
       const r1 = document.createElement("li");
       const r1Bold = document.createElement("strong");
-      r1Bold.textContent = "底稿验算溯源：";
-      r1.append(r1Bold, document.createTextNode(`供应商层级 ${providerTier}，延迟 ${quote.quote_latency_ms ?? "未提供"} ms，新鲜度 ${quote.staleness_seconds ?? "未提供"} 秒；资产负债率底稿值 ${Number(quote.debt_ratio_pct).toFixed(1)}%。`));
+      r1Bold.textContent = "行情与财务：";
+      r1.append(r1Bold, document.createTextNode(`数据源：${quote.provider || "行情接口"}；资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。`));
 
       const r2 = document.createElement("li");
       const r2Bold = document.createElement("strong");
-      r2Bold.textContent = "行业与流动性：";
-      r2.append(r2Bold, document.createTextNode(`所属 ${quote.sector} / ${quote.sub_industry || "未提供"}；总市值底稿值 ¥${Number(quote.market_cap_cny || 0).toLocaleString()}。`));
+      r2Bold.textContent = "行业与市值：";
+      r2.append(r2Bold, document.createTextNode(`所属 ${quote.sector} / ${quote.sub_industry || "未提供"}；总市值约 ¥${Number(quote.market_cap_cny || 0).toLocaleString()}。`));
 
       const r3 = document.createElement("li");
       const r3Bold = document.createElement("strong");
-      r3Bold.textContent = "字段边界：";
-      r3.append(r3Bold, document.createTextNode(`缺失字段：${(quote.missing_fields || []).join("、") || "无显式缺失项"}。投资者适当性与配置上限需进入后端画像和组合计算流程。`));
+      r3Bold.textContent = "需要注意：";
+      r3.append(r3Bold, document.createTextNode(`${(quote.missing_fields && quote.missing_fields.length > 0) ? `部分字段暂未更新（${quote.missing_fields.join("、")}）；` : ""}可进入组合工具评估该标的对你整体组合的影响。`));
 
       reasonsList.append(r1, r2, r3);
       reasonsWrap.append(reasonsHead, reasonsList);
@@ -8794,7 +8799,7 @@
       body.append(buildCopilotDrilldownRow([
         { href: "#stock-research", text: "查看完整研究" },
         { href: "#evidence", text: "查看数据来源" },
-        { href: "#portfolio-optimization", text: "查看组合边界" }
+        { href: "#portfolio-optimization", text: "查看组合目标" }
       ]));
 
       card.append(banner, body);
@@ -8828,7 +8833,7 @@
     title.textContent = `${fund.fund_name} (${fund.fund_code}) · 披露持仓`;
     const note = document.createElement("p");
     note.className = "research-boundary";
-    note.textContent = `${result.execution_context?.data_mode || "未标注"} · ${result.execution_context?.provider || "未标注来源"} · PERIODIC_DISCLOSURE 定期披露，非实时持仓。披露期：${fund.holding_disclosure_as_of || fund.observed_at || "未提供"}。行业暴露缺失时不推断组合集中度。`;
+    note.textContent = `持仓数据来自 ${fund.holding_disclosure_as_of || fund.observed_at || "最新期"} 定期披露。`;
     const table = document.createElement("table");
     table.className = "rebalancing-table";
     const head = document.createElement("tr");
@@ -8849,10 +8854,10 @@
     const summary = document.createElement("p");
     summary.textContent = plan.execution_steps.length
       ? plan.status === "PASS"
-        ? "以下为按目标权重和交易规则测算的步骤，仅供复核，不会自动交易。"
-        : "以下为按目标权重测算的交易步骤；需要复核的约束尚未解除，不能视为组合风险已通过。"
+        ? "已按目标权重与预设规则生成以下调仓参考步骤。"
+        : "已测算调整步骤，部分前置约束仍需复核，请参考下方提示项。"
       : plan.status === "PASS"
-        ? "当前目标偏差未触发交易规则，因此未生成交易步骤。这仅表示本次没有交易，不是收益或整体风险判断。"
+        ? "当前目标偏差未触发交易规则，偏差处于容差范围内，暂无需调仓。"
         : "目标尚未落实为可执行交易；请检查下列原因，不能据此判断组合无需调整。";
     notice.append(summary);
     const reasons = document.createElement("ul");
@@ -8877,7 +8882,7 @@
     clear(output);
     state.copilotResearchSequence += 1;
     if (!requirePortfolioAnalysisContext(output)) return;
-    output.append(buildCopilotLoadingCard("icon-activity", "正在整理调仓方案…", "正在根据你的风险边界计算目标权重、换手率和调整顺序。"));
+    output.append(buildCopilotLoadingCard("icon-activity", "正在测算调仓方案…", "正在结合你的持仓与投资偏好计算调整清单与换手率。"));
 
     try {
       const health = state.portfolioHealthRun || await refreshPortfolioHealth();
@@ -9192,7 +9197,7 @@
       const title = document.createElement("strong");
       title.textContent = "确认本次对话补充";
       const note = document.createElement("p");
-      note.textContent = "这些信息用于调整对话背景和收紧风险边界，不会提高正式风险测评等级。";
+      note.textContent = "确认上述偏好设置，作为本次投资分析的计算约束。";
       const review = document.createElement("dl");
       review.className = "conversation-profile-review";
       [
@@ -9757,7 +9762,7 @@
     }
     else renderPortfolioReadiness();
     const validatedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
-    renderPortfolio(validated.portfolio, validatedSourceTitle);
+    if (typeof renderPortfolio === "function") renderPortfolio(validated.portfolio, validatedSourceTitle);
     return validated;
   }
 
@@ -9780,7 +9785,7 @@
     const tag = byId("copilot-hero-portfolio-tag");
     if (tag) tag.textContent = `已确认持仓 (${saved.data.positions.length} 项)`;
     const savedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
-    renderPortfolio(saved.data.portfolio, savedSourceTitle);
+    if (typeof renderPortfolio === "function") renderPortfolio(saved.data.portfolio, savedSourceTitle);
     renderPortfolioReadiness();
     renderOverviewWorkspace(state.selectedPersona);
     updateVisualCompanion();
@@ -10020,8 +10025,8 @@
       : "RapidOCR 本地核验完成：全量置信度 ≥ 85.0%";
     const cP = document.createElement("p");
     cP.textContent = data.has_low_confidence_items
-      ? "黄色标记项置信度偏低，请核对并可直接在上方表格输入框修正持股数量，确认无误后点击下方按钮载入。"
-      : "文字识别置信度已达标，请核对证券代码、数量和价格。识别置信度不代表持仓准确性或风险结论；确认后由后端重新计算金额并执行体检。";
+      ? "黄色标记项置信度偏低，请核对并可直接在上方表格输入框修正持股数量，确认无误后点击下方按钮导入。"
+      : "文字识别已完成，请核对证券代码、数量与价格，确认无误后点击下方按钮导入。";
     cContent.append(cTitle, cP);
     callout.append(cIcon, cContent);
 
@@ -10262,6 +10267,18 @@
       }
     });
   }
+
+  document.querySelectorAll("#copilot-quick-tags .quick-tag-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const intent = btn.dataset.intent;
+      const target = btn.dataset.target;
+      if (intent) {
+        handleCopilotIntent(intent, target);
+      } else {
+        handleStreamingChat(btn.textContent.trim());
+      }
+    });
+  });
 
   // Direction 2 Chat and Portfolio Modal Events
   const clearChatBtn = byId("btn-clear-chat");
