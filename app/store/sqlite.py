@@ -94,6 +94,10 @@ class DecisionEventStore(Protocol):
 
     def get_display_policy(self, owner_id: str) -> DisplayPolicy | None: ...
 
+    def get_user_preferences(self, owner_id: str) -> dict[str, Any] | None: ...
+
+    def save_user_preferences(self, owner_id: str, preferences: dict[str, Any]) -> dict[str, Any]: ...
+
     def save_questionnaire_snapshot(
         self, snapshot: QuestionnaireSnapshot
     ) -> tuple[QuestionnaireSnapshot, bool]: ...
@@ -303,6 +307,39 @@ class SQLiteDecisionEventStore:
             return data
         except (ValueError, TypeError, KeyError) as exc:
             raise StoreCorruptError("stored portfolio failed validation") from exc
+
+    def get_user_preferences(self, owner_id: str) -> dict[str, Any] | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json, content_hash FROM user_preferences WHERE owner_id=?",
+                (owner_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            if sha256(row["payload_json"].encode("utf-8")).hexdigest() != row["content_hash"]:
+                raise ValueError("hash mismatch")
+            data = json.loads(row["payload_json"])
+            if data.get("owner_id") != owner_id:
+                raise ValueError("owner mismatch")
+            return data
+        except (TypeError, ValueError, KeyError) as exc:
+            raise StoreCorruptError("stored user preferences failed validation") from exc
+
+    def save_user_preferences(self, owner_id: str, preferences: dict[str, Any]) -> dict[str, Any]:
+        owner_id = _validate_owner(owner_id)
+        if preferences.get("owner_id") != owner_id:
+            raise StoreOwnerError("user preferences owner does not match storage scope")
+        payload = json.dumps(preferences, ensure_ascii=False, sort_keys=True, allow_nan=False)
+        digest = sha256(payload.encode("utf-8")).hexdigest()
+        with self._lock:
+            self._connection.execute(
+                "INSERT INTO user_preferences(owner_id,payload_json,content_hash,updated_at) VALUES (?,?,?,?) "
+                "ON CONFLICT(owner_id) DO UPDATE SET payload_json=excluded.payload_json,content_hash=excluded.content_hash,updated_at=excluded.updated_at",
+                (owner_id, payload, digest, preferences["updated_at"]),
+            )
+        return preferences
 
     def _run_migrations(self) -> None:
         self._connection.execute(

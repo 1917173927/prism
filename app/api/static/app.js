@@ -141,6 +141,7 @@
     copilotResearchSequence: 0,
     conversationProfileDraft: null,
     conversationProfileStep: 0,
+    userPreferences: null,
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
@@ -5679,6 +5680,7 @@
     workbench: "copilot",
     portfolio: "portfolio",
     overview: "portfolio",
+    market: "market",
     "portfolio-optimization": "portfolio",
     "portfolio-rebalancing": "portfolio",
     "scenario-simulation": "portfolio",
@@ -5932,13 +5934,10 @@
     if (profileTitle) profileTitle.textContent = hasConfirmedQuestionnaire ? "风险测评与行为画像" : "投资者风险测评";
     if (profileEyebrow) profileEyebrow.textContent = hasConfirmedQuestionnaire ? "风险画像" : "首次使用";
 
-    if (!hasConfirmedQuestionnaire) {
-      if (window.location.hash !== "#profile") {
-        window.history.replaceState(null, "", "#profile");
-      }
-      if (byId("expert-workspace-grid")?.hidden) syncNavigation("profile");
-      return;
-    }
+    // The PRD permits browsing and portfolio input before assessment.  Action
+    // endpoints remain individually gated by their existing server-side profile
+    // checks, so navigation must not manufacture a C-level profile.
+    if (!hasConfirmedQuestionnaire) return;
 
     if (wasPending && (!window.location.hash || window.location.hash === "#profile")) {
       window.history.replaceState(null, "", "#copilot");
@@ -5955,7 +5954,6 @@
       "expert-workspace-grid": "stock-research",
     };
     let requestedId = aliases[targetId] || targetId || "copilot";
-    if (state.questionnaireGate === "REQUIRED") requestedId = "profile";
     let domain = DOMAIN_MAP[requestedId] || "copilot";
     if (domain === "system" && !document.body.classList.contains("dev-mode")) {
       requestedId = "copilot";
@@ -5965,15 +5963,18 @@
 
     const copilotSec = byId("copilot");
     const overviewSec = byId("overview");
+    const marketSec = byId("market");
     const expertSec = byId("expert-workspace-grid");
     const pageTabs = byId("workspace-page-tabs");
 
     const isOverview = (requestedId === "overview");
+    const isMarket = (requestedId === "market");
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
 
     if (copilotSec) copilotSec.hidden = !isCopilot;
     if (overviewSec) overviewSec.hidden = !isOverview;
+    if (marketSec) marketSec.hidden = !isMarket;
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
     if (pageTabs) pageTabs.hidden = isCopilot;
 
@@ -6010,6 +6011,8 @@
     if (isOverview) {
       renderOverviewWorkspace();
       window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (isMarket) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (isCopilot) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (isWorkspacePanel) {
@@ -6032,6 +6035,7 @@
     const primaryByDomain = {
       copilot: "#copilot",
       portfolio: "#overview",
+      market: "#market",
       research: "#stock-research",
       decisions: "#recommendation-history",
       profile: "#profile",
@@ -6054,6 +6058,73 @@
     });
     window.addEventListener("hashchange", () => syncNavigation());
     syncNavigation();
+  }
+
+  async function loadUserPreferences() {
+    const owner = state.ownerId;
+    if (!owner) return;
+    const response = await fetch("/api/v1/user/preferences", {headers: {"X-Owner-ID": owner}});
+    if (!response.ok) throw await apiError(response);
+    const preferences = await response.json();
+    if (state.ownerId !== owner) return;
+    state.userPreferences = preferences;
+    document.body.classList.toggle("prism-theme-dark", preferences.theme === "DARK");
+    const theme = byId("preference-theme");
+    const holdings = byId("preference-holdings");
+    const market = byId("preference-market");
+    const status = byId("user-preferences-status");
+    if (theme) theme.value = preferences.theme;
+    if (holdings) holdings.checked = preferences.holdings_data_enabled;
+    if (market) market.checked = preferences.market_data_enabled;
+    if (status) status.textContent = "已加载";
+  }
+
+  async function saveUserPreferences() {
+    const owner = state.ownerId;
+    const status = byId("user-preferences-status");
+    if (!owner) return;
+    if (status) status.textContent = "保存中";
+    try {
+      const response = await fetch("/api/v1/user/preferences", {
+        method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
+        body: JSON.stringify({owner_id: owner, theme: byId("preference-theme").value,
+          holdings_data_enabled: byId("preference-holdings").checked,
+          market_data_enabled: byId("preference-market").checked}),
+      });
+      if (!response.ok) throw await apiError(response);
+      state.userPreferences = await response.json();
+      document.body.classList.toggle("prism-theme-dark", state.userPreferences.theme === "DARK");
+      if (status) status.textContent = "已保存";
+    } catch (error) {
+      if (status) status.textContent = "保存失败";
+      setError(error.message || "保存用户偏好失败");
+    }
+  }
+
+  async function assessMarket() {
+    const input = byId("market-index-input");
+    const result = byId("market-result-content");
+    const status = byId("market-status");
+    const name = input?.value.trim();
+    if (!name || !result || !status) return;
+    status.textContent = "正在读取";
+    result.textContent = "正在读取可验证行情与研判状态…";
+    try {
+      const response = await fetch(`/api/v1/market-assessments/${encodeURIComponent(name)}`, {headers: {"X-Owner-ID": state.ownerId}});
+      if (!response.ok) throw await apiError(response);
+      const data = await response.json();
+      status.textContent = data.status;
+      const quote = data.price === null ? "未返回行情" : `${data.price}（${data.change_pct >= 0 ? "+" : ""}${data.change_pct}%）`;
+      result.replaceChildren();
+      const heading = document.createElement("h3"); heading.textContent = data.index_name;
+      const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.freshness} · ${data.source}`;
+      const summary = document.createElement("p"); summary.textContent = data.summary;
+      const audit = document.createElement("small"); audit.textContent = `审查：${data.compliance_status}；观察时间：${data.observed_at || "未提供"}`;
+      result.append(heading, detail, summary, audit);
+    } catch (error) {
+      status.textContent = "REVIEW_REQUIRED";
+      result.textContent = error.message || "市场数据暂不可用。";
+    }
   }
 
   byId("load-events").addEventListener("click", loadEvents);
@@ -10423,6 +10494,22 @@
     });
   }
 
+  byId("market-assess-button")?.addEventListener("click", assessMarket);
+  byId("market-index-input")?.addEventListener("keydown", (event) => { if (event.key === "Enter") assessMarket(); });
+  byId("market-followup-button")?.addEventListener("click", () => {
+    const name = byId("market-index-input")?.value.trim();
+    if (!name) return;
+    window.location.hash = "copilot";
+    const input = byId("copilot-natural-input");
+    if (input) { input.value = `请分析【${name}】近期走势，并说明数据边界和风险。`; input.focus(); }
+  });
+  byId("save-user-preferences")?.addEventListener("click", saveUserPreferences);
+  byId("logout-local-session")?.addEventListener("click", async () => {
+    const response = await fetch("/api/v1/auth/logout", {method: "POST"});
+    if (response.ok) window.location.assign("/login");
+    else setError("退出登录失败，请刷新后重试。");
+  });
+
   // 组合全景与行业环形图交互按钮事件绑定
   const overviewCheckBtn = byId("btn-run-full-overview-check");
   if (overviewCheckBtn) {
@@ -10525,6 +10612,7 @@
     checkHealth();
     updateLLMConfigUI();
     await fetchRuntimeDataMode();
+    await loadUserPreferences();
     initRuntimeDataMode();
     loadUserProfile();
     switchPersona("custom-user");

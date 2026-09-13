@@ -8,7 +8,7 @@ from hashlib import scrypt
 import json
 import re
 from pathlib import Path
-from secrets import compare_digest, token_hex
+from secrets import compare_digest, token_hex, token_urlsafe
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -55,28 +55,43 @@ class LocalAccessMiddleware(BaseHTTPMiddleware):
         self.audit = audit
         self.dummy_salt = token_hex(16)
         self.hash_slots = asyncio.Semaphore(4)
+        self.sessions: dict[str, LocalAccount] = {}
+
+    def issue_session(self, account: LocalAccount) -> str:
+        token = token_urlsafe(32)
+        self.sessions[token] = account
+        return token
+
+    def revoke_session(self, token: str | None) -> None:
+        if token:
+            self.sessions.pop(token, None)
 
     async def dispatch(self, request, call_next):
-        if request.url.path == "/api/health":
+        if request.url.path in {"/api/health", "/login"}:
             return await call_next(request)
         account = None
         username, password = "", ""
+        session_token = request.cookies.get("prism_local_session")
+        if session_token:
+            account = self.sessions.get(session_token)
         try:
-            authorization = request.headers.get("authorization", "")
-            if len(authorization) > 4096:
-                raise ValueError("authorization too long")
-            scheme, encoded = authorization.split(" ", 1)
-            if scheme.lower() == "basic":
-                username, password = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
+            if account is None:
+                authorization = request.headers.get("authorization", "")
+                if len(authorization) > 4096:
+                    raise ValueError("authorization too long")
+                scheme, encoded = authorization.split(" ", 1)
+                if scheme.lower() == "basic":
+                    username, password = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
         except (ValueError, UnicodeError):
             pass
         candidate = self.accounts.get(username)
         # Keep CPU-heavy password derivation off the async event loop.
         from starlette.concurrency import run_in_threadpool
-        async with self.hash_slots:
-            digest = await run_in_threadpool(password_digest, password, candidate.salt if candidate else self.dummy_salt)
-        if candidate and compare_digest(digest, candidate.password_hash):
-            account = candidate
+        if account is None:
+            async with self.hash_slots:
+                digest = await run_in_threadpool(password_digest, password, candidate.salt if candidate else self.dummy_salt)
+            if candidate and compare_digest(digest, candidate.password_hash):
+                account = candidate
         if account is None:
             self.audit(None, request.method, "/authentication", 401)
             return JSONResponse({"error_code":"AUTH_REQUIRED", "message":"请登录本地账户"}, status_code=401,
