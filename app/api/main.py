@@ -41,11 +41,14 @@ from app.api.contracts import (
     BehaviorProfileLookupResponse,
     DisplayPolicyResponse,
     DisplayPolicyUpdateRequest,
+    MarketAssessmentResponse,
     ProfileSummaryResponse,
     QuestionnaireConfirmationRequest,
     QuestionnaireConfirmationResponse,
     QuestionnairePreviewRequest,
     QuestionnairePreviewResponse,
+    UserPreferenceResponse,
+    UserPreferenceUpdateRequest,
     DecisionEventListResponse,
     DecisionEventWriteResponse,
     ErrorResponse,
@@ -611,11 +614,42 @@ def create_app(
     def workbench() -> FileResponse:
         return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
 
+    @api.get("/login", include_in_schema=False)
+    def local_login_page() -> FileResponse:
+        return FileResponse(_STATIC_DIR / "login.html", media_type="text/html")
+
     @api.get("/api/v1/auth/context")
     def auth_context(request: Request):
         account = getattr(request.state, "account", None)
         return {"enabled": bool(accounts), "owner_id": account.owner_id if account else None,
                 "admin": account.admin if account else False}
+
+    @api.post("/api/v1/auth/login")
+    def create_local_login(request: Request):
+        account = getattr(request.state, "account", None)
+        if account is None:
+            raise HTTPException(status_code=401, detail="local account authentication required")
+        # FastAPI keeps the constructed middleware stack separately; retrieve
+        # the live instance from the request path instead of trusting client data.
+        layer = request.app.middleware_stack
+        while layer is not None and not isinstance(layer, LocalAccessMiddleware):
+            layer = getattr(layer, "app", None)
+        if layer is None:
+            raise HTTPException(status_code=409, detail="local session mode is disabled")
+        response = JSONResponse({"owner_id": account.owner_id, "local_demo": True})
+        response.set_cookie("prism_local_session", layer.issue_session(account), httponly=True, samesite="lax")
+        return response
+
+    @api.post("/api/v1/auth/logout")
+    def local_logout(request: Request):
+        layer = request.app.middleware_stack
+        while layer is not None and not isinstance(layer, LocalAccessMiddleware):
+            layer = getattr(layer, "app", None)
+        if layer is not None:
+            layer.revoke_session(request.cookies.get("prism_local_session"))
+        response = JSONResponse({"logged_out": True})
+        response.delete_cookie("prism_local_session")
+        return response
 
     @api.get("/api/v1/access-audit")
     def access_audit(owner_id: str = Depends(owner_dependency), limit: int = Query(100, ge=1, le=500)):
@@ -705,6 +739,83 @@ def create_app(
             source=DisplayPolicySource.EXPLICIT,
         )
         return DisplayPolicyResponse(policy=active_store.save_display_policy(policy))
+
+    def _preferences(owner_id: str) -> UserPreferenceResponse:
+        stored = active_store.get_user_preferences(owner_id)
+        if stored is None:
+            return UserPreferenceResponse(
+                owner_id=owner_id, theme="LIGHT", holdings_data_enabled=False,
+                market_data_enabled=True, updated_at=active_clock(),
+            )
+        return UserPreferenceResponse.model_validate(stored)
+
+    @api.get("/api/v1/user/preferences", response_model=UserPreferenceResponse)
+    def get_user_preferences(owner_id: str = Depends(owner_dependency)) -> UserPreferenceResponse:
+        return _preferences(owner_id)
+
+    @api.put("/api/v1/user/preferences", response_model=UserPreferenceResponse)
+    def update_user_preferences(
+        request: UserPreferenceUpdateRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> UserPreferenceResponse:
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("user preferences owner does not match owner scope")
+        response = UserPreferenceResponse(
+            owner_id=owner_id,
+            theme=request.theme,
+            holdings_data_enabled=request.holdings_data_enabled,
+            market_data_enabled=request.market_data_enabled,
+            updated_at=active_clock(),
+        )
+        active_store.save_user_preferences(owner_id, response.model_dump(mode="json"))
+        # Authenticated deployments audit responses in LocalAccessMiddleware;
+        # development mode has no middleware, so retain a single explicit row.
+        if not accounts:
+            active_store.record_access(owner_id, "PUT", "/api/v1/user/preferences", 200)
+        return response
+
+    @api.get("/api/v1/market-assessments/{index_name}", response_model=MarketAssessmentResponse)
+    async def get_market_assessment(
+        index_name: str,
+        owner_id: str = Depends(owner_dependency),
+    ) -> MarketAssessmentResponse:
+        """Return an observed quote when available; unknown inputs remain review-only."""
+        clean = index_name.strip()
+        if not clean:
+            raise HTTPException(status_code=422, detail="index name is required")
+        preferences = _preferences(owner_id)
+        if not preferences.market_data_enabled:
+            return MarketAssessmentResponse(
+                index_name=clean, status="REVIEW_REQUIRED", source="用户行情资讯授权已关闭",
+                freshness="UNAVAILABLE", summary="行情资讯授权已关闭，未读取或生成市场行情。",
+                compliance_status="REVIEW_REQUIRED",
+            )
+        # Codes are limited to the provider's supported local index aliases.  A
+        # non-matching name is intentionally not converted into a fabricated quote.
+        known = {"上证指数": "000001", "深证成指": "399001", "创业板指": "399006", "沪深300": "000300"}
+        code = known.get(clean)
+        if code is None:
+            return MarketAssessmentResponse(
+                index_name=clean, status="REVIEW_REQUIRED", source="未配置对应指数行情源",
+                freshness="UNAVAILABLE", summary="未识别该指数或未接入可验证行情源；请核对名称后重试。",
+                compliance_status="REVIEW_REQUIRED",
+            )
+        quote = await active_market_quotes.get_quote(code)
+        if quote is None:
+            return MarketAssessmentResponse(
+                index_name=clean, index_code=code, status="REVIEW_REQUIRED", source="行情 Provider 未返回可验证数据",
+                freshness="UNAVAILABLE", summary="行情源暂不可用，系统未以演示价格替代实时行情。",
+                compliance_status="REVIEW_REQUIRED",
+            )
+        observed_at = datetime.fromisoformat(quote["observed_at"])
+        is_synthetic = bool(quote.get("is_synthetic"))
+        return MarketAssessmentResponse(
+            index_name=clean, index_code=code, status="CALCULATED", source=str(quote.get("source", "行情 Provider")),
+            observed_at=observed_at, freshness="MOCK" if is_synthetic else "LIVE",
+            price=Decimal(str(quote["price_cny"])), change_pct=Decimal(str(quote["change_pct"])),
+            summary="已返回可追溯行情快照；走势研判需结合数据新鲜度与风险画像审阅。",
+            compliance_status="REVIEW_REQUIRED" if is_synthetic else "PASS",
+        )
 
     @api.get(
         "/api/v1/advisor/profile/questionnaire-template",

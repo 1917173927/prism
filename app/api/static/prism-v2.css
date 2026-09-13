@@ -1919,3 +1919,18 @@ body.prism-ui-v2 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* PRD market-identification page; compact by design so evidence remains primary. */
+.prism-ui-v2 .market-page { padding: 32px 0; }
+.prism-ui-v2 .market-query-row { display: flex; align-items: end; gap: 10px; margin: 24px 0; flex-wrap: wrap; }
+.prism-ui-v2 .market-query-row label { display: block; width: 100%; font-size: 13px; color: var(--muted); }
+.prism-ui-v2 .market-query-row input { min-width: 220px; flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.prism-ui-v2 .market-result { padding: 24px; min-height: 150px; }
+.prism-ui-v2 .market-result h3 { margin: 0 0 10px; }
+.prism-ui-v2 .market-risk-note { color: var(--muted); font-size: 13px; }
+.prism-ui-v2 .profile-preferences { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(3, auto); gap: 14px; align-items: center; padding: 16px; margin: 18px 0; }
+.prism-ui-v2 .profile-preferences h3, .prism-ui-v2 .profile-preferences p { margin: 0; }
+.prism-ui-v2 .profile-preferences p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.prism-ui-v2 .profile-preferences label { font-size: 13px; color: var(--muted); }
+.prism-ui-v2.prism-theme-dark, body.prism-theme-dark { --surface: #152033; --surface-raised: #1d2a40; --text: #e7edf7; --muted: #aebbd0; --border: #31435f; --border-subtle: #263752; background: #0f1726; }
+@media (max-width: 720px) { .prism-ui-v2 .profile-preferences { grid-template-columns: 1fr; } }

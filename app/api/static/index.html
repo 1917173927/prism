@@ -127,30 +127,26 @@
         </div>
 
         <nav class="nav-list" aria-label="工作区分区">
-          <!-- 普通用户固定为五个主页面；页面内功能通过顶部子导航切换。 -->
+          <!-- 普通用户固定为 PRD 的四个主页面；深度工具保留在开发者区域。 -->
           <div class="nav-section-primary">
             <a class="nav-item nav-item-copilot active" href="#copilot" id="nav-copilot" aria-current="location">
               <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
               <div class="nav-copilot-label">
-                <strong>Agent 对话</strong>
-                <span>默认首页</span>
+                <strong>AI 对话</strong>
+                <span>个性化投顾入口</span>
               </div>
             </a>
             <a class="nav-item" href="#overview">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-              <span>我的组合</span>
+              <span>持仓分析</span>
             </a>
-            <a class="nav-item" href="#stock-research">
+            <a class="nav-item" href="#market">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <span>标的研究</span>
-            </a>
-            <a class="nav-item" href="#recommendation-history">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-              <span>决策记录</span>
+              <span>大盘鉴别</span>
             </a>
             <a class="nav-item" href="#profile">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                <span>风险与偏好</span>
+                <span>个人中心</span>
             </a>
           </div>
 
@@ -720,6 +716,28 @@
           </details>
         </section>
 
+        <section class="workspace-page-section market-page" id="market" hidden aria-labelledby="market-title">
+          <div class="page-heading">
+            <div>
+              <span class="eyebrow">市场研究</span>
+              <h2 id="market-title">大盘鉴别</h2>
+              <p>读取可验证指数行情；缺失数据不会以示例价格替代。</p>
+            </div>
+            <span id="market-status" class="status-chip">等待查询</span>
+          </div>
+          <div class="market-query-row">
+            <label for="market-index-input">大盘指数</label>
+            <input id="market-index-input" list="market-index-list" value="上证指数" autocomplete="off">
+            <datalist id="market-index-list"><option value="上证指数"><option value="深证成指"><option value="创业板指"><option value="沪深300"></datalist>
+            <button id="market-assess-button" type="button" class="copilot-action-btn primary">研判该大盘</button>
+            <button id="market-followup-button" type="button" class="copilot-action-btn secondary">在 AI 对话中追问</button>
+          </div>
+          <section class="surface market-result" aria-live="polite">
+            <div id="market-result-content">选择预设指数或输入名称后开始研判。</div>
+          </section>
+          <p class="market-risk-note">数据来源、观察时间及审查状态会随结果展示。仅供研究参考，不构成投资建议。</p>
+        </section>
+
         <div id="global-error" class="notice error" role="alert" hidden></div>
 
         <nav id="workspace-page-tabs" class="workspace-page-tabs" aria-label="当前页面功能" hidden>
@@ -1270,6 +1288,21 @@
                 <p>19 题问卷用于了解你的风险承受能力；如补充交易记录，系统会结合实际投资行为审慎确定评级。</p>
               </div>
             </div>
+
+            <section class="profile-preferences surface" aria-labelledby="profile-preferences-title">
+              <div>
+                <h3 id="profile-preferences-title">外观与数据授权</h3>
+                <p>授权由服务端按当前数据空间执行；账户交易连接始终禁用。</p>
+              </div>
+              <label>主题
+                <select id="preference-theme"><option value="LIGHT">浅色</option><option value="DARK">深色</option></select>
+              </label>
+              <label><input id="preference-holdings" type="checkbox"> 允许读取已授权持仓数据</label>
+              <label><input id="preference-market" type="checkbox" checked> 允许读取行情与资讯</label>
+              <button id="save-user-preferences" class="query-submit" type="button">保存偏好</button>
+              <button id="logout-local-session" class="query-submit secondary" type="button">退出登录</button>
+              <span id="user-preferences-status" class="status-chip">读取中</span>
+            </section>
 
             <form id="questionnaire-form" class="questionnaire-shell" novalidate>
               <div class="questionnaire-progress-head">

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal, Self
 
 from app.contracts.evidence import (
@@ -391,6 +392,57 @@ class DisplayPolicyUpdateRequest(ContractModel):
 class DisplayPolicyResponse(ContractModel):
     schema_version: Literal["display-policy-response.v1"] = "display-policy-response.v1"
     policy: DisplayPolicy
+
+
+class UserPreferenceUpdateRequest(ContractModel):
+    """Owner-scoped presentation and data-access preferences.
+
+    These flags are a product policy boundary, not browser-only decoration.
+    Trading is deliberately absent: the product never enables order execution.
+    """
+
+    schema_version: Literal["user-preference-update-request.v1"] = "user-preference-update-request.v1"
+    owner_id: NonEmptyStr
+    theme: Literal["LIGHT", "DARK"] = "LIGHT"
+    holdings_data_enabled: bool = False
+    market_data_enabled: bool = True
+
+
+class UserPreferenceResponse(ContractModel):
+    schema_version: Literal["user-preference-response.v1"] = "user-preference-response.v1"
+    owner_id: NonEmptyStr
+    theme: Literal["LIGHT", "DARK"]
+    holdings_data_enabled: bool
+    market_data_enabled: bool
+    trading_enabled: Literal[False] = False
+    updated_at: datetime
+
+
+class MarketAssessmentResponse(ContractModel):
+    """Safe display contract for the PRD market-identification page."""
+
+    schema_version: Literal["market-assessment-response.v1"] = "market-assessment-response.v1"
+    index_name: NonEmptyStr
+    index_code: NonEmptyStr | None = None
+    status: Literal["CALCULATED", "REVIEW_REQUIRED"]
+    source: NonEmptyStr
+    observed_at: datetime | None = None
+    freshness: Literal["LIVE", "MOCK", "UNAVAILABLE"]
+    price: Decimal | None = None
+    change_pct: Decimal | None = None
+    summary: NonEmptyStr
+    compliance_status: Literal["PASS", "REVIEW_REQUIRED"]
+    risk_notice: NonEmptyStr = "仅供研究参考，不构成投资建议。"
+
+    @model_validator(mode="after")
+    def validate_market_state(self) -> Self:
+        if self.observed_at is not None and (self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None):
+            raise ValueError("observed_at must be timezone-aware")
+        if self.status == "CALCULATED" and (self.price is None or self.change_pct is None):
+            raise ValueError("CALCULATED market assessment requires quote fields")
+        if self.status == "REVIEW_REQUIRED" and (self.price is not None or self.change_pct is not None):
+            raise ValueError("REVIEW_REQUIRED market assessment must not invent quote fields")
+        return self
 
 
 class QuestionnairePreviewRequest(ContractModel):
