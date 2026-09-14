@@ -36,6 +36,7 @@ include = ["app*", "tools*"]
 
 [tool.setuptools.package-data]
 app = [
+  "providers/*.json",
   "store/migrations/*.sql",
   "api/static/*.html",
   "api/static/*.css",

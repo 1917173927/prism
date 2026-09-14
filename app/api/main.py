@@ -314,6 +314,17 @@ class CopilotConfigApiRequest(BaseModel):
     model: str = "deepseek-chat"
 
 
+class WencaiConfigApiRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    api_key: str = Field(default="", max_length=4096)
+    base_url: str = Field(default="https://openapi.iwencai.com", max_length=300)
+
+
+class WencaiStoredConfig(WencaiConfigApiRequest):
+    contract_verified: bool = False
+
+
 class MemorySearchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     query: str = Field(min_length=1, max_length=1000)
@@ -539,8 +550,25 @@ def create_app(
             return None
         user_model_settings[scope] = setting
         return setting
+    wencai_setting_state: WencaiStoredConfig | None = None
+    if active_secret_store is not None:
+        try:
+            encoded_wencai = active_secret_store.get("provider:wencai")
+            if encoded_wencai is not None:
+                wencai_setting_state = WencaiStoredConfig.model_validate_json(encoded_wencai)
+        except (SecretProtectionError, ValidationError, ValueError) as exc:
+            raise RuntimeError("问财密钥安全存储暂时不可用") from exc
+
     active_market_quotes = market_provider or CompositeMarketProvider()
-    active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
+    active_wencai_provider = wencai_provider or WencaiSkillHubProvider(
+        api_key=wencai_setting_state.api_key if wencai_setting_state else None,
+        base_url=wencai_setting_state.base_url if wencai_setting_state else None,
+    )
+    if wencai_setting_state is not None:
+        get_runtime_mode_controller().restore_wencai_configuration(
+            configured=bool(wencai_setting_state.api_key.strip()),
+            contract_verified=wencai_setting_state.contract_verified,
+        )
     active_live_finance = live_finance_provider or FuyaoFinanceProvider()
     active_yahoo_finance = yahoo_finance_provider or ifind_quant_provider or YahooFinanceProvider()
     active_etnet = etnet_provider or EtNetProvider()
@@ -2052,9 +2080,27 @@ def create_app(
     # -------------------------------------------------------------------------
     # Copilot Direction 2: Live LLM Chat, Tool Calling & Portfolio Parser Routes
     # -------------------------------------------------------------------------
+    async def persist_wencai_failure(_: str) -> None:
+        nonlocal wencai_setting_state
+        if wencai_setting_state is None or not wencai_setting_state.contract_verified:
+            return
+        wencai_setting_state = wencai_setting_state.model_copy(
+            update={"contract_verified": False}
+        )
+        if active_secret_store is not None:
+            try:
+                active_secret_store.set(
+                    "provider:wencai", wencai_setting_state.model_dump_json()
+                )
+            except (SecretProtectionError, ValueError):
+                # The current process is already fail-closed. A storage failure
+                # must not turn a provider error into an unhandled SSE abort.
+                pass
+
     copilot_agent = CopilotAgent(
         live_finance_provider=active_live_finance,
         skillhub_provider=active_wencai_provider,
+        on_wencai_failure=persist_wencai_failure,
     )
 
     def owner_llm_config(owner_id: str | None) -> LLMConfig:
@@ -2612,6 +2658,100 @@ def create_app(
             return _error_response(502, "MODEL_TEST_FAILED", "模型未返回有效内容，请检查配置或稍后重试")
         return {"status": "PASS"}
 
+    @api.get("/api/v1/runtime/wencai-settings")
+    def get_wencai_settings():
+        configured = active_wencai_provider.is_configured
+        return {
+            "is_configured": configured,
+            "base_url": active_wencai_provider.base_url,
+            "persistence": "OS_PROTECTED" if active_secret_store is not None else "PROCESS_ONLY",
+            "contract_verified": get_runtime_mode_controller().is_contract_verified,
+            "installed_skills": [
+                {key: skill[key] for key in ("name", "skill_id", "version", "operation")}
+                for skill in active_wencai_provider.installed_skills
+            ],
+        }
+
+    @api.put("/api/v1/runtime/wencai-settings")
+    async def save_wencai_settings(req: WencaiConfigApiRequest):
+        nonlocal wencai_setting_state
+        from urllib.parse import urlsplit
+        normalized_key = req.api_key.strip()
+        normalized_url = req.base_url.strip().rstrip("/")
+        try:
+            parsed = urlsplit(normalized_url)
+            valid_url = (
+                parsed.scheme == "https"
+                and parsed.hostname == "openapi.iwencai.com"
+                and parsed.port in (None, 443)
+                and not parsed.username
+                and not parsed.password
+                and not parsed.query
+                and not parsed.fragment
+                and parsed.path in ("", "/")
+            )
+        except ValueError:
+            valid_url = False
+        if not valid_url:
+            raise HTTPException(status_code=422, detail="问财服务地址必须为官方 HTTPS 地址")
+        if normalized_key:
+            setting = WencaiStoredConfig(
+                api_key=normalized_key,
+                base_url=normalized_url,
+                contract_verified=False,
+            )
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.set("provider:wencai", setting.model_dump_json())
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="问财密钥安全保存失败") from exc
+            wencai_setting_state = setting
+        else:
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.delete("provider:wencai")
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="问财密钥安全删除失败") from exc
+            wencai_setting_state = None
+        active_wencai_provider.configure(api_key=normalized_key, base_url=normalized_url)
+        await get_runtime_mode_controller().configure_wencai(
+            configured=bool(normalized_key), contract_verified=False
+        )
+        return get_wencai_settings()
+
+    @api.post("/api/v1/runtime/wencai-settings/test")
+    async def test_wencai_settings():
+        nonlocal wencai_setting_state
+        if not active_wencai_provider.is_configured:
+            return _error_response(409, "WENCAI_NOT_CONFIGURED", "请先保存问财 API Key")
+        results = await active_wencai_provider.probe_installed_skills()
+        passed = all(
+            row["status"] in {"SUCCESS", "PARTIAL"}
+            and row.get("record_count", 0) > 0
+            and row.get("item_count", 0) > 0
+            for row in results
+        )
+        error_code = next((row["error_code"] for row in results if row["error_code"]), None)
+        if passed and wencai_setting_state is not None:
+            wencai_setting_state = wencai_setting_state.model_copy(
+                update={"contract_verified": True}
+            )
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.set(
+                        "provider:wencai", wencai_setting_state.model_dump_json()
+                    )
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="问财验证状态保存失败") from exc
+        controller = get_runtime_mode_controller()
+        await controller.apply_wencai_probe(
+            available=passed,
+            error_code=error_code,
+            auto_activate=passed,
+        )
+        body = {"status": "PASS" if passed else "FAILED", "skills": results}
+        return JSONResponse(status_code=200 if passed else 502, content=body)
+
     @api.post("/api/v1/copilot/config")
     def copilot_update_config_endpoint(
         req: CopilotConfigApiRequest,
@@ -2768,6 +2908,7 @@ def create_app(
             response = await refresh_portfolio_live(request, active_wencai_provider)
             if any(row.provider_status == ProviderStatus.FAILED.value for row in response.positions):
                 await controller.record_wencai_failure("PORTFOLIO_REFRESH_FAILED")
+                await persist_wencai_failure("PORTFOLIO_REFRESH_FAILED")
             return response
         return refresh_portfolio_mock(request)
 
@@ -2799,6 +2940,7 @@ def create_app(
         if result.status == ProviderStatus.FAILED:
             error_code = result.issues[0].code.value if result.issues else "PROVIDER_FAILED"
             await controller.record_wencai_failure(error_code)
+            await persist_wencai_failure(error_code)
         status_code = 200 if result.status in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL, ProviderStatus.EMPTY} else 502
         return JSONResponse(status_code=status_code, content=result.model_dump(mode="json"))
 

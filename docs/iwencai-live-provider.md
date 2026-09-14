@@ -1,12 +1,18 @@
 # 问财 LIVE 数据接入说明
 
-## 1. SkillHub CLI 与 LIVE 数据的边界
+## 1. 项目级安装与 CLI 边界
 
-Iwencai SkillHub CLI 只负责安装和管理 Skill，不等于行情、财务或基金穿透接口。CLI 安装完成后，仍需确认具体 Skill 或官方 Provider 的运行协议、数据字段和权限。
+Prism 不依赖当前用户目录中的 SkillHub CLI。九个官方 Skill 的 ID、版本、端点与下载包哈希登记在 `app/providers/iwencai_skills.json`，该文件随 Python wheel 安装；后端由 `WencaiSkillHubProvider` 直接调用官方 OpenAPI。
 
-当前仓库不会因为 CLI 已安装就自动开启 LIVE，也不会把未验证的 Skill 当作官方数据源。
+官方 Skill 包仅用于核对公开契约，项目不执行下载包中的脚本。系统不会因为浏览器已登录或 CLI 已安装就自动开启 LIVE，也不会把未验证的 Skill 当作官方数据源。
 
-## 2. 服务端配置
+## 2. 凭据配置
+
+Windows 桌面部署推荐调用 `PUT /api/v1/runtime/wencai-settings` 保存一次凭据。密钥进入 `data/private/prism-secrets.json` 的 DPAPI 密文槽 `provider:wencai`，不会写入 Git、SQLite 或 API 响应。应用热重载和服务重启后自动恢复。
+
+保存后调用 `POST /api/v1/runtime/wencai-settings/test`。后端会对九个 Skill 各发起一次最小真实请求；全部返回 `SUCCESS`、`PARTIAL` 或 `EMPTY` 后才持久化 `contract_verified=true` 并开放问财 LIVE 能力。
+
+容器或服务器也可继续使用环境变量：
 
 LIVE 只读取服务端环境变量，浏览器不会接收凭据：
 
@@ -14,14 +20,18 @@ LIVE 只读取服务端环境变量，浏览器不会接收凭据：
 export IWENCAI_API_KEY="<server-side-key>"
 export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 export WENCAI_SKILLHUB_CONTRACT_VERIFIED="true"
-export WENCAI_SKILL_ID="prism-investment-agent"
-export WENCAI_ANNOUNCEMENT_SKILL_ID="announcement-search"
-export WENCAI_SKILL_VERSION="1.0.0"
 ```
 
-`IWENCAI_*` 与原有 `WENCAI_SKILLHUB_*` 配置均可使用，前者优先用于问财 OpenAPI。`WENCAI_SKILLHUB_CONTRACT_VERIFIED=true` 是人工确认闸门，表示当前 Base URL、鉴权方式和响应字段已经完成映射。缺少该变量时，系统保持 MOCK，LIVE 切换返回 409。
+`IWENCAI_*` 与原有 `WENCAI_SKILLHUB_*` 配置均可使用。环境部署中的 `WENCAI_SKILLHUB_CONTRACT_VERIFIED=true` 是运维确认闸门；桌面部署由真实探测自动管理该状态。
 
-问财 OpenAPI 查询使用 `POST /v1/query2data`；公告和研报使用 `POST /v1/comprehensive/search`。公告查询固定复用官方 `announcement-search` 契约：`channels=["announcement"]`、`app_id="AIME_SKILL"`、整数 `size`，并要求响应明确返回 `status_code=0`。`WENCAI_ANNOUNCEMENT_SKILL_ID` 可单独覆盖公告 Skill ID；旧的 `WENCAI_SKILL_ID` 仅作用于其他查询路径。请求使用服务端 Bearer 鉴权，并附带 Skill 调用标识和 64 位追踪 ID。浏览器不会接收凭据。
+结构化查询使用 `POST /v1/query2data`；公告、新闻和研报使用 `POST /v1/comprehensive/search`。请求按 ProviderOperation 自动选择项目清单中的 Skill ID，并要求响应明确返回 `status_code=0`。所有请求使用服务端 Bearer 鉴权，并附带 Skill、Plugin 占位头及 64 位随机追踪 ID。
+
+| 能力 | 项目内 Skill ID | ProviderOperation |
+| --- | --- | --- |
+| 公告 / 新闻 | `announcement-search` / `news-search` | `SEARCH_NEWS`，由 `channel` 区分 |
+| 研报 | `report-search` | `SEARCH_REPORTS` |
+| 行情 / 财务 / 行业 / 宏观 | `hithink-market-query` / `hithink-finance-query` / `hithink-industry-query` / `hithink-macro-query` | 对应四类结构化操作 |
+| 基金 / 可转债 | `hithink-fund-query` / `hithink-cb-selector` | `FUND_DATA` / `CONVERTIBLE_BOND_DATA` |
 
 ## 3. LIVE 刷新流程
 
@@ -38,4 +48,4 @@ PortfolioImportBundle
 
 ## 4. 当前验证边界
 
-Provider 将问财 `datas`/`data` 响应保留为原始结构化记录，并执行字段存在性校验。当前已使用服务端配置完成真实问财查询 smoke test（HTTP 200、`status_code=0`、5 条结果）；配额、留存、展示授权和长期 SLA 仍需单独确认。
+2026-09-15 已用当前官方凭据完成九个 Skill 的真实最小请求，九项均为 HTTP 200 且 Provider `SUCCESS`；LIVE 聊天的公告查询完成 LLM 工具调用、问财真实返回、SSE 输出闭环。该结果证明当前凭据和调用契约可用，不等于正式配额、留存、展示授权或长期 SLA 已验收。

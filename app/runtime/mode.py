@@ -56,6 +56,8 @@ class RuntimeModeController:
         self._fuyao_verification = (
             "NOT_CHECKED" if self._fuyao_configured else "UNCONFIGURED"
         )
+        self._wencai_configured_override: bool | None = None
+        self._wencai_contract_verified_override: bool | None = None
         self._wencai_available = self._wencai_configured_and_verified
         self._wencai_checked_at: datetime | None = None
         self._wencai_last_error_code: str | None = None
@@ -106,6 +108,8 @@ class RuntimeModeController:
     @property
     def is_contract_verified(self) -> bool:
         """Require server-side confirmation of the Wencai response mapping."""
+        if self._wencai_contract_verified_override is not None:
+            return self._wencai_contract_verified_override
         return os.getenv("WENCAI_SKILLHUB_CONTRACT_VERIFIED", "").strip().lower() in {
             "1",
             "true",
@@ -114,12 +118,18 @@ class RuntimeModeController:
 
     @property
     def _wencai_configured_and_verified(self) -> bool:
+        return self.is_wencai_configured and self.is_contract_verified
+
+    @property
+    def is_wencai_configured(self) -> bool:
+        """Report whether either protected project settings or env provide a key."""
         return (
-            bool(
+            self._wencai_configured_override
+            if self._wencai_configured_override is not None
+            else bool(
                 os.getenv("WENCAI_SKILLHUB_API_KEY", "").strip()
                 or os.getenv("IWENCAI_API_KEY", "").strip()
             )
-            and self.is_contract_verified
         )
 
     @property
@@ -235,6 +245,52 @@ class RuntimeModeController:
                 self._revision += 1
             self._updated_at = checked_at
 
+    async def configure_wencai(
+        self, *, configured: bool, contract_verified: bool = False
+    ) -> None:
+        """Bind project-protected Wencai configuration to runtime readiness."""
+        async with self._lock:
+            self._wencai_configured_override = configured
+            self._wencai_contract_verified_override = configured and contract_verified
+            self._wencai_available = configured and contract_verified
+            self._wencai_checked_at = None
+            self._wencai_last_error_code = None
+            self._updated_at = datetime.now(UTC)
+
+    def restore_wencai_configuration(
+        self, *, configured: bool, contract_verified: bool,
+        auto_activate: bool = True,
+    ) -> None:
+        """Restore protected configuration before the application serves requests."""
+        self._wencai_configured_override = configured
+        self._wencai_contract_verified_override = configured and contract_verified
+        self._wencai_available = configured and contract_verified
+        self._wencai_checked_at = None
+        self._wencai_last_error_code = None
+        if auto_activate and self.is_wencai_ready and self._mode != DataMode.LIVE:
+            self._mode = DataMode.LIVE
+            self._updated_at = datetime.now(UTC)
+
+    async def apply_wencai_probe(
+        self, *, available: bool, error_code: str | None = None,
+        auto_activate: bool = False,
+    ) -> None:
+        """Record a real nine-Skill probe and update LIVE capability state."""
+        async with self._lock:
+            checked_at = datetime.now(UTC)
+            self._wencai_configured_override = True
+            self._wencai_contract_verified_override = available
+            self._wencai_available = available
+            self._wencai_checked_at = checked_at
+            self._wencai_last_error_code = None if available else (error_code or "PROBE_FAILED")
+            if auto_activate and self.is_live_ready and self._mode != DataMode.LIVE:
+                self._mode = DataMode.LIVE
+                self._revision += 1
+            elif not self.is_live_ready and self._mode == DataMode.LIVE:
+                self._mode = DataMode.MOCK
+                self._revision += 1
+            self._updated_at = checked_at
+
     def get_status(self) -> dict[str, Any]:
         """Return serialized state representation."""
         return {
@@ -244,6 +300,7 @@ class RuntimeModeController:
             "live_configured": self._fuyao_configured,
             "live_verification": self._fuyao_verification,
             "wencai_ready": self.is_wencai_ready,
+            "wencai_configured": self.is_wencai_configured,
             "contract_verified": self.is_contract_verified,
             "wencai_capability_status": {
                 "available": self.is_wencai_ready,

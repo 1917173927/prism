@@ -1,5 +1,6 @@
 import base64
 import json
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -7,6 +8,8 @@ from app.api import create_app
 from app.api.access import password_digest
 from app.security import ProtectedSecretStore, SecretProtectionError
 from app.store import SQLiteDecisionEventStore
+from app.runtime.mode import DataMode, get_runtime_mode_controller, reset_runtime_mode_controller
+from app.providers.skillhub import WencaiSkillHubProvider
 
 
 class ReversibleTestProtector:
@@ -193,3 +196,103 @@ def test_local_machine_slot_does_not_collide_with_authenticated_owner(tmp_path) 
     assert "local-machine-secret" not in response.text
     authenticated_store.close()
     anonymous_store.close()
+
+
+def test_wencai_setting_is_project_scoped_and_survives_restart(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    first_store = SQLiteDecisionEventStore(":memory:")
+    reset_runtime_mode_controller(mode=DataMode.MOCK)
+    first = TestClient(create_app(first_store, secret_store=protected))
+
+    saved = first.put("/api/v1/runtime/wencai-settings", json={
+        "api_key": "wencai-project-secret",
+        "base_url": "https://openapi.iwencai.com",
+    })
+
+    assert saved.status_code == 200
+    assert saved.json()["is_configured"] is True
+    assert saved.json()["persistence"] == "OS_PROTECTED"
+    assert saved.json()["contract_verified"] is False
+    assert len(saved.json()["installed_skills"]) == 9
+    assert "wencai-project-secret" not in saved.text
+    assert "wencai-project-secret" not in protected.path.read_text(encoding="utf-8")
+    first_store.close()
+
+    restarted_store = SQLiteDecisionEventStore(":memory:")
+    reset_runtime_mode_controller(mode=DataMode.MOCK)
+    restarted = TestClient(create_app(restarted_store, secret_store=protected))
+    restored = restarted.get("/api/v1/runtime/wencai-settings")
+    assert restored.status_code == 200
+    assert restored.json()["is_configured"] is True
+    assert restored.json()["base_url"] == "https://openapi.iwencai.com"
+    assert "wencai-project-secret" not in restored.text
+    restarted_store.close()
+
+
+def test_wencai_real_probe_status_is_persisted_for_restart(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    store = SQLiteDecisionEventStore(":memory:")
+    reset_runtime_mode_controller(mode=DataMode.MOCK)
+    client = TestClient(create_app(store, secret_store=protected))
+    client.put("/api/v1/runtime/wencai-settings", json={
+        "api_key": "verified-secret",
+        "base_url": "https://openapi.iwencai.com",
+    })
+    probe_rows = tuple(
+        {"name": f"skill-{index}", "skill_id": f"skill-{index}",
+         "status": "SUCCESS", "record_count": 1, "item_count": 1, "error_code": None}
+        for index in range(9)
+    )
+    with patch.object(
+        WencaiSkillHubProvider, "probe_installed_skills", new_callable=AsyncMock
+    ) as probe:
+        probe.return_value = probe_rows
+        response = client.post("/api/v1/runtime/wencai-settings/test")
+    assert response.status_code == 200
+    assert response.json()["status"] == "PASS"
+    assert get_runtime_mode_controller().is_wencai_ready is True
+    store.close()
+
+    reset_runtime_mode_controller(mode=DataMode.MOCK)
+    restarted_store = SQLiteDecisionEventStore(":memory:")
+    restarted = TestClient(create_app(restarted_store, secret_store=protected))
+    status = restarted.get("/api/v1/runtime/data-mode").json()["data"]
+    assert status["wencai_configured"] is True
+    assert status["contract_verified"] is True
+    assert status["wencai_ready"] is True
+    assert "verified-secret" not in restarted.get(
+        "/api/v1/runtime/wencai-settings"
+    ).text
+    restarted_store.close()
+
+
+def test_wencai_empty_probe_does_not_verify_live_contract(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    store = SQLiteDecisionEventStore(":memory:")
+    reset_runtime_mode_controller(mode=DataMode.MOCK)
+    client = TestClient(create_app(store, secret_store=protected))
+    client.put("/api/v1/runtime/wencai-settings", json={
+        "api_key": "empty-probe-secret",
+        "base_url": "https://openapi.iwencai.com",
+    })
+    probe_rows = tuple(
+        {
+            "name": f"skill-{index}", "skill_id": f"skill-{index}",
+            "status": "EMPTY" if index == 4 else "SUCCESS",
+            "record_count": 0 if index == 4 else 1,
+            "item_count": 0 if index == 4 else 1,
+            "error_code": None,
+        }
+        for index in range(9)
+    )
+    with patch.object(
+        WencaiSkillHubProvider, "probe_installed_skills", new_callable=AsyncMock
+    ) as probe:
+        probe.return_value = probe_rows
+        response = client.post("/api/v1/runtime/wencai-settings/test")
+    assert response.status_code == 502
+    assert response.json()["status"] == "FAILED"
+    assert get_runtime_mode_controller().is_wencai_ready is False
+    stored = json.loads(protected.get("provider:wencai"))
+    assert stored["contract_verified"] is False
+    store.close()

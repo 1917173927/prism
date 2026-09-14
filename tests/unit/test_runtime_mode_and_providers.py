@@ -215,6 +215,24 @@ class TestRuntimeModeController:
 class TestWencaiSkillHubProvider:
     """Test official SkillHub adapter error handling and zero-fallback invariant."""
 
+    def test_project_manifest_installs_all_official_skill_routes(self):
+        provider = WencaiSkillHubProvider(api_key="test")
+        routes = {
+            (skill["operation"], skill.get("channel")): skill["skill_id"]
+            for skill in provider.installed_skills
+        }
+        assert len(provider.installed_skills) == 9
+        assert len({skill["skill_id"] for skill in provider.installed_skills}) == 9
+        assert routes[("SEARCH_NEWS", "announcement")] == "announcement-search"
+        assert routes[("SEARCH_NEWS", "news")] == "news-search"
+        assert routes[("SEARCH_REPORTS", "report")] == "report-search"
+        assert routes[("MARKET_DATA", None)] == "hithink-market-query"
+        assert routes[("COMPANY_DATA", None)] == "hithink-finance-query"
+        assert routes[("INDUSTRY_DATA", None)] == "hithink-industry-query"
+        assert routes[("MACRO_DATA", None)] == "hithink-macro-query"
+        assert routes[("FUND_DATA", None)] == "hithink-fund-query"
+        assert routes[("CONVERTIBLE_BOND_DATA", None)] == "hithink-cb-selector"
+
     def test_unconfigured_provider_fails_explicitly(self):
         async def _run():
             provider = WencaiSkillHubProvider(api_key="")
@@ -264,7 +282,7 @@ class TestWencaiSkillHubProvider:
                 assert mock_post.call_args.args[0] == "https://mock.skillhub/v1/comprehensive/search"
                 headers = mock_post.call_args.kwargs["headers"]
                 assert headers["X-Claw-Skill-Id"] == "announcement-search"
-                assert "X-Claw-Plugin-Id" not in headers
+                assert headers["X-Claw-Plugin-Id"] == "none"
                 assert mock_post.call_args.kwargs["json"] == {
                     "query": "寒武纪",
                     "channels": ["announcement"],
@@ -370,7 +388,7 @@ class TestWencaiSkillHubProvider:
                 assert called_url == "https://openapi.iwencai.com/v1/query2data"
                 headers = mock_post.call_args.kwargs["headers"]
                 assert headers["Authorization"] == "Bearer official-test-key"
-                assert headers["X-Claw-Skill-Id"] == "prism-investment-agent"
+                assert headers["X-Claw-Skill-Id"] == "hithink-market-query"
                 assert headers["X-Claw-Skill-Version"] == "1.0.0"
                 assert headers["X-Claw-Plugin-Id"] == "none"
                 assert headers["X-Claw-Plugin-Version"] == "none"
@@ -384,7 +402,7 @@ class TestWencaiSkillHubProvider:
 
         asyncio.run(_run())
 
-    def test_report_search_preserves_legacy_contract(self, monkeypatch):
+    def test_report_search_uses_official_skill_contract(self, monkeypatch):
         async def _run():
             monkeypatch.setenv("WENCAI_SKILL_ID", "prism-investment-agent")
             provider = WencaiSkillHubProvider(api_key="valid_token", base_url="https://mock.skillhub")
@@ -395,7 +413,7 @@ class TestWencaiSkillHubProvider:
             )
             mock_resp = httpx.Response(
                 200,
-                json={"items": [{"title": "新能源行业研究"}]},
+                json={"status_code": 0, "data": [{"title": "新能源行业研究"}]},
                 request=httpx.Request("POST", "https://mock.skillhub/v1/comprehensive/search"),
             )
             with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
@@ -403,13 +421,13 @@ class TestWencaiSkillHubProvider:
                 result = await provider.execute(req)
             assert result.status == ProviderStatus.SUCCESS
             headers = mock_post.call_args.kwargs["headers"]
-            assert headers["X-Claw-Skill-Id"] == "prism-investment-agent"
+            assert headers["X-Claw-Skill-Id"] == "report-search"
             assert headers["X-Claw-Plugin-Id"] == "none"
             assert mock_post.call_args.kwargs["json"] == {
+                "query": "新能源行业研报",
                 "channels": ["report"],
                 "app_id": "AIME_SKILL",
-                "query": "新能源行业研报",
-                "limit": "10",
+                "size": 10,
             }
 
         asyncio.run(_run())

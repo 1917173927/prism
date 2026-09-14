@@ -311,7 +311,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css?v=20260914-market1">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-market2">' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=20260915-chat-stages1">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260915-chat-stages1">' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
@@ -345,6 +345,27 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert "function clearChatEmptyState(" in script
     assert 'messages?.querySelector("[data-chat-empty-state]")?.remove()' in script
     assert 'content.className = "agent-empty-state"' in script
+    assert 'progressTrack.className = "chat-progress-track"' in script
+    assert 'progressBar.className = "chat-progress-bar"' in script
+    assert 'progressBar.style.width = "60%"' in script
+    assert 'byId("chat-send-progress").replaceChildren(progressLabel, progressTrack)' in script
+    assert 'pipelineBox.append(pipeHead, stepsGrid)' in script
+    assert 'aiBubble.append(pipelineBox, thinkingBox, toolsContainer, contentBox)' in script
+    for stage_label in ("理解问题", "查询真实数据（按需）", "核验事实与约束", "组织回答"):
+        assert stage_label in script
+    assert 'setPipelineStepState(s2, "skipped")' in script
+    assert 'event.type === "grounding_start"' in script
+    assert 'event.type === "research_skipped"' in script
+    assert 'event.type === "done" && !streamError' in script
+    assert '["FAILED", "BLOCKED", "REJECTED"].includes(toolStatus)' in script
+    assert 'setPipelineStepState(s2, "failed")' in script
+    assert 'setPipelineStepState(s3, "skipped")' in script
+    assert 'stepEl.classList.remove("pending", "active", "completed", "skipped", "failed")' in script
+    assert 'id="btn-clear-chat" class="clear-chat-btn" type="button" title="清除本机保存的对话历史并开始新对话">清空上下文</button>' in markup
+    assert "function clearConversationContext()" in script
+    assert "if (activeChatController) activeChatController.abort();" in script
+    assert 'workspaceStorage.removeItem(ownerStorageKey("prism_copilot_chat_history_v2"))' in script
+    assert 'clearChatBtn.addEventListener("click", clearConversationContext)' in script
 
     assert "Agent home is defined here as a complete composition" in v2_styles
     for selector in (

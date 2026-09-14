@@ -140,8 +140,137 @@ def test_agent_suppresses_unverified_content_and_combines_multiple_tools() -> No
     events = asyncio.run(_run())
     output = "".join(event.get("delta", "") for event in events if event["type"] == "token")
     assert sum(event["type"] == "tool_start" for event in events) == 2
+    event_types = [event["type"] for event in events]
+    assert event_types.count("grounding_start") == 1
+    assert event_types.index("grounding_start") > max(
+        index for index, event_type in enumerate(event_types) if event_type == "tool_done"
+    )
+    assert event_types.index("grounding_start") < event_types.index("token")
     assert "337.11" in output and "半导体真实检索摘要" in output
     assert "未经核验的价格" not in output
+
+
+def test_wencai_answer_lists_real_records_instead_of_four_generic_fields() -> None:
+    agent = CopilotAgent()
+    output = agent._synthesize_grounded_response(
+        "贵州茅台最新公告",
+        {},
+        [{
+            "tool": "query_wencai_semantic",
+            "args": {"query": "贵州茅台最新公告", "channel": "announcement"},
+            "result": {
+                "status": "SUCCESS",
+                "query": "贵州茅台最新公告",
+                "channel": "announcement",
+                "source": "iwencai.com / SkillHub (Official Live)",
+                "retrieved_at": "2026-09-15T00:00:00+00:00",
+                "items": [{
+                    "title": "贵州茅台2026年半年度报告",
+                    "summary": "公司披露半年度报告主要经营信息。",
+                    "publish_date": "2026-08-15",
+                }],
+                "execution_context": {
+                    "data_mode": "LIVE", "provider": "wencai_skillhub_provider",
+                    "is_synthetic": False,
+                },
+            },
+        }],
+        None,
+    )
+    assert "贵州茅台2026年半年度报告" in output
+    assert "公司披露半年度报告主要经营信息" in output
+    assert "查询：" not in output
+    assert "数据时间：" not in output
+
+
+def test_explicit_announcement_question_omits_unrequested_quote_template() -> None:
+    agent = CopilotAgent()
+    common_context = {"data_mode": "LIVE", "is_synthetic": False}
+    tools = [
+        {
+            "tool": "query_stock_quote",
+            "args": {"symbol": "600519"},
+            "result": {
+                "status": "SUCCESS",
+                "data": {
+                    "name": "贵州茅台", "symbol": "600519.SH",
+                    "price_cny": 1277.96, "roe_pct": 18.2, "industry": "白酒",
+                },
+                "execution_context": {**common_context, "provider": "fuyao_finance_api"},
+            },
+        },
+        {
+            "tool": "query_wencai_semantic",
+            "args": {"query": "贵州茅台最新公告", "channel": "announcement"},
+            "result": {
+                "status": "SUCCESS",
+                "query": "贵州茅台最新公告",
+                "channel": "announcement",
+                "source": "iwencai.com / SkillHub (Official Live)",
+                "retrieved_at": "2026-09-15T00:00:00+00:00",
+                "items": [{"title": "贵州茅台半年度报告", "summary": "报告正文摘要。"}],
+                "execution_context": {**common_context, "provider": "wencai_skillhub_provider"},
+            },
+        },
+    ]
+    output = agent._synthesize_grounded_response("请概括贵州茅台最新公告", {}, tools, None)
+    assert "贵州茅台半年度报告" in output
+    assert "个股底稿字段" in output
+    assert "1277.96" in output
+    combined_output = agent._synthesize_grounded_response(
+        "请概括贵州茅台最新公告并说明 ROE", {}, tools, None
+    )
+    assert "贵州茅台半年度报告" in combined_output
+    assert "个股底稿字段" in combined_output
+    assert "18.2%" in combined_output
+    industry_output = agent._synthesize_grounded_response(
+        "请给我贵州茅台最新公告并说明所属行业", {}, tools, None
+    )
+    assert "贵州茅台半年度报告" in industry_output
+    assert "个股底稿字段" in industry_output
+    assert "白酒" in industry_output
+
+
+def test_multi_intent_response_preserves_all_successful_tool_results() -> None:
+    agent = CopilotAgent()
+    common_context = {"data_mode": "LIVE", "is_synthetic": False}
+    tools = [
+        {
+            "tool": "query_stock_quote",
+            "args": {"symbol": "贵州茅台"},
+            "result": {
+                "status": "SUCCESS",
+                "data": {"name": "贵州茅台", "symbol": "600519.SH", "price_cny": 1277.96},
+                "execution_context": {**common_context, "provider": "fuyao_finance_api"},
+            },
+        },
+        {
+            "tool": "query_wencai_semantic",
+            "args": {"query": "贵州茅台最新公告", "channel": "announcement"},
+            "result": {
+                "status": "SUCCESS",
+                "channel": "announcement",
+                "query": "贵州茅台最新公告",
+                "items": [{"title": "贵州茅台半年度报告", "summary": "报告正文摘要。"}],
+                "execution_context": {**common_context, "provider": "wencai_skillhub_provider"},
+            },
+        },
+        {
+            "tool": "run_portfolio_health_check",
+            "args": {},
+            "result": {
+                "status": "SUCCESS",
+                "is_over_budget": False,
+                "tech_exposure_pct": 12.0,
+                "budget_cap_pct": 30.0,
+                "execution_context": {**common_context, "provider": "deterministic_risk_engine"},
+            },
+        },
+    ]
+    output = agent._synthesize_grounded_response("结合最新公告检查我的组合风险", {}, tools, {})
+    assert "贵州茅台半年度报告" in output
+    assert "持仓健康度核查报告" in output
+    assert "1277.96" in output
 
 
 def test_agent_rejects_content_only_answer_for_financial_query() -> None:
@@ -182,6 +311,7 @@ def test_agent_allows_general_financial_education_without_live_tool() -> None:
 
     events = asyncio.run(_run())
     assert "".join(event.get("delta", "") for event in events) == "市盈率是股价与每股收益的比值。"
+    assert sum(event["type"] == "research_skipped" for event in events) == 1
     assert not any(event["type"] == "error" for event in events)
     assert CopilotAgent._requires_grounded_tool("解释一下宁德时代") is True
     assert CopilotAgent._requires_grounded_tool("什么是资产配置") is False

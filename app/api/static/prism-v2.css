@@ -1938,11 +1938,12 @@ body.prism-ui-v2 {
 .chat-capabilities button[aria-pressed="true"] { color: var(--brand); border-color: var(--brand); background: var(--surface-subtle); }
 .prism-ui-v2 .copilot-composer-meta { display: flex; gap: 10px; flex-wrap: wrap; }
 .prism-ui-v2 .copilot-composer-meta > small { margin-right: auto; }
-#chat-send-progress { max-width: 220px; color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; gap: 7px; }
-#chat-send-progress::before { content: ""; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: prd-spin .9s linear infinite; }
-#chat-send-progress .pipeline-header { margin: 0; padding: 0; font: inherit; border: 0; background: transparent; }
-@keyframes prd-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { #chat-send-progress::before { animation: none; } }
+#chat-send-progress { width: min(260px, 42vw); color: var(--text-secondary); font-size: 12px; display: grid; gap: 4px; }
+#chat-send-progress[hidden] { display: none; }
+#chat-send-progress .chat-progress-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#chat-send-progress .chat-progress-track { display: block; width: 100%; height: 4px; overflow: hidden; border-radius: 99px; background: var(--border-subtle); }
+#chat-send-progress .chat-progress-bar { display: block; height: 100%; border-radius: inherit; background: var(--brand); transition: width 180ms ease; }
+@media (prefers-reduced-motion: reduce) { #chat-send-progress .chat-progress-bar { transition: none; } }
 .markdown-body { white-space: normal; overflow-wrap: anywhere; line-height: 1.7; }
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 { font-family: var(--sans); line-height: 1.4; margin: 18px 0 8px; }

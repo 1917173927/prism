@@ -1,7 +1,8 @@
-"""Official Wencai SkillHub Financial Provider Adapter.
+"""Official Wencai SkillHub financial provider adapter.
 
 Adheres strictly to the architectural requirements:
-- Reads configuration solely from server-side environment (WENCAI_SKILLHUB_API_KEY, WENCAI_SKILLHUB_BASE_URL).
+- Loads the official Skill routes from a manifest shipped with the project.
+- Accepts server-side environment or OS-protected project configuration.
 - Zero client-side leakage of credentials.
 - Zero financial math or exposure calculation inside provider.
 - Strict 4-state mapping (SUCCESS, PARTIAL, EMPTY, FAILED).
@@ -12,8 +13,10 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+import json
 import logging
 import os
+from pathlib import Path
 import secrets
 from typing import Any
 
@@ -35,6 +38,19 @@ from app.providers.fingerprint import compute_request_fingerprint
 
 logger = logging.getLogger(__name__)
 
+_MANIFEST_PATH = Path(__file__).with_name("iwencai_skills.json")
+
+
+def load_iwencai_skill_manifest() -> dict[str, Any]:
+    """Load the versioned SkillHub contract bundled in the installed package."""
+    document = json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
+    if document.get("schema_version") != "prism-iwencai-skills.v1":
+        raise ValueError("unsupported Wencai skill manifest")
+    skills = document.get("skills")
+    if not isinstance(skills, list) or len(skills) != 9:
+        raise ValueError("Wencai skill manifest must contain nine skills")
+    return document
+
 
 class WencaiSkillHubProvider(FinancialProvider):
     """Official adapter for Tonghuashun Wencai SkillHub enterprise API."""
@@ -44,8 +60,9 @@ class WencaiSkillHubProvider(FinancialProvider):
         name: NonEmptyStr = "wencai_skillhub_provider",
         api_key: str | None = None,
         base_url: str | None = None,
-        timeout_seconds: float = 2.0,
+        timeout_seconds: float = 8.0,
     ) -> None:
+        manifest = load_iwencai_skill_manifest()
         self._name = name
         self._api_key = (
             api_key
@@ -56,14 +73,10 @@ class WencaiSkillHubProvider(FinancialProvider):
             base_url
             or os.getenv("WENCAI_SKILLHUB_BASE_URL", "").strip()
             or os.getenv("IWENCAI_BASE_URL", "").strip()
-            or "https://openapi.iwencai.com"
+            or str(manifest["base_url"])
         ).rstrip("/")
-        self._timeout_seconds = min(max(timeout_seconds, 0.001), 2.0)
-        self._skill_id = os.getenv("WENCAI_SKILL_ID", "").strip()
-        self._announcement_skill_id = os.getenv(
-            "WENCAI_ANNOUNCEMENT_SKILL_ID", "announcement-search"
-        ).strip()
-        self._skill_version = os.getenv("WENCAI_SKILL_VERSION", "1.0.0").strip()
+        self._timeout_seconds = min(max(timeout_seconds, 0.001), 30.0)
+        self._skills = tuple(manifest["skills"])
 
     @property
     def name(self) -> NonEmptyStr:
@@ -73,6 +86,77 @@ class WencaiSkillHubProvider(FinancialProvider):
     def is_configured(self) -> bool:
         """Check whether official SkillHub API credentials are configured."""
         return bool(self._api_key)
+
+    @property
+    def base_url(self) -> str:
+        return self._base_url
+
+    @property
+    def installed_skills(self) -> tuple[dict[str, Any], ...]:
+        """Return non-secret project-bundled Skill metadata."""
+        return tuple(dict(skill) for skill in self._skills)
+
+    def configure(self, *, api_key: str, base_url: str | None = None) -> None:
+        """Rotate the in-process credential after protected settings are saved."""
+        self._api_key = api_key.strip()
+        if base_url:
+            self._base_url = base_url.strip().rstrip("/")
+
+    def _skill_for(self, request: ProviderRequest) -> dict[str, Any]:
+        channel = str(request.parameters.get("channel", "announcement")).lower()
+        for skill in self._skills:
+            if skill["operation"] != request.operation.value:
+                continue
+            if request.operation == ProviderOperation.SEARCH_NEWS:
+                if skill.get("channel") == channel:
+                    return skill
+                continue
+            return skill
+        raise ValueError(
+            f"unsupported Wencai route: {request.operation.value}/{channel}"
+        )
+
+    async def probe_installed_skills(self) -> tuple[dict[str, Any], ...]:
+        """Run one bounded real request through every bundled Skill contract."""
+        query_by_skill = {
+            "announcement-search": "贵州茅台最新公告",
+            "news-search": "贵州茅台最新新闻",
+            "report-search": "贵州茅台最新研报",
+            "hithink-market-query": "贵州茅台最新价",
+            "hithink-finance-query": "贵州茅台2025年营业收入",
+            "hithink-industry-query": "白酒行业市盈率",
+            "hithink-macro-query": "中国最新CPI同比",
+            "hithink-fund-query": "沪深300ETF最新净值",
+            "hithink-cb-selector": "可转债价格低于130元",
+        }
+
+        async def probe(skill: dict[str, Any]) -> dict[str, Any]:
+            parameters: dict[str, Any] = {"limit": 1}
+            if skill.get("channel"):
+                parameters["channel"] = skill["channel"]
+            result = await self.execute(ProviderRequest(
+                request_id=f"wencai-probe-{secrets.token_hex(8)}",
+                operation=ProviderOperation(skill["operation"]),
+                subject=query_by_skill[skill["skill_id"]],
+                parameters=parameters,
+            ))
+            fields = dict(result.records[0].fields) if result.records else {}
+            items = fields.get("items")
+            item_count = (
+                sum(1 for item in items if isinstance(item, dict) and item)
+                if isinstance(items, (list, tuple))
+                else 0
+            )
+            return {
+                "name": skill["name"],
+                "skill_id": skill["skill_id"],
+                "status": result.status.value,
+                "record_count": len(result.records),
+                "item_count": item_count,
+                "error_code": result.issues[0].code.value if result.issues else None,
+            }
+
+        return tuple(await asyncio.gather(*(probe(skill) for skill in self._skills)))
 
     async def execute(self, request: ProviderRequest) -> ProviderResult:
         """Execute request against official SkillHub endpoint.
@@ -111,28 +195,37 @@ class WencaiSkillHubProvider(FinancialProvider):
             result_limit = int(request.parameters.get("limit", 10))
         except (TypeError, ValueError):
             result_limit = 10
-        is_announcement_search = request.operation == ProviderOperation.SEARCH_NEWS
-        is_comprehensive_search = is_announcement_search or request.operation == ProviderOperation.SEARCH_REPORTS
-        if is_announcement_search:
-            endpoint = f"{self._base_url}/v1/comprehensive/search"
+        try:
+            skill = self._skill_for(request)
+        except ValueError as exc:
+            return ProviderResult(
+                request_id=request.request_id,
+                request_fingerprint=fingerprint,
+                provider=self._name,
+                status=ProviderStatus.FAILED,
+                serving_mode=ProviderServingMode.DIRECT,
+                retrieved_at=start_time,
+                records=(),
+                missing_fields=(),
+                issues=(ProviderIssue(
+                    code=ProviderIssueCode.INVALID_RESPONSE,
+                    stage="route",
+                    safe_message=str(exc),
+                    retriable=False,
+                ),),
+                scope_description=f"Unsupported SkillHub route for {request.subject}",
+                latency_ms=1,
+            )
+        is_comprehensive_search = skill["endpoint"] == "/v1/comprehensive/search"
+        endpoint = f"{self._base_url}{skill['endpoint']}"
+        if is_comprehensive_search:
             payload = {
                 "query": query,
-                "channels": ["announcement"],
+                "channels": [skill["channel"]],
                 "app_id": "AIME_SKILL",
                 "size": min(max(result_limit, 1), 100),
             }
-            skill_id = self._announcement_skill_id or "announcement-search"
-        elif is_comprehensive_search:
-            endpoint = f"{self._base_url}/v1/comprehensive/search"
-            payload = {
-                "channels": ["report"],
-                "app_id": "AIME_SKILL",
-                "query": query,
-                "limit": str(request.parameters.get("limit", "10")),
-            }
-            skill_id = self._skill_id or "prism-investment-agent"
         else:
-            endpoint = f"{self._base_url}/v1/query2data"
             payload = {
                 "query": query,
                 "page": str(request.parameters.get("page", "1")),
@@ -140,7 +233,6 @@ class WencaiSkillHubProvider(FinancialProvider):
                 "is_cache": str(request.parameters.get("is_cache", "1")),
                 "expand_index": str(request.parameters.get("expand_index", "true")).lower(),
             }
-            skill_id = self._skill_id or "prism-investment-agent"
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
@@ -149,15 +241,12 @@ class WencaiSkillHubProvider(FinancialProvider):
                     "Content-Type": "application/json",
                     "X-Request-ID": request.request_id,
                     "X-Claw-Call-Type": "normal",
-                    "X-Claw-Skill-Id": skill_id,
-                    "X-Claw-Skill-Version": self._skill_version,
+                    "X-Claw-Skill-Id": skill["skill_id"],
+                    "X-Claw-Skill-Version": skill["version"],
+                    "X-Claw-Plugin-Id": "none",
+                    "X-Claw-Plugin-Version": "none",
                     "X-Claw-Trace-Id": secrets.token_hex(32),
                 }
-                if not is_announcement_search:
-                    headers.update({
-                        "X-Claw-Plugin-Id": "none",
-                        "X-Claw-Plugin-Version": "none",
-                    })
                 resp = await client.post(
                     endpoint,
                     headers=headers,
@@ -186,11 +275,7 @@ class WencaiSkillHubProvider(FinancialProvider):
                             scope_description=f"Wencai invalid response for {query}",
                             latency_ms=latency_ms,
                         )
-                    invalid_status = (
-                        data.get("status_code") != 0
-                        if is_announcement_search
-                        else not is_comprehensive_search and data.get("status_code", 0) != 0
-                    )
+                    invalid_status = data.get("status_code") != 0
                     if invalid_status:
                         return ProviderResult(
                             request_id=request.request_id,
@@ -213,7 +298,7 @@ class WencaiSkillHubProvider(FinancialProvider):
 
                     raw_items = data.get("data") if is_comprehensive_search else data.get("datas")
                     raw_items = raw_items or data.get("items") or []
-                    upstream_summary = data.get("summary") or data.get("status_msg")
+                    upstream_summary = data.get("summary")
                     if not raw_items and not upstream_summary:
                         return ProviderResult(
                             request_id=request.request_id,

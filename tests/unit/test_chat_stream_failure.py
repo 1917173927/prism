@@ -6,6 +6,54 @@ import subprocess
 import pytest
 
 
+def test_clear_context_aborts_active_turn_and_preserves_non_chat_settings():
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js required")
+    source = Path("app/api/static/app.js").read_text(encoding="utf-8")
+    function = re.search(
+        r"  function clearConversationContext\(\) \{[\s\S]*?\n  \}", source
+    ).group()
+    probe = r'''
+const assert = require('node:assert/strict');
+class Element {
+  constructor(){this.children=['old'];this.value='query';this.hidden=false;this.style={};}
+  replaceChildren(...items){this.children=items;}
+}
+const nodes=new Map();
+const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
+let abortCount=0;
+const activeChatController={abort:()=>abortCount++};
+let chatContextRevision=0;
+const chatHistory=[{role:'user',content:'old'}];
+const storage=new Map([
+  ['owner:chat','history'],
+  ['owner:model','model-secret-reference'],
+  ['owner:portfolio','portfolio-snapshot'],
+]);
+const workspaceStorage={removeItem:key=>storage.delete(key)};
+const ownerStorageKey=key=>key==='prism_copilot_chat_history_v2'?'owner:chat':`owner:${key}`;
+const clear=node=>{node.children=[];};
+const renderChatWelcome=()=>byId('copilot-chat-messages').children.push('welcome');
+'''+function+r'''
+clearConversationContext();
+assert.equal(abortCount,1);
+assert.equal(chatContextRevision,1);
+assert.deepEqual(chatHistory,[]);
+assert.equal(storage.has('owner:chat'),false);
+assert.equal(storage.get('owner:model'),'model-secret-reference');
+assert.equal(storage.get('owner:portfolio'),'portfolio-snapshot');
+assert.equal(byId('copilot-natural-input').value,'');
+assert.equal(byId('chat-send-progress').hidden,true);
+assert.deepEqual(byId('chat-send-progress').children,[]);
+assert.deepEqual(byId('copilot-chat-messages').children,['welcome']);
+assert.deepEqual(byId('copilot-decision-output').children,[]);
+assert.equal(byId('copilot-chat-panel').style.display,'block');
+'''
+    result = subprocess.run([node, "-e", probe], capture_output=True, text=True, encoding="utf-8")
+    assert result.returncode == 0, result.stderr
+
+
 def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
     node = shutil.which("node")
     if not node:
@@ -18,7 +66,15 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
     probe = r'''
 const assert = require('node:assert/strict');
 class Element {
-  constructor(){this.children=[]; this.style={}; this.value='';}
+  constructor(){
+    this.children=[]; this.style={}; this.value='';
+    const states=new Set();
+    this.classList={
+      add:(...values)=>values.forEach(value=>states.add(value)),
+      remove:(...values)=>values.forEach(value=>states.delete(value)),
+      contains:value=>states.has(value),
+    };
+  }
   append(...items){this.children.push(...items);}
   remove(){}
   replaceChildren(...items){this.children=items;}
@@ -26,7 +82,7 @@ class Element {
   set textContent(value){this.children=[String(value)];}
   get textContent(){return this.children.map(x=>typeof x==='string'?x:x.textContent).join(' ');}
 }
-let truthTurnCounter=0, activeChatController=null;
+let truthTurnCounter=0, activeChatController=null, chatContextRevision=0;
 const clearChatEmptyState=()=>{};
 const nodes=new Map();
 const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};

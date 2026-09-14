@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
@@ -42,7 +42,7 @@ class CopilotMessage(BaseModel):
 
 
 class ChatStreamChunk(BaseModel):
-    type: str = Field(description="Event type: thinking, tool_call, tool_result, token, decision, error, done")
+    type: str = Field(description="Event type: thinking, tool_start, tool_done, grounding_start, research_skipped, token, decision, error, done")
     data: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -54,6 +54,7 @@ class CopilotAgent:
         llm_client: AsyncLLMClient | None = None,
         live_finance_provider: FuyaoFinanceProvider | None = None,
         skillhub_provider: WencaiSkillHubProvider | None = None,
+        on_wencai_failure: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self.client = llm_client or AsyncLLMClient()
         self.static_market_provider = StaticMarketProvider()
@@ -62,6 +63,7 @@ class CopilotAgent:
         self.fixture_wencai_provider = FixtureWencaiProvider()
         self.wencai_provider = self.skillhub_provider
         self.live_finance_provider = live_finance_provider or FuyaoFinanceProvider()
+        self.on_wencai_failure = on_wencai_failure
 
     async def stream_chat(
         self,
@@ -71,7 +73,7 @@ class CopilotAgent:
         portfolio_context: dict[str, Any] | None = None,
         llm_config: dict[str, Any] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
-        """Stream real-time multi-agent thinking, tool execution, and grounded advisory response."""
+        """Stream coordinator progress, tool execution, and grounded advisory response."""
 
         active_client = AsyncLLMClient(LLMConfig(**llm_config)) if (llm_config and llm_config.get("api_key")) else self.client
 
@@ -172,6 +174,7 @@ class CopilotAgent:
                 yield {"type": "error", "message": chunk.get("message", "生成过程中出现异常")}
 
         if executed_tools:
+            yield {"type": "grounding_start", "title": "正在核验工具事实与约束"}
             grounded_response = self._synthesize_grounded_response(
                 user_message, persona, executed_tools, portfolio_context
             )
@@ -183,6 +186,7 @@ class CopilotAgent:
                 has_error = True
                 yield {"type": "error", "message": "该问题需要真实金融工具结果，模型未完成工具调用。"}
             else:
+                yield {"type": "research_skipped", "title": "当前问题无需外部金融数据"}
                 has_usable_output = True
                 for delta in pending_content:
                     yield {"type": "token", "delta": delta}
@@ -223,7 +227,7 @@ class CopilotAgent:
         contracts: dict[str, tuple[set[str], set[str]]] = {
             "query_stock_quote": ({"symbol"}, {"symbol"}),
             "query_fund_lookthrough": ({"fund_code"}, {"fund_code"}),
-            "query_wencai_semantic": ({"query"}, {"query"}),
+            "query_wencai_semantic": ({"query", "channel"}, {"query"}),
             "run_portfolio_health_check": ({"portfolio_summary"}, set()),
             "generate_portfolio_rebalance": ({"target_sector_cap"}, set()),
         }
@@ -238,6 +242,13 @@ class CopilotAgent:
                 return {}, "模型工具参数未通过契约校验。"
             if key in sanitized:
                 sanitized[key] = sanitized[key].strip()
+        if "channel" in sanitized:
+            channel = sanitized["channel"]
+            if not isinstance(channel, str) or channel.lower() not in {
+                "announcement", "news", "report"
+            }:
+                return {}, "模型工具参数未通过契约校验。"
+            sanitized["channel"] = channel.lower()
         if "target_sector_cap" in sanitized:
             value = sanitized["target_sector_cap"]
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 < float(value) <= 1:
@@ -486,21 +497,54 @@ class CopilotAgent:
                         },
                     }
                 from app.providers.contracts import ProviderOperation, ProviderRequest
+                channel = str(args.get("channel", "announcement"))
                 req = ProviderRequest(
                     request_id=f"live-copilot-{int(datetime.now(UTC).timestamp())}",
-                    operation=ProviderOperation.SEARCH_NEWS,
+                    operation=(
+                        ProviderOperation.SEARCH_REPORTS
+                        if channel == "report"
+                        else ProviderOperation.SEARCH_NEWS
+                    ),
                     subject=str(args.get("query", "市场行情")),
+                    parameters={"channel": channel},
                 )
                 res = await self.skillhub_provider.execute(req)
                 if res.status.value == "FAILED":
                     error_code = res.issues[0].code.value if res.issues else "PROVIDER_FAILED"
                     await controller.record_wencai_failure(error_code)
+                    if self.on_wencai_failure is not None:
+                        await self.on_wencai_failure(error_code)
+                fields = dict(res.records[0].fields) if res.records else {}
+                raw_items = fields.get("items")
+                items: list[dict[str, Any]] = []
+                if isinstance(raw_items, (list, tuple)):
+                    ordered_items = sorted(
+                        raw_items,
+                        key=lambda raw: str(
+                            (raw.get("publish_time") or raw.get("publish_date") or "")
+                            if isinstance(raw, dict) else ""
+                        ),
+                        reverse=True,
+                    )
+                    for raw in ordered_items[:3]:
+                        if not isinstance(raw, dict):
+                            continue
+                        items.append({
+                            key: raw[key]
+                            for key in (
+                                "title", "summary", "url", "publish_time",
+                                "publish_date", "source_original", "data_source",
+                            )
+                            if key in raw and raw[key] not in (None, "")
+                        })
                 return {
                     "status": res.status.value,
                     "source": "iwencai.com / SkillHub (Official Live)",
                     "query": str(args["query"]),
-                    "summary": res.records[0].fields.get("summary") if res.records else "无返回结果",
-                    "observed_at": res.records[0].fields.get("observed_at") if res.records else None,
+                    "channel": channel,
+                    "summary": fields.get("summary") or "无返回结果",
+                    "items": items,
+                    "observed_at": fields.get("observed_at"),
                     "retrieved_at": res.retrieved_at.isoformat(),
                     "execution_context": {
                         "data_mode": "LIVE",
@@ -676,7 +720,7 @@ class CopilotAgent:
             lines.append(f"本次数据模式：{mode_label}；来源：{context.get('provider', '未标注')}。以下仅转述工具字段，缺失项不补值，不代表审计结论或投资建议。\n")
             change = stock.get("change_pct")
             change_text = "未提供" if change is None else f"{change:+.2f}%"
-            lines.append(f"1. **行情字段**：价格 **¥{field(stock, 'price_cny')}**，涨跌幅 `{change_text}`，市盈率 PE(TTM) **{field(stock, 'pe_ttm', ' 倍')}**，估值分位 **{field(stock, 'valuation_quantile_pct', '%')}**。")
+            lines.append(f"1. **行情字段**：价格 **¥{field(stock, 'price_cny')}**，涨跌幅 `{change_text}`，市盈率 PE(TTM) **{field(stock, 'pe_ttm', ' 倍')}**，估值分位 **{field(stock, 'valuation_quantile_pct', '%')}**，所属行业 **{field(stock, 'industry')}**。")
             lines.append(f"2. **财务字段**：ROE **{field(stock, 'roe_pct', '%')}**，毛利率 **{field(stock, 'gross_margin_pct', '%')}**，资产负债率 **{field(stock, 'debt_ratio_pct', '%')}**。")
             lines.append(f"数据时间：{field(stock, 'observed_at')}。")
             lines.append("3. **计算边界**：聊天层不计算适当性、配置比例或风险闸门；相关结论需提交结构化画像与持仓到后端确定性服务。")
@@ -721,11 +765,41 @@ class CopilotAgent:
             result = wencai_tool["result"]
             if result.get("status") not in {"SUCCESS", "PARTIAL", "EMPTY"}:
                 return result.get("message", "问财真实检索未完成。")
-            lines.append("### 问财语义检索结果")
-            lines.append(f"查询：{result.get('query', '未提供')}。")
-            lines.append(f"来源：{result.get('source', '未提供')}。")
-            lines.append(f"数据时间：{result.get('observed_at') or result.get('retrieved_at') or '未提供'}。")
-            lines.append(f"结果：{result.get('summary', '无返回结果')}。")
+            channel_label = {
+                "announcement": "公告",
+                "news": "新闻",
+                "report": "研报",
+            }.get(result.get("channel"), "资料")
+            items = result.get("items") or []
+            lines.append(f"### 问财{channel_label}检索")
+            if result.get("status") == "EMPTY" or not items:
+                summary = re.sub(
+                    r"[\r\n]+", " ", str(result.get("summary") or "")
+                ).strip()
+                if summary and summary not in {"无返回结果", f"问财查询完成：{result.get('query', '')}"}:
+                    lines.append(summary)
+                else:
+                    lines.append(
+                        f"未检索到与“{result.get('query', '当前问题')}”匹配的{channel_label}，"
+                        "不以模型常识补充结果。"
+                    )
+            else:
+                lines.append(
+                    f"已从问财真实接口取得 {len(items)} 条{channel_label}，按可用发布日期倒序列示："
+                )
+                for index, item in enumerate(items, 1):
+                    title = re.sub(r"[\r\n]+", " ", str(item.get("title") or "未命名记录")).strip()
+                    date = item.get("publish_date") or item.get("publish_time") or "日期未提供"
+                    summary = re.sub(r"[\r\n]+", " ", str(item.get("summary") or "")).strip()
+                    if len(summary) > 180:
+                        summary = summary[:180].rstrip() + "…"
+                    lines.append(f"{index}. **{title}**（{date}）")
+                    if summary:
+                        lines.append(f"   {summary}")
+                lines.append(
+                    f"检索时间：{result.get('retrieved_at', '未提供')}；"
+                    f"来源：{result.get('source', '问财 SkillHub')}。"
+                )
 
         else:
             lines.append("### 请求处理边界")

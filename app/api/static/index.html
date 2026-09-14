@@ -7,12 +7,12 @@
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/static/styles.css?v=20260914-market1">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-market2">
+    <link rel="stylesheet" href="/static/styles.css?v=20260915-chat-stages1">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260915-chat-stages1">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260915-chat1" defer></script>
+    <script src="/static/app.js?v=20260915-chat-stages1" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -283,7 +283,7 @@
                     <strong>投资研究会话</strong>
                     <span class="chat-model-badge dev-only" id="chat-model-badge">内置分析引擎</span>
                   </div>
-                  <button id="btn-clear-chat" class="clear-chat-btn" type="button">清空</button>
+                  <button id="btn-clear-chat" class="clear-chat-btn" type="button" title="清除本机保存的对话历史并开始新对话">清空上下文</button>
                 </header>
                 <div class="copilot-chat-messages" id="copilot-chat-messages" aria-live="polite">
                   <div class="agent-empty-state" data-chat-empty-state>

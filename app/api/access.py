@@ -105,7 +105,12 @@ class LocalAccessMiddleware(BaseHTTPMiddleware):
             if request.headers.get("sec-fetch-site") == "cross-site" or (origin and origin.rstrip("/") != str(request.base_url).rstrip("/")):
                 self.audit(account.owner_id, request.method, "/origin-denied", 403)
                 return JSONResponse({"error_code":"ORIGIN_DENIED"}, status_code=403)
-            if request.url.path in ("/api/v1/copilot/config", "/api/v1/runtime/data-mode") and not account.admin:
+            if request.url.path in (
+                "/api/v1/copilot/config",
+                "/api/v1/runtime/data-mode",
+                "/api/v1/runtime/wencai-settings",
+                "/api/v1/runtime/wencai-settings/test",
+            ) and not account.admin:
                 self.audit(account.owner_id, request.method, "/admin-denied", 403)
                 return JSONResponse({"error_code":"ADMIN_REQUIRED"}, status_code=403)
         request.state.account = account

@@ -1,0 +1,16 @@
+{
+  "schema_version": "prism-iwencai-skills.v1",
+  "source": "https://www.iwencai.com/skillhub",
+  "base_url": "https://openapi.iwencai.com",
+  "skills": [
+    {"name": "公告搜索", "skill_id": "announcement-search", "version": "1.0.0", "endpoint": "/v1/comprehensive/search", "operation": "SEARCH_NEWS", "channel": "announcement", "package_sha256": "92bdf3afbd81fcfa5c11aa7a4631082bb0899ef3d46060aacc73e75b7ecaabe1"},
+    {"name": "新闻搜索", "skill_id": "news-search", "version": "1.0.0", "endpoint": "/v1/comprehensive/search", "operation": "SEARCH_NEWS", "channel": "news", "package_sha256": "83831dcfbde0c3b4dd6220d379bedeb15a486a2753dba40b78d17346c8aad43e"},
+    {"name": "研报搜索", "skill_id": "report-search", "version": "1.0.0", "endpoint": "/v1/comprehensive/search", "operation": "SEARCH_REPORTS", "channel": "report", "package_sha256": "e0c82ca6f40af416dd3003bc1257573a34e17cc60d245fb918b04581cef5b585"},
+    {"name": "行情数据查询", "skill_id": "hithink-market-query", "version": "1.0.0", "endpoint": "/v1/query2data", "operation": "MARKET_DATA", "package_sha256": "f388bbcad410c41ac02b4c5253b91f931aea676d792b9279c3c31e735bb20462"},
+    {"name": "财务数据查询", "skill_id": "hithink-finance-query", "version": "1.0.0", "endpoint": "/v1/query2data", "operation": "COMPANY_DATA", "package_sha256": "1c6ebca79f49dfec4ab8ccc692291566dce0fbf023b71cfdbd002072fe52757a"},
+    {"name": "行业数据查询", "skill_id": "hithink-industry-query", "version": "1.0.0", "endpoint": "/v1/query2data", "operation": "INDUSTRY_DATA", "package_sha256": "925064f942e4ef5f84a30c17a43240142e54e1eaf256c7be796bf0cc079a4c3d"},
+    {"name": "宏观数据查询", "skill_id": "hithink-macro-query", "version": "1.0.0", "endpoint": "/v1/query2data", "operation": "MACRO_DATA", "package_sha256": "62ecb78b587ffbe8c8cf6534ea6ac2dc27dffb434e28a46c0931c6ad18dcfb7f"},
+    {"name": "基金理财查询", "skill_id": "hithink-fund-query", "version": "1.0.0", "endpoint": "/v1/query2data", "operation": "FUND_DATA", "package_sha256": "7ea4f32e3cfcbac373506da061e024749e3b7e590a1b68bd6377b17ecec3feb2"},
+    {"name": "问财选可转债", "skill_id": "hithink-cb-selector", "version": "1.0.0", "endpoint": "/v1/query2data", "operation": "CONVERTIBLE_BOND_DATA", "package_sha256": "25e491ea4a1d78bf1d4fc64a4122992dfb395666c2a4a3ffe529e78ded5b72ad"}
+  ]
+}
