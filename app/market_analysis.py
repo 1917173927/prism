@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 import math
-import os
 from typing import Any, Iterable
 
 
@@ -27,14 +26,16 @@ INDEX_REGISTRY: tuple[MarketIndex, ...] = (
     MarketIndex("CN", "szse-component", "深证成指", "399001.SZ", "CNY", "Asia/Shanghai"),
     MarketIndex("CN", "chinext", "创业板指", "399006.SZ", "CNY", "Asia/Shanghai"),
     MarketIndex("CN", "csi-300", "沪深300", "000300.SH", "CNY", "Asia/Shanghai"),
-    MarketIndex("HK", "hang-seng", "恒生指数", os.getenv("IFIND_HK_HSI_CODE") or None, "HKD", "Asia/Hong_Kong"),
-    MarketIndex("HK", "hang-seng-china-enterprises", "恒生中国企业指数", os.getenv("IFIND_HK_HSCEI_CODE") or None, "HKD", "Asia/Hong_Kong"),
-    MarketIndex("HK", "hang-seng-tech", "恒生科技指数", os.getenv("IFIND_HK_HSTECH_CODE") or None, "HKD", "Asia/Hong_Kong"),
-    MarketIndex("HK", "hang-seng-composite", "恒生综合指数", os.getenv("IFIND_HK_HSCI_CODE") or None, "HKD", "Asia/Hong_Kong"),
-    MarketIndex("US", "sp-500", "标普500", os.getenv("IFIND_US_SPX_CODE") or None, "USD", "America/New_York"),
-    MarketIndex("US", "nasdaq-composite", "纳斯达克综合指数", os.getenv("IFIND_US_IXIC_CODE") or None, "USD", "America/New_York"),
-    MarketIndex("US", "dow-jones-industrial", "道琼斯工业指数", os.getenv("IFIND_US_DJI_CODE") or None, "USD", "America/New_York"),
-    MarketIndex("US", "russell-2000", "罗素2000", os.getenv("IFIND_US_RUT_CODE") or None, "USD", "America/New_York"),
+    MarketIndex("HK", "hang-seng", "恒生指数", "^HSI", "HKD", "Asia/Hong_Kong"),
+    MarketIndex("HK", "hang-seng-china-enterprises", "恒生中国企业指数", "^HSCE", "HKD", "Asia/Hong_Kong"),
+    MarketIndex("HK", "hang-seng-tech", "恒生科技指数", "HSTECH.HK", "HKD", "Asia/Hong_Kong"),
+    # Yahoo does not expose this series; the public ET Net chart uses HSC.
+    # The API keeps the source symbol explicit and never substitutes an ETF.
+    MarketIndex("HK", "hang-seng-composite", "恒生综合指数", "HSC", "HKD", "Asia/Hong_Kong"),
+    MarketIndex("US", "sp-500", "标普500", "^GSPC", "USD", "America/New_York"),
+    MarketIndex("US", "nasdaq-composite", "纳斯达克综合指数", "^IXIC", "USD", "America/New_York"),
+    MarketIndex("US", "dow-jones-industrial", "道琼斯工业指数", "^DJI", "USD", "America/New_York"),
+    MarketIndex("US", "russell-2000", "罗素2000", "^RUT", "USD", "America/New_York"),
 )
 
 

@@ -12,7 +12,7 @@
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260914-market2" defer></script>
+    <script src="/static/app.js?v=20260914-public-fallback2" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -889,7 +889,7 @@
             <button id="market-load-industries" type="button" class="copilot-action-btn secondary">读取行业表现</button>
             <div id="market-industries" aria-live="polite"></div>
           </section>
-          <p>港美股独立行情授权尚未验证；未取得权限时不展示替代报价。</p>
+          <p>港美股默认使用 Yahoo Finance 公开接口；港股在 Yahoo 无数据时备用读取 ET Net 公开图表。来源延迟、限流或无法验证时，不展示替代报价。</p>
           <p class="market-risk-note">数据来源、观察时间及审查状态会随结果展示。仅供研究参考，不构成投资建议。</p>
         </section>
 

@@ -4,6 +4,13 @@ chcp 65001 >nul
 title Prism 决策工作台 · 一键启动
 cd /d "%~dp0" || goto :project_dir_failed
 
+:: Load ignored local secrets for this process only. The file is never committed.
+if exist "%~dp0.env" (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("%~dp0.env") do (
+        if not "%%A"=="" set "%%A=%%B"
+    )
+)
+
 set "VENV_DIR=%~dp0.venv"
 set "PYTHON_EXE=%~dp0.venv\Scripts\python.exe"
 
