@@ -14,13 +14,13 @@ from app.store import SQLiteDecisionEventStore
 from app.store.sqlite import StoreConflictError, StoreCorruptError
 
 
-def populate(store):
+def populate(store, data_mode="MOCK"):
     now = datetime.now(UTC)
     answers = [{"question_id":q.question_id, **({"score":3} if q.question_type.value == "SCORE" else {"selected_option_ids":[q.options[0].option_id]})}
                for q in QUESTIONNAIRE_TEMPLATE.questions]
     store.save_questionnaire_snapshot(build_questionnaire_snapshot("owner", tuple(QuestionnaireAnswer.model_validate(a) for a in answers), confirmed_at=now, snapshot_version=1))
     data = recalculate_portfolio_values([{"asset_id":"600519.SH", "quantity":100, "price":1000}], Decimal(20000), "owner")
-    store.save_current_portfolio("owner", "MOCK", data)
+    store.save_current_portfolio("owner", data_mode, data)
     return data
 
 
@@ -46,14 +46,14 @@ def test_revision_scope_persistence_and_corruption(tmp_path):
 
 
 def test_lock_blocks_drift_and_binds_chat_to_server_facts(monkeypatch):
-    monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.MOCK))
+    monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
     captured = {}
     async def chat(self, **kwargs):
         captured.update(kwargs)
         yield {"type":"token", "delta":"verified-context"}
     monkeypatch.setattr(CopilotAgent, "stream_chat", chat)
     store = SQLiteDecisionEventStore()
-    data = populate(store)
+    data = populate(store, "LIVE")
     try:
         with TestClient(create_app(store=store)) as client:
             headers = {"X-Owner-ID":"owner"}
@@ -64,13 +64,14 @@ def test_lock_blocks_drift_and_binds_chat_to_server_facts(monkeypatch):
             assert locked.json()["status"] == "LOCKED"
             assert client.post(endpoint, headers=headers, json={"expected_revision":0}).status_code == 409
             request = {"owner_id":"owner", "message":"请检查", "session_truth_id":"workbench", "session_truth_revision":1,
-                       "persona_info":{"max_drawdown":99}, "portfolio_context":{"fabricated":True}}
+                       "persona_info":{"max_drawdown":99}, "portfolio_context":{"fabricated":True},
+                       "llm_config":{"api_key":"test", "base_url":"https://api.deepseek.com/v1", "model":"test"}}
             assert client.post("/api/v1/copilot/chat", headers=headers, json=request).status_code == 200
             assert captured["persona_info"]["max_drawdown"] != 99
             assert captured["portfolio_context"]["portfolio"] == data["portfolio"]
             assert client.post("/api/v1/copilot/chat", headers=headers, json={**request, "portfolio_snapshot_id":"wrong"}).status_code == 409
             new_data = recalculate_portfolio_values([{"asset_id":"600519.SH", "quantity":200, "price":1000}], Decimal(20000), "owner")
-            store.save_current_portfolio("owner", "MOCK", new_data)
+            store.save_current_portfolio("owner", "LIVE", new_data)
             assert client.get(endpoint, headers=headers).json()["status"] == "DRIFT_DETECTED"
             assert client.post("/api/v1/copilot/chat", headers=headers, json=request).status_code == 409
             assert client.post(endpoint, headers=headers, json={"expected_revision":1}).json()["revision"] == 2
@@ -109,13 +110,13 @@ def test_review_fingerprint_and_assertions_do_not_overwrite_changed_facts(monkey
 
 
 def test_stream_is_stopped_if_premises_change_during_generation(monkeypatch):
-    monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.MOCK))
+    monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
     store = SQLiteDecisionEventStore()
-    populate(store)
+    populate(store, "LIVE")
     closed = []
     async def chat(self, **kwargs):
         try:
-            store.save_current_portfolio("owner", "MOCK", recalculate_portfolio_values(
+            store.save_current_portfolio("owner", "LIVE", recalculate_portfolio_values(
                 [{"asset_id":"600519.SH", "quantity":300, "price":1000}], Decimal(20000), "owner"))
             yield {"type":"token", "delta":"must-not-be-returned"}
         finally:
@@ -126,7 +127,8 @@ def test_stream_is_stopped_if_premises_change_during_generation(monkeypatch):
             headers = {"X-Owner-ID":"owner"}
             client.post("/api/v1/advisor/session-truth", headers=headers, json={"expected_revision":0})
             response = client.post("/api/v1/copilot/chat", headers=headers, json={
-                "owner_id":"owner", "message":"hello", "session_truth_id":"workbench", "session_truth_revision":1})
+                "owner_id":"owner", "message":"hello", "session_truth_id":"workbench", "session_truth_revision":1,
+                "llm_config":{"api_key":"test", "base_url":"https://api.deepseek.com/v1", "model":"test"}})
             assert "must-not-be-returned" not in response.text
             assert '"type":"error"' in response.text
             assert closed == [True]

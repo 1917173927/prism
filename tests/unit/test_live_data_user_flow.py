@@ -325,6 +325,12 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     assert.doesNotMatch(output.textContent, /null|undefined|NaN/);
 
     calls = [];
+    byId("copilot-stock-input").value = "600519.SH";
+    await runCopilotStockResearch("510300");
+    assert.equal(calls.at(-1), "/api/v1/copilot/live-fund?fund_code=510300",
+      "quick-tag target must override a stale legacy input value");
+
+    calls = [];
     fetch = async url => { calls.push(url); return {ok:false,status:404,json:async()=>({message:"上游无行情"})}; };
     byId("copilot-stock-input").value = "600999.SH";
     await runCopilotStockResearch();

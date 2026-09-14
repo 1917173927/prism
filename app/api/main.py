@@ -214,6 +214,7 @@ from app.store import (
 )
 from app.store.contracts import build_decision_event
 from app.llm import CopilotAgent, CopilotMessage
+from app.llm.client import AsyncLLMClient, LLMConfig
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
@@ -1953,19 +1954,26 @@ def create_app(
         skillhub_provider=active_wencai_provider,
     )
 
+    def owner_llm_config(owner_id: str | None) -> LLMConfig:
+        setting = user_model_settings.get(owner_id) if owner_id else None
+        return LLMConfig(**setting.model_dump()) if setting else copilot_agent.client.config
+
+    def owner_llm_client(owner_id: str | None) -> AsyncLLMClient:
+        return AsyncLLMClient(owner_llm_config(owner_id))
+
     @api.post("/api/v1/advisor/profile-extractions")
     async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
         if req.owner_id != owner_id:
             raise StoreOwnerError("profile extraction owner mismatch")
         try:
-            return await extract_natural_profile(req, copilot_agent.client, active_clock())
+            return await extract_natural_profile(req, owner_llm_client(owner_id), active_clock())
         except NaturalProfileError as exc:
             return _error_response(422, "PROFILE_EXTRACTION_REFUSED", str(exc))
 
     @api.post("/api/v1/advisor/context-memory/search")
     async def search_memory(req: MemorySearchRequest, owner_id: str = Depends(owner_dependency)):
         try:
-            return await search_context_memories(active_store, owner_id, req.query, copilot_agent.client, limit=req.limit)
+            return await search_context_memories(active_store, owner_id, req.query, owner_llm_client(owner_id), limit=req.limit)
         except ValueError:
             return _error_response(422, "MEMORY_SEARCH_REFUSED", "检索内容无效或包含敏感信息")
 
@@ -2087,15 +2095,14 @@ def create_app(
 
         if not req.llm_config and scoped_owner in user_model_settings:
             req.llm_config = user_model_settings[scoped_owner].model_dump()
-        if req.model_mode == "LIVE" and not (req.llm_config or copilot_agent.client.is_configured):
+        controller = get_runtime_mode_controller()
+        configured = bool((req.llm_config or {}).get("api_key")) or copilot_agent.client.is_configured
+        if req.model_mode != "MOCK" and not configured:
             return _error_response(409, "MODEL_NOT_CONFIGURED", "请在更多 → 模型设置中配置 API Key")
+        if req.model_mode != "MOCK" and controller.mode != DataMode.LIVE:
+            return _error_response(409, "DATA_MODE_NOT_LIVE", "真实模型调用要求工具数据同时处于 LIVE")
 
         async def sse_generator():
-            if req.model_mode == "MOCK":
-                payload = {"type": "token", "delta": "## 演示回复\n\n当前为 **AI 模拟模式**。\n\n- 可测试对话、持仓导入与页面联动。\n- 正式分析请切换真实接口并配置模型。\n\n|项目|状态|\n|---|---|\n|模型调用|模拟数据|\n|投资结论|未生成|\n\n仅供演示参考，不构成投资建议。"}
-                yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
-                yield "data: [DONE]\n\n"
-                return
             context_event = {
                 "type": "analysis_context",
                 "display_policy": stored_policy.model_dump(mode="json"),
@@ -2133,6 +2140,11 @@ def create_app(
                 ],
             }
             yield f"data: {json.dumps(context_event, ensure_ascii=False)}\n\n"
+            if req.model_mode == "MOCK":
+                payload = {"type": "token", "delta": "## 演示回复\n\n当前为 **AI 模拟模式**。\n\n- 可测试对话、持仓导入与页面联动。\n- 正式分析请切换真实接口并配置模型。\n\n|项目|状态|\n|---|---|\n|模型调用|模拟数据|\n|投资结论|未生成|\n\n仅供演示参考，不构成投资建议。"}
+                yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+                yield "data: [DONE]\n\n"
+                return
             history_objs = [CopilotMessage(role=m.get("role", "user"), content=m.get("content", "")) for m in (req.history or [])]
             async with aclosing(copilot_agent.stream_chat(
                 user_message=req.message,
@@ -2373,9 +2385,7 @@ def create_app(
 
     @api.post("/api/v1/user/model-settings/test")
     async def test_user_model_settings(owner_id: str = Depends(owner_dependency)):
-        from app.llm.client import AsyncLLMClient, LLMConfig
-        setting = user_model_settings.get(owner_id)
-        config = LLMConfig(**setting.model_dump()) if setting else copilot_agent.client.config
+        config = owner_llm_config(owner_id)
         if not config.api_key:
             return _error_response(409, "MODEL_NOT_CONFIGURED", "请先保存 API Key")
         client = AsyncLLMClient(config.model_copy(update={"timeout_seconds": 8}))
@@ -2396,36 +2406,17 @@ def create_app(
         return {"status": "PASS"}
 
     @api.post("/api/v1/copilot/config")
-    def copilot_update_config_endpoint(req: CopilotConfigApiRequest):
-        """Update active LLM client configuration in memory."""
-        from app.llm.client import LLMConfig
-        copilot_agent.client.config = LLMConfig(
-            api_key=req.api_key.strip(),
-            base_url=req.base_url.strip(),
-            model=req.model.strip(),
-        )
-        return JSONResponse(
-            content={
-                "status": "SUCCESS",
-                "is_configured": copilot_agent.client.is_configured,
-                "model": copilot_agent.client.config.model,
-                "base_url": copilot_agent.client.config.base_url,
-            }
-        )
+    def copilot_update_config_endpoint(
+        req: CopilotConfigApiRequest,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        """Compatibility endpoint; apply the same owner scope and allowlist as model settings."""
+        return save_user_model_settings(req, owner_id)
 
     @api.get("/api/v1/copilot/config")
-    def copilot_get_config_endpoint():
-        """Get active LLM client configuration state."""
-        cfg = copilot_agent.client.config
-        masked_key = (cfg.api_key[:3] + "..." + cfg.api_key[-4:]) if len(cfg.api_key) > 7 else ("***" if cfg.api_key else "")
-        return JSONResponse(
-            content={
-                "is_configured": copilot_agent.client.is_configured,
-                "masked_api_key": masked_key,
-                "base_url": cfg.base_url,
-                "model": cfg.model,
-            }
-        )
+    def copilot_get_config_endpoint(owner_id: str = Depends(owner_dependency)):
+        """Compatibility endpoint; never disclose or partially echo credentials."""
+        return get_user_model_settings(owner_id)
 
     VALID_A_SHARE_PREFIXES = (
         "600", "601", "603", "605",  # SSE Main

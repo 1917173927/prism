@@ -142,7 +142,7 @@ def test_chat_emits_structured_display_policy_without_chain_of_thought() -> None
         response = client.post(
             "/api/v1/copilot/chat",
             headers={"X-Owner-ID": OWNER},
-            json={"message": "分析持仓", "owner_id": OWNER, "stream": True},
+            json={"message": "分析持仓", "owner_id": OWNER, "stream": True, "model_mode": "MOCK"},
         )
         assert response.status_code == 200
         text = response.text

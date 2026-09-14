@@ -109,6 +109,9 @@ class CopilotAgent:
 
         executed_tools: list[dict[str, Any]] = []
         request_data_mode = get_runtime_mode_controller().mode
+        has_usable_output = False
+        has_error = False
+        pending_content: list[str] = []
 
         # Execute LLM streaming
         async for chunk in active_client.stream_chat(messages, tools=COPILOT_TOOLS):
@@ -122,22 +125,28 @@ class CopilotAgent:
             elif chunk_type == "tool_call":
                 tool_name = chunk.get("name", "")
                 args = chunk.get("arguments", {})
+                validated_args, validation_error = self._validate_tool_call(tool_name, args)
+                if validation_error:
+                    has_error = True
+                    yield {"type": "error", "message": validation_error}
+                    continue
+                has_usable_output = True
                 yield {
                     "type": "tool_start",
                     "tool": tool_name,
-                    "args": args,
+                    "args": validated_args,
                     "title": f"正在调用工具: {tool_name}",
                 }
 
                 # Execute tool
                 tool_result = await self._execute_tool(
                     tool_name,
-                    args,
+                    validated_args,
                     persona,
                     portfolio_context,
                     data_mode=request_data_mode,
                 )
-                executed_tools.append({"tool": tool_name, "args": args, "result": tool_result})
+                executed_tools.append({"tool": tool_name, "args": validated_args, "result": tool_result})
 
                 yield {
                     "type": "tool_done",
@@ -146,21 +155,70 @@ class CopilotAgent:
                     "title": f"工具完成: {tool_name}",
                 }
 
-                # Stream out grounded final response
-                grounded_response = self._synthesize_grounded_response(
-                    user_message, persona, executed_tools, portfolio_context
-                )
-                for char_token in self._tokenize_stream(grounded_response):
-                    yield {"type": "token", "delta": char_token}
-                    await asyncio.sleep(0.01)
-
             elif chunk_type == "content":
-                yield {"type": "token", "delta": chunk.get("delta", "")}
+                delta = chunk.get("delta", "")
+                if delta:
+                    pending_content.append(delta)
 
             elif chunk_type == "error":
+                has_error = True
                 yield {"type": "error", "message": chunk.get("message", "生成过程中出现异常")}
 
+        if executed_tools:
+            grounded_response = self._synthesize_grounded_response(
+                user_message, persona, executed_tools, portfolio_context
+            )
+            for char_token in self._tokenize_stream(grounded_response):
+                yield {"type": "token", "delta": char_token}
+                await asyncio.sleep(0.01)
+        elif pending_content:
+            if self._requires_grounded_tool(user_message):
+                has_error = True
+                yield {"type": "error", "message": "该问题需要真实金融工具结果，模型未完成工具调用。"}
+            else:
+                has_usable_output = True
+                for delta in pending_content:
+                    yield {"type": "token", "delta": delta}
+
+        if not has_usable_output and not has_error:
+            yield {"type": "error", "message": "模型未返回可用正文或完整工具调用。"}
         yield {"type": "done", "timestamp": datetime.now(UTC).isoformat()}
+
+    @staticmethod
+    def _requires_grounded_tool(user_message: str) -> bool:
+        normalized = re.sub(r"[\s，。！？,.!?]+", "", user_message).casefold()
+        harmless = {
+            "你好", "您好", "谢谢", "感谢", "再见", "你是谁", "你能做什么",
+            "hello", "hi", "thanks", "thankyou", "help",
+        }
+        return normalized not in harmless
+
+    @staticmethod
+    def _validate_tool_call(name: Any, args: Any) -> tuple[dict[str, Any], str | None]:
+        contracts: dict[str, tuple[set[str], set[str]]] = {
+            "query_stock_quote": ({"symbol"}, {"symbol"}),
+            "query_fund_lookthrough": ({"fund_code"}, {"fund_code"}),
+            "query_wencai_semantic": ({"query"}, {"query"}),
+            "run_portfolio_health_check": ({"portfolio_summary"}, set()),
+            "generate_portfolio_rebalance": ({"target_sector_cap"}, set()),
+        }
+        if not isinstance(name, str) or name not in contracts or not isinstance(args, dict):
+            return {}, "模型请求了未授权或格式无效的工具调用。"
+        allowed, required = contracts[name]
+        if set(args) - allowed or required - set(args):
+            return {}, "模型工具参数未通过契约校验。"
+        sanitized = dict(args)
+        for key in ("symbol", "fund_code", "query", "portfolio_summary"):
+            if key in sanitized and (not isinstance(sanitized[key], str) or not sanitized[key].strip() or len(sanitized[key]) > 1000):
+                return {}, "模型工具参数未通过契约校验。"
+            if key in sanitized:
+                sanitized[key] = sanitized[key].strip()
+        if "target_sector_cap" in sanitized:
+            value = sanitized["target_sector_cap"]
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 < float(value) <= 1:
+                return {}, "模型工具参数未通过契约校验。"
+            sanitized["target_sector_cap"] = float(value)
+        return sanitized, None
 
     async def parse_portfolio_from_text(self, text: str) -> dict[str, Any]:
         """Parse natural language into structured portfolio bundle."""
@@ -315,12 +373,24 @@ class CopilotAgent:
         """Execute tool against live or mock provider databases depending on active mode."""
         controller = get_runtime_mode_controller()
         is_live = ((data_mode or controller.mode) == DataMode.LIVE)
+        args, validation_error = self._validate_tool_call(name, args)
+        if validation_error:
+            return {
+                "status": "FAILED",
+                "error_code": "INVALID_TOOL_CALL",
+                "message": validation_error,
+                "execution_context": {
+                    "data_mode": "LIVE" if is_live else "MOCK",
+                    "provider": "tool_contract_gate",
+                    "is_synthetic": not is_live,
+                },
+            }
 
         if is_live:
             if name == "query_stock_quote":
                 try:
                     data = await self.live_finance_provider.get_quote(
-                        str(args.get("symbol", "300750"))
+                        str(args["symbol"])
                     )
                 except FuyaoProviderError as exc:
                     if exc.code in CAPABILITY_FAILURE_CODES:
@@ -350,7 +420,7 @@ class CopilotAgent:
             if name == "query_fund_lookthrough":
                 try:
                     data = await self.live_finance_provider.get_fund_lookthrough(
-                        str(args.get("fund_code", "510300"))
+                        str(args["fund_code"])
                     )
                 except FuyaoProviderError as exc:
                     if exc.code in CAPABILITY_FAILURE_CODES:
@@ -377,7 +447,7 @@ class CopilotAgent:
                         "is_synthetic": False,
                     },
                 }
-            elif name == "query_wencai_semantic":
+            if name == "query_wencai_semantic":
                 if not controller.is_wencai_ready:
                     return {
                         "status": "FAILED",
@@ -403,7 +473,10 @@ class CopilotAgent:
                 return {
                     "status": res.status.value,
                     "source": "iwencai.com / SkillHub (Official Live)",
+                    "query": str(args["query"]),
                     "summary": res.records[0].fields.get("summary") if res.records else "无返回结果",
+                    "observed_at": res.records[0].fields.get("observed_at") if res.records else None,
+                    "retrieved_at": res.retrieved_at.isoformat(),
                     "execution_context": {
                         "data_mode": "LIVE",
                         "provider": "wencai_skillhub_provider",
@@ -411,6 +484,27 @@ class CopilotAgent:
                         "is_synthetic": False,
                     },
                 }
+            if name in {"run_portfolio_health_check", "generate_portfolio_rebalance"}:
+                return {
+                    "status": "BLOCKED",
+                    "error_code": "DETERMINISTIC_CONTEXT_REQUIRED",
+                    "message": "该工具必须通过结构化持仓与画像的确定性接口执行；LIVE 聊天不回退模拟计算。",
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": "deterministic_api_required",
+                        "is_synthetic": False,
+                    },
+                }
+            return {
+                "status": "FAILED",
+                "error_code": "INVALID_TOOL_CALL",
+                "message": "LIVE 模式拒绝执行未授权工具。",
+                "execution_context": {
+                    "data_mode": "LIVE",
+                    "provider": "tool_contract_gate",
+                    "is_synthetic": False,
+                },
+            }
 
         # MOCK Mode
         if name == "query_stock_quote":
@@ -483,7 +577,7 @@ class CopilotAgent:
                 },
             }
 
-        else:  # query_wencai_semantic
+        elif name == "query_wencai_semantic":
             query = args.get("query", "市场行情")
             matched = FIXTURE_WENCAI_DATABASE.get("default", {})
             for k, v in FIXTURE_WENCAI_DATABASE.items():
@@ -503,6 +597,17 @@ class CopilotAgent:
                 },
             }
 
+        return {
+            "status": "FAILED",
+            "error_code": "INVALID_TOOL_CALL",
+            "message": "MOCK 模式拒绝执行未授权工具。",
+            "execution_context": {
+                "data_mode": "MOCK",
+                "provider": "tool_contract_gate",
+                "is_synthetic": True,
+            },
+        }
+
     def _synthesize_grounded_response(
         self,
         user_message: str,
@@ -521,8 +626,15 @@ class CopilotAgent:
         fund_tool = next((t for t in executed_tools if t["tool"] == "query_fund_lookthrough"), None)
         check_tool = next((t for t in executed_tools if t["tool"] == "run_portfolio_health_check"), None)
         rebalance_tool = next((t for t in executed_tools if t["tool"] == "generate_portfolio_rebalance"), None)
+        wencai_tool = next((t for t in executed_tools if t["tool"] == "query_wencai_semantic"), None)
 
-        selected_tool = stock_tool or fund_tool or check_tool or rebalance_tool
+        if len(executed_tools) > 1:
+            return "\n\n".join(
+                self._synthesize_grounded_response(user_message, persona, [tool], portfolio)
+                for tool in executed_tools
+            )
+
+        selected_tool = stock_tool or fund_tool or check_tool or rebalance_tool or wencai_tool
         context = (selected_tool or {}).get("result", {}).get("execution_context", {})
         mode_label = context.get("data_mode", "未标注")
 
@@ -579,6 +691,16 @@ class CopilotAgent:
             for s in reb["steps"]:
                 action_text = "卖出 (SELL)" if s["action"] == "SELL" else "买入 (BUY)"
                 lines.append(f"{s['step']}. **{action_text}** {s['asset']}：调整比例 `{s['weight_delta']}`")
+
+        elif wencai_tool:
+            result = wencai_tool["result"]
+            if result.get("status") not in {"SUCCESS", "PARTIAL", "EMPTY"}:
+                return result.get("message", "问财真实检索未完成。")
+            lines.append("### 问财语义检索结果")
+            lines.append(f"查询：{result.get('query', '未提供')}。")
+            lines.append(f"来源：{result.get('source', '未提供')}。")
+            lines.append(f"数据时间：{result.get('observed_at') or result.get('retrieved_at') or '未提供'}。")
+            lines.append(f"结果：{result.get('summary', '无返回结果')}。")
 
         else:
             lines.append("### 请求处理边界")

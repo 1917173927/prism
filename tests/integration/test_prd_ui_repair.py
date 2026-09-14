@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 import httpx
 from fastapi.testclient import TestClient
@@ -49,6 +50,48 @@ def test_model_settings_are_owner_scoped_and_not_disclosed(tmp_path):
         assert mock.status_code == 200
         assert "演示回复" in mock.text and "[DONE]" in mock.text
         assert "private-test-key" not in mock.text
+
+
+def test_auto_chat_refuses_implicit_mock_without_model(monkeypatch, tmp_path):
+    from app.llm.client import AsyncLLMClient
+
+    monkeypatch.setattr(AsyncLLMClient, "is_configured", property(lambda _: False))
+    with TestClient(create_app(database_path=tmp_path / "no-implicit-mock.db")) as client:
+        response = client.post("/api/v1/copilot/chat", json={"message": "测试", "model_mode": "AUTO"})
+        assert response.status_code == 409
+        assert response.json()["error_code"] == "MODEL_NOT_CONFIGURED"
+
+
+def test_live_model_mode_requires_live_tool_data(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from app.runtime.mode import DataMode
+
+    monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.MOCK))
+    with TestClient(create_app(database_path=tmp_path / "live-model-with-mock-data.db")) as client:
+        response = client.post("/api/v1/copilot/chat", json={
+            "message": "测试",
+            "model_mode": "LIVE",
+            "llm_config": {"api_key": "test", "base_url": "https://api.deepseek.com/v1", "model": "test"},
+        })
+        assert response.status_code == 409
+        assert response.json()["error_code"] == "DATA_MODE_NOT_LIVE"
+        auto_response = client.post("/api/v1/copilot/chat", json={
+            "message": "测试",
+            "model_mode": "AUTO",
+            "llm_config": {"api_key": "test", "base_url": "https://api.deepseek.com/v1", "model": "test"},
+        })
+        assert auto_response.status_code == 409
+        assert auto_response.json()["error_code"] == "DATA_MODE_NOT_LIVE"
+
+
+def test_dynamic_quick_tags_keep_direct_live_intent_route():
+    app_js = (Path(__file__).parents[2] / "app" / "api" / "static" / "app.js").read_text(encoding="utf-8")
+    block = app_js[app_js.index("function renderQuickTags"):app_js.index("function handleCopilotIntent")]
+    assert "handleCopilotIntent(t.intent, t.target)" in block
+    assert "handleStreamingChat(t.label)" not in block
+    intent_block = app_js[app_js.index("function handleCopilotIntent"):app_js.index("function buildCopilotLoadingCard")]
+    assert "runCopilotStockResearch(target)" in intent_block
+    assert "async function runCopilotStockResearch()" in app_js
 
 
 def test_delete_last_position_and_restore_empty_portfolio(tmp_path):

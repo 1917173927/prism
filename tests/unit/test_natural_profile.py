@@ -65,3 +65,34 @@ def test_api_owner_scope_and_no_implicit_profile_persistence(monkeypatch):
             json={"owner_id":"owner", "text":"长期投资"})
         assert result.status_code == 200
         assert result.json()["profile_changed"] is False
+
+
+def test_api_profile_extraction_uses_owner_model_settings(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from app.api.main import create_app
+    from app.llm.client import AsyncLLMClient
+
+    async def configured_stream(self, messages, tools=None):
+        assert self.config.api_key == "owner-private-key"
+        yield {"type": "content", "delta": json.dumps({"fields": [{
+            "field": "max_drawdown_tolerance_pct",
+            "value": "15",
+            "quote": "最大回撤15%",
+            "confidence": 0.8,
+        }]})}
+
+    monkeypatch.setattr(AsyncLLMClient, "stream_chat", configured_stream)
+    with TestClient(create_app(database_path=tmp_path / "profile-owner-model.db")) as client:
+        headers = {"X-Owner-ID": "owner"}
+        saved = client.put("/api/v1/user/model-settings", headers=headers, json={
+            "api_key": "owner-private-key",
+            "model": "deepseek-chat",
+            "base_url": "https://api.deepseek.com/v1",
+        })
+        assert saved.status_code == 200
+        result = client.post("/api/v1/advisor/profile-extractions", headers=headers, json={
+            "owner_id": "owner",
+            "text": "最大回撤15%",
+        })
+        assert result.status_code == 200
+        assert result.json()["method"] == "LLM_WITH_SOURCE_QUOTES"

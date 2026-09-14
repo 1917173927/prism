@@ -7480,7 +7480,7 @@
       btn.dataset.intent = t.intent;
       if (t.target) btn.dataset.target = t.target;
       btn.addEventListener("click", () => {
-        handleStreamingChat(t.label);
+        handleCopilotIntent(t.intent, t.target);
       });
       container.append(btn);
     });
@@ -7494,7 +7494,7 @@
         const stockInput = byId("copilot-stock-input");
         if (stockInput) stockInput.value = target;
       }
-      runCopilotStockResearch();
+      runCopilotStockResearch(target);
     } else if (intent === "REBALANCE_PORTFOLIO") {
       runCopilotRebalance();
     } else if (intent === "SCENARIO_SHOCK") {
@@ -7946,9 +7946,13 @@
     sourceTitle.textContent = "数据来源";
     const sourceText = document.createElement("p");
     const refresh = state.portfolioRefreshRun;
-    sourceText.textContent = isLiveMode
-      ? `行情与场内基金披露由实时接口提供；公告与语义检索由投研接口提供。基金持仓来自最新定期披露。`
-      : "当前为离线演示数据，指标由预置基准数据测算。";
+    if (!isLiveMode) {
+      sourceText.textContent = "当前为离线演示数据，指标由预置基准数据测算。";
+    } else if (refresh?.status === "COMPLETE") {
+      sourceText.textContent = "本次组合已由可用 LIVE 数据源刷新；场内基金持仓来自最近一期定期披露。";
+    } else {
+      sourceText.textContent = "本次未完成外部组合刷新；体检仅使用已确认持仓执行确定性计算，不引用未取得的公告、语义检索或最新组合数据。";
+    }
     const formulaTitle = document.createElement("strong");
     formulaTitle.textContent = "确定性计算";
     const formulaList = document.createElement("ul");
@@ -8525,12 +8529,13 @@
   }
 
   async function runCopilotStockResearch() {
+    const symbolOverride = typeof arguments[0] === "string" ? arguments[0] : "";
     const output = byId("copilot-decision-output");
     if (!output) return;
     clear(output);
     const token = beginContextRequest("copilotResearchSequence");
 
-    const stockSymbol = byId("copilot-stock-input")?.value?.trim() || "";
+    const stockSymbol = symbolOverride.trim() || byId("copilot-stock-input")?.value?.trim() || "";
     if (!stockSymbol) {
       const emptyCard = document.createElement("div");
       emptyCard.className = "copilot-empty-output";
@@ -8616,7 +8621,7 @@
         btn.addEventListener("click", () => {
           const input = byId("copilot-stock-input");
           if (input) input.value = item.code;
-          runCopilotStockResearch();
+          runCopilotStockResearch(item.code);
         });
         chipsRow.append(btn);
       }
@@ -8716,7 +8721,7 @@
         retryBtn.style.marginRight = "10px";
         retryBtn.textContent = "重新尝试自动建档并研判";
         retryBtn.addEventListener("click", () => {
-          runCopilotStockResearch();
+          runCopilotStockResearch(stockSymbol);
         });
         retryWrap.append(retryBtn);
 
@@ -8752,7 +8757,7 @@
           btn.addEventListener("click", () => {
             const input = byId("copilot-stock-input");
             if (input) input.value = item.code;
-            runCopilotStockResearch();
+            runCopilotStockResearch(item.code);
           });
           chipsRow.append(btn);
         }

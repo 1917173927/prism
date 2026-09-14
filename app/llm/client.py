@@ -80,6 +80,7 @@ class AsyncLLMClient:
 
         async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
             try:
+                tool_call_buffers: dict[int, dict[str, str]] = {}
                 async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
                     if response.status_code != 200:
                         yield {
@@ -110,9 +111,36 @@ class AsyncLLMClient:
                             if content:
                                 yield {"type": "content", "delta": content}
                             if tool_calls:
-                                yield {"type": "tool_call_delta", "delta": tool_calls}
+                                for position, tool_call in enumerate(tool_calls):
+                                    if not isinstance(tool_call, dict):
+                                        continue
+                                    index = tool_call.get("index", position)
+                                    if not isinstance(index, int):
+                                        continue
+                                    buffer = tool_call_buffers.setdefault(index, {"name": "", "arguments": ""})
+                                    function = tool_call.get("function") or {}
+                                    if not isinstance(function, dict):
+                                        continue
+                                    name_delta = function.get("name", "")
+                                    arguments_delta = function.get("arguments", "")
+                                    if isinstance(name_delta, str):
+                                        buffer["name"] += name_delta
+                                    if isinstance(arguments_delta, str):
+                                        buffer["arguments"] += arguments_delta
                         except json.JSONDecodeError:
                             continue
+
+                for index in sorted(tool_call_buffers):
+                    buffered = tool_call_buffers[index]
+                    try:
+                        arguments = json.loads(buffered["arguments"] or "{}")
+                    except json.JSONDecodeError:
+                        yield {"type": "error", "message": "模型工具参数未通过校验。"}
+                        continue
+                    if not buffered["name"] or not isinstance(arguments, dict):
+                        yield {"type": "error", "message": "模型工具参数未通过校验。"}
+                        continue
+                    yield {"type": "tool_call", "name": buffered["name"], "arguments": arguments}
             except Exception as exc:
                 yield {"type": "error", "message": f"模型连接未完成（{type(exc).__name__}），请稍后重试。"}
 
