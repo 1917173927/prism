@@ -30,7 +30,7 @@ $env:PRISM_AUTH_ACCOUNTS_FILE = (Resolve-Path data/private/accounts.json).Path
 
 认证模式下，聊天历史和界面画像备注只保留在当前页面内存，刷新后清空；已确认风险问卷及持仓仍从服务端恢复。个人模型密钥通过“更多 → 模型设置”填写，只保存于服务端当前进程的账户配置，重启需重填；浏览器不缓存或回读明文密钥。服务端默认模型继续由 PRISM_LLM_API_KEY/DEEPSEEK_API_KEY 等环境配置提供，个人配置优先，留空保存恢复默认。
 
-模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。工具在系统临时目录创建独立 SQLite，打印访问地址，不清空原数据库。`?onboarding=1` 可重新弹出首次引导；`?dev=1` 开启开发者界面，在“更多”内切换 AI 默认/真实/Mock 模式。AI 模式与全局行情数据模式分别控制，模拟回复保留演示标识。
+模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。工具在系统临时目录创建独立 SQLite，打印访问地址，不清空原数据库。`?onboarding=1` 可重新弹出首次引导；右上角 AI/工具数据状态按钮可打开统一配置面板，切换 AI 默认/真实/Mock 模式、配置个人 API Key；全局工具数据切换保留管理员权限检查。`?dev=1` 仍可开启其他开发工具。AI 模式与全局行情数据模式分别控制，模拟回复保留演示标识。
 
 Markdown 资源已随仓库提供，正常启动无需 Node。修改 `app/api/static/markdown.src.js` 后运行 `npm ci`、`npm run build:markdown` 重新生成本地脚本。
 

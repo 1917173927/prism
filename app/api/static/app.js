@@ -5753,6 +5753,7 @@
   }
 
   function updateRuntimeDataModeUI() {
+    updateVisibleSourceStatus();
     const btn = byId("global-data-mode-toggle");
     const label = byId("global-data-mode-label");
     if (!btn || !label) return;
@@ -5795,6 +5796,8 @@
   function openDataModeConfirmModal() {
     const modal = byId("modal-data-mode-confirm");
     if (!modal) return;
+    closeLLMConfigModal();
+    document.body.appendChild(modal);
 
     const targetMode = (state.dataMode === "MOCK") ? "LIVE" : "MOCK";
     const currChip = byId("modal-curr-mode-chip");
@@ -6106,7 +6109,10 @@
     }
   }
 
+  let marketRequestSequence = 0;
   async function assessMarket() {
+    const sequence = ++marketRequestSequence;
+    const owner = state.ownerId;
     const input = byId("market-index-input");
     const result = byId("market-result-content");
     const status = byId("market-status");
@@ -6119,16 +6125,19 @@
       const response = await fetch(`/api/v1/market-assessments/${encodeURIComponent(name)}`, {headers: {"X-Owner-ID": state.ownerId}});
       if (!response.ok) throw await apiError(response);
       const data = await response.json();
+      if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
       status.textContent = data.status;
-      const quote = data.price === null ? "未返回行情" : `${data.price}（${data.change_pct >= 0 ? "+" : ""}${data.change_pct}%）`;
+      const quote = data.price === null ? "未返回行情" : `${Number(data.price).toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 2})}（${data.change_pct >= 0 ? "+" : ""}${Number(data.change_pct).toFixed(2)}%）`;
       result.replaceChildren();
       const heading = document.createElement("h3"); heading.textContent = data.index_name;
       const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.freshness} · ${data.source}`;
+      detail.className = "market-quote-value";
       const summary = document.createElement("p"); summary.textContent = data.summary;
       const audit = document.createElement("small"); audit.textContent = `审查：${data.compliance_status}；观察时间：${data.observed_at || "未提供"}`;
       result.append(heading, detail, summary, audit);
       renderIndexCandles(data.bars || []);
     } catch (error) {
+      if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
       status.textContent = "REVIEW_REQUIRED";
       result.textContent = error.message || "市场数据暂不可用。";
     }
@@ -6771,7 +6780,7 @@
       circle.setAttribute("stroke-dasharray", strokeDasharray);
       circle.setAttribute("stroke-dashoffset", -currentOffset);
       circle.setAttribute("transform", `rotate(-90 ${center} ${center})`);
-      circle.setAttribute("class", "donut-slice");
+      circle.setAttribute("class", "allocation-slice");
       
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
       title.textContent = `${item.label}: ${pct.toFixed(2)}%`;
@@ -6809,7 +6818,7 @@
     textLbl.setAttribute("font-size", "9.5");
     textLbl.setAttribute("fill", "var(--muted)");
     textLbl.setAttribute("font-family", "var(--sans)");
-    textLbl.textContent = state.portfolioOptimizationRun ? "目标权重" : "持仓穿透";
+    textLbl.textContent = allocationLabel;
 
     textGroup.append(textVal, textLbl);
     svg.append(textGroup);
@@ -7284,6 +7293,7 @@
     });
     renderInvalidatedDerivedState();
 
+    loadUserPreferences().catch(error => setError(error.message));
     // Keep the compact current-profile summary in sync; example profiles stay behind
     // the optional picker so the main task surface remains calm.
     document.querySelectorAll(".persona-chip").forEach(chip => {
@@ -9643,6 +9653,7 @@
   };
 
   function updateLLMConfigUI() {
+    updateVisibleSourceStatus();
     const dot = byId("llm-config-status-dot");
     const label = byId("llm-config-btn-label");
     const badge = byId("chat-model-badge");
@@ -9676,6 +9687,16 @@
       modal.style.display = "flex";
       loadModelSettings().catch(error => setError(error.message));
     }
+  }
+
+  function updateVisibleSourceStatus() {
+    const mode = byId("chat-runtime-mode")?.value || "AUTO";
+    const ai = byId("visible-ai-mode"), data = byId("visible-data-mode");
+    if (!ai || !data) return;
+    ai.textContent = mode === "MOCK" ? "AI · MOCK 模拟" : llmConfig.configured ? "AI · 真实接口已配置" : mode === "LIVE" ? "AI · 真实接口未配置" : "AI · 本地规则";
+    ai.dataset.mode = mode === "MOCK" ? "mock" : llmConfig.configured ? "live" : "pending";
+    data.textContent = state.dataMode === "LIVE" ? "工具数据 · LIVE" : "工具数据 · MOCK";
+    data.dataset.mode = state.dataMode === "LIVE" ? "live" : "mock";
   }
 
   function closeLLMConfigModal() {
@@ -10344,6 +10365,12 @@
 
   byId("chat-cancel-query")?.addEventListener("click", () => activeChatController?.abort());
   byId("chat-runtime-mode")?.addEventListener("change", updateLLMConfigUI);
+  byId("data-source-status")?.addEventListener("click", openLLMConfigModal);
+  document.querySelectorAll("[data-market-index]").forEach(button => button.addEventListener("click", () => {
+    byId("market-index-input").value = button.dataset.marketIndex;
+    document.querySelectorAll("[data-market-index]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    assessMarket();
+  }));
   document.querySelectorAll("[data-chat-prefix]").forEach(button => button.addEventListener("click", () => {
     const input = byId("copilot-natural-input");
     const prefixes = [...document.querySelectorAll("[data-chat-prefix]")].map(item => `${item.dataset.chatPrefix}：`);
