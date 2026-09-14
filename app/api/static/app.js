@@ -9799,7 +9799,8 @@
     llmConfig.baseUrl = settings.base_url;
     llmConfig.model = settings.model;
     updateLLMConfigUI();
-    byId("llm-config-status").textContent = settings.is_configured ? `已配置 ${settings.model}，可测试连接。` : "填写个人 API Key 或由服务端提供默认配置。";
+    const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
+    byId("llm-config-status").textContent = settings.is_configured ? `已配置 ${settings.model} · ${persistence}，可测试连接。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
     return settings;
   }
 

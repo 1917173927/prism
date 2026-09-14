@@ -106,7 +106,7 @@ async function load() {
   loaded = data;
   render(data);
   element('workflow-result').textContent = '';
-  status(`MOCK · 第 ${data.revision} 版 · ${data.boundary}`);
+  status(`${data.data_mode} · 第 ${data.revision} 版 · ${data.boundary}`);
 }
 
 function requireOwner() {
@@ -120,7 +120,7 @@ async function save() {
   const saved = await request('workflow', {definition, expected_revision:loaded.revision});
   if (owner() !== requestOwner) return;
   loaded = {...loaded, ...saved};
-  status(`已保存 · 第 ${saved.revision} 版 · MOCK`);
+  status(`已保存 · 第 ${saved.revision} 版 · ${loaded.data_mode}`);
 }
 
 async function run() {
@@ -137,9 +137,10 @@ async function run() {
   if (owner() !== requestOwner) return;
   runStates = new Map(output.result.execution.state.nodes.map(node => [node.node_id, node]));
   renderPipeline();
-  status(`MOCK · 第 ${revision} 版 · ${output.result.execution.state.status}`);
+  status(`${output.data_mode} · 第 ${revision} 版 · ${output.result.execution.state.status}`);
   element('workflow-result').textContent = output.result.execution.state.nodes.map(node =>
-    `${node.node_id}: ${node.status} · 尝试 ${node.attempt} 次`).join('\n') + '\n结果只用于合成数据编排演练，不是投资建议。';
+    `${node.node_id}: ${node.status} · 尝试 ${node.attempt} 次`).join('\n')
+    + (output.is_synthetic ? '\n结果只用于合成数据编排演练，不是投资建议。' : '\n研究结果来自真实节点，但仍不构成投资建议或交易指令。');
 }
 
 function edge(add) {

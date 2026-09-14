@@ -215,6 +215,7 @@ from app.store import (
 from app.store.contracts import build_decision_event
 from app.llm import CopilotAgent, CopilotMessage
 from app.llm.client import AsyncLLMClient, LLMConfig
+from app.security import ProtectedSecretStore, SecretProtectionError
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
@@ -283,6 +284,7 @@ class ConfirmedOcrPosition(BaseModel):
     cost_price: Decimal | None = Field(default=None, gt=0)
     previous_close: Decimal | None = Field(default=None, gt=0)
     observed_at: str | None = None
+    price_source: str | None = None
     price: Decimal = Field(gt=0)
     market_value_cny: Decimal | None = Field(default=None, ge=0)
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
@@ -424,6 +426,7 @@ def create_app(
     etnet_provider: EtNetProvider | None = None,
     # Backward-compatible injection point for existing iFinD provider tests.
     ifind_quant_provider: IFindQuantProvider | None = None,
+    secret_store: ProtectedSecretStore | None = None,
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
 
@@ -432,6 +435,7 @@ def create_app(
     """
 
     accounts = load_accounts(auth_accounts_path) if auth_accounts_path else {}
+    active_secret_store = secret_store if accounts else None
     owned_store = store is None
     if store is not None and database_url is not None:
         raise ValueError("select either an injected store or database_url")
@@ -471,7 +475,61 @@ def create_app(
     active_advanced_explainability = (
         advanced_explainability_service or AdvancedExplainabilityService()
     )
+
+    fixture_types = (
+            FixtureAdvisorQueryService,
+            FixtureResearchSpecialistMatrixService,
+            FixtureStockResearchService,
+            FixtureFundResearchService,
+            FixtureConvertibleBondResearchService,
+            FixturePortfolioOptimizationService,
+            FixtureScenarioSimulationService,
+    )
+
+    def service_uses_fixture(service: object) -> bool:
+        if isinstance(service, fixture_types):
+            return True
+        declared_mode = getattr(service, "serving_mode", None)
+        if declared_mode is not None:
+            normalized_mode = str(declared_mode).upper()
+            return normalized_mode not in {"LIVE", "DIRECT", "REAL"}
+        return False
+
+    def reject_fixture_execution_in_live(
+        service: object, capability: str
+    ) -> JSONResponse | None:
+        if (
+            get_runtime_mode_controller().mode == DataMode.LIVE
+            and service_uses_fixture(service)
+        ):
+            return _error_response(
+                409,
+                "LIVE_RESEARCH_NOT_AVAILABLE",
+                f"{capability}尚未接入真实研究服务；LIVE 模式拒绝返回演示数据",
+            )
+        return None
+
     user_model_settings: dict[str, CopilotConfigApiRequest] = {}
+
+    def persisted_model_setting(owner_id: str) -> CopilotConfigApiRequest | None:
+        cached = user_model_settings.get(owner_id)
+        if active_secret_store is None:
+            return cached
+        try:
+            encoded = active_secret_store.get(f"llm:{owner_id}")
+            if encoded is None:
+                user_model_settings.pop(owner_id, None)
+                return None
+            setting = CopilotConfigApiRequest.model_validate_json(encoded)
+        except (SecretProtectionError, ValidationError, ValueError) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="模型密钥安全存储暂时不可用",
+            ) from exc
+        if not setting.api_key.strip():
+            return None
+        user_model_settings[owner_id] = setting
+        return setting
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
     active_live_finance = live_finance_provider or FuyaoFinanceProvider()
@@ -1301,6 +1359,8 @@ def create_app(
         query: AdvisorQueryRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> AdvisorQueryResponse:
+        if blocked := reject_fixture_execution_in_live(active_advisor, "投顾查询"):
+            return blocked
         if (
             query.questionnaire.owner_id != owner_id
             or query.portfolio.owner_id != owner_id
@@ -1337,6 +1397,8 @@ def create_app(
     def get_advisor_query_template(
         owner_id: str = Depends(owner_dependency),
     ) -> AdvisorQueryTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_advisor, "投顾查询模板"):
+            return blocked
         template = active_advisor.query_template(owner_id)
         return AdvisorQueryTemplateResponse(
             fixture_id=template.fixture_id,
@@ -1474,6 +1536,8 @@ def create_app(
         request: AdvisorIntentRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> AdvisorPlanResponse:
+        if blocked := reject_fixture_execution_in_live(active_specialist, "投顾研究计划"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError("intent owner does not match owner scope")
         try:
@@ -1491,6 +1555,8 @@ def create_app(
     def get_research_matrix_template(
         owner_id: str = Depends(owner_dependency),
     ) -> ResearchMatrixTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_specialist, "专家研究矩阵模板"):
+            return blocked
         template = active_specialist.matrix_template(owner_id)
         return ResearchMatrixTemplateResponse(
             matrix_id=template.matrix_id,
@@ -1519,6 +1585,8 @@ def create_app(
         request: ResearchSpecialistMatrixRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> ResearchMatrixResponse:
+        if blocked := reject_fixture_execution_in_live(active_specialist, "专家研究矩阵"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError("research request owner does not match owner scope")
         try:
@@ -1543,6 +1611,8 @@ def create_app(
     def get_stock_research_template(
         owner_id: str = Depends(owner_dependency),
     ) -> StockResearchTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_stock, "股票研究模板"):
+            return blocked
         return active_stock.template(owner_id)
 
     @api.post(
@@ -1553,6 +1623,8 @@ def create_app(
         request: StockResearchRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> StockResearchResponse:
+        if blocked := reject_fixture_execution_in_live(active_stock, "股票完整研究"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError("stock research request owner does not match owner scope")
         try:
@@ -1572,6 +1644,8 @@ def create_app(
     def get_fund_research_template(
         owner_id: str = Depends(owner_dependency),
     ) -> FundResearchTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_fund, "基金研究模板"):
+            return blocked
         return active_fund.template(owner_id)
 
     @api.post(
@@ -1582,6 +1656,8 @@ def create_app(
         request: FundResearchRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> FundResearchResponse:
+        if blocked := reject_fixture_execution_in_live(active_fund, "基金完整研究"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError("fund research request owner does not match owner scope")
         try:
@@ -1615,6 +1691,8 @@ def create_app(
     def get_convertible_bond_research_template(
         owner_id: str = Depends(owner_dependency),
     ) -> ConvertibleBondResearchTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_convertible_bond, "可转债研究模板"):
+            return blocked
         return active_convertible_bond.template(owner_id)
 
     @api.post(
@@ -1625,6 +1703,8 @@ def create_app(
         request: ConvertibleBondResearchRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> ConvertibleBondResearchResponse:
+        if blocked := reject_fixture_execution_in_live(active_convertible_bond, "可转债完整研究"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError(
                 "convertible-bond research request owner does not match owner scope"
@@ -1677,6 +1757,8 @@ def create_app(
     def get_portfolio_optimization_template(
         owner_id: str = Depends(owner_dependency),
     ) -> PortfolioOptimizationTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_portfolio_optimization, "组合优化模板"):
+            return blocked
         return active_portfolio_optimization.template(owner_id)
 
     @api.post(
@@ -1687,6 +1769,8 @@ def create_app(
         request: PortfolioOptimizationRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> PortfolioOptimizationResponse:
+        if blocked := reject_fixture_execution_in_live(active_portfolio_optimization, "组合优化研究"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError(
                 "portfolio optimization request owner does not match owner scope"
@@ -1742,6 +1826,8 @@ def create_app(
     def get_scenario_simulation_template(
         owner_id: str = Depends(owner_dependency),
     ) -> ScenarioSimulationTemplateResponse:
+        if blocked := reject_fixture_execution_in_live(active_scenario_simulation, "情景模拟模板"):
+            return blocked
         return active_scenario_simulation.template(owner_id)
 
     @api.post(
@@ -1752,6 +1838,8 @@ def create_app(
         request: ScenarioSimulationRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> ScenarioSimulationResponse:
+        if blocked := reject_fixture_execution_in_live(active_scenario_simulation, "情景模拟研究"):
+            return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError(
                 "scenario simulation request owner does not match owner scope"
@@ -1857,6 +1945,8 @@ def create_app(
     def get_rebalancing_template(
         owner_id: str = Depends(owner_dependency),
     ) -> dict[str, object]:
+        if blocked := reject_fixture_execution_in_live(active_advisor, "再平衡模板"):
+            return blocked
         template = active_advisor.query_template(owner_id)
         positions = template.portfolio.position_snapshot.positions
         total_val = sum((p.market_value for p in positions), start=Decimal("0"))
@@ -1892,6 +1982,8 @@ def create_app(
     def get_evaluation_dashboard_summary(
         owner_id: str = Depends(owner_dependency),
     ) -> EvaluationDashboardResponse:
+        if blocked := reject_fixture_execution_in_live(active_evaluation_dashboard, "离线评测看板"):
+            return blocked
         req = EvaluationDashboardRequest(
             request_id=f"eval-dash-{int(active_clock().timestamp())}",
             operator_id=owner_id,
@@ -1908,6 +2000,8 @@ def create_app(
         request: EvaluationDashboardRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> EvaluationDashboardResponse:
+        if blocked := reject_fixture_execution_in_live(active_evaluation_dashboard, "离线评测看板"):
+            return blocked
         if request.operator_id != owner_id:
             raise StoreOwnerError("dashboard request operator does not match owner scope")
         return active_evaluation_dashboard.run_dashboard(request)
@@ -1955,7 +2049,7 @@ def create_app(
     )
 
     def owner_llm_config(owner_id: str | None) -> LLMConfig:
-        setting = user_model_settings.get(owner_id) if owner_id else None
+        setting = persisted_model_setting(owner_id) if owner_id else None
         return LLMConfig(**setting.model_dump()) if setting else copilot_agent.client.config
 
     def owner_llm_client(owner_id: str | None) -> AsyncLLMClient:
@@ -1990,14 +2084,22 @@ def create_app(
 
     @api.get("/api/v1/advisor/workflow")
     def get_workflow(owner_id: str = Depends(owner_dependency)):
+        if blocked := reject_fixture_execution_in_live(active_specialist, "研究工作流"):
+            return blocked
         matrix = active_specialist.matrix_template(owner_id)
         saved = active_store.get_workflow(owner_id)
+        synthetic = service_uses_fixture(active_specialist)
         return {**(saved or {"revision":0, "definition":default_workflow(matrix).model_dump(mode="json")}),
                 "catalog":[{"node_id":n.node_id, "role":n.role, "subject":n.subject} for n in matrix.nodes],
-                "data_mode":"MOCK", "boundary":"固定研究节点与合成数据的编排演练，不执行交易"}
+                "data_mode":"MOCK" if synthetic else "LIVE",
+                "is_synthetic":synthetic,
+                "boundary":("固定研究节点与合成数据的编排演练，不执行交易" if synthetic
+                            else "真实研究节点编排；只生成研究结果，不执行交易")}
 
     @api.post("/api/v1/advisor/workflow")
     def save_workflow(req: WorkflowSaveRequest, owner_id: str = Depends(owner_dependency)):
+        if blocked := reject_fixture_execution_in_live(active_specialist, "研究工作流"):
+            return blocked
         if req.definition.owner_id != owner_id:
             raise StoreOwnerError("workflow owner mismatch")
         try:
@@ -2008,6 +2110,8 @@ def create_app(
 
     @api.post("/api/v1/advisor/workflow-runs")
     async def run_workflow(req: WorkflowRunRequest, owner_id: str = Depends(owner_dependency)):
+        if blocked := reject_fixture_execution_in_live(active_specialist, "研究工作流"):
+            return blocked
         saved = active_store.get_workflow(owner_id)
         if not saved or saved["revision"] != req.expected_revision:
             return _error_response(409, "WORKFLOW_REVISION_CONFLICT", "请重新读取并保存工作流，再执行指定版本")
@@ -2020,7 +2124,9 @@ def create_app(
                 output = await active_specialist.run(request, matrix_override=matrix)
         except TimeoutError:
             return _error_response(408, "WORKFLOW_DEADLINE", "工作流执行超过总预算，已取消")
-        return {"definition_revision":saved["revision"], "data_mode":"MOCK", "is_synthetic":True,
+        synthetic = service_uses_fixture(active_specialist)
+        return {"definition_revision":saved["revision"],
+                "data_mode":"MOCK" if synthetic else "LIVE", "is_synthetic":synthetic,
                 "result":output.model_dump(mode="json")}
 
     @api.post("/api/v1/advisor/session-truth")
@@ -2093,8 +2199,9 @@ def create_app(
                 source=DisplayPolicySource.DEFAULT,
             )
 
-        if not req.llm_config and scoped_owner in user_model_settings:
-            req.llm_config = user_model_settings[scoped_owner].model_dump()
+        persisted_setting = persisted_model_setting(scoped_owner) if scoped_owner else None
+        if not req.llm_config and persisted_setting is not None:
+            req.llm_config = persisted_setting.model_dump()
         controller = get_runtime_mode_controller()
         configured = bool((req.llm_config or {}).get("api_key")) or copilot_agent.client.is_configured
         if req.model_mode != "MOCK" and not configured:
@@ -2214,6 +2321,15 @@ def create_app(
         if req.owner_id != owner_id:
             raise StoreOwnerError("OCR portfolio owner does not match owner scope")
         mode = get_runtime_mode_controller().mode
+        if mode == DataMode.LIVE and any(
+            "MISSING_OBSERVED_FIELDS" in (item.get("review_reasons") or [])
+            for item in req.positions
+        ):
+            return _error_response(
+                422,
+                "LIVE_OCR_PRICE_REQUIRED",
+                "LIVE 持仓存在未核验价格；请提供真实价格后再保存",
+            )
         try:
             calculated = recalculate_portfolio_values(
                 req.positions, req.cash_cny, req.owner_id,
@@ -2291,6 +2407,48 @@ def create_app(
             result = OCRPortfolioParser.get_instance().parse_image_bytes(content)
         except Exception:
             return _error_response(400, "OCR_PARSE_FAILED", "portfolio screenshot could not be parsed")
+        if get_runtime_mode_controller().mode == DataMode.LIVE:
+            try:
+                for position in result.get("positions", []):
+                    if position.get("asset_class") != "FUND_ETF":
+                        position["sector"] = "Unclassified"
+                    reasons = list(position.get("review_reasons") or [])
+                    if "MISSING_OBSERVED_FIELDS" not in reasons:
+                        continue
+                    symbol = str(position.get("asset_id") or "")
+                    clean_symbol = _validated_exchange_code(
+                        symbol, FuyaoFinanceProvider.A_SHARE_PREFIXES
+                    )
+                    if clean_symbol is None:
+                        return _error_response(
+                            422,
+                            "LIVE_OCR_PRICE_REQUIRED",
+                            "截图缺少可核验价格，且当前真实报价服务不支持该标的；不能保存到 LIVE 持仓",
+                        )
+                    quote = await active_live_finance.get_quote(clean_symbol)
+                    if quote is None or quote.get("is_synthetic") is not False:
+                        return _error_response(502, "LIVE_OCR_QUOTE_UNAVAILABLE", "真实报价未返回，不能确认 LIVE 持仓")
+                    position.update({
+                        "asset_id": quote["symbol"],
+                        "name": quote.get("name") or position.get("name"),
+                        "price": quote["price_cny"],
+                        "market_value_cny": round(float(position.get("quantity", 0)) * float(quote["price_cny"]), 2),
+                        "cost_price": None,
+                        "previous_close": quote.get("previous_close_cny"),
+                        "observed_at": quote["observed_at"],
+                        "price_source": quote.get("source") or "Fuyao structured financial data API",
+                        "sector": "Unclassified",
+                        "review_reasons": [reason for reason in reasons if reason != "MISSING_OBSERVED_FIELDS"],
+                    })
+                    position["needs_review"] = bool(position["review_reasons"])
+                result["has_low_confidence_items"] = any(
+                    bool(position.get("needs_review"))
+                    for position in result.get("positions", [])
+                )
+            except FuyaoProviderError as exc:
+                if exc.code in CAPABILITY_FAILURE_CODES:
+                    await get_runtime_mode_controller().record_fuyao_capability_failure("stock_quote", exc.code)
+                return _error_response(502, exc.code, exc.safe_message)
         result.update({
             "owner_id": owner_id,
             "image_digest": image_digest,
@@ -2310,6 +2468,14 @@ def create_app(
         from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
 
         mode = get_runtime_mode_controller().mode
+        if mode == DataMode.LIVE and any(
+            "MISSING_OBSERVED_FIELDS" in item.review_reasons for item in req.positions
+        ):
+            return _error_response(
+                422,
+                "LIVE_OCR_PRICE_REQUIRED",
+                "LIVE 持仓存在未核验价格；请重新识别并取得真实报价后再确认",
+            )
         try:
             confirmed_positions = [
                 item.model_dump(mode="json") for item in req.positions
@@ -2360,10 +2526,11 @@ def create_app(
 
     @api.get("/api/v1/user/model-settings")
     def get_user_model_settings(owner_id: str = Depends(owner_dependency)):
-        setting = user_model_settings.get(owner_id)
+        setting = persisted_model_setting(owner_id)
         cfg = setting or copilot_agent.client.config
         return {"is_configured": bool(cfg.api_key), "scope": "USER" if setting else "SERVER",
-                "model": cfg.model, "base_url": cfg.base_url}
+                "model": cfg.model, "base_url": cfg.base_url,
+                "persistence": "OS_PROTECTED" if active_secret_store is not None else "PROCESS_ONLY"}
 
     @api.put("/api/v1/user/model-settings")
     def save_user_model_settings(req: CopilotConfigApiRequest, owner_id: str = Depends(owner_dependency)):
@@ -2378,8 +2545,19 @@ def create_app(
         if not req.model.strip() or len(req.model) > 100 or len(req.api_key) > 4096:
             raise HTTPException(status_code=422, detail="模型名称或密钥格式无效")
         if req.api_key.strip():
-            user_model_settings[owner_id] = req.model_copy(update={"api_key": req.api_key.strip(), "base_url": req.base_url.strip().rstrip("/")})
+            setting = req.model_copy(update={"api_key": req.api_key.strip(), "base_url": req.base_url.strip().rstrip("/")})
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.set(f"llm:{owner_id}", setting.model_dump_json())
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="模型密钥安全保存失败") from exc
+            user_model_settings[owner_id] = setting
         else:
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.delete(f"llm:{owner_id}")
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="模型密钥安全删除失败") from exc
             user_model_settings.pop(owner_id, None)
         return get_user_model_settings(owner_id)
 
@@ -2764,10 +2942,20 @@ def create_app(
     return api
 
 
+_DEFAULT_SECRET_STORE = (
+    ProtectedSecretStore(
+        os.getenv("PRISM_SECRET_STORE_PATH")
+        or str(Path(__file__).resolve().parents[2] / "data/private/prism-secrets.json")
+    )
+    if os.name == "nt"
+    else None
+)
+
 app = create_app(
     database_url=os.getenv("PRISM_DATABASE_URL") or None,
     database_path=os.getenv("PRISM_DB_PATH") or str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3"),
     auth_accounts_path=os.getenv("PRISM_AUTH_ACCOUNTS_FILE") or None,
+    secret_store=_DEFAULT_SECRET_STORE,
 )
 
 

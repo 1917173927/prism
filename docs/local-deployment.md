@@ -8,6 +8,7 @@
 |---|---|---|---|
 | `PRISM_DB_PATH` | `data/private/prism.sqlite3` | 本地持久化 | SQLite 回归与备份恢复 |
 | `PRISM_DATABASE_URL` | 未设置 | PostgreSQL 连接配置，设置后优先于 SQLite | 真实 PostgreSQL 17.11 隔离回归；不自动搬迁旧数据 |
+| `PRISM_SECRET_STORE_PATH` | `data/private/prism-secrets.json` | Windows DPAPI 保护的本地凭据文件 | 文件只保存密文；必须由同一 Windows 账户运行 Prism 才能解密 |
 | `PRISM_AUTH_ACCOUNTS_FILE` | 未设置 | 启用 HTTP Basic 账户校验 | 本地回环；跨机器必须先配置 HTTPS |
 | `HITHINK_FINANCE_API_KEY` | 未设置 | 扶摇服务端凭据 | 真实能力探测成功后可用 |
 | `IWENCAI_API_KEY` / `IWENCAI_BASE_URL` | 未设置 / `https://openapi.iwencai.com` | 问财 OpenAPI 服务端凭据与地址 | 配置 Skill 版本头并完成真实查询后可用 |
@@ -28,7 +29,7 @@ $env:PRISM_AUTH_ACCOUNTS_FILE = (Resolve-Path data/private/accounts.json).Path
 
 普通账户省略 `--admin`，独立数据空间指定不同 `--owner`。明确更换已有密码时加入 `--replace`，变更后重启服务。浏览器通过标准认证提示框登录。HTTP Basic 没有应用级会话退出或过期机制；此实现不替代公网身份提供方、限流和安全网关。账户文件由本机操作系统权限保护，不应放入共享目录。
 
-认证模式下，聊天历史和界面画像备注只保留在当前页面内存，刷新后清空；已确认风险问卷及持仓仍从服务端恢复。个人模型密钥通过“更多 → 模型设置”填写，只保存于服务端当前进程的账户配置，重启需重填；浏览器不缓存或回读明文密钥。服务端默认模型继续由 PRISM_LLM_API_KEY/DEEPSEEK_API_KEY 等环境配置提供，个人配置优先，留空保存恢复默认。
+认证模式下，聊天历史和界面画像备注只保留在当前页面内存，刷新后清空；已确认风险问卷及持仓仍从服务端恢复。Windows 本地运行且已启用 `PRISM_AUTH_ACCOUNTS_FILE` 时，个人模型密钥通过“更多 → 模型设置”填写，由当前 Windows 账户的 DPAPI 加密并保存到 `PRISM_SECRET_STORE_PATH`；服务重启后继续生效，浏览器和接口不缓存或回读明文密钥。未启用身份绑定时只保存在当前服务进程，避免调用者伪造 owner 后使用或替换他人的持久凭据。留空保存会删除当前作用域的个人密钥并恢复服务端默认。服务端默认模型继续由 `PRISM_LLM_API_KEY`、`DEEPSEEK_API_KEY` 等环境配置提供。在非 Windows 部署中，只有部署环境的 Secret/环境变量能够持久化；页面填写的个人密钥仅在当前服务进程内有效，不会明文落盘。
 
 模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。工具在系统临时目录创建独立 SQLite，打印访问地址，不清空原数据库。`?onboarding=1` 可重新弹出首次引导；右上角 AI/工具数据状态按钮可打开统一配置面板，切换 AI 默认/真实/Mock 模式、配置个人 API Key；全局工具数据切换保留管理员权限检查。`?dev=1` 仍可开启其他开发工具。AI 模式与全局行情数据模式分别控制，模拟回复保留演示标识。
 

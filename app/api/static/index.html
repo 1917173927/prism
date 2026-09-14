@@ -510,7 +510,7 @@
                     <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存配置</span>
                   </button>
                 </div>
-                <p class="modal-hint">默认使用服务端配置。个人密钥仅保存在服务端本次运行内存中，重启后需重新填写；留空保存可恢复默认。</p>
+                <p class="modal-hint">默认使用服务端配置。配置状态会说明个人密钥是否已由操作系统安全机制持久化；浏览器和接口不会回读明文，留空保存可删除个人配置并恢复默认。</p>
                 <button id="test-user-model" type="button" class="copilot-action-btn secondary">测试连接</button>
                 <div id="llm-config-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>

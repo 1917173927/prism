@@ -130,11 +130,30 @@ def recalculate_portfolio_values(
         ):
             raise ValueError("quantity must be a positive integer and price must be positive")
         market_value = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        position_observed_at = observed_at
+        if row.get("observed_at"):
+            try:
+                position_observed_at = datetime.fromisoformat(
+                    str(row["observed_at"]).replace("Z", "+00:00")
+                )
+            except ValueError as exc:
+                raise ValueError("observed_at must be a valid timestamp") from exc
+            if position_observed_at.tzinfo is None or position_observed_at.utcoffset() is None:
+                raise ValueError("observed_at must be timezone-aware")
         asset_id = str(row.get("asset_id", "")).strip().upper()
         code = asset_id.split(".", 1)[0]
         is_fund = row.get("asset_class") == "FUND_ETF" or code in ETF_LOOKTHROUGH_DATABASE
         asset_type = AssetType.ETF if is_fund else AssetType.STOCK
         security = ETF_LOOKTHROUGH_DATABASE.get(code) if is_fund else A_SHARE_DATABASE.get(code)
+        if (
+            not allow_synthetic_lookthrough
+            and not is_fund
+            and re.fullmatch(r"(?:(?:600|601|603|605|688)\d{3}\.SH|(?:000|001|002|003|300|301)\d{3}\.SZ)", asset_id)
+        ):
+            security = {
+                "name": row.get("name") or asset_id,
+                "sector": "Unclassified",
+            }
         # User-confirmed domestic equities need not exist in the demo catalogue.
         # Unknown industry stays unclassified so downstream suitability cannot infer it.
         if security is None and not is_fund and re.fullmatch(r"(?:(?:600|601|603|605|688)\d{3}\.SH|(?:000|001|002|003|300|301)\d{3}\.SZ)", asset_id):
@@ -160,8 +179,8 @@ def recalculate_portfolio_values(
             quantity=quantity,
             market_value=market_value,
             currency="CNY",
-            as_of=observed_at,
-            source="user-confirmed OCR import",
+            as_of=position_observed_at,
+            source=str(row.get("price_source") or "user-confirmed OCR import"),
         ))
         if is_fund and allow_synthetic_lookthrough:
             sector_exposure = security.get("sector_exposure", {})

@@ -25,6 +25,8 @@ def _to_d(val: float) -> Decimal:
 class EvaluationDashboardService:
     """Service to execute eval_cases and generate dashboard scorecards."""
 
+    serving_mode = "OFFLINE_FIXTURE"
+
     def run_dashboard(
         self,
         request: EvaluationDashboardRequest,

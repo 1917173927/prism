@@ -1,5 +1,15 @@
 # LOG
 
+## 2026-09-14：本地可修复的真实化边界与密钥持久化
+
+- 新增 Windows DPAPI 保护的 owner-scoped 密钥存储。个人模型配置先写入受保护文件再更新进程缓存，重启后按 owner 恢复；删除、损坏文件和错误密文均失败关闭，响应不包含明文密钥。
+- 已启用账户身份绑定的 Windows 桌面入口使用 `data/private/prism-secrets.json`，可由 `PRISM_SECRET_STORE_PATH` 覆盖。文件位于既有 Git 忽略的 `data/private/`，只保存 DPAPI 密文；未认证开发模式保持进程内配置，非 Windows 环境不启用不安全的明文持久化回退。
+- LIVE 模式对七类默认 Fixture 研究服务及固定合成工作流增加统一硬闸门，返回 `LIVE_RESEARCH_NOT_AVAILABLE`，不再让页面或 API 把 Fixture 结果带入 LIVE。MOCK 模式的显式演示/回归能力不变。
+- 首轮独立三路审查发现 GET 模板、再平衡模板、离线评测和工作流标签仍有 Mock 旁路，同时发现密钥缓存跨实例失效、文件写入缺少跨进程锁及未认证 owner 可伪造。现已增加十个 GET/看板硬闸门、动态工作流 provenance、跨进程锁与唯一临时文件、DPAPI 明文缓冲擦除、每次读取持久层以同步轮换/删除，并只在身份绑定后启用持久化。
+- 后续审查又定位到 OCR 缺价时使用内置静态价格并可确认到 LIVE 的旁路。现在 owner OCR 在 LIVE 下会用扶摇真实 A 股报价覆盖缺失价格、绑定观察时间并清除静态成本/行业推断；不受真实报价支持或请求失败时拒绝保存。两个确认入口也会拒绝仍带 `MISSING_OBSERVED_FIELDS` 的输入。
+- 验证：新增保护存储、并发写入、跨应用重启/轮换/删除、owner 身份绑定、开发模式不落盘、十个 Fixture GET、工作流保存、八条执行拒绝及 LIVE OCR 报价/行业来源回归；全量 `718` 项收集结果为 `709 passed, 9 skipped`。Windows DPAPI 在认证账户下实际跨 `create_app()` 重启通过；真实扶摇请求返回 `600519.SH` 行情和 `510300.SH` 十条披露持仓，均为 `is_synthetic=false`；`compileall`、三个 JavaScript 语法检查、`git diff --check` 通过。
+- 仍未完成：问财当前进程未配置，完整股票财务、基金指标、可转债数据和七类 LIVE 研究适配器不能在没有外部权限/字段契约时实现；这些入口现在明确不可用，不再以 Mock 冒充。
+
 ## 2026-09-14 — 真实模型工具调用与快捷按钮链路修复
 
 - 根因是 OpenAI-compatible 接口将工具名称和 JSON 参数拆成 `tool_calls` 增量，而 Agent 只处理完整调用；现按调用索引组装并校验 JSON 对象，支持多个调用，畸形参数返回安全错误且不回显原文。
