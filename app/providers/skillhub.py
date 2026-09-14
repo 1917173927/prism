@@ -59,7 +59,10 @@ class WencaiSkillHubProvider(FinancialProvider):
             or "https://openapi.iwencai.com"
         ).rstrip("/")
         self._timeout_seconds = min(max(timeout_seconds, 0.001), 2.0)
-        self._skill_id = os.getenv("WENCAI_SKILL_ID", "prism-investment-agent").strip()
+        self._skill_id = os.getenv("WENCAI_SKILL_ID", "").strip()
+        self._announcement_skill_id = os.getenv(
+            "WENCAI_ANNOUNCEMENT_SKILL_ID", "announcement-search"
+        ).strip()
         self._skill_version = os.getenv("WENCAI_SKILL_VERSION", "1.0.0").strip()
 
     @property
@@ -104,19 +107,30 @@ class WencaiSkillHubProvider(FinancialProvider):
             )
 
         query = str(request.subject or request.parameters.get("query") or "")
-        is_comprehensive_search = request.operation in {
-            ProviderOperation.SEARCH_NEWS,
-            ProviderOperation.SEARCH_REPORTS,
-        }
-        if is_comprehensive_search:
-            channel = "news" if request.operation == ProviderOperation.SEARCH_NEWS else "report"
+        try:
+            result_limit = int(request.parameters.get("limit", 10))
+        except (TypeError, ValueError):
+            result_limit = 10
+        is_announcement_search = request.operation == ProviderOperation.SEARCH_NEWS
+        is_comprehensive_search = is_announcement_search or request.operation == ProviderOperation.SEARCH_REPORTS
+        if is_announcement_search:
             endpoint = f"{self._base_url}/v1/comprehensive/search"
             payload = {
-                "channels": [channel],
+                "query": query,
+                "channels": ["announcement"],
+                "app_id": "AIME_SKILL",
+                "size": min(max(result_limit, 1), 100),
+            }
+            skill_id = self._announcement_skill_id or "announcement-search"
+        elif is_comprehensive_search:
+            endpoint = f"{self._base_url}/v1/comprehensive/search"
+            payload = {
+                "channels": ["report"],
                 "app_id": "AIME_SKILL",
                 "query": query,
                 "limit": str(request.parameters.get("limit", "10")),
             }
+            skill_id = self._skill_id or "prism-investment-agent"
         else:
             endpoint = f"{self._base_url}/v1/query2data"
             payload = {
@@ -126,29 +140,58 @@ class WencaiSkillHubProvider(FinancialProvider):
                 "is_cache": str(request.parameters.get("is_cache", "1")),
                 "expand_index": str(request.parameters.get("expand_index", "true")).lower(),
             }
+            skill_id = self._skill_id or "prism-investment-agent"
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
-                resp = await client.post(
-                    endpoint,
-                    headers={
-                        "Authorization": f"Bearer {self._api_key}",
-                        "Content-Type": "application/json",
-                        "X-Request-ID": request.request_id,
-                        "X-Claw-Call-Type": "normal",
-                        "X-Claw-Skill-Id": self._skill_id,
-                        "X-Claw-Skill-Version": self._skill_version,
+                headers = {
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "X-Request-ID": request.request_id,
+                    "X-Claw-Call-Type": "normal",
+                    "X-Claw-Skill-Id": skill_id,
+                    "X-Claw-Skill-Version": self._skill_version,
+                    "X-Claw-Trace-Id": secrets.token_hex(32),
+                }
+                if not is_announcement_search:
+                    headers.update({
                         "X-Claw-Plugin-Id": "none",
                         "X-Claw-Plugin-Version": "none",
-                        "X-Claw-Trace-Id": secrets.token_hex(32),
-                    },
+                    })
+                resp = await client.post(
+                    endpoint,
+                    headers=headers,
                     json=payload,
                 )
                 latency_ms = max(1, int((datetime.now(UTC) - start_time).total_seconds() * 1000))
 
                 if resp.status_code == 200:
                     data = resp.json()
-                    if not is_comprehensive_search and data.get("status_code", 0) != 0:
+                    if not isinstance(data, dict):
+                        return ProviderResult(
+                            request_id=request.request_id,
+                            request_fingerprint=fingerprint,
+                            provider=self._name,
+                            status=ProviderStatus.FAILED,
+                            serving_mode=ProviderServingMode.DIRECT,
+                            retrieved_at=datetime.now(UTC),
+                            records=(),
+                            missing_fields=(),
+                            issues=(ProviderIssue(
+                                code=ProviderIssueCode.INVALID_RESPONSE,
+                                stage="execute",
+                                safe_message="Wencai returned a non-object JSON response.",
+                                retriable=False,
+                            ),),
+                            scope_description=f"Wencai invalid response for {query}",
+                            latency_ms=latency_ms,
+                        )
+                    invalid_status = (
+                        data.get("status_code") != 0
+                        if is_announcement_search
+                        else not is_comprehensive_search and data.get("status_code", 0) != 0
+                    )
+                    if invalid_status:
                         return ProviderResult(
                             request_id=request.request_id,
                             request_fingerprint=fingerprint,

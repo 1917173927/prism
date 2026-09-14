@@ -232,8 +232,9 @@ class TestWencaiSkillHubProvider:
             assert "WENCAI_SKILLHUB_API_KEY" in result.missing_fields
         asyncio.run(_run())
 
-    def test_configured_provider_success(self):
+    def test_configured_provider_success(self, monkeypatch):
         async def _run():
+            monkeypatch.setenv("WENCAI_SKILL_ID", "prism-investment-agent")
             provider = WencaiSkillHubProvider(api_key="valid_token", base_url="https://mock.skillhub")
             req = ProviderRequest(
                 request_id="req-live-002",
@@ -244,12 +245,13 @@ class TestWencaiSkillHubProvider:
             mock_resp = httpx.Response(
                 200,
                 json={
+                    "status_code": 0,
                     "summary": "寒武纪AI芯片产品在算力中心渗透加速",
                     "sentiment": "BULLISH",
                     "confidence": 0.98,
-                    "items": [{"code": "688256.SH", "title": "寒武纪芯片供应链报告"}],
+                    "data": [{"code": "688256.SH", "title": "寒武纪芯片供应链报告"}],
                 },
-                request=httpx.Request("POST", "https://mock.skillhub/semantic/search"),
+                request=httpx.Request("POST", "https://mock.skillhub/v1/comprehensive/search"),
             )
 
             with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
@@ -259,6 +261,81 @@ class TestWencaiSkillHubProvider:
                 assert len(result.records) == 1
                 assert result.records[0].fields["summary"] == "寒武纪AI芯片产品在算力中心渗透加速"
                 assert result.records[0].fields["sentiment"] == "BULLISH"
+                assert mock_post.call_args.args[0] == "https://mock.skillhub/v1/comprehensive/search"
+                headers = mock_post.call_args.kwargs["headers"]
+                assert headers["X-Claw-Skill-Id"] == "announcement-search"
+                assert "X-Claw-Plugin-Id" not in headers
+                assert mock_post.call_args.kwargs["json"] == {
+                    "query": "寒武纪",
+                    "channels": ["announcement"],
+                    "app_id": "AIME_SKILL",
+                    "size": 10,
+                }
+        asyncio.run(_run())
+
+    def test_announcement_search_requires_status_code(self):
+        async def _run():
+            provider = WencaiSkillHubProvider(api_key="valid_token", base_url="https://mock.skillhub")
+            req = ProviderRequest(
+                request_id="req-live-missing-status",
+                operation=ProviderOperation.SEARCH_NEWS,
+                subject="公告查询",
+            )
+            mock_resp = httpx.Response(
+                200,
+                json={"error": "upstream contract changed"},
+                request=httpx.Request("POST", "https://mock.skillhub/v1/comprehensive/search"),
+            )
+            with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+                mock_post.return_value = mock_resp
+                result = await provider.execute(req)
+            assert result.status == ProviderStatus.FAILED
+            assert result.issues[0].code == ProviderIssueCode.INVALID_RESPONSE
+
+        asyncio.run(_run())
+
+    def test_announcement_search_rejects_nonzero_upstream_status(self):
+        async def _run():
+            provider = WencaiSkillHubProvider(api_key="valid_token", base_url="https://mock.skillhub")
+            req = ProviderRequest(
+                request_id="req-live-rejected",
+                operation=ProviderOperation.SEARCH_NEWS,
+                subject="无效公告查询",
+            )
+            mock_resp = httpx.Response(
+                200,
+                json={"status_code": 1001, "status_msg": "invalid request", "data": []},
+                request=httpx.Request("POST", "https://mock.skillhub/v1/comprehensive/search"),
+            )
+            with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+                mock_post.return_value = mock_resp
+                result = await provider.execute(req)
+            assert result.status == ProviderStatus.FAILED
+            assert result.records == ()
+            assert result.issues[0].code == ProviderIssueCode.INVALID_RESPONSE
+
+        asyncio.run(_run())
+
+    def test_announcement_search_normalizes_invalid_limit(self):
+        async def _run():
+            provider = WencaiSkillHubProvider(api_key="valid_token", base_url="https://mock.skillhub")
+            req = ProviderRequest(
+                request_id="req-live-invalid-limit",
+                operation=ProviderOperation.SEARCH_NEWS,
+                subject="公告查询",
+                parameters={"limit": "invalid"},
+            )
+            mock_resp = httpx.Response(
+                200,
+                json={"status_code": 0, "data": []},
+                request=httpx.Request("POST", "https://mock.skillhub/v1/comprehensive/search"),
+            )
+            with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+                mock_post.return_value = mock_resp
+                result = await provider.execute(req)
+            assert result.status == ProviderStatus.EMPTY
+            assert mock_post.call_args.kwargs["json"]["size"] == 10
+
         asyncio.run(_run())
 
     def test_official_iwencai_alias_and_query_contract(self, monkeypatch):
@@ -293,8 +370,47 @@ class TestWencaiSkillHubProvider:
                 assert called_url == "https://openapi.iwencai.com/v1/query2data"
                 headers = mock_post.call_args.kwargs["headers"]
                 assert headers["Authorization"] == "Bearer official-test-key"
+                assert headers["X-Claw-Skill-Id"] == "prism-investment-agent"
                 assert headers["X-Claw-Skill-Version"] == "1.0.0"
-                assert mock_post.call_args.kwargs["json"]["query"] == req.subject
+                assert headers["X-Claw-Plugin-Id"] == "none"
+                assert headers["X-Claw-Plugin-Version"] == "none"
+                assert mock_post.call_args.kwargs["json"] == {
+                    "query": req.subject,
+                    "page": "1",
+                    "limit": "10",
+                    "is_cache": "1",
+                    "expand_index": "true",
+                }
+
+        asyncio.run(_run())
+
+    def test_report_search_preserves_legacy_contract(self, monkeypatch):
+        async def _run():
+            monkeypatch.setenv("WENCAI_SKILL_ID", "prism-investment-agent")
+            provider = WencaiSkillHubProvider(api_key="valid_token", base_url="https://mock.skillhub")
+            req = ProviderRequest(
+                request_id="req-report-001",
+                operation=ProviderOperation.SEARCH_REPORTS,
+                subject="新能源行业研报",
+            )
+            mock_resp = httpx.Response(
+                200,
+                json={"items": [{"title": "新能源行业研究"}]},
+                request=httpx.Request("POST", "https://mock.skillhub/v1/comprehensive/search"),
+            )
+            with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+                mock_post.return_value = mock_resp
+                result = await provider.execute(req)
+            assert result.status == ProviderStatus.SUCCESS
+            headers = mock_post.call_args.kwargs["headers"]
+            assert headers["X-Claw-Skill-Id"] == "prism-investment-agent"
+            assert headers["X-Claw-Plugin-Id"] == "none"
+            assert mock_post.call_args.kwargs["json"] == {
+                "channels": ["report"],
+                "app_id": "AIME_SKILL",
+                "query": "新能源行业研报",
+                "limit": "10",
+            }
 
         asyncio.run(_run())
 

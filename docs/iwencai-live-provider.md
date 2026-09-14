@@ -15,12 +15,13 @@ export IWENCAI_API_KEY="<server-side-key>"
 export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 export WENCAI_SKILLHUB_CONTRACT_VERIFIED="true"
 export WENCAI_SKILL_ID="prism-investment-agent"
+export WENCAI_ANNOUNCEMENT_SKILL_ID="announcement-search"
 export WENCAI_SKILL_VERSION="1.0.0"
 ```
 
 `IWENCAI_*` 与原有 `WENCAI_SKILLHUB_*` 配置均可使用，前者优先用于问财 OpenAPI。`WENCAI_SKILLHUB_CONTRACT_VERIFIED=true` 是人工确认闸门，表示当前 Base URL、鉴权方式和响应字段已经完成映射。缺少该变量时，系统保持 MOCK，LIVE 切换返回 409。
 
-问财 OpenAPI 查询使用 `POST /v1/query2data`；新闻和研报使用 `POST /v1/comprehensive/search`。请求使用服务端 Bearer 鉴权，并附带 Skill 调用标识和 64 位追踪 ID。浏览器不会接收凭据。
+问财 OpenAPI 查询使用 `POST /v1/query2data`；公告和研报使用 `POST /v1/comprehensive/search`。公告查询固定复用官方 `announcement-search` 契约：`channels=["announcement"]`、`app_id="AIME_SKILL"`、整数 `size`，并要求响应明确返回 `status_code=0`。`WENCAI_ANNOUNCEMENT_SKILL_ID` 可单独覆盖公告 Skill ID；旧的 `WENCAI_SKILL_ID` 仅作用于其他查询路径。请求使用服务端 Bearer 鉴权，并附带 Skill 调用标识和 64 位追踪 ID。浏览器不会接收凭据。
 
 ## 3. LIVE 刷新流程
 
