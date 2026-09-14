@@ -9482,14 +9482,16 @@
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
     const chatOwner = state.ownerId;
-    let chatTruth;
+    let chatTruth = null;
     try {
-      chatTruth = await refreshSessionTruth();
-      if (!chatTruth) return;
-      if (chatTruth.revision && chatTruth.status !== "LOCKED") {
-        setError("分析前提已变化，请核对后点击“确认使用当前分析前提”"); return;
-      }
-    } catch (error) { setError(error.message || "无法检查分析前提"); return; }
+      const currentTruth = await refreshSessionTruth();
+      if (currentTruth?.revision && currentTruth.status === "LOCKED") chatTruth = currentTruth;
+    } catch (error) {
+      // A missing or stale portfolio/profile truth may not block ordinary chat.
+      // Keeping chatTruth null prevents the backend from treating this turn as
+      // personalized advice based on an unconfirmed snapshot.
+      chatTruth = null;
+    }
 
     if (signal.aborted) return;
     if (input) input.value = "";
@@ -9572,20 +9574,22 @@
         body: JSON.stringify({
           message: query,
           model_mode: byId("chat-runtime-mode")?.value || "AUTO",
-          session_truth_id: chatTruth.revision ? "workbench" : null,
-          session_truth_revision: chatTruth.revision || null,
+          session_truth_id: chatTruth?.revision ? "workbench" : null,
+          session_truth_revision: chatTruth?.revision || null,
           owner_id: state.ownerId,
-          profile_version: state.profile?.profile?.profile_version || null,
-          behavior_profile_version: state.behaviorProfile?.profile_version || null,
-          portfolio_snapshot_id: state.portfolio?.position_snapshot?.snapshot_id || null,
+          profile_version: chatTruth ? state.profile?.profile?.profile_version || null : null,
+          behavior_profile_version: chatTruth ? state.behaviorProfile?.profile_version || null : null,
+          portfolio_snapshot_id: chatTruth ? state.portfolio?.position_snapshot?.snapshot_id || null : null,
           persona_id: state.selectedPersona || "custom-user",
-          persona_info: {
+          persona_info: chatTruth ? {
             name: persona.name,
             tag: activeProfileTag(),
             max_drawdown: persona.maxDrawdown,
             budget_cap: persona.budgetCap,
-          },
-          history: chatHistory.slice(-6),
+          } : null,
+          // The current query is already passed as `message`; do not duplicate
+          // the just-appended user turn in conversational history.
+          history: chatTruth ? chatHistory.slice(-7, -1) : [],
           stream: true,
           llm_config: llmConfig.apiKey ? {
             api_key: llmConfig.apiKey,
@@ -9695,7 +9699,10 @@
               contentBox.append(cursor);
               messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
-          } catch (e) {}
+          } catch (e) {
+            streamError = "分析响应格式异常";
+            break;
+          }
         }
       }
 

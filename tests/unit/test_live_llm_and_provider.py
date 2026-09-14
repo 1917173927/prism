@@ -167,6 +167,35 @@ def test_agent_rejects_content_only_answer_for_financial_query() -> None:
     assert not any(event["type"] == "token" for event in named_events)
 
 
+def test_agent_allows_general_financial_education_without_live_tool() -> None:
+    class ContentOnlyClient:
+        is_configured = True
+
+        async def stream_chat(self, messages, tools=None):
+            assert "未绑定已锁定的风险画像与持仓快照" in messages[0]["content"]
+            assert "张先生" not in messages[0]["content"]
+            yield {"type": "content", "delta": "市盈率是股价与每股收益的比值。"}
+
+    async def _run():
+        agent = CopilotAgent(llm_client=ContentOnlyClient())
+        return [event async for event in agent.stream_chat("什么是市盈率")]
+
+    events = asyncio.run(_run())
+    assert "".join(event.get("delta", "") for event in events) == "市盈率是股价与每股收益的比值。"
+    assert not any(event["type"] == "error" for event in events)
+    assert CopilotAgent._requires_grounded_tool("解释一下宁德时代") is True
+    assert CopilotAgent._requires_grounded_tool("什么是资产配置") is False
+    assert CopilotAgent._requires_grounded_tool("市盈率是什么") is False
+    assert CopilotAgent._requires_grounded_tool("什么是投资组合") is False
+    assert CopilotAgent._requires_grounded_tool("解释一下买入和卖出的区别") is False
+    assert CopilotAgent._requires_grounded_tool("什么是基金净值") is False
+    assert CopilotAgent._requires_grounded_tool("什么是债券收益率") is False
+    assert CopilotAgent._requires_grounded_tool("什么是净资产收益率(ROE)") is False
+    assert CopilotAgent._requires_grounded_tool("什么是贵州茅台的市盈率") is True
+    assert CopilotAgent._requires_grounded_tool("解释一下600519的市盈率") is True
+    assert CopilotAgent._requires_grounded_tool("什么是沪深300市盈率") is True
+
+
 def test_live_market_provider_stock_quote() -> None:
     async def _run():
         provider = LiveMarketProvider()

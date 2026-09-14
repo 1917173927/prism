@@ -33,16 +33,21 @@ const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(i
 const document={createElement:()=>new Element()};
 const state={ownerId:'owner',selectedPersona:'custom-user'};
 const PERSONAS={}, DEFAULT_USER_PROFILE={}, llmConfig={}, chatHistory=[];
-const refreshSessionTruth=async()=>({revision:1,status:'LOCKED'});
+let truthResult={revision:1,status:'LOCKED'};
+let truthFailure=null;
+const refreshSessionTruth=async()=>{if(truthFailure)throw truthFailure;return truthResult;};
 const setError=message=>{throw Error(message);};
 const saveCopilotChatHistory=()=>{};
+const renderAssistantMarkdown=(node,text)=>{node.textContent=text;};
 const buildPipelineStepItem=()=>new Element();
 let completed=0;
 const setPipelineStepState=(item,state)=>{if(state==='completed')completed++;};
 let wire='';
-const fetch=async()=>new Response(new ReadableStream({start(controller){
+let fetchCalls=0;
+let lastFetchOptions=null;
+const fetch=async(url,options)=>{fetchCalls++;lastFetchOptions=options;return new Response(new ReadableStream({start(controller){
   controller.enqueue(new TextEncoder().encode(wire));controller.close();
-}}));
+}}));};
 '''+function+r'''
 (async()=>{
  for(const [data,message] of [
@@ -58,6 +63,39 @@ const fetch=async()=>new Response(new ReadableStream({start(controller){
   assert.equal(completed,0);
   assert.match(byId('truth-turn-alerts').textContent,new RegExp(message));
  }
+ truthResult={revision:2,status:'DRIFT_DETECTED'};
+ wire='data: {"type":"token","delta":"通用回答"}\n\ndata: [DONE]\n\n'.replaceAll('\\n','\n');
+ nodes.clear();chatHistory.length=0;completed=0;fetchCalls=0;
+ await handleStreamingChat('不依赖持仓的一般问题');
+ assert.equal(fetchCalls,1);
+ const body=JSON.parse(lastFetchOptions.body);
+ assert.equal(body.session_truth_id,null);
+ assert.equal(body.profile_version,null);
+ assert.equal(body.behavior_profile_version,null);
+ assert.equal(body.portfolio_snapshot_id,null);
+ assert.equal(body.persona_info,null);
+ assert.deepEqual(body.history,[]);
+ assert.match(byId('copilot-chat-messages').textContent,/通用回答/);
+ assert.equal(chatHistory.filter(x=>x.role==='assistant').length,1);
+
+ for(const unavailableTruth of [null,'throw']){
+  truthResult=unavailableTruth;truthFailure=unavailableTruth==='throw'?new Error('truth unavailable'):null;
+  wire='data: {"type":"token","delta":"仍可回答"}\n\ndata: [DONE]\n\n'.replaceAll('\\n','\n');
+  nodes.clear();chatHistory.length=0;completed=0;fetchCalls=0;
+  await handleStreamingChat('一般问题');
+  const unavailableBody=JSON.parse(lastFetchOptions.body);
+  assert.equal(fetchCalls,1);
+  assert.equal(unavailableBody.session_truth_id,null);
+  assert.equal(unavailableBody.session_truth_revision,null);
+ }
+
+ truthResult={revision:1,status:'LOCKED'};
+ truthFailure=null;
+ wire='data: not-json\n\ndata: [DONE]\n\n'.replaceAll('\\n','\n');
+ nodes.clear();chatHistory.length=0;completed=0;fetchCalls=0;
+ await handleStreamingChat('异常流');
+ assert.match(byId('copilot-chat-messages').textContent,/分析响应格式异常/);
+ assert.equal(chatHistory.filter(x=>x.role==='assistant').length,0);
 })().catch(error=>{console.error(error);process.exitCode=1;});
 '''
     result = subprocess.run([node, "-e", probe], capture_output=True, text=True, encoding="utf-8")

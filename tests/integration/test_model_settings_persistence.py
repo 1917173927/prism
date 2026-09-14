@@ -126,7 +126,7 @@ def test_rotation_and_delete_invalidate_another_app_instance(tmp_path) -> None:
     second_db.close()
 
 
-def test_unauthenticated_development_mode_does_not_persist_owner_secret(tmp_path) -> None:
+def test_unauthenticated_local_mode_persists_one_machine_scoped_secret(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     store = SQLiteDecisionEventStore(":memory:")
     client = TestClient(create_app(store, secret_store=protected))
@@ -139,6 +139,57 @@ def test_unauthenticated_development_mode_does_not_persist_owner_secret(tmp_path
     })
 
     assert saved.status_code == 200
-    assert saved.json()["persistence"] == "PROCESS_ONLY"
-    assert not protected.path.exists()
+    assert saved.json()["persistence"] == "OS_PROTECTED"
+    assert protected.path.exists()
+    assert protected.get("llm:local:workbench") is not None
+    assert "process-only-key" not in protected.path.read_text(encoding="utf-8")
+
+    restarted_store = SQLiteDecisionEventStore(":memory:")
+    restarted = TestClient(create_app(restarted_store, secret_store=protected))
+    restored = restarted.get(
+        "/api/v1/user/model-settings",
+        headers={"X-Owner-ID": "another-local-owner-label"},
+    )
+    assert restored.status_code == 200
+    assert restored.json()["is_configured"] is True
+    assert restored.json()["scope"] == "LOCAL_MACHINE"
+    assert "process-only-key" not in restored.text
+    restarted_store.close()
     store.close()
+
+
+def test_local_machine_slot_does_not_collide_with_authenticated_owner(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    anonymous_store = SQLiteDecisionEventStore(":memory:")
+    anonymous = TestClient(create_app(anonymous_store, secret_store=protected))
+    anonymous.put("/api/v1/user/model-settings", headers={"X-Owner-ID": "any"}, json={
+        "api_key": "local-machine-secret",
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+    })
+
+    salt = "22" * 16
+    accounts = tmp_path / "accounts-collision.json"
+    accounts.write_text(json.dumps([{
+        "username": "named-user",
+        "owner_id": "local-workbench",
+        "salt": salt,
+        "password_hash": password_digest(PASSWORD, salt),
+        "admin": False,
+    }]), encoding="utf-8")
+    encoded = base64.b64encode(f"named-user:{PASSWORD}".encode()).decode()
+    authenticated_store = SQLiteDecisionEventStore(":memory:")
+    authenticated = TestClient(create_app(
+        authenticated_store,
+        secret_store=protected,
+        auth_accounts_path=accounts,
+    ))
+    response = authenticated.get("/api/v1/user/model-settings", headers={
+        "X-Owner-ID": "local-workbench",
+        "Authorization": f"Basic {encoded}",
+    })
+    assert response.status_code == 200
+    assert response.json()["is_configured"] is False
+    assert "local-machine-secret" not in response.text
+    authenticated_store.close()
+    anonymous_store.close()

@@ -49,6 +49,7 @@ def test_model_settings_are_owner_scoped_and_not_disclosed(tmp_path):
         mock = client.post("/api/v1/copilot/chat", headers=a, json={"owner_id": "a", "message": "测试", "model_mode": "MOCK"})
         assert mock.status_code == 200
         assert "演示回复" in mock.text and "[DONE]" in mock.text
+        assert "本轮未绑定已锁定的画像与持仓前提" in mock.text
         assert "private-test-key" not in mock.text
 
 
@@ -82,6 +83,46 @@ def test_live_model_mode_requires_live_tool_data(monkeypatch, tmp_path):
         })
         assert auto_response.status_code == 409
         assert auto_response.json()["error_code"] == "DATA_MODE_NOT_LIVE"
+
+
+def test_unlocked_chat_strips_unverified_personal_context(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from app.api import main as api_main
+    from app.runtime.mode import DataMode
+
+    captured = {}
+
+    async def fake_stream_chat(**kwargs):
+        captured.update(kwargs)
+        yield {"type": "token", "delta": "一般回答"}
+
+    class FakeCopilotAgent:
+        def __init__(self, **kwargs):
+            from app.llm.client import LLMConfig
+            self.client = SimpleNamespace(is_configured=False, config=LLMConfig())
+
+        stream_chat = staticmethod(fake_stream_chat)
+
+    monkeypatch.setattr(api_main, "get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
+    monkeypatch.setattr(api_main, "CopilotAgent", FakeCopilotAgent)
+    with TestClient(create_app(database_path=tmp_path / "unlocked-chat.db")) as client:
+        response = client.post("/api/v1/copilot/chat", json={
+            "message": "什么是市盈率",
+            "model_mode": "LIVE",
+            "llm_config": {"api_key": "test", "base_url": "https://api.deepseek.com/v1", "model": "test"},
+            "profile_version": 99,
+            "behavior_profile_version": 98,
+            "portfolio_snapshot_id": "stale-snapshot",
+            "persona_info": {"name": "伪造画像", "tag": "R5", "max_drawdown": 99},
+            "portfolio_context": {"fabricated_holdings": "OLD_POSITION"},
+            "history": [{"role": "assistant", "content": "旧持仓结论"}],
+        })
+
+    assert response.status_code == 200
+    assert "一般回答" in response.text
+    assert captured["persona_info"] is None
+    assert captured["portfolio_context"] is None
+    assert captured["history"] == []
 
 
 def test_dynamic_quick_tags_keep_direct_live_intent_route():

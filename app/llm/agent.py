@@ -75,22 +75,29 @@ class CopilotAgent:
 
         active_client = AsyncLLMClient(LLMConfig(**llm_config)) if (llm_config and llm_config.get("api_key")) else self.client
 
-        persona = persona_info or {
-            "name": "张先生",
-            "tag": "R3 平衡型",
-            "max_drawdown": 15,
-            "horizon": "MEDIUM",
-            "budget_cap": "30.0%",
-        }
-
-        # Build persona-conditioned system prompt
-        persona_context = (
-            f"\n【当前咨询用户画像】：\n"
-            f"- 姓名：{persona.get('name', '投资者')}\n"
-            f"- 风险等级：{persona.get('tag', 'R3 平衡型')}\n"
-            f"- 最大回撤容忍度：≤{persona.get('max_drawdown', 15)}%\n"
-            f"- 行业风险预算上限：{persona.get('budget_cap', '30.0%')}\n"
-        )
+        if persona_info:
+            persona = persona_info
+            persona_context = (
+                f"\n【当前咨询用户画像】：\n"
+                f"- 姓名：{persona.get('name', '投资者')}\n"
+                f"- 风险等级：{persona.get('tag', '未核验')}\n"
+                f"- 最大回撤容忍度：≤{persona.get('max_drawdown', '未提供')}%\n"
+                f"- 行业风险预算上限：{persona.get('budget_cap', '未提供')}\n"
+            )
+        else:
+            persona = {
+                "name": "投资者",
+                "tag": "未核验",
+                "max_drawdown": None,
+                "horizon": None,
+                "budget_cap": None,
+            }
+            persona_context = (
+                "\n【当前咨询边界】：\n"
+                "- 未绑定已锁定的风险画像与持仓快照。\n"
+                "- 仅回答一般概念问题；不得假设风险等级、回撤容忍度、持仓或配置上限。\n"
+                "- 涉及实时数据、标的判断或个性化建议时必须调用真实工具，否则明确拒绝。\n"
+            )
         if portfolio_context:
             persona_context += f"- 当前已载入持仓：{json.dumps(portfolio_context, ensure_ascii=False)}\n"
             if portfolio_context.get("session_truth"):
@@ -186,12 +193,30 @@ class CopilotAgent:
 
     @staticmethod
     def _requires_grounded_tool(user_message: str) -> bool:
-        normalized = re.sub(r"[\s，。！？,.!?]+", "", user_message).casefold()
+        normalized = re.sub(r"[\s，。！？,.!?（）()]+", "", user_message).casefold()
         harmless = {
             "你好", "您好", "谢谢", "感谢", "再见", "你是谁", "你能做什么",
             "hello", "hi", "thanks", "thankyou", "help",
         }
-        return normalized not in harmless
+        if normalized in harmless:
+            return False
+        educational_markers = ("什么是", "是什么", "是什么意思", "如何理解", "解释一下", "概念", "区别")
+        educational_concepts = (
+            "股票", "基金", "etf", "债券", "可转债", "市盈率", "pe", "市净率", "pb", "股息率",
+            "每股收益", "净资产收益率", "roe", "波动率", "最大回撤", "夏普比率",
+            "基金净值", "久期", "债券收益率", "资产配置", "投资组合", "行业集中度",
+            "买入", "卖出", "分红",
+        )
+        has_educational_marker = any(marker in normalized for marker in educational_markers)
+        has_educational_concept = any(concept in normalized for concept in educational_concepts)
+        residual = normalized
+        removable_tokens = set((*educational_markers, *educational_concepts, "的", "和", "与", "及"))
+        for token in sorted(removable_tokens, key=len, reverse=True):
+            residual = residual.replace(token, "")
+        is_pure_educational_question = (
+            has_educational_marker and has_educational_concept and not residual
+        )
+        return not is_pure_educational_question
 
     @staticmethod
     def _validate_tool_call(name: Any, args: Any) -> tuple[dict[str, Any], str | None]:

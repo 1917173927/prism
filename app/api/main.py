@@ -435,7 +435,7 @@ def create_app(
     """
 
     accounts = load_accounts(auth_accounts_path) if auth_accounts_path else {}
-    active_secret_store = secret_store if accounts else None
+    active_secret_store = secret_store
     owned_store = store is None
     if store is not None and database_url is not None:
         raise ValueError("select either an injected store or database_url")
@@ -511,14 +511,23 @@ def create_app(
 
     user_model_settings: dict[str, CopilotConfigApiRequest] = {}
 
+    def model_setting_scope(owner_id: str) -> str:
+        # Without account authentication this is a single-user loopback
+        # workbench.  Use one installation-scoped DPAPI slot instead of
+        # pretending the caller-controlled owner label is an identity boundary.
+        if active_secret_store is not None and not accounts:
+            return "local:workbench"
+        return owner_id
+
     def persisted_model_setting(owner_id: str) -> CopilotConfigApiRequest | None:
-        cached = user_model_settings.get(owner_id)
+        scope = model_setting_scope(owner_id)
+        cached = user_model_settings.get(scope)
         if active_secret_store is None:
             return cached
         try:
-            encoded = active_secret_store.get(f"llm:{owner_id}")
+            encoded = active_secret_store.get(f"llm:{scope}")
             if encoded is None:
-                user_model_settings.pop(owner_id, None)
+                user_model_settings.pop(scope, None)
                 return None
             setting = CopilotConfigApiRequest.model_validate_json(encoded)
         except (SecretProtectionError, ValidationError, ValueError) as exc:
@@ -528,7 +537,7 @@ def create_app(
             ) from exc
         if not setting.api_key.strip():
             return None
-        user_model_settings[owner_id] = setting
+        user_model_settings[scope] = setting
         return setting
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
@@ -2168,6 +2177,16 @@ def create_app(
         scoped_owner = x_owner_id.strip() if x_owner_id and x_owner_id.strip() else req.owner_id
         if scoped_owner is not None and req.owner_id is not None and scoped_owner != req.owner_id:
             raise StoreOwnerError("chat owner does not match owner scope")
+        if not req.session_truth_id:
+            # An unlocked turn is general chat only.  Do not trust profile or
+            # portfolio claims supplied without a server-verified truth lock,
+            # including stale assistant history from an earlier snapshot.
+            req.profile_version = None
+            req.behavior_profile_version = None
+            req.portfolio_snapshot_id = None
+            req.persona_info = None
+            req.portfolio_context = None
+            req.history = []
         if req.session_truth_id:
             if not scoped_owner:
                 raise StoreOwnerError("session truth requires an owner")
@@ -2233,6 +2252,9 @@ def create_app(
                 "warnings": [
                     message
                     for message in (
+                        "本轮未绑定已锁定的画像与持仓前提；仅可按一般问题回答，不得生成个性化配置结论"
+                        if not req.session_truth_id
+                        else None,
                         "行为数据不足；不得据此提高风险等级"
                         if stored_profile is None
                         or stored_profile.evidence_status.value == "INSUFFICIENT_DATA"
@@ -2528,7 +2550,12 @@ def create_app(
     def get_user_model_settings(owner_id: str = Depends(owner_dependency)):
         setting = persisted_model_setting(owner_id)
         cfg = setting or copilot_agent.client.config
-        return {"is_configured": bool(cfg.api_key), "scope": "USER" if setting else "SERVER",
+        setting_scope = (
+            "LOCAL_MACHINE"
+            if active_secret_store is not None and not accounts
+            else "USER"
+        )
+        return {"is_configured": bool(cfg.api_key), "scope": setting_scope if setting else "SERVER",
                 "model": cfg.model, "base_url": cfg.base_url,
                 "persistence": "OS_PROTECTED" if active_secret_store is not None else "PROCESS_ONLY"}
 
@@ -2546,19 +2573,21 @@ def create_app(
             raise HTTPException(status_code=422, detail="模型名称或密钥格式无效")
         if req.api_key.strip():
             setting = req.model_copy(update={"api_key": req.api_key.strip(), "base_url": req.base_url.strip().rstrip("/")})
+            scope = model_setting_scope(owner_id)
             if active_secret_store is not None:
                 try:
-                    active_secret_store.set(f"llm:{owner_id}", setting.model_dump_json())
+                    active_secret_store.set(f"llm:{scope}", setting.model_dump_json())
                 except (SecretProtectionError, ValueError) as exc:
                     raise HTTPException(status_code=503, detail="模型密钥安全保存失败") from exc
-            user_model_settings[owner_id] = setting
+            user_model_settings[scope] = setting
         else:
+            scope = model_setting_scope(owner_id)
             if active_secret_store is not None:
                 try:
-                    active_secret_store.delete(f"llm:{owner_id}")
+                    active_secret_store.delete(f"llm:{scope}")
                 except (SecretProtectionError, ValueError) as exc:
                     raise HTTPException(status_code=503, detail="模型密钥安全删除失败") from exc
-            user_model_settings.pop(owner_id, None)
+            user_model_settings.pop(scope, None)
         return get_user_model_settings(owner_id)
 
     @api.post("/api/v1/user/model-settings/test")
