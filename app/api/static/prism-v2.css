@@ -236,7 +236,7 @@ body.prism-ui-v2 {
   background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
-.prism-ui-v2 .topbar-more-panel { width: 190px; }
+.prism-ui-v2 .topbar-more-panel { width: 230px; }
 .prism-ui-v2 .profile-actions-panel .active-profile-wrap { display: grid; gap: 2px; }
 .prism-ui-v2 .profile-actions-panel .switcher-label { padding: 6px 9px 3px; color: var(--text-muted); font-size: 9px; }
 .prism-ui-v2 .profile-actions-panel .persona-chip,
@@ -1928,12 +1928,7 @@ body.prism-ui-v2 {
 .prism-ui-v2 .market-result { padding: 24px; min-height: 150px; }
 .prism-ui-v2 .market-result h3 { margin: 0 0 10px; }
 .prism-ui-v2 .market-risk-note { color: var(--muted); font-size: 13px; }
-.prism-ui-v2 .profile-preferences { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(3, auto); gap: 14px; align-items: center; padding: 16px; margin: 18px 0; }
-.prism-ui-v2 .profile-preferences h3, .prism-ui-v2 .profile-preferences p { margin: 0; }
-.prism-ui-v2 .profile-preferences p { color: var(--muted); font-size: 13px; margin-top: 4px; }
-.prism-ui-v2 .profile-preferences label { font-size: 13px; color: var(--muted); }
 .prism-ui-v2.prism-theme-dark, body.prism-theme-dark { --surface: #152033; --surface-raised: #1d2a40; --text: #e7edf7; --muted: #aebbd0; --border: #31435f; --border-subtle: #263752; background: #0f1726; }
-@media (max-width: 720px) { .prism-ui-v2 .profile-preferences { grid-template-columns: 1fr; } }
 
 /* PRD repairs retain the post-PR Prism composition and tokens. */
 .prism-ui-v2 .nav-item, .prism-ui-v2 .nav-item strong { font-size: 14px; }
@@ -1999,6 +1994,8 @@ body.prism-ui-v2 {
 .prism-ui-v2 .portfolio-dashboard .companion-card { padding: 18px; }
 .prism-ui-v2 .data-source-status { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; }
 .prism-ui-v2 .data-source-status span { padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.prism-ui-v2 .topbar-more-panel .data-source-status { display: grid; gap: 5px; align-items: stretch; }
+.prism-ui-v2 .topbar-more-panel .data-source-status span { width: 100%; }
 .prism-ui-v2 [data-mode="mock"] { background: #fff1db; color: #825216; }
 .prism-ui-v2 [data-mode="live"] { background: #eaf3ec; color: #326748; }
 .prism-ui-v2 [data-mode="pending"] { background: var(--surface-subtle); color: var(--text-secondary); }
@@ -2020,21 +2017,6 @@ body.prism-ui-v2 {
 .prism-ui-v2 #market-industries th,.prism-ui-v2 #market-industries td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; }
 .prism-ui-v2 #market-industries :is(th,td):first-child { text-align: left; }
 .prism-ui-v2 #market-industries th { font-size: 13px; color: var(--text-secondary); background: var(--surface-subtle); }
-.prism-ui-v2 .profile-preferences { grid-template-columns: 1fr; gap: 0; padding: 24px; border-radius: 12px; }
-.prism-ui-v2 .profile-preferences > div:first-child { padding-bottom: 20px; }
-.prism-ui-v2 .profile-preferences h3 { font-size: 18px; }
-.prism-ui-v2 .profile-preferences .preference-setting { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid var(--border); }
-.prism-ui-v2 .preference-setting span { display: grid; gap: 5px; }
-.prism-ui-v2 .preference-setting strong { color: var(--text-primary); font-size: 15px; }
-.prism-ui-v2 .preference-setting small { font-size: 13px; color: var(--text-secondary); }
-.prism-ui-v2 .preference-setting select { min-width: 110px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); background: var(--surface); }
-.prism-ui-v2 .preference-setting input[role="switch"] { appearance: none; flex: 0 0 42px; width: 42px; height: 24px; border: 0; border-radius: 20px; background: #92979f; cursor: pointer; position: relative; }
-.prism-ui-v2 .preference-setting input[role="switch"]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform .15s; }
-.prism-ui-v2 .preference-setting input[role="switch"]:checked { background: var(--brand); }
-.prism-ui-v2 .preference-setting input[role="switch"]:checked::after { transform: translateX(18px); }
-.prism-ui-v2 .preference-setting input:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
-.prism-ui-v2 .preference-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--border); }
-.prism-ui-v2 .preference-actions button { padding: 10px 18px; border-radius: 8px; font-size: 14px; }
 @media(max-width:1100px) { .prism-ui-v2 .portfolio-holdings-layout { grid-template-columns: minmax(0,1fr); } .prism-ui-v2 .portfolio-holdings-layout .companion-body { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width:900px) { .prism-ui-v2 .agent-profile-rail { width: auto; } }
 @media(max-width:600px) { .prism-ui-v2 .market-index-options { grid-template-columns: repeat(2,minmax(0,1fr)); } .prism-ui-v2 .portfolio-holdings-layout .companion-body { grid-template-columns: 1fr; } .prism-ui-v2 .data-source-status { max-width: 100%; } .prism-ui-v2 .data-source-status span { font-size: 11px; } }
@@ -2049,11 +2031,9 @@ body.prism-ui-v2 {
 .prism-ui-v2 #market { border: 0; background: transparent; box-shadow: none; padding: 24px 0; }
 .prism-ui-v2 #market > .page-heading { padding-bottom: 20px; }
 .prism-ui-v2 #market > .portfolio-detail-card { margin-top: 24px; }
-.prism-ui-v2 .preference-setting input[role="switch"] { min-height: 24px; max-height: 24px; margin: 0; }
 @media(max-width:600px) {
   .prism-ui-v2 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 0; }
   .prism-ui-v2 .topbar-title-area { display: none; }
-  .prism-ui-v2 .topbar .data-source-status { order: 0; margin-right: auto; }
   .prism-ui-v2 .topbar .profile-actions-menu { order: 1; margin: 0; }
   .prism-ui-v2 .topbar .topbar-more-menu { order: 2; margin: 0; }
 }

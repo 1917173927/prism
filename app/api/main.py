@@ -755,7 +755,11 @@ def create_app(
                 owner_id=owner_id, theme="LIGHT", holdings_data_enabled=False,
                 market_data_enabled=True, updated_at=active_clock(),
             )
-        return UserPreferenceResponse.model_validate(stored)
+        return UserPreferenceResponse.model_validate({
+            **stored,
+            "holdings_data_enabled": False,
+            "market_data_enabled": True,
+        })
 
     @api.get("/api/v1/user/preferences", response_model=UserPreferenceResponse)
     def get_user_preferences(owner_id: str = Depends(owner_dependency)) -> UserPreferenceResponse:
@@ -771,8 +775,8 @@ def create_app(
         response = UserPreferenceResponse(
             owner_id=owner_id,
             theme=request.theme,
-            holdings_data_enabled=request.holdings_data_enabled,
-            market_data_enabled=request.market_data_enabled,
+            holdings_data_enabled=False,
+            market_data_enabled=True,
             updated_at=active_clock(),
         )
         active_store.save_user_preferences(owner_id, response.model_dump(mode="json"))
@@ -788,8 +792,6 @@ def create_app(
     @api.get("/api/v1/market/industries")
     async def get_market_industries(owner_id: str = Depends(owner_dependency)):
         from time import monotonic
-        if not _preferences(owner_id).market_data_enabled:
-            return {"status": "REVIEW_REQUIRED", "rows": [], "message": "行情授权已关闭"}
         if not active_live_finance.is_configured:
             return {"status": "REVIEW_REQUIRED", "rows": [], "message": "未配置同花顺行业数据服务"}
         async with industry_lock:
@@ -813,13 +815,6 @@ def create_app(
         clean = index_name.strip()
         if not clean:
             raise HTTPException(status_code=422, detail="index name is required")
-        preferences = _preferences(owner_id)
-        if not preferences.market_data_enabled:
-            return MarketAssessmentResponse(
-                index_name=clean, status="REVIEW_REQUIRED", source="用户行情资讯授权已关闭",
-                freshness="UNAVAILABLE", summary="行情资讯授权已关闭，未读取或生成市场行情。",
-                compliance_status="REVIEW_REQUIRED",
-            )
         # Codes are limited to the provider's supported local index aliases.  A
         # non-matching name is intentionally not converted into a fabricated quote.
         known = {"上证指数": "000001.SH", "深证成指": "399001.SZ", "创业板指": "399006.SZ", "沪深300": "000300.SH"}

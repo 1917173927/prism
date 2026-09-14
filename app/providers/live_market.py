@@ -505,6 +505,10 @@ class MarketDataProvider(ABC):
         """Index identity is explicit; equity-only providers must not substitute stocks."""
         return None
 
+    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+        """Return validated daily OHLC bars when the provider supports them."""
+        return []
+
 
 class TencentMarketProvider(MarketDataProvider):
     def __init__(self, transport: httpx.AsyncBaseTransport | None = None) -> None:
@@ -515,6 +519,42 @@ class TencentMarketProvider(MarketDataProvider):
             return None
         code, exchange = symbol.split(".")
         return await self._get_quote(code, exchange.lower())
+
+    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+        if symbol not in {"000001.SH", "000300.SH", "399001.SZ", "399006.SZ"}:
+            return []
+        code, exchange = symbol.split(".")
+        market_code = f"{exchange.lower()}{code}"
+        async with httpx.AsyncClient(timeout=1.5, transport=self.transport) as client:
+            response = await client.get(
+                "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+                params={"param": f"{market_code},day,,,90,qfq"},
+            )
+            response.raise_for_status()
+        payload = response.json()
+        node = payload.get("data", {}).get(market_code, {})
+        rows = node.get("day") or node.get("qfqday") or []
+        bars: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, list) or len(row) < 5:
+                raise ValueError("Tencent index history row is incomplete")
+            observed = datetime.strptime(str(row[0]), "%Y-%m-%d")
+            opening, close, high, low = (Decimal(str(value)) for value in row[1:5])
+            if any(not value.is_finite() or value <= 0 for value in (opening, close, high, low)):
+                raise ValueError("Tencent index history contains an invalid price")
+            if not low <= min(opening, close) <= max(opening, close) <= high:
+                raise ValueError("Tencent index history contains invalid OHLC bounds")
+            bars.append({
+                "time": observed.date().isoformat(),
+                "open": float(opening),
+                "high": float(high),
+                "low": float(low),
+                "close": float(close),
+            })
+        bars.sort(key=lambda bar: bar["time"])
+        if len({bar["time"] for bar in bars}) != len(bars):
+            raise ValueError("Tencent index history contains duplicate dates")
+        return bars
 
     async def get_quote(self, code: str) -> dict[str, Any] | None:
         return await self._get_quote(code, market_prefix(code))
@@ -617,6 +657,23 @@ class CompositeMarketProvider(MarketDataProvider):
             except (httpx.HTTPError, TimeoutError, ValueError, ArithmeticError):
                 continue
         return None
+
+    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+        started = perf_counter()
+        for provider in self.providers:
+            remaining = self.total_timeout - (perf_counter() - started)
+            if remaining <= 0:
+                break
+            try:
+                bars = await asyncio.wait_for(
+                    provider.get_index_history(symbol),
+                    min(remaining, self.tier_timeout),
+                )
+                if bars:
+                    return bars
+            except (httpx.HTTPError, TimeoutError, ValueError, ArithmeticError):
+                continue
+        return []
 
     async def get_quote(self, code: str) -> dict[str, Any] | None:
         started = perf_counter()

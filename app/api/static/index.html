@@ -7,11 +7,11 @@
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/static/styles.css?v=20260914-polish5">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-polish5">
+    <link rel="stylesheet" href="/static/styles.css?v=20260914-polish6">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-polish6">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
-    <script src="/static/app.js?v=20260914-polish5" defer></script>
+    <script src="/static/app.js?v=20260914-polish6" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -239,29 +239,26 @@
               </details>
             </div>
           </details>
-          <button id="data-source-status" class="data-source-status" type="button" aria-label="查看 AI 与数据来源"><span id="visible-ai-mode">AI · 正在确认</span><span id="visible-data-mode">数据 · 正在确认</span></button>
-            <details class="topbar-actions topbar-more-menu">
+          <details class="topbar-actions topbar-more-menu">
             <summary aria-label="打开更多工具">
               <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
               <span>更多</span>
             </summary>
             <div class="topbar-more-panel">
-
-
-            <button id="view-mode-toggle" class="mode-toggle-btn" type="button" aria-expanded="false" aria-controls="expert-workspace-grid" title="展开更多详细工具">
-              <span id="mode-toggle-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
-              <span id="mode-toggle-text">更多工具</span>
-            </button>
-            <details class="topbar-settings">
-              <summary aria-label="打开模型设置">模型设置</summary>
-              <div class="topbar-settings-menu">
-                <button id="open-llm-config-btn" class="llm-config-trigger-btn" type="button" title="配置可选的大模型接口；不配置也能使用内置分析">
-                  <span class="llm-config-dot" id="llm-config-status-dot">⚪</span>
-                  <span id="llm-config-btn-label">模型设置</span>
-                </button>
-              </div>
-            </details>
-            <div class="health" id="health-status" aria-live="polite" hidden></div>
+              <button id="data-source-status" class="data-source-status" type="button" aria-label="打开模型与数据来源设置">
+                <span id="visible-ai-mode">AI · 正在确认</span>
+                <span id="visible-data-mode">工具数据 · 正在确认</span>
+              </button>
+              <button id="theme-toggle" class="topbar-theme-toggle" type="button" aria-pressed="false">
+                <svg class="prism-icon" aria-hidden="true"><use href="#icon-eye"/></svg>
+                <span id="theme-toggle-label">切换深色主题</span>
+              </button>
+              <button id="view-mode-toggle" class="mode-toggle-btn" type="button" aria-expanded="false" aria-controls="expert-workspace-grid" title="展开更多详细工具">
+                <span id="mode-toggle-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
+                <span id="mode-toggle-text">更多工具</span>
+              </button>
+              <button id="logout-local-session" class="topbar-logout" type="button">退出登录</button>
+              <div class="health" id="health-status" aria-live="polite" hidden></div>
             </div>
           </details>
         </header>
@@ -1430,21 +1427,6 @@
               </div>
             </div>
 
-            <section class="profile-preferences surface" aria-labelledby="profile-preferences-title">
-              <div>
-                <h3 id="profile-preferences-title">外观与数据授权</h3>
-                <p>选择舒适的显示方式，并管理分析可使用的数据。</p>
-              </div>
-              <label class="preference-setting"><span><strong>显示主题</strong><small>切换浅色或深色界面</small></span>
-                <select id="preference-theme"><option value="LIGHT">浅色</option><option value="DARK">深色</option></select>
-              </label>
-              <label class="preference-setting"><span><strong>持仓数据</strong><small>允许分析读取已授权持仓</small></span><input id="preference-holdings" type="checkbox" role="switch" aria-label="持仓数据授权"></label>
-              <label class="preference-setting"><span><strong>行情与资讯</strong><small>允许获取市场行情及研究资讯</small></span><input id="preference-market" type="checkbox" role="switch" aria-label="行情与资讯授权" checked></label>
-              <div class="preference-actions"><button id="save-user-preferences" class="query-submit" type="button">保存偏好</button>
-              <button id="logout-local-session" class="query-submit secondary" type="button">退出登录</button>
-              <span id="user-preferences-status" class="status-chip">读取中</span></div>
-            </section>
-
             <form id="questionnaire-form" class="questionnaire-shell" novalidate>
               <div class="questionnaire-progress-head">
                 <div>
@@ -1488,45 +1470,6 @@
               </div>
               <a href="#copilot" class="query-submit secondary">前往设置</a>
             </section>
-
-              <div class="profile-proposal" aria-labelledby="profile-proposal-title">
-                <div class="context-confirm-actions">
-                  <div>
-                    <strong id="profile-proposal-title">审阅结构化提取提案</strong>
-                    <small>自然语言只生成偏好提案，不替代已确认问卷或改变有效风险等级；原文不保存。</small>
-                  </div>
-                  <div class="context-import-actions">
-                    <button id="preview-profile-proposal" class="query-submit" type="button">预览画像提案</button>
-                    <span id="profile-proposal-status" class="status-chip">未预览</span>
-                  </div>
-                </div>
-                <div class="context-import">
-                  <label for="profile-natural-text">用自己的话描述投资偏好</label>
-                  <textarea id="profile-natural-text" rows="3" maxlength="4000" placeholder="例如：长期投资，没有短期用钱需求，最多接受亏损 15%。请勿输入密码或密钥。"></textarea>
-                  <button id="extract-natural-profile" class="query-submit" type="button">提取偏好供我确认</button>
-                  <div id="profile-natural-evidence" aria-live="polite"></div>
-                  <details><summary>高级结构化输入</summary>
-                  <label for="profile-proposal-json">画像提取提案 JSON</label>
-                  <textarea id="profile-proposal-json" rows="7" autocomplete="off" spellcheck="false" placeholder="仅粘贴 profile-extraction.v1；只保留结构化候选值与 64 位 input_digest"></textarea></details>
-                  <small>提案只在当前会话使用；隔离标识必须与上方输入及当前问卷一致。</small>
-                </div>
-                <div id="profile-proposal-content" class="profile-proposal-content" aria-live="polite">
-                  <div class="empty-state">粘贴提案后查看问卷与提取值的冲突。</div>
-                </div>
-                <div class="context-confirm-actions profile-proposal-confirm-actions">
-                  <div>
-                    <strong>确认提案选择</strong>
-                    <small>逐项核对并确认冲突项后生成风险画像。</small>
-                  </div>
-                  <div class="context-import-actions">
-                    <button id="confirm-profile-proposal" class="query-submit" type="button" disabled>确认画像提案</button>
-                    <span id="profile-proposal-confirm-status" class="status-chip">未确认</span>
-                  </div>
-                </div>
-                <div id="profile-proposal-result" class="profile-proposal-result" aria-live="polite">
-                  <div class="empty-state">确认提案后查看保留冲突选择的风险画像。</div>
-                </div>
-              </div>
 
             <div class="dev-only profile-technical-tools dev-outline">
               <div class="context-confirm-actions">

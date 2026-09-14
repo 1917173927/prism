@@ -303,11 +303,11 @@ def test_profile_proposal_boundary_has_no_external_or_html_injection_surface() -
     js = client.get("/static/app.js")
     css = client.get("/static/styles.css")
     assert page.status_code == js.status_code == css.status_code == 200
-    assert 'id="profile-proposal-json"' in page.text
-    assert 'id="preview-profile-proposal"' in page.text
-    assert 'id="confirm-profile-proposal"' in page.text
+    assert 'id="profile-proposal-json"' not in page.text
+    assert 'id="preview-profile-proposal"' not in page.text
+    assert 'id="confirm-profile-proposal"' not in page.text
     assert "/api/v1/advisor/profile-proposals" in js.text
-    assert "profile-extraction.v1" in page.text
+    assert "profile-extraction.v1" not in page.text
     assert "innerHTML" not in js.text
     assert "https://" not in page.text
     assert "fetch(\"http" not in js.text
