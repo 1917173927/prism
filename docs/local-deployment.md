@@ -32,6 +32,8 @@ $env:PRISM_AUTH_ACCOUNTS_FILE = (Resolve-Path data/private/accounts.json).Path
 
 模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。工具在系统临时目录创建独立 SQLite，打印访问地址，不清空原数据库。`?onboarding=1` 可重新弹出首次引导；右上角 AI/工具数据状态按钮可打开统一配置面板，切换 AI 默认/真实/Mock 模式、配置个人 API Key；全局工具数据切换保留管理员权限检查。`?dev=1` 仍可开启其他开发工具。AI 模式与全局行情数据模式分别控制，模拟回复保留演示标识。
 
+本地可在仓库根目录创建被 Git 忽略的 `.env`，启动脚本和 `tools/dev_preview.py` 会将其中的服务端变量注入当前进程；直接运行 Uvicorn 时需先在当前 shell 设置同名环境变量。供应商密钥不进入前端、数据库或 Git。
+
 Markdown 资源已随仓库提供，正常启动无需 Node。修改 `app/api/static/markdown.src.js` 后运行 `npm ci`、`npm run build:markdown` 重新生成本地脚本。
 
 `GET /api/v1/auth/context` 返回当前身份及管理员标志；`GET /api/v1/access-audit?limit=100` 返回该 owner 的最近访问。审计只记录 owner、方法、路由模板、状态码和时间，不保存请求正文、密码或授权头。本地审计可被本机文件管理员修改，尚不具备独立审计服务的防篡改保证。
@@ -112,13 +114,13 @@ npm run build:workflow
 
 ## 第8章 跨市场大盘行情
 
-“大盘鉴别”固定注册国内、港股和美股各4个指数。国内指数可复用已配置的同花顺金融数据服务；港美股必须在服务端配置 `IFIND_QUANT_REFRESH_TOKEN` 及对应指数代码，未验证代码或权限时返回 `UNAVAILABLE`，不使用ETF、国内指数或演示价格替代。
+“大盘鉴别”固定注册国内、港股和美股各4个指数。国内指数可复用已配置的同花顺金融数据服务；港美股原型默认读取无需账号或 API Key 的 Yahoo Finance 公开 Chart 接口。港股指数在 Yahoo 无数据或历史不足时，备用读取 ET Net 公开交互图中的指数 OHLCV；两者均为非正式公开来源，可能延迟、限流或中断，不使用 ETF、国内指数或演示价格替代。恒生综合指数使用 ET Net 代码 `HSC`，备用源不可用时才显示 `UNAVAILABLE`。
 
-美国10年期国债收益率、Brent原油近月和COMEX黄金近月分别通过 `IFIND_US10Y_EDB_ID`、`IFIND_BRENT_CODE`、`IFIND_COMEX_GOLD_CODE` 配置。任一因子不可用时仅该卡片降级，不阻断指数K线、量能和技术指标。国内及港股相关性只使用严格早于本地收盘日期的因子观测，避免引入随后才产生的美国市场数据；相关性不代表因果关系。
+美国10年期国债收益率、Brent原油近月和COMEX黄金期货默认使用 Yahoo 代码 `^TNX`、`BZ=F`、`GC=F`，可通过 `YAHOO_US10Y_SYMBOL`、`YAHOO_BRENT_SYMBOL`、`YAHOO_GOLD_SYMBOL` 覆盖。任一因子不可用时仅该卡片降级，不阻断指数K线、量能和技术指标。国内及港股相关性只使用严格早于本地收盘日期的因子观测，避免引入随后才产生的美国市场数据；相关性不代表因果关系。
 
 Lightweight Charts 5.2.1及Apache-2.0许可已随静态资源发布，不依赖运行时CDN。修改图表交互后应至少执行：
 
 ```powershell
 node --check app/api/static/app.js
-.venv/Scripts/python.exe -m pytest tests/unit/test_market_analysis.py tests/unit/test_ifind_quant_provider.py tests/integration/test_prd_personalization_api.py
+.venv/Scripts/python.exe -m pytest tests/unit/test_market_analysis.py tests/unit/test_yahoo_finance_provider.py tests/integration/test_prd_personalization_api.py
 ```

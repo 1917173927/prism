@@ -6136,7 +6136,7 @@
       button.dataset.marketIndex = item.index_id;
       button.setAttribute("aria-pressed", String(item.index_id === byId("market-index-input").value));
       const name = document.createElement("strong"); name.textContent = item.name;
-      const detail = document.createElement("small"); detail.textContent = item.symbol || "iFinD权限待验证";
+      const detail = document.createElement("small"); detail.textContent = item.symbol || "公开数据代码不可用";
       const status = document.createElement("span"); status.className = "market-index-card-status";
       if (item.quote_status === "LIVE" && item.price != null) {
         const pct = Number(item.change_pct || 0);

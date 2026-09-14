@@ -43,6 +43,37 @@ class AnalysisProvider(QuoteProvider):
         ]
 
 
+class UnavailableYahooProvider:
+    is_configured = False
+
+
+class UnavailableEtNetProvider:
+    is_configured = False
+
+
+class FallbackEtNetProvider:
+    is_configured = True
+
+    @staticmethod
+    def supports_symbol(symbol: str) -> bool:
+        return symbol == "HSC"
+
+    async def get_index_quote(self, symbol: str):
+        return {
+            "symbol": symbol, "price_cny": 3670, "change_pct": 0.32,
+            "observed_at": datetime.now(UTC).isoformat(),
+            "source": "ET Net公开图表接口（非正式原型数据）", "is_synthetic": False,
+        }
+
+    async def get_index_history(self, symbol: str, start, end):
+        assert symbol == "HSC" and start < end
+        return [
+            {"time": f"2026-08-{day:02d}", "open": 3600 + day, "high": 3620 + day,
+             "low": 3590 + day, "close": 3610 + day, "volume": 1000 + day, "turnover": None}
+            for day in range(1, 26)
+        ]
+
+
 def test_owner_theme_is_persistent_and_data_source_policy_is_fixed(tmp_path):
     with TestClient(create_app(database_path=tmp_path / "preferences.sqlite3")) as client:
         headers = {"X-Owner-ID": "alice"}
@@ -87,7 +118,12 @@ def test_market_assessment_never_fabricates_unknown_quotes_and_market_data_is_re
 
 
 def test_cross_market_catalog_and_analysis_keep_unverified_overseas_data_unavailable(tmp_path):
-    with TestClient(create_app(database_path=tmp_path / "analysis.sqlite3", market_provider=AnalysisProvider())) as client:
+    with TestClient(create_app(
+        database_path=tmp_path / "analysis.sqlite3",
+        market_provider=AnalysisProvider(),
+        yahoo_finance_provider=UnavailableYahooProvider(),
+        etnet_provider=UnavailableEtNetProvider(),
+    )) as client:
         headers = {"X-Owner-ID": "alice"}
         catalog = client.get("/api/v1/market/catalog", headers=headers)
         assert catalog.status_code == 200
@@ -115,3 +151,21 @@ def test_cross_market_catalog_and_analysis_keep_unverified_overseas_data_unavail
         assert monthly.json()["history_status"] == "REVIEW_REQUIRED"
         assert client.get("/api/v1/market/analysis/CN/sse-composite?interval=5m", headers=headers).status_code == 422
         assert client.get("/api/v1/market/analysis/EU/not-registered", headers=headers).status_code == 404
+
+
+def test_hong_kong_analysis_uses_public_etnet_fallback_when_yahoo_has_no_data(tmp_path):
+    with TestClient(create_app(
+        database_path=tmp_path / "etnet-fallback.sqlite3",
+        yahoo_finance_provider=UnavailableYahooProvider(),
+        etnet_provider=FallbackEtNetProvider(),
+    )) as client:
+        response = client.get(
+            "/api/v1/market/analysis/HK/hang-seng-composite",
+            headers={"X-Owner-ID": "alice"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "CALCULATED"
+        assert body["history_status"] == "LIVE"
+        assert body["source"].startswith("ET Net公开图表接口")
+        assert len(body["bars"]) == 25

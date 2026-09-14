@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from contextlib import aclosing, asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 import os
@@ -71,6 +71,8 @@ from app.market_analysis import (
     volume_summary,
 )
 from app.providers.ifind_quant import IFindQuantError, IFindQuantProvider
+from app.providers.etnet import EtNetError, EtNetProvider
+from app.providers.yahoo_finance import YahooFinanceError, YahooFinanceProvider
 from app.research import ResearchSpecialistMatrixRequest
 from app.stock import (
     StockResearchRequest,
@@ -417,6 +419,9 @@ def create_app(
     market_provider: MarketDataProvider | None = None,
     wencai_provider: WencaiSkillHubProvider | None = None,
     live_finance_provider: FuyaoFinanceProvider | None = None,
+    yahoo_finance_provider: YahooFinanceProvider | None = None,
+    etnet_provider: EtNetProvider | None = None,
+    # Backward-compatible injection point for existing iFinD provider tests.
     ifind_quant_provider: IFindQuantProvider | None = None,
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
@@ -469,8 +474,51 @@ def create_app(
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
     active_live_finance = live_finance_provider or FuyaoFinanceProvider()
-    active_ifind_quant = ifind_quant_provider or IFindQuantProvider()
+    active_yahoo_finance = yahoo_finance_provider or ifind_quant_provider or YahooFinanceProvider()
+    active_etnet = etnet_provider or EtNetProvider()
     live_probe_lock = asyncio.Lock()
+
+    async def fetch_overseas_quote(symbol: str) -> dict | None:
+        providers = []
+        if active_yahoo_finance.is_configured:
+            providers.append(active_yahoo_finance)
+        if active_etnet.is_configured and active_etnet.supports_symbol(symbol):
+            providers.append(active_etnet)
+        for provider in providers:
+            try:
+                quote = await provider.get_index_quote(symbol)
+            except (IFindQuantError, YahooFinanceError, EtNetError, TimeoutError, ValueError, ArithmeticError):
+                continue
+            if quote is not None and quote.get("symbol") == symbol:
+                return quote
+        return None
+
+    async def fetch_overseas_data(
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> tuple[dict | None, list[dict]]:
+        providers = []
+        if active_yahoo_finance.is_configured:
+            providers.append(active_yahoo_finance)
+        if active_etnet.is_configured and active_etnet.supports_symbol(symbol):
+            providers.append(active_etnet)
+        best: tuple[dict | None, list[dict]] = (None, [])
+        for provider in providers:
+            try:
+                quote, bars = await asyncio.gather(
+                    provider.get_index_quote(symbol),
+                    provider.get_index_history(symbol, start, end),
+                )
+            except (IFindQuantError, YahooFinanceError, EtNetError, TimeoutError, ValueError, ArithmeticError):
+                continue
+            if quote is None or quote.get("symbol") != symbol or not bars:
+                continue
+            if len(bars) >= 20 or not best[1]:
+                best = (quote, bars)
+            if len(bars) >= 20:
+                return best
+        return best
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -826,7 +874,12 @@ def create_app(
         return [MarketCatalogItem(
             market=item.market, index_id=item.index_id, name=item.name, symbol=item.symbol,
             currency=item.currency, timezone=item.timezone, precision=item.precision,
-            status="AVAILABLE" if item.market == "CN" or (item.symbol and active_ifind_quant.is_configured) else "UNAVAILABLE",
+            status="AVAILABLE" if item.market == "CN" or (
+                item.symbol and (
+                    active_yahoo_finance.is_configured
+                    or (item.market == "HK" and active_etnet.is_configured and active_etnet.supports_symbol(item.symbol))
+                )
+            ) else "UNAVAILABLE",
         ) for item in INDEX_REGISTRY]
 
     @api.get("/api/v1/market/quotes/{market}", response_model=list[MarketQuoteCard])
@@ -844,15 +897,15 @@ def create_app(
             unavailable = MarketQuoteCard(
                 market=item.market, index_id=item.index_id, name=item.name,
                 symbol=item.symbol, currency=item.currency, precision=item.precision,
-                status="UNAVAILABLE", source="iFinD代码或行情权限尚未配置",
+                status="UNAVAILABLE", source="公开行情代码、权限或上游数据不可用",
             )
             if item.symbol is None:
                 return unavailable
             provider = active_live_finance if item.market == "CN" and active_live_finance.is_configured else active_market_quotes
             try:
                 quote = await (provider.get_index_quote(item.symbol) if item.market == "CN"
-                               else active_ifind_quant.get_index_quote(item.symbol))
-            except (FuyaoProviderError, IFindQuantError, TimeoutError, ValueError, ArithmeticError):
+                               else fetch_overseas_quote(item.symbol))
+            except (FuyaoProviderError, IFindQuantError, YahooFinanceError, EtNetError, TimeoutError, ValueError, ArithmeticError):
                 return unavailable
             if quote is None or quote.get("symbol") != item.symbol:
                 return unavailable
@@ -861,7 +914,7 @@ def create_app(
                 return MarketQuoteCard(
                     market=item.market, index_id=item.index_id, name=item.name,
                     symbol=item.symbol, currency=item.currency, precision=item.precision,
-                    status="LIVE", source=str(quote.get("source", "iFinD行情")),
+                    status="LIVE", source=str(quote.get("source", "Yahoo Finance行情")),
                     observed_at=observed_at, price=Decimal(str(quote["price_cny"])),
                     change_pct=Decimal(str(quote["change_pct"])),
                 )
@@ -887,7 +940,7 @@ def create_app(
             return MarketAnalysisResponse(
                 market=selected.market, index_id=selected.index_id, name=selected.name,
                 currency=selected.currency, timezone=selected.timezone, precision=selected.precision,
-                interval=interval, status="REVIEW_REQUIRED", source="iFinD代码或港美股权限尚未配置",
+                interval=interval, status="REVIEW_REQUIRED", source="公开行情代码、权限或上游数据不可用",
             )
 
         quote = None
@@ -897,23 +950,24 @@ def create_app(
             if selected.market == "CN":
                 quote = await provider.get_index_quote(selected.symbol)
                 daily_bars = await provider.get_index_history(selected.symbol, start=start_time, end=end_time)
-            elif active_ifind_quant.is_configured:
-                quote = await active_ifind_quant.get_index_quote(selected.symbol)
-                daily_bars = await active_ifind_quant.get_index_history(selected.symbol, start_time.date(), end_time.date())
-        except (FuyaoProviderError, IFindQuantError, TimeoutError, ValueError, ArithmeticError):
+            else:
+                quote, daily_bars = await fetch_overseas_data(selected.symbol, start_time.date(), end_time.date())
+        except (FuyaoProviderError, IFindQuantError, YahooFinanceError, EtNetError, TimeoutError, ValueError, ArithmeticError):
             quote, daily_bars = None, []
         if quote is None or quote.get("symbol") != selected.symbol or not daily_bars:
             return MarketAnalysisResponse(
                 market=selected.market, index_id=selected.index_id, name=selected.name,
                 symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
                 precision=selected.precision, interval=interval, status="REVIEW_REQUIRED",
-                source="iFinD未返回可验证的指数行情",
+                source="公开行情未返回可验证的指数行情（权限、非正式接口或代码不可用）",
             )
 
         bars = aggregate_monthly(daily_bars) if interval == "1M" else daily_bars
         # A fallback provider can return a valid shorter history. Preserve it,
         # but expose that the requested ten-year monthly window is incomplete.
         history_status = "LIVE" if interval == "1d" or len(bars) >= 120 else "REVIEW_REQUIRED"
+        if str(quote.get("source", "")).startswith(("Yahoo Finance", "ET Net")) and len(bars) < 20:
+            history_status = "REVIEW_REQUIRED"
         latest = Decimal(str(bars[-1]["close"]))
         previous = Decimal(str(bars[-2]["close"])) if len(bars) > 1 else Decimal(str(bars[-1]["open"]))
         change = latest - previous
@@ -926,12 +980,12 @@ def create_app(
 
         async def analyze_factor(factor_id: str, name: str, unit: str, is_yield: bool) -> dict:
             unavailable = {"factor_id": factor_id, "name": name, "unit": unit, "status": "UNAVAILABLE",
-                           "source": "iFinD因子权限或代码未配置", "sample_size": 0}
-            if not active_ifind_quant.is_configured:
+                           "source": "Yahoo Finance宏观因子不可用", "sample_size": 0}
+            if not active_yahoo_finance.is_configured:
                 return unavailable
             try:
-                points = await active_ifind_quant.get_factor_history(factor_id, start_time.date(), end_time.date())
-            except (IFindQuantError, TimeoutError, ValueError, ArithmeticError):
+                points = await active_yahoo_finance.get_factor_history(factor_id, start_time.date(), end_time.date())
+            except (IFindQuantError, YahooFinanceError, TimeoutError, ValueError, ArithmeticError):
                 return unavailable
             if not points:
                 return unavailable
@@ -954,7 +1008,7 @@ def create_app(
             previous_value = Decimal(str(eligible_points[-2]["value"])) if len(eligible_points) > 1 else latest_value
             factor_observed_at = datetime.fromisoformat(str(latest_point["time"])[:10]).replace(tzinfo=UTC)
             return {"factor_id": factor_id, "name": name, "unit": unit, "status": "LIVE",
-                    "source": "iFinD QuantAPI", "observed_at": factor_observed_at, "latest_value": latest_value,
+                    "source": "Yahoo Finance非正式接口", "observed_at": factor_observed_at, "latest_value": latest_value,
                     "change": latest_value - previous_value, **correlation}
 
         factors = await asyncio.gather(*(analyze_factor(*definition) for definition in factor_definitions))
@@ -962,7 +1016,7 @@ def create_app(
             market=selected.market, index_id=selected.index_id, name=selected.name,
             symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
             precision=selected.precision, interval=interval, status="CALCULATED",
-            source=str(quote.get("source", "iFinD行情")), history_status=history_status,
+            source=str(quote.get("source", "Yahoo Finance行情")), history_status=history_status,
             observed_at=datetime.fromisoformat(quote["observed_at"]),
             price=latest, change=change, change_pct=change_pct, bars=bars,
             volume=volume_summary(bars), indicators=technical_indicators(bars), factors=factors,
