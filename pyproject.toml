@@ -7,7 +7,7 @@ name = "prism-investment-copilot"
 version = "0.1.0"
 description = "Evidence-grounded personalized investment decision-support copilot."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
   "fastapi>=0.115,<1",
   "pydantic>=2.10,<3",

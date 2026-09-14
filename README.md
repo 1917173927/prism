@@ -227,7 +227,7 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
 
 ## 本地运行
 
-要求 Python 3.11 或更高版本。
+要求 64 位 Python 3.11 或 3.12。OCR 运行依赖当前不支持 Python 3.13 及以上版本。
 
 ### 1. macOS 环境 (一键启动)
 
@@ -249,12 +249,18 @@ uv run uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --reload
 
 ### 2. Windows 环境
 
-Windows 下可使用批处理脚本启动本地工作台：
+Windows 下双击 `start.bat` 即可启动本地工作台。脚本会优先选择 Python 3.12，
+其次选择 Python 3.11，自动创建 `.venv` 并在缺少运行依赖时安装 `.[web]`。
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\python -m pip install -e ".[dev,web]"
 .\start.bat
+```
+
+如需手动创建开发环境并安装测试依赖：
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -e ".[dev,web]"
 ```
 
 服务默认监听 `http://127.0.0.1:8000`，浏览器入口为 `/`，OpenAPI 文档为
