@@ -7,9 +7,11 @@ from collections.abc import Callable
 from contextlib import aclosing, asynccontextmanager
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from hashlib import sha256
 from pathlib import Path
 import os
 import re
+from time import monotonic
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -170,6 +172,7 @@ from app.service import (
     FixtureConvertibleBondResearchService,
     ConvertibleBondResearchError,
     FixturePortfolioOptimizationService,
+    DeterministicPortfolioOptimizationService,
     PortfolioOptimizationError,
     FixtureScenarioSimulationService,
     ScenarioSimulationError,
@@ -179,6 +182,7 @@ from app.service import (
     AdvancedExplainabilityService,
 )
 from app.portfolio import (
+    LivePortfolioProviderAdapter,
     PortfolioImportBundle,
     PortfolioRefreshRequest,
     PortfolioRefreshResponse,
@@ -468,6 +472,7 @@ def create_app(
     active_portfolio_optimization = (
         portfolio_optimization_service or FixturePortfolioOptimizationService()
     )
+    active_live_portfolio_optimization = DeterministicPortfolioOptimizationService()
     active_scenario_simulation = (
         scenario_simulation_service
         or FixtureScenarioSimulationService(
@@ -521,6 +526,18 @@ def create_app(
         return None
 
     user_model_settings: dict[str, CopilotConfigApiRequest] = {}
+    trusted_live_portfolios: dict[str, tuple[str, float]] = {}
+
+    def portfolio_fingerprint(portfolio: PortfolioImportBundle) -> str:
+        return sha256(portfolio.model_dump_json().encode("utf-8")).hexdigest()
+
+    def is_trusted_live_portfolio(owner_id: str, portfolio: PortfolioImportBundle) -> bool:
+        trusted = trusted_live_portfolios.get(owner_id)
+        if trusted is None:
+            return False
+        fingerprint, verified_at = trusted
+        age_seconds = monotonic() - verified_at
+        return age_seconds <= 300 and fingerprint == portfolio_fingerprint(portfolio)
 
     def model_setting_scope(owner_id: str) -> str:
         # Without account authentication this is a single-user loopback
@@ -1806,14 +1823,29 @@ def create_app(
         request: PortfolioOptimizationRequest,
         owner_id: str = Depends(owner_dependency),
     ) -> PortfolioOptimizationResponse:
-        if blocked := reject_fixture_execution_in_live(active_portfolio_optimization, "组合优化研究"):
+        optimization_service = (
+            active_live_portfolio_optimization
+            if get_runtime_mode_controller().mode == DataMode.LIVE
+            and type(active_portfolio_optimization) is FixturePortfolioOptimizationService
+            else active_portfolio_optimization
+        )
+        if blocked := reject_fixture_execution_in_live(optimization_service, "组合优化研究"):
             return blocked
         if request.owner_id != owner_id:
             raise StoreOwnerError(
                 "portfolio optimization request owner does not match owner scope"
             )
+        if (
+            get_runtime_mode_controller().mode == DataMode.LIVE
+            and not is_trusted_live_portfolio(owner_id, request.portfolio)
+        ):
+            return _error_response(
+                409,
+                "LIVE_PORTFOLIO_REFRESH_REQUIRED",
+                "当前组合尚未绑定本服务进程生成的真实行情刷新结果",
+            )
         try:
-            raw_output = await active_portfolio_optimization.run(request)
+            raw_output = await optimization_service.run(request)
             if not isinstance(raw_output, PortfolioOptimizationResponse):
                 raise PortfolioOptimizationError(
                     "portfolio optimization output type was invalid"
@@ -2010,6 +2042,15 @@ def create_app(
     ) -> PortfolioRebalancingResponse:
         if request.owner_id != owner_id:
             raise StoreOwnerError("rebalancing request owner does not match owner scope")
+        if (
+            get_runtime_mode_controller().mode == DataMode.LIVE
+            and not is_trusted_live_portfolio(owner_id, request.bundle)
+        ):
+            return _error_response(
+                409,
+                "LIVE_PORTFOLIO_REFRESH_REQUIRED",
+                "调仓输入未绑定本服务进程生成的真实行情刷新结果",
+            )
         return active_portfolio_rebalancing.plan_rebalancing(request)
 
     @api.get(
@@ -2895,18 +2936,53 @@ def create_app(
             raise StoreOwnerError("portfolio refresh request owner does not match owner scope")
         controller = get_runtime_mode_controller()
         if controller.mode == DataMode.LIVE:
-            if not controller.is_wencai_ready:
+            trusted_live_portfolios.pop(owner_id, None)
+            live_capabilities = controller.capabilities["LIVE"]
+            stock_quote_available = bool(live_capabilities.get("stock_quote"))
+            fund_lookthrough_available = bool(live_capabilities.get("fund_lookthrough"))
+            if not (
+                stock_quote_available
+                or fund_lookthrough_available
+                or controller.is_wencai_ready
+            ):
                 return JSONResponse(
                     status_code=409,
                     content={
                         "status": "BLOCKED",
                         "error_code": "LIVE_PROVIDER_UNAVAILABLE",
-                        "message": "问财组合刷新能力未通过凭据与接口契约校验。",
-                        "missing_fields": ["WENCAI_RESEARCH_AND_REFRESH"],
+                        "message": "组合刷新所需的真实行情能力当前不可用。",
+                        "missing_fields": ["LIVE_PORTFOLIO_MARKET_DATA"],
                     },
                 )
-            response = await refresh_portfolio_live(request, active_wencai_provider)
-            if any(row.provider_status == ProviderStatus.FAILED.value for row in response.positions):
+            provider = LivePortfolioProviderAdapter(
+                active_live_finance,
+                wencai_provider=active_wencai_provider,
+                stock_quote_available=stock_quote_available,
+                fund_lookthrough_available=fund_lookthrough_available,
+                wencai_available=bool(
+                    controller.is_wencai_ready
+                    or getattr(active_wencai_provider, "is_configured", False)
+                ),
+            )
+            response = await refresh_portfolio_live(request, provider)
+            if provider.wencai_failure_codes:
+                error_code = sorted(provider.wencai_failure_codes)[0]
+                await controller.record_portfolio_metadata_result(
+                    available=False, error_code=error_code
+                )
+                await persist_wencai_failure(error_code)
+            elif response.status == "COMPLETE" and provider.wencai_metadata_succeeded:
+                await controller.record_portfolio_metadata_result(available=True)
+            if response.status == "COMPLETE" and response.portfolio is not None:
+                trusted_live_portfolios[owner_id] = (
+                    portfolio_fingerprint(response.portfolio),
+                    monotonic(),
+                )
+            if not provider.wencai_failure_codes and any(
+                row.provider == active_wencai_provider.name
+                and row.provider_status == ProviderStatus.FAILED.value
+                for row in response.positions
+            ):
                 await controller.record_wencai_failure("PORTFOLIO_REFRESH_FAILED")
                 await persist_wencai_failure("PORTFOLIO_REFRESH_FAILED")
             return response

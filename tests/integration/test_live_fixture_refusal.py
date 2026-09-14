@@ -80,7 +80,6 @@ def test_live_mode_refuses_every_default_fixture_research_run() -> None:
             "subject": "PRISM_CONVERTIBLE_BOND_DEMO_H", "period": "2026-Q2",
             "generated_at": NOW.isoformat(),
         }),
-        ("/api/v1/advisor/portfolio-optimization-runs", optimization.model_dump(mode="json")),
         ("/api/v1/advisor/scenario-simulation-runs", simulation.model_dump(mode="json")),
     )
 
@@ -107,6 +106,14 @@ def test_live_mode_refuses_every_default_fixture_research_run() -> None:
         assert response.status_code == 409, endpoint
         assert response.json()["error_code"] == "LIVE_RESEARCH_NOT_AVAILABLE"
         assert "演示数据" in response.json()["message"]
+
+    optimization_response = client.post(
+        "/api/v1/advisor/portfolio-optimization-runs",
+        headers=headers,
+        json=optimization.model_dump(mode="json"),
+    )
+    assert optimization_response.status_code == 409
+    assert optimization_response.json()["error_code"] == "LIVE_PORTFOLIO_REFRESH_REQUIRED"
 
     workflow = client.post(
         "/api/v1/advisor/workflow-runs",

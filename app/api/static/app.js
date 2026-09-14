@@ -132,6 +132,7 @@
     liveReady: false,
     liveConfigured: false,
     wencaiReady: false,
+    wencaiConfigured: false,
     liveReadinessIssues: [],
     capabilities: null,
     rebalancingRun: null,
@@ -4367,7 +4368,10 @@
     try {
       const payload = await response.json();
       const message = payload && typeof payload.message === "string" ? payload.message : "";
-      return new Error(message && /[\u3400-\u9fff]/.test(message) ? message : "接口请求失败");
+      const error = new Error(message && /[\u3400-\u9fff]/.test(message) ? message : "接口请求失败");
+      error.errorCode = payload?.error_code || null;
+      error.httpStatus = response.status;
+      return error;
     } catch (_) {
       return new Error("接口请求失败");
     }
@@ -4671,6 +4675,24 @@
 
   async function loadPortfolioOptimizationCatalog(ownerId) {
     const sequence = ++state.portfolioOptimizationSequence;
+    if (state.dataMode === "LIVE") {
+      const template = {
+        methodology_version: "CAP_AND_REDISTRIBUTE_V1",
+        rules: [],
+        scenarios: [{
+          scenario_id: "BASELINE_READY",
+          label: "当前真实持仓",
+          description: "仅对当前已确认并完成真实行情刷新的持仓计算目标权重。",
+        }],
+        generated_at: new Date().toISOString(),
+        questionnaire: state.profile?.questionnaire || null,
+      };
+      if (state.ownerId !== ownerId || state.portfolioOptimizationSequence !== sequence) return null;
+      state.portfolioOptimizationTemplate = template;
+      renderPortfolioOptimizationScenarioOptions(template.scenarios);
+      byId("portfolio-optimization-template-meta").textContent = "方法 CAP_AND_REDISTRIBUTE_V1 · 当前真实持仓 · Python 确定性计算";
+      return template;
+    }
     const response = await fetch("/api/v1/advisor/portfolio-optimization-template", {
       headers: { "X-Owner-ID": ownerId },
     });
@@ -5374,6 +5396,15 @@
       setError("请先添加并确认持仓，再生成组合目标结构。");
       return null;
     }
+    if (state.dataMode === "LIVE" && state.portfolioRefreshRun?.status !== "COMPLETE") {
+      setPortfolioOptimizationStatus("正在刷新真实行情…", "review");
+      const health = await refreshPortfolioHealth();
+      if (!health || state.portfolioRefreshRun?.status !== "COMPLETE") {
+        setPortfolioOptimizationStatus("行情待复核", "review");
+        setError("真实行情刷新尚未完成，不能基于旧价格生成目标权重。");
+        return null;
+      }
+    }
     const requestSequence = ++state.portfolioOptimizationSequence;
     const scenarioId = scenarioSelect.value || "BASELINE_READY";
     const questionnaire = state.profile && state.profile.questionnaire
@@ -5416,6 +5447,10 @@
       return state.portfolioOptimizationRun;
     } catch (error) {
       if (state.ownerId !== requestOwner || state.portfolioOptimizationSequence !== requestSequence) return;
+      if (error.errorCode === "LIVE_PORTFOLIO_REFRESH_REQUIRED") {
+        state.portfolioRefreshRun = null;
+        renderPortfolioRefreshStatus(null);
+      }
       state.portfolioOptimizationRun = null;
       renderPortfolioOptimization(null);
       setPortfolioOptimizationStatus("未运行", "blocked");
@@ -5716,6 +5751,7 @@
             store.liveReady = payload.data.live_ready === true;
             store.liveConfigured = payload.data.live_configured === true;
             store.wencaiReady = payload.data.wencai_ready === true;
+            store.wencaiConfigured = payload.data.wencai_configured === true;
             store.liveReadinessIssues = payload.data.live_readiness_issues || [];
             store.capabilities = payload.data.capabilities || null;
           });
@@ -6419,6 +6455,12 @@
   // 2. Portfolio Rebalancing
   async function runPortfolioRebalancing() {
     try {
+      if (
+        state.dataMode === "LIVE"
+        && (state.portfolioRefreshRun?.status !== "COMPLETE" || !state.portfolioOptimizationRun?.targets?.length)
+      ) {
+        await runPortfolioOptimization();
+      }
       if (!state.portfolioOptimizationRun?.targets?.length) {
         throw new Error("缺少已计算的目标权重，请先生成组合目标结构");
       }
@@ -6453,7 +6495,7 @@
         }),
       });
       if (!isContextRequestCurrent(token)) return null;
-      if (!res.ok) throw new Error("生成调仓计划失败");
+      if (!res.ok) throw await apiError(res);
       const data = await res.json();
       if (!isContextRequestCurrent(token)) return null;
       state.rebalancingRun = data;
@@ -6532,6 +6574,12 @@
       });
       return data;
     } catch (err) {
+      if (err.errorCode === "LIVE_PORTFOLIO_REFRESH_REQUIRED") {
+        state.portfolioRefreshRun = null;
+        state.portfolioOptimizationRun = null;
+        renderPortfolioRefreshStatus(null);
+        renderPortfolioOptimization(null);
+      }
       setError(err.message);
       return null;
     }
@@ -7656,7 +7704,9 @@
     const profile = token.profile.profile;
     let portfolio = token.portfolio;
     const liveCapabilities = (state.capabilities && state.capabilities.LIVE) || {};
-    const shouldRefresh = state.dataMode !== "LIVE" || liveCapabilities.portfolio_refresh === true;
+    const shouldRefresh = state.dataMode !== "LIVE"
+      || liveCapabilities.portfolio_refresh === true
+      || (liveCapabilities.stock_quote === true && state.wencaiConfigured === true);
     if (shouldRefresh) {
       const refreshResponse = await fetch("/api/v1/advisor/portfolio/refresh", {
         method: "POST",
@@ -7688,17 +7738,19 @@
         store.portfolioRefreshRun = refreshPayload;
       });
       renderPortfolioRefreshStatus(refreshPayload);
+      if (refreshPayload.data_mode === "LIVE") await fetchRuntimeDataMode();
       token = beginContextRequest("portfolioHealthSequence");
       portfolio = token.portfolio;
     } else {
       const skippedRefresh = {
-        status: "SKIPPED",
+        status: "BLOCKED",
         data_mode: "LIVE",
         provider: "未执行外部刷新",
-        issues: ["问财组合刷新当前不可用；本次使用已确认持仓执行 Python 确定性计算。"],
+        issues: ["真实组合行情当前不可用；未使用旧持仓价格继续计算。"],
       };
       microStore.transact((store) => { store.portfolioRefreshRun = skippedRefresh; });
       renderPortfolioRefreshStatus(skippedRefresh);
+      throw new Error("真实组合行情当前不可用，组合体检已停止");
     }
     const response = await fetch("/api/v1/advisor/portfolio-health", {
       method: "POST",
@@ -7749,14 +7801,20 @@
     const skipped = refresh.status === "SKIPPED";
     const complete = refresh.status === "COMPLETE";
     const rows = Array.isArray(refresh.positions) ? refresh.positions : [];
-    const latest = rows.find((row) => row.observed_at);
-    const freshness = latest?.staleness_seconds == null
+    const timedRows = rows.filter((row) => row.observed_at && row.staleness_seconds != null);
+    const stalest = timedRows.reduce(
+      (current, row) => !current || Number(row.staleness_seconds) > Number(current.staleness_seconds) ? row : current,
+      null,
+    );
+    const freshness = stalest?.staleness_seconds == null
       ? "新鲜度未提供"
-      : `数据距计算时点 ${Number(latest.staleness_seconds).toFixed(0)} 秒`;
+      : `最旧行情距计算时点 ${Number(stalest.staleness_seconds).toFixed(0)} 秒`;
+    const sources = [...new Set(rows.map((row) => row.source).filter(Boolean))];
+    const sourceLabel = sources.length ? sources.join(" + ") : (refresh.provider || "未标注来源");
     target.textContent = skipped
       ? `LIVE · 未刷新 · ${refresh.issues?.[0] || "使用已确认持仓进行计算"}`
       : complete
-      ? `${isLive ? "LIVE · 问财刷新" : "MOCK · 合成数据"} · ${refresh.provider || "未标注来源"} · ${freshness}`
+      ? `${isLive ? "LIVE · 真实数据刷新" : "MOCK · 合成数据"} · ${sourceLabel} · ${freshness}`
       : `${isLive ? "LIVE · 需要复核" : "MOCK · 需要复核"} · ${refresh.issues?.[0] || "数据未完整刷新"}`;
     target.className = `portfolio-refresh-status ${complete ? "complete" : "review"}`;
   }

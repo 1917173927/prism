@@ -59,6 +59,12 @@ class RuntimeModeController:
         self._wencai_configured_override: bool | None = None
         self._wencai_contract_verified_override: bool | None = None
         self._wencai_available = self._wencai_configured_and_verified
+        # Portfolio refresh needs a narrower contract than the nine-Skill
+        # aggregate probe: a real company/industry lookup combined with a real
+        # Fuyao quote.  Track that contract independently so an unrelated Skill
+        # failure does not disable a working portfolio path, while quote-only
+        # availability can never advertise a complete refresh.
+        self._portfolio_metadata_available = self._wencai_configured_and_verified
         self._wencai_checked_at: datetime | None = None
         self._wencai_last_error_code: str | None = None
         self._initial_probe_pending = initial_mode is None and self._fuyao_configured
@@ -151,6 +157,10 @@ class RuntimeModeController:
     def capabilities(self) -> dict[str, Any]:
         """Matrix of feature readiness under MOCK and LIVE modes."""
         live_wencai_ready = self._wencai_ready
+        live_portfolio_market_ready = (
+            self._fuyao_capabilities["stock_quote"]
+            and self._portfolio_metadata_available
+        )
         return {
             "MOCK": {
                 "stock_quote": True,
@@ -172,9 +182,10 @@ class RuntimeModeController:
                 "convertible_bond_data": live_wencai_ready,
                 "semantic_search": live_wencai_ready,
                 "announcement_search": live_wencai_ready,
-                "portfolio_refresh": live_wencai_ready,
+                "portfolio_refresh": live_portfolio_market_ready,
                 "portfolio_health_check": True,
-                "portfolio_rebalancing": True,
+                "portfolio_optimization": live_portfolio_market_ready,
+                "portfolio_rebalancing": live_portfolio_market_ready,
             },
         }
 
@@ -245,6 +256,17 @@ class RuntimeModeController:
                 self._revision += 1
             self._updated_at = checked_at
 
+    async def record_portfolio_metadata_result(
+        self, *, available: bool, error_code: str | None = None
+    ) -> None:
+        """Record the operation-specific Wencai industry-enrichment result."""
+        async with self._lock:
+            self._portfolio_metadata_available = available
+            if not available:
+                self._wencai_checked_at = datetime.now(UTC)
+                self._wencai_last_error_code = error_code or "PORTFOLIO_METADATA_FAILED"
+            self._updated_at = datetime.now(UTC)
+
     async def configure_wencai(
         self, *, configured: bool, contract_verified: bool = False
     ) -> None:
@@ -253,6 +275,7 @@ class RuntimeModeController:
             self._wencai_configured_override = configured
             self._wencai_contract_verified_override = configured and contract_verified
             self._wencai_available = configured and contract_verified
+            self._portfolio_metadata_available = configured and contract_verified
             self._wencai_checked_at = None
             self._wencai_last_error_code = None
             self._updated_at = datetime.now(UTC)
@@ -265,6 +288,7 @@ class RuntimeModeController:
         self._wencai_configured_override = configured
         self._wencai_contract_verified_override = configured and contract_verified
         self._wencai_available = configured and contract_verified
+        self._portfolio_metadata_available = configured and contract_verified
         self._wencai_checked_at = None
         self._wencai_last_error_code = None
         if auto_activate and self.is_wencai_ready and self._mode != DataMode.LIVE:
@@ -311,6 +335,7 @@ class RuntimeModeController:
                 ),
                 "last_error_code": self._wencai_last_error_code,
             },
+            "portfolio_metadata_ready": self._portfolio_metadata_available,
             "live_readiness_issues": self.live_readiness_issues,
             "capabilities": self.capabilities,
             "live_capability_status": {

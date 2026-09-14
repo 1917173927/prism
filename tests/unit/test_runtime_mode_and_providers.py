@@ -81,6 +81,7 @@ class TestRuntimeModeController:
         assert capabilities["stock_quote"] is True
         assert capabilities["fund_lookthrough"] is True
         assert capabilities["semantic_search"] is False
+        assert capabilities["portfolio_refresh"] is False
 
     def test_wencai_capabilities_can_coexist_without_fuyao(self):
         os.environ["WENCAI_SKILLHUB_API_KEY"] = "test_official_key"
@@ -93,7 +94,7 @@ class TestRuntimeModeController:
         assert status["capabilities"]["LIVE"]["stock_quote"] is False
         assert status["capabilities"]["LIVE"]["fund_lookthrough"] is False
         assert status["capabilities"]["LIVE"]["semantic_search"] is True
-        assert status["capabilities"]["LIVE"]["portfolio_refresh"] is True
+        assert status["capabilities"]["LIVE"]["portfolio_refresh"] is False
 
     def test_fuyao_and_wencai_capabilities_coexist(self):
         async def _run():
@@ -140,7 +141,7 @@ class TestRuntimeModeController:
             assert status["wencai_ready"] is False
             assert status["wencai_capability_status"]["last_error_code"] == "AUTH_FAILED"
             assert capabilities["semantic_search"] is False
-            assert capabilities["portfolio_refresh"] is False
+            assert capabilities["portfolio_refresh"] is True
             assert capabilities["stock_quote"] is True
             assert capabilities["fund_lookthrough"] is True
 

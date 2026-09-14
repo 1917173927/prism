@@ -15,10 +15,11 @@
 
 - [x] 修复真实模型分片工具调用未执行、动态快捷标的丢失、用户模型配置未覆盖画像/记忆、AUTO 隐式模拟、LIVE 工具穿透 MOCK、未授权参数与未核验金融正文透传；真实浏览器和扶摇接口已验证个股行情与基金披露均为非合成数据。
 - [x] Windows 本地模型密钥改为 DPAPI 保护的持久化：未认证回环工作台使用单机槽，启用账户身份绑定后按 owner 隔离；填写一次后可跨热重载和服务重启恢复，API 不回读明文，留空保存删除当前作用域配置；非 Windows 部署继续要求外部 Secret/环境变量。
-- [x] LIVE 模式统一拒绝仍由 Fixture 服务承载的投顾、专家矩阵、股票/基金/转债完整研究、组合优化、情景模拟和工作流执行；显式 MOCK 演示保持可用。
-- [ ] 将上述被 LIVE 闸门拒绝的七类研究服务替换为真实适配器；需要问财凭据/权限与缺失财务、转债字段的数据源契约。
-- [x] 问财 SkillHub 已项目化接入九个官方 Skill；凭据以 DPAPI 保存一次、跨重启恢复，九项真实最小请求和 LIVE 聊天公告工具链均通过，不依赖全局 CLI。
-- [ ] 九个底层 Skill 已真实可调，但默认 Fixture 研究矩阵、完整股票/基金/转债专题研究、组合优化、情景模拟和固定工作流尚未替换为 LIVE service adapter；组合刷新还需把问财动态中文列稳定映射为持仓标准字段后才能验收。
+- [x] LIVE 模式继续拒绝 Fixture 投顾、专家矩阵、股票/基金/转债完整研究、预设情景和固定工作流；组合优化已拆出不读取回放模板的真实持仓确定性服务，调仓链路已开放。
+- [x] 组合刷新接入真实扶摇报价并保留问财适配：问财单项行情 Skill 失败不再阻断扶摇报价、组合体检、目标权重和调仓；问财动态中文股票列也已映射为标准字段。
+- [x] 问财 SkillHub 已项目化接入九个官方 Skill；凭据以 DPAPI 保存一次、跨重启恢复。历史九项探测和公告工具链通过，但当前 `hithink-market-query` 返回 401，运行态按真实失败降级，不回退模拟数据。
+- [ ] 【未实现】将 Fixture 投顾、研究矩阵、股票/基金/转债完整研究、预设情景和固定工作流替换为真实服务。现有双源证据契约不能用单一问财来源冒充闭合。
+- [ ] 【已实现但数据不完整】Copilot 个股研究已有扶摇真实行情，仍缺 PE/PB/ROE/估值分位等财务字段；基金已有真实披露持仓，仍缺底层行业分类；两者保持 `REVIEW_REQUIRED`。
 - [x] Windows 启动入口收敛为单一 `start.bat`；自动选择 Python 3.12/3.11、创建 `.venv`、安装完整 Web 运行依赖并执行导入检查，已通过全新环境安装和 HTTP 健康检查。
 - [x] 可选 HTTP Basic 绑定服务端 owner、管理员权限、跨来源写入拒绝和访问审计；已确认持仓继续服务端持久化，认证模式不缓存聊天或模型密钥。
 - [x] SQLite 在线备份和新路径恢复；防覆盖并执行完整性校验。运行说明见 docs/local-deployment.md。
@@ -188,7 +189,7 @@
 ## External inputs / decisions
 
 - [x] 接入扶摇服务端金融数据凭据；普通用户无需配置上游 API Key，LIVE 行情与基金披露持仓已完成真实请求验证。
-- [x] 合并扶摇与问财核心能力：各 Provider 独立降级；问财未配置时不阻断扶摇行情、基金披露和基于已确认持仓的确定性组合计算。
+- [x] 合并扶摇与问财核心能力：各 Provider 独立降级；问财未配置时不阻断独立的扶摇行情与基金披露，但组合刷新、优化和调仓必须同时取得真实报价与真实行业元数据，缺一即停止且不沿用旧持仓字段。
 - [ ] 在公开部署或向第三方开放 Prism API 前，确认扶摇多用户展示、缓存、派生结果、调用限额、SLA 与再分发授权。
 - [x] 已注入用户提供的问财 OpenAPI 服务端凭据并完成真实查询 smoke test；适配器使用 `IWENCAI_BASE_URL`/`IWENCAI_API_KEY`，保留 `WENCAI_SKILLHUB_*` 兼容别名和严格失败降级。
 - [ ] Obtain competition-specific SkillHub development documentation and production credentials when officially issued by the committee.
@@ -198,7 +199,7 @@
 - [ ] Choose the Prism repository license before any public publication.
 - [ ] 取得并验证港股、美股四个指数及三项宏观因子的正式iFinD代码、展示权限、配额与再分发许可后，完成真实LIVE联调；验证前维持 `UNAVAILABLE`。
 
-These inputs block claims of real SkillHub integration or submission readiness, but they do not block fixture-driven contract and vertical-slice development.
+The remaining legal, quota and competition-document inputs block production redistribution and submission-readiness claims; they do not negate the verified local real-provider paths or block fixture-driven contract development for explicitly deferred features.
 
 ## Explicitly deferred
 

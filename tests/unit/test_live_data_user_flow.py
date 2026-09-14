@@ -303,6 +303,7 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     assert.match(byId("donut-cause-callout").textContent, /各行业占比仍在设置范围内/);
     state.portfolioHealthRun = null;
     state.portfolio = {position_snapshot:{positions:[{asset_id:"510300.SH"}]}};
+    state.portfolioRefreshRun = {status:"COMPLETE"};
     state.portfolioOptimizationRun = {targets:[{target_id:"SECTOR:TECHNOLOGY",target_weight_pct:100}]};
     assert.equal(await runPortfolioRebalancing(), null);
     assert.match(errors.at(-1), /不能直接作为账户持仓下单/);

@@ -43,6 +43,7 @@ from app.service.convertible_bond_research import (
     ConvertibleBondResearchError,
 )
 from app.service.portfolio_optimization import (
+    DeterministicPortfolioOptimizationService,
     FixturePortfolioOptimizationService,
     PortfolioOptimizationError,
 )
@@ -81,6 +82,7 @@ __all__ = [
     "FixtureConvertibleBondResearchService",
     "ConvertibleBondResearchError",
     "FixturePortfolioOptimizationService",
+    "DeterministicPortfolioOptimizationService",
     "PortfolioOptimizationError",
     "FixtureScenarioSimulationService",
     "ScenarioSimulationError",

@@ -25,6 +25,7 @@ from app.portfolio.exposure import (
     calculate_exposure,
 )
 from app.portfolio.refresh import (
+    LivePortfolioProviderAdapter,
     PortfolioPositionRefresh,
     PortfolioRefreshRequest,
     PortfolioRefreshResponse,
@@ -54,6 +55,7 @@ __all__ = [
     "ExposureStatus",
     "calculate_exposure",
     "PortfolioPositionRefresh",
+    "LivePortfolioProviderAdapter",
     "PortfolioRefreshRequest",
     "PortfolioRefreshResponse",
     "refresh_portfolio_live",

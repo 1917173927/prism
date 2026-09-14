@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Literal, Self
+from typing import Any, Literal, Protocol, Self
 
 from pydantic import Field, model_validator
 
@@ -20,11 +20,239 @@ from app.portfolio.contracts import (
 )
 from app.providers.contracts import (
     FinancialProvider,
+    ProviderIssue,
+    ProviderIssueCode,
     ProviderOperation,
+    ProviderRecord,
     ProviderRequest,
     ProviderResult,
+    ProviderServingMode,
     ProviderStatus,
 )
+from app.providers.fingerprint import compute_request_fingerprint
+
+
+class StructuredFinanceProvider(Protocol):
+    async def get_quote(self, code: str) -> dict[str, Any] | None: ...
+
+    async def get_fund_lookthrough(self, code: str) -> dict[str, Any] | None: ...
+
+
+class LivePortfolioProviderAdapter:
+    """Normalize real Fuyao data and optionally fall back to real SkillHub data."""
+
+    name = "live_portfolio_sources"
+
+    def __init__(
+        self,
+        finance_provider: StructuredFinanceProvider,
+        *,
+        wencai_provider: FinancialProvider | None = None,
+        stock_quote_available: bool = False,
+        fund_lookthrough_available: bool = False,
+        wencai_available: bool = False,
+    ) -> None:
+        self._finance_provider = finance_provider
+        self._wencai_provider = wencai_provider
+        self._stock_quote_available = stock_quote_available
+        self._fund_lookthrough_available = fund_lookthrough_available
+        self._wencai_available = wencai_available
+        self.wencai_failure_codes: set[str] = set()
+        self.wencai_metadata_succeeded = False
+
+    @staticmethod
+    def _failed(request: ProviderRequest, error: BaseException) -> ProviderResult:
+        return ProviderResult(
+            request_id=request.request_id,
+            request_fingerprint=compute_request_fingerprint(request),
+            provider="fuyao_finance_api",
+            status=ProviderStatus.FAILED,
+            retrieved_at=datetime.now(UTC),
+            serving_mode=ProviderServingMode.DIRECT,
+            issues=(ProviderIssue(
+                code=ProviderIssueCode.TRANSPORT_ERROR,
+                stage="portfolio_refresh",
+                safe_message=f"real portfolio data provider failed: {type(error).__name__}",
+                retriable=True,
+            ),),
+        )
+
+    @staticmethod
+    def _empty(request: ProviderRequest, provider: str) -> ProviderResult:
+        return ProviderResult(
+            request_id=request.request_id,
+            request_fingerprint=compute_request_fingerprint(request),
+            provider=provider,
+            status=ProviderStatus.EMPTY,
+            retrieved_at=datetime.now(UTC),
+            serving_mode=ProviderServingMode.DIRECT,
+            scope_description=f"No live portfolio data was returned for {request.parameters.get('asset_id', request.subject)}",
+        )
+
+    @staticmethod
+    def _result(
+        request: ProviderRequest,
+        fields: dict[str, object],
+        *,
+        source: str,
+        missing_fields: tuple[str, ...] = (),
+        issues: tuple[ProviderIssue, ...] = (),
+    ) -> ProviderResult:
+        return ProviderResult(
+            request_id=request.request_id,
+            request_fingerprint=compute_request_fingerprint(request),
+            provider="fuyao_finance_api",
+            status=ProviderStatus.PARTIAL if missing_fields or issues else ProviderStatus.SUCCESS,
+            retrieved_at=datetime.now(UTC),
+            serving_mode=ProviderServingMode.DIRECT,
+            records=(ProviderRecord(source=source, fields=fields),),
+            missing_fields=missing_fields,
+            issues=issues,
+        )
+
+    async def _execute_fuyao(self, request: ProviderRequest) -> ProviderResult | None:
+        asset_id = str(request.parameters.get("asset_id") or request.subject).split()[0]
+        if request.operation == ProviderOperation.MARKET_DATA and self._stock_quote_available:
+            quote = await self._finance_provider.get_quote(asset_id)
+            if quote is None:
+                return self._empty(request, "fuyao_finance_api")
+            if quote.get("is_synthetic") is not False:
+                raise ValueError("Fuyao quote did not prove a non-synthetic source")
+            sector = None
+            enriched_name = None
+            enrichment_source = None
+            enrichment_issues: list[ProviderIssue] = []
+            if self._wencai_available and self._wencai_provider is not None:
+                enrichment_request = ProviderRequest(
+                    request_id=f"{request.request_id}:industry",
+                    operation=ProviderOperation.COMPANY_DATA,
+                    subject=f"{asset_id} 所属同花顺行业 股票简称",
+                    as_of=request.as_of,
+                    parameters={"asset_id": asset_id},
+                    timeout_ms=request.timeout_ms,
+                )
+                try:
+                    enrichment = await self._wencai_provider.execute(enrichment_request)
+                except Exception as exc:
+                    enrichment = None
+                    self.wencai_failure_codes.add(ProviderIssueCode.TRANSPORT_ERROR.value)
+                    enrichment_issues.append(ProviderIssue(
+                        code=ProviderIssueCode.TRANSPORT_ERROR,
+                        stage="portfolio_industry_enrichment",
+                        safe_message=f"Wencai industry enrichment failed: {type(exc).__name__}",
+                        retriable=True,
+                    ))
+                if enrichment is not None and enrichment.status == ProviderStatus.FAILED:
+                    failure_code = (
+                        enrichment.issues[0].code
+                        if enrichment.issues
+                        else ProviderIssueCode.INVALID_RESPONSE
+                    )
+                    self.wencai_failure_codes.add(failure_code.value)
+                    enrichment_issues.extend(enrichment.issues or (ProviderIssue(
+                        code=ProviderIssueCode.INVALID_RESPONSE,
+                        stage="portfolio_industry_enrichment",
+                        safe_message="Wencai industry enrichment returned a failed response",
+                        retriable=True,
+                    ),))
+                if enrichment is not None and enrichment.status in {
+                    ProviderStatus.SUCCESS,
+                    ProviderStatus.PARTIAL,
+                }:
+                    for record in enrichment.records:
+                        items = record.fields.get("items")
+                        if not isinstance(items, (list, tuple)):
+                            continue
+                        match = next(
+                            (
+                                item for item in items
+                                if isinstance(item, dict)
+                                and str(item.get("股票代码") or "").split(".")[0]
+                                == asset_id.split(".")[0]
+                            ),
+                            None,
+                        )
+                        if match is None:
+                            continue
+                        sector = _canonical_sector_from_wencai(
+                            match.get("所属同花顺行业") or match.get("所属申万行业")
+                        )
+                        if sector is not None:
+                            self.wencai_metadata_succeeded = True
+                        enriched_name = match.get("股票简称")
+                        enrichment_source = record.source
+                        break
+            fields = {
+                "price_cny": quote.get("price_cny"),
+                "observed_at": quote.get("observed_at"),
+                "sector": sector,
+                "name": enriched_name or quote.get("name"),
+                "source": " + ".join(filter(None, (
+                    quote.get("source") or "Fuyao structured financial data API",
+                    enrichment_source,
+                ))),
+            }
+            missing = tuple(
+                name for name in ("price_cny", "observed_at", "sector")
+                if fields.get(name) in (None, "")
+            )
+            return self._result(
+                request,
+                fields,
+                source=str(fields["source"]),
+                missing_fields=missing,
+                issues=tuple(enrichment_issues),
+            )
+
+        if request.operation == ProviderOperation.FUND_DATA and self._fund_lookthrough_available:
+            fund = await self._finance_provider.get_fund_lookthrough(asset_id)
+            if fund is None:
+                return self._empty(request, "fuyao_finance_api")
+            if fund.get("is_synthetic") is not False:
+                raise ValueError("Fuyao fund data did not prove a non-synthetic source")
+            raw_holdings = fund.get("top_holdings")
+            holdings = [
+                {
+                    "underlying_asset_id": item.get("asset_id"),
+                    "underlying_name": item.get("name"),
+                    "weight_pct": item.get("weight_pct"),
+                    "sector": item.get("sector"),
+                }
+                for item in raw_holdings
+                if isinstance(item, dict)
+            ] if isinstance(raw_holdings, list) else []
+            coverage = sum(
+                (Decimal(str(item["weight_pct"])) for item in holdings if item.get("weight_pct") is not None),
+                Decimal("0"),
+            )
+            fields = {
+                "price_cny": fund.get("net_asset_value_cny"),
+                "observed_at": fund.get("observed_at"),
+                "sector": None,
+                "name": fund.get("fund_name"),
+                "top_holdings": holdings,
+                "coverage_pct": coverage,
+                "source": fund.get("source") or "Fuyao fund periodic disclosure API",
+            }
+            missing = tuple(
+                name for name in ("price_cny", "observed_at", "sector", "top_holdings")
+                if fields.get(name) in (None, "", [])
+            )
+            return self._result(request, fields, source=str(fields["source"]), missing_fields=missing)
+        return None
+
+    async def execute(self, request: ProviderRequest) -> ProviderResult:
+        try:
+            result = await self._execute_fuyao(request)
+            if result is not None and result.status != ProviderStatus.FAILED:
+                return result
+        except Exception as exc:
+            result = self._failed(request, exc)
+        if self._wencai_available and self._wencai_provider is not None:
+            return await self._wencai_provider.execute(request)
+        if result is not None:
+            return result
+        return self._failed(request, RuntimeError("no verified live provider capability"))
 
 
 class PortfolioRefreshRequest(ContractModel):
@@ -94,10 +322,67 @@ def _parse_datetime(value: object, field_name: str) -> datetime:
     return parsed
 
 
-def _record_fields(result: ProviderResult) -> dict[str, object]:
+def _canonical_sector_from_wencai(value: object) -> str | None:
+    if isinstance(value, (list, tuple)):
+        labels = " ".join(str(item) for item in value)
+    else:
+        labels = str(value or "")
+    mappings = (
+        (("半导体", "电子", "计算机", "通信", "软件", "互联网"), "Technology"),
+        (("电力设备", "电池", "机械", "汽车", "军工", "制造"), "Industrials"),
+        (("食品", "饮料", "白酒", "消费", "医药", "生物", "医疗"), "Consumer"),
+        (("银行", "保险", "金融", "煤炭", "石油", "有色", "钢铁", "化工", "公用", "房地产"), "Finance"),
+    )
+    for keywords, canonical in mappings:
+        if any(keyword in labels for keyword in keywords):
+            return canonical
+    return None
+
+
+def _wencai_observed_at(fields: dict[str, object], item: dict[str, object]) -> str | None:
+    for key in ("最新价时间", "行情时间", "更新时间", "数据时间"):
+        value = item.get(key) or fields.get(key)
+        if isinstance(value, str) and value.strip():
+            try:
+                parsed = datetime.fromisoformat(value.strip())
+            except ValueError:
+                continue
+            if parsed.tzinfo is not None and parsed.utcoffset() is not None:
+                return parsed.isoformat()
+    return None
+
+
+def _record_fields(result: ProviderResult, position: Position) -> dict[str, object]:
     if not result.records:
         return {}
-    return dict(result.records[0].fields)
+    fields = dict(result.records[0].fields)
+    if all(key in fields for key in ("price_cny", "observed_at", "sector")):
+        return fields
+
+    raw_items = fields.get("items")
+    if not isinstance(raw_items, (list, tuple)):
+        return fields
+    expected_code = position.asset_id.split(".")[0]
+    item = next(
+        (
+            dict(candidate)
+            for candidate in raw_items
+            if isinstance(candidate, dict)
+            and str(candidate.get("股票代码") or "").split(".")[0] == expected_code
+        ),
+        None,
+    )
+    if item is None:
+        return fields
+    industry = item.get("所属同花顺行业") or item.get("所属申万行业")
+    observed_at = _wencai_observed_at(fields, item)
+    return {
+        "price_cny": item.get("最新价"),
+        "observed_at": observed_at,
+        "sector": _canonical_sector_from_wencai(industry),
+        "name": item.get("股票简称") or position.asset_name,
+        "source": "iwencai.com / SkillHub (Official Live)",
+    }
 
 
 def _provider_issue_messages(result: ProviderResult) -> tuple[str, ...]:
@@ -163,10 +448,19 @@ async def _refresh_position(
     provider_request = ProviderRequest(
         request_id=f"{request.request_id}:{position.position_id}",
         operation=operation,
-        subject=position.asset_id,
+        subject=(
+            f"{position.asset_id} 最新价 所属同花顺行业"
+            if position.asset_type == AssetType.STOCK
+            else position.asset_id
+        ),
         as_of=request.as_of,
-        required_fields=("price_cny", "observed_at", "sector"),
-        parameters={"asset_id": position.asset_id, "asset_type": position.asset_type.value},
+        # The generic SkillHub adapter returns raw items/columns.  Canonical
+        # refresh fields are validated below after operation-specific decoding.
+        required_fields=(),
+        parameters={
+            "asset_id": position.asset_id,
+            "asset_type": position.asset_type.value,
+        },
         timeout_ms=2000,
     )
     try:
@@ -184,7 +478,7 @@ async def _refresh_position(
         )
         return position, row, None
 
-    fields = _record_fields(result)
+    fields = _record_fields(result, position)
     provider_name = result.provider
     if result.status not in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL} or not fields:
         row = PortfolioPositionRefresh(
@@ -202,16 +496,24 @@ async def _refresh_position(
 
     missing: list[str] = list(result.missing_fields)
     issues: list[str] = list(_provider_issue_messages(result))
+    price: Decimal | None = None
+    observed_at: datetime | None = None
+    sector = ""
     try:
         price = _parse_decimal(fields.get("price_cny"), "price_cny")
-        observed_at = _parse_datetime(fields.get("observed_at"), "observed_at")
-        sector = str(fields.get("sector") or "").strip()
-        if not sector:
-            raise ValueError("sector is missing")
     except ValueError as exc:
         issues.append(str(exc))
-        if "price_cny" not in missing:
-            missing.append("price_cny")
+        missing.append("price_cny")
+    try:
+        observed_at = _parse_datetime(fields.get("observed_at"), "observed_at")
+    except ValueError as exc:
+        issues.append(str(exc))
+        missing.append("observed_at")
+    sector = str(fields.get("sector") or "").strip()
+    if not sector:
+        issues.append("sector is missing")
+        missing.append("sector")
+    if price is None or observed_at is None or not sector:
         row = PortfolioPositionRefresh(
             position_id=position.position_id,
             asset_id=position.asset_id,
@@ -326,7 +628,7 @@ async def refresh_portfolio_live(
                 (position.as_of for position in refreshed_by_id.values()),
                 default=request.as_of,
             ),
-            "source": "iwencai_skillhub_live",
+            "source": "live_portfolio_sources",
             "positions": tuple(
                 refreshed_by_id.get(position.position_id, position) for position in positions
             ),

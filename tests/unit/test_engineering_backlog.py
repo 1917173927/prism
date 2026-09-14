@@ -302,8 +302,13 @@ def test_frontend_keeps_safe_dom_and_renders_sector_result_below_chart():
     assert 'tech_exposure_pct: "38.50"' not in script
     assert 'await refreshPortfolioHealth()' in script
     assert 'liveCapabilities.portfolio_refresh === true' in script
-    assert 'status: "SKIPPED"' in script
-    assert "使用已确认持仓执行 Python 确定性计算" in script
+    assert 'liveCapabilities.stock_quote === true && state.wencaiConfigured === true' in script
+    assert 'status: "BLOCKED"' in script
+    assert 'error.errorCode = payload?.error_code || null' in script
+    assert 'err.errorCode === "LIVE_PORTFOLIO_REFRESH_REQUIRED"' in script
+    assert 'state.portfolioOptimizationRun = null' in script
+    assert 'state.portfolioRefreshRun?.status !== "COMPLETE"' in script
+    assert "当前真实持仓 · Python 确定性计算" in script
     assert '["fuyao_finance_api", "wencai_skillhub_provider"].includes(' in script
     assert 'id="donut-sector-detail"' in page
     assert page.index('id="copilot-donut-legend"') < page.index('id="donut-sector-detail"')

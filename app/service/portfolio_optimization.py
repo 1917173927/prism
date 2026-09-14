@@ -879,4 +879,70 @@ class FixturePortfolioOptimizationService:
             raise PortfolioOptimizationError("portfolio optimization execution was refused") from exc
 
 
-__all__ = ["FixturePortfolioOptimizationService", "PortfolioOptimizationError"]
+class DeterministicPortfolioOptimizationService:
+    """Optimize an explicitly supplied portfolio without loading replay fixtures."""
+
+    serving_mode = "LIVE"
+    _failure_response = staticmethod(FixturePortfolioOptimizationService._failure_response)
+    _calculate_targets = FixturePortfolioOptimizationService._calculate_targets
+
+    async def run(self, request: PortfolioOptimizationRequest) -> PortfolioOptimizationResponse:
+        try:
+            request = PortfolioOptimizationRequest.model_validate(
+                request.model_dump(mode="python")
+                if isinstance(request, PortfolioOptimizationRequest)
+                else request
+            )
+            if request.scenario_id != OptimizationScenarioId.BASELINE_READY:
+                raise PortfolioOptimizationError(
+                    "LIVE optimization only accepts the submitted baseline portfolio"
+                )
+            profile = request.confirmed_profile or confirm_questionnaire(request.questionnaire)
+            portfolio = request.portfolio
+            scenario = _scenario_definition(OptimizationScenarioId.BASELINE_READY)
+            exposure = calculate_exposure(
+                portfolio,
+                request_id=_stable_id("optimization-exposure-request", request.request_id),
+                calculated_at=request.generated_at,
+            )
+            concentration = calculate_concentration(exposure)
+            assessment = assess_risk_budget(profile, concentration)
+            if exposure.status == ExposureStatus.FAILED or concentration.status == ConcentrationStatus.FAILED:
+                return self._failure_response(
+                    request,
+                    portfolio,
+                    profile.profile_id,
+                    profile.profile_version,
+                    profile.risk_level,
+                    scenario,
+                    OptimizationStatus.BLOCKED,
+                    "组合暴露或集中度计算失败；目标权重已阻断。",
+                    (OptimizationIssue(
+                        code=OptimizationIssueCode.INPUT_FAILED,
+                        safe_message="exposure or concentration calculation failed",
+                    ),),
+                    assessment_id=assessment.assessment_id,
+                    assessment_status=assessment.status,
+                )
+            return self._calculate_targets(
+                request,
+                portfolio,
+                profile.profile_id,
+                profile.profile_version,
+                profile.risk_level,
+                scenario,
+                exposure,
+                concentration,
+                assessment,
+            )
+        except PortfolioOptimizationError:
+            raise
+        except Exception as exc:
+            raise PortfolioOptimizationError("portfolio optimization execution was refused") from exc
+
+
+__all__ = [
+    "DeterministicPortfolioOptimizationService",
+    "FixturePortfolioOptimizationService",
+    "PortfolioOptimizationError",
+]
