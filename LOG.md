@@ -1574,3 +1574,10 @@ Phase 27 已在本地 worktree 接受，最终验收记录见
 - 问财返回认证、权限、超时、传输或上游失败后，运行时会撤销问财能力并记录失败码；若扶摇仍可用则保留 LIVE，若无外部能力则切回 MOCK。
 - 浏览器验收确认顶栏显示 `LIVE · 扶摇数据`，并准确提示问财能力不可用；体检区显示未刷新原因且成功返回 Python 验算结果。真实 HTTP 验证中，`600519.SH` 行情和 `510300.SH` 的 10 条披露持仓均来自扶摇且 `is_synthetic=false`。
 - 验证：全量测试 `526 passed`；`compileall`、`node --check`、`git diff --check` 通过；`app.js` 保持 0 `innerHTML` / 0 `outerHTML`。
+
+## 2026-09-14 — 国内、港股、美股大盘鉴别增强
+
+- 建立三市场固定指数注册表与 `/api/v1/market/catalog`、`/api/v1/market/quotes/{market}`、`/api/v1/market/analysis/{market}/{index_id}` 接口；港美股代码或iFinD权限未验证时明确返回 `UNAVAILABLE`。
+- 新增服务端iFinD QuantAPI适配器，认证信息仅从服务端环境读取；历史OHLCV、月线聚合、BOLL、MACD、KDJ、量能比及宏观相关性均由确定性代码计算。
+- 将大盘页面升级为国内、港股、美股三级标签、横向指数卡片、本地Lightweight Charts 5.2.1多窗格图表、日/月周期、范围缩放、十字线与宏观因子卡片；行业观察仅在国内市场展示。
+- 美国10年期国债收益率、Brent原油和COMEX黄金独立降级；国内及港股因子采用严格前序观测，防止使用本地收盘之后产生的美国市场数据。

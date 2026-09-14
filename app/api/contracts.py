@@ -448,6 +448,92 @@ class MarketAssessmentResponse(ContractModel):
         return self
 
 
+class MarketCatalogItem(ContractModel):
+    market: Literal["CN", "HK", "US"]
+    index_id: NonEmptyStr
+    name: NonEmptyStr
+    symbol: str | None = None
+    currency: Literal["CNY", "HKD", "USD"]
+    timezone: NonEmptyStr
+    precision: int = Field(ge=0, le=6)
+    status: Literal["AVAILABLE", "UNAVAILABLE"]
+
+
+class MarketQuoteCard(ContractModel):
+    market: Literal["CN", "HK", "US"]
+    index_id: NonEmptyStr
+    name: NonEmptyStr
+    symbol: str | None = None
+    currency: Literal["CNY", "HKD", "USD"]
+    precision: int = Field(ge=0, le=6)
+    status: Literal["LIVE", "UNAVAILABLE", "REVIEW_REQUIRED"]
+    source: NonEmptyStr
+    observed_at: datetime | None = None
+    price: Decimal | None = None
+    change_pct: Decimal | None = None
+
+
+class MarketBar(ContractModel):
+    time: NonEmptyStr
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: Decimal | None = None
+    turnover: Decimal | None = None
+
+    @model_validator(mode="after")
+    def validate_ohlc(self) -> Self:
+        values = (self.open, self.high, self.low, self.close)
+        if any(value <= 0 or not value.is_finite() for value in values):
+            raise ValueError("market bar prices must be finite and positive")
+        if not self.low <= min(self.open, self.close) <= max(self.open, self.close) <= self.high:
+            raise ValueError("market bar OHLC bounds are invalid")
+        if self.volume is not None and self.volume < 0:
+            raise ValueError("market bar volume cannot be negative")
+        if self.turnover is not None and self.turnover < 0:
+            raise ValueError("market bar turnover cannot be negative")
+        return self
+
+
+class MacroFactorAnalysis(ContractModel):
+    factor_id: Literal["us10y", "brent", "comex-gold"]
+    name: NonEmptyStr
+    unit: NonEmptyStr
+    status: Literal["LIVE", "UNAVAILABLE", "REVIEW_REQUIRED"]
+    source: NonEmptyStr
+    observed_at: datetime | None = None
+    latest_value: Decimal | None = None
+    change: Decimal | None = None
+    correlation_20: Decimal | None = None
+    correlation_60: Decimal | None = None
+    sample_size: int = Field(default=0, ge=0)
+
+
+class MarketAnalysisResponse(ContractModel):
+    schema_version: Literal["market-analysis-response.v1"] = "market-analysis-response.v1"
+    market: Literal["CN", "HK", "US"]
+    index_id: NonEmptyStr
+    name: NonEmptyStr
+    symbol: str | None = None
+    currency: Literal["CNY", "HKD", "USD"]
+    timezone: NonEmptyStr
+    precision: int = Field(ge=0, le=6)
+    interval: Literal["1d", "1M"]
+    status: Literal["CALCULATED", "REVIEW_REQUIRED"]
+    source: NonEmptyStr
+    history_status: Literal["LIVE", "UNAVAILABLE", "REVIEW_REQUIRED"] = "UNAVAILABLE"
+    observed_at: datetime | None = None
+    price: Decimal | None = None
+    change: Decimal | None = None
+    change_pct: Decimal | None = None
+    bars: list[MarketBar] = Field(default_factory=list)
+    volume: dict[str, Any] = Field(default_factory=dict)
+    indicators: dict[str, Any] = Field(default_factory=dict)
+    factors: list[MacroFactorAnalysis] = Field(default_factory=list)
+    risk_notice: NonEmptyStr = "相关性不代表因果关系。仅供研究参考，不构成投资建议。"
+
+
 class QuestionnairePreviewRequest(ContractModel):
     schema_version: Literal["questionnaire-preview-request.v1"] = "questionnaire-preview-request.v1"
     owner_id: NonEmptyStr
@@ -658,6 +744,11 @@ __all__ = [
     "AdvisorProfileContextResponse",
     "AdvisorProfileProposalRequest",
     "AdvisorProfileProposalResponse",
+    "MarketAnalysisResponse",
+    "MarketBar",
+    "MarketCatalogItem",
+    "MacroFactorAnalysis",
+    "MarketQuoteCard",
     "QuestionnairePreviewRequest",
     "QuestionnairePreviewResponse",
     "QuestionnaireConfirmationRequest",
