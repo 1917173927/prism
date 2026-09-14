@@ -12,6 +12,7 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
         pytest.skip("Node.js required")
     source = Path("app/api/static/app.js").read_text(encoding="utf-8")
     function = re.search(r"  async function handleStreamingChat\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
+    function += "\n" + re.search(r"  async function performStreamingChat\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
     function += "\n" + "\n".join(re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
                                   for name in ["profileLevelText", "currentProfileTag", "activeProfileTag", "recordTruthTurnAlert"])
     probe = r'''
@@ -20,11 +21,13 @@ class Element {
   constructor(){this.children=[]; this.style={}; this.value='';}
   append(...items){this.children.push(...items);}
   remove(){}
+  replaceChildren(...items){this.children=items;}
   addEventListener(){}
   set textContent(value){this.children=[String(value)];}
   get textContent(){return this.children.map(x=>typeof x==='string'?x:x.textContent).join(' ');}
 }
-let truthTurnCounter=0;
+let truthTurnCounter=0, activeChatController=null;
+const clearChatEmptyState=()=>{};
 const nodes=new Map();
 const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
 const document={createElement:()=>new Element()};

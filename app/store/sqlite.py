@@ -58,6 +58,8 @@ class DecisionEventStore(Protocol):
     def save_workflow(self, owner_id: str, definition: dict[str, Any], expected_revision: int, observed_at: str) -> dict[str, Any]: ...
     def save_current_portfolio(self, owner_id: str, data_mode: str, data: dict[str, Any]) -> None: ...
 
+    def clear_current_portfolio(self, owner_id: str, data_mode: str) -> None: ...
+
     def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None: ...
 
     def save(self, event: DecisionEvent) -> tuple[DecisionEvent, bool]: ...
@@ -272,6 +274,13 @@ class SQLiteDecisionEventStore:
                 "ON CONFLICT(owner_id, data_mode) DO UPDATE SET payload_json=excluded.payload_json, content_hash=excluded.content_hash",
                 (owner_id, data_mode, payload, digest),
             )
+
+    def clear_current_portfolio(self, owner_id: str, data_mode: str) -> None:
+        owner_id = _validate_owner(owner_id)
+        if data_mode not in {"LIVE", "MOCK"}:
+            raise StoreError("invalid portfolio data mode")
+        with self._lock:
+            self._connection.execute("DELETE FROM current_portfolios WHERE owner_id=? AND data_mode=?", (owner_id, data_mode))
 
     def record_access(self, owner_id: str | None, method: str, route: str, status_code: int) -> None:
         with self._lock:

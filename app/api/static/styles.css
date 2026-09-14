@@ -5920,41 +5920,6 @@ body.dev-mode .dev-tools-banner {
 body.questionnaire-pending .questionnaire-entry-loading { display: grid; }
 body.questionnaire-pending .app-shell { visibility: hidden; }
 
-body.questionnaire-required .app-shell { grid-template-columns: minmax(0, 1fr); }
-body.questionnaire-required .sidebar,
-body.questionnaire-required .topbar,
-body.questionnaire-required #workspace-page-tabs,
-body.questionnaire-required .expert-mode-banner,
-body.questionnaire-required .dev-tools-banner,
-body.questionnaire-required .profile-summary-section,
-body.questionnaire-required .profile-display-preference,
-body.questionnaire-required .profile-technical-tools,
-body.questionnaire-required #global-error { display: none !important; }
-body.questionnaire-required .main {
-  width: min(940px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 42px 0 72px;
-}
-body.questionnaire-required #expert-workspace-grid {
-  display: block !important;
-  width: 100%;
-}
-body.questionnaire-required #profile {
-  display: block !important;
-  padding: 30px;
-  border-color: #cbdadd;
-  box-shadow: 0 18px 50px rgba(26, 63, 72, 0.09);
-}
-body.questionnaire-required #profile-title { font-size: 30px; }
-body.questionnaire-required .profile-purpose-callout {
-  border-left: 4px solid #1d6976;
-  background: #f1f7f8;
-}
-body.questionnaire-required .questionnaire-shell {
-  border-color: #bfd1d5;
-  box-shadow: none;
-}
-
 .agent-home-heading {
   display: flex;
   align-items: flex-end;
@@ -6261,8 +6226,6 @@ body.questionnaire-required .questionnaire-shell {
   .agent-conversation .copilot-chat-messages { min-height: 360px; padding: 18px 14px; }
   .agent-conversation .copilot-input-wrapper { align-items: stretch; flex-direction: column; }
   .agent-conversation .copilot-submit-btn { justify-content: center; width: 100%; }
-  body.questionnaire-required .main { width: min(100% - 20px, 940px); padding-top: 16px; }
-  body.questionnaire-required #profile { padding: 18px 14px; }
 }
 
 /* Prism UI v2 integration: shell, topbar, and Agent home */

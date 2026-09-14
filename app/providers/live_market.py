@@ -501,12 +501,25 @@ class MarketDataProvider(ABC):
         raise NotImplementedError
 
 
+    async def get_index_quote(self, symbol: str) -> dict[str, Any] | None:
+        """Index identity is explicit; equity-only providers must not substitute stocks."""
+        return None
+
+
 class TencentMarketProvider(MarketDataProvider):
     def __init__(self, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.transport = transport
 
+    async def get_index_quote(self, symbol: str) -> dict[str, Any] | None:
+        if symbol not in {"000001.SH", "000300.SH", "399001.SZ", "399006.SZ"}:
+            return None
+        code, exchange = symbol.split(".")
+        return await self._get_quote(code, exchange.lower())
+
     async def get_quote(self, code: str) -> dict[str, Any] | None:
-        prefix = market_prefix(code)
+        return await self._get_quote(code, market_prefix(code))
+
+    async def _get_quote(self, code: str, prefix: str) -> dict[str, Any] | None:
         async with httpx.AsyncClient(timeout=1.5, transport=self.transport) as client:
             response = await client.get(f"https://qt.gtimg.cn/q={prefix}{code}")
             response.raise_for_status()
@@ -526,8 +539,16 @@ class SinaMarketProvider(MarketDataProvider):
     def __init__(self, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.transport = transport
 
+    async def get_index_quote(self, symbol: str) -> dict[str, Any] | None:
+        if symbol not in {"000001.SH", "000300.SH", "399001.SZ", "399006.SZ"}:
+            return None
+        code, exchange = symbol.split(".")
+        return await self._get_quote(code, exchange.lower())
+
     async def get_quote(self, code: str) -> dict[str, Any] | None:
-        prefix = market_prefix(code)
+        return await self._get_quote(code, market_prefix(code))
+
+    async def _get_quote(self, code: str, prefix: str) -> dict[str, Any] | None:
         async with httpx.AsyncClient(timeout=1.5, transport=self.transport) as client:
             response = await client.get(f"https://hq.sinajs.cn/list={prefix}{code}",
                                         headers={"Referer": "https://finance.sina.com.cn/"})
@@ -582,6 +603,20 @@ class CompositeMarketProvider(MarketDataProvider):
         self.tier_timeout = min(max(tier_timeout_seconds, 0.001), 1.5)
         self.cooldown = cooldown_seconds
         self.open_until = [0.0, 0.0]
+
+    async def get_index_quote(self, symbol: str) -> dict[str, Any] | None:
+        started = perf_counter()
+        for provider in self.providers:
+            remaining = self.total_timeout - (perf_counter() - started)
+            if remaining <= 0:
+                break
+            try:
+                quote = await asyncio.wait_for(provider.get_index_quote(symbol), min(remaining, self.tier_timeout))
+                if quote and quote.get("symbol") == symbol:
+                    return quote
+            except (httpx.HTTPError, TimeoutError, ValueError, ArithmeticError):
+                continue
+        return None
 
     async def get_quote(self, code: str) -> dict[str, Any] | None:
         started = perf_counter()

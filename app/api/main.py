@@ -207,7 +207,7 @@ from app.runtime.mode import (
     ModeRevisionConflictError,
     get_runtime_mode_controller,
 )
-from typing import Any
+from typing import Any, Literal
 import json
 from hashlib import sha256
 
@@ -228,6 +228,7 @@ class LiveProviderQueryRequest(BaseModel):
 
 class CopilotChatApiRequest(BaseModel):
     message: str
+    model_mode: Literal["AUTO", "LIVE", "MOCK"] = "AUTO"
     owner_id: str | None = None
     profile_version: int | None = None
     behavior_profile_version: int | None = None
@@ -265,6 +266,8 @@ class ConfirmedOcrPosition(BaseModel):
     sector: str | None = None
     quantity: Decimal = Field(gt=0)
     cost_price: Decimal | None = Field(default=None, gt=0)
+    previous_close: Decimal | None = Field(default=None, gt=0)
+    observed_at: str | None = None
     price: Decimal = Field(gt=0)
     market_value_cny: Decimal | None = Field(default=None, ge=0)
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
@@ -282,6 +285,10 @@ class CopilotConfirmPortfolioOcrApiRequest(CopilotValidatePortfolioOcrApiRequest
 
     positions: list[ConfirmedOcrPosition]
     image_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+
+
+class ReplacePortfolioApiRequest(CopilotValidatePortfolioOcrApiRequest):
+    data_mode: Literal["MOCK", "LIVE"] | None = None
 
 
 class CopilotConfigApiRequest(BaseModel):
@@ -445,6 +452,7 @@ def create_app(
     active_advanced_explainability = (
         advanced_explainability_service or AdvancedExplainabilityService()
     )
+    user_model_settings: dict[str, CopilotConfigApiRequest] = {}
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
     active_live_finance = live_finance_provider or FuyaoFinanceProvider()
@@ -612,7 +620,7 @@ def create_app(
 
     @api.get("/", include_in_schema=False)
     def workbench() -> FileResponse:
-        return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
+        return FileResponse(_STATIC_DIR / "index.html", media_type="text/html", headers={"Cache-Control": "no-cache"})
 
     @api.get("/login", include_in_schema=False)
     def local_login_page() -> FileResponse:
@@ -774,6 +782,28 @@ def create_app(
             active_store.record_access(owner_id, "PUT", "/api/v1/user/preferences", 200)
         return response
 
+    industry_cache: dict[str, Any] = {}
+    industry_lock = asyncio.Lock()
+
+    @api.get("/api/v1/market/industries")
+    async def get_market_industries(owner_id: str = Depends(owner_dependency)):
+        from time import monotonic
+        if not _preferences(owner_id).market_data_enabled:
+            return {"status": "REVIEW_REQUIRED", "rows": [], "message": "行情授权已关闭"}
+        if not active_live_finance.is_configured:
+            return {"status": "REVIEW_REQUIRED", "rows": [], "message": "未配置同花顺行业数据服务"}
+        async with industry_lock:
+            if monotonic() < industry_cache.get("expires", 0):
+                return industry_cache["result"]
+            try:
+                rows = await active_live_finance.get_industry_observations()
+            except FuyaoProviderError as exc:
+                return {"status": "REVIEW_REQUIRED", "rows": [], "message": exc.safe_message}
+            result = {"status": "CALCULATED" if rows and all(r["status"] == "CALCULATED" for r in rows) else "REVIEW_REQUIRED",
+                      "rows": rows, "source": "同花顺金融数据 · 行业指数日线", "message": "固定观察行业的 1、5、20 个交易日涨跌幅；不代表全市场排名。"}
+            industry_cache.update(result=result, expires=monotonic() + 60)
+            return result
+
     @api.get("/api/v1/market-assessments/{index_name}", response_model=MarketAssessmentResponse)
     async def get_market_assessment(
         index_name: str,
@@ -792,7 +822,7 @@ def create_app(
             )
         # Codes are limited to the provider's supported local index aliases.  A
         # non-matching name is intentionally not converted into a fabricated quote.
-        known = {"上证指数": "000001", "深证成指": "399001", "创业板指": "399006", "沪深300": "000300"}
+        known = {"上证指数": "000001.SH", "深证成指": "399001.SZ", "创业板指": "399006.SZ", "沪深300": "000300.SH"}
         code = known.get(clean)
         if code is None:
             return MarketAssessmentResponse(
@@ -800,8 +830,20 @@ def create_app(
                 freshness="UNAVAILABLE", summary="未识别该指数或未接入可验证行情源；请核对名称后重试。",
                 compliance_status="REVIEW_REQUIRED",
             )
-        quote = await active_market_quotes.get_quote(code)
-        if quote is None:
+        index_provider = market_provider or (active_live_finance if active_live_finance.is_configured else active_market_quotes)
+        bars = []
+        history_status = "UNAVAILABLE"
+        try:
+            quote = await index_provider.get_index_quote(code)
+        except FuyaoProviderError:
+            quote = None
+        if quote is not None and hasattr(index_provider, "get_index_history"):
+            try:
+                bars = await index_provider.get_index_history(code)
+                history_status = "LIVE" if bars else "UNAVAILABLE"
+            except FuyaoProviderError:
+                history_status = "UNAVAILABLE"
+        if quote is None or quote.get("symbol") != code:
             return MarketAssessmentResponse(
                 index_name=clean, index_code=code, status="REVIEW_REQUIRED", source="行情 Provider 未返回可验证数据",
                 freshness="UNAVAILABLE", summary="行情源暂不可用，系统未以演示价格替代实时行情。",
@@ -813,8 +855,9 @@ def create_app(
             index_name=clean, index_code=code, status="CALCULATED", source=str(quote.get("source", "行情 Provider")),
             observed_at=observed_at, freshness="MOCK" if is_synthetic else "LIVE",
             price=Decimal(str(quote["price_cny"])), change_pct=Decimal(str(quote["change_pct"])),
+            bars=bars, history_status=history_status,
             summary="已返回可追溯行情快照；走势研判需结合数据新鲜度与风险画像审阅。",
-            compliance_status="REVIEW_REQUIRED" if is_synthetic else "PASS",
+            compliance_status="REVIEW_REQUIRED",
         )
 
     @api.get(
@@ -1831,7 +1874,17 @@ def create_app(
                 source=DisplayPolicySource.DEFAULT,
             )
 
+        if not req.llm_config and scoped_owner in user_model_settings:
+            req.llm_config = user_model_settings[scoped_owner].model_dump()
+        if req.model_mode == "LIVE" and not (req.llm_config or copilot_agent.client.is_configured):
+            return _error_response(409, "MODEL_NOT_CONFIGURED", "请在更多 → 模型设置中配置 API Key")
+
         async def sse_generator():
+            if req.model_mode == "MOCK":
+                payload = {"type": "token", "delta": "## 演示回复\n\n当前为 **AI 模拟模式**。\n\n- 可测试对话、持仓导入与页面联动。\n- 正式分析请切换真实接口并配置模型。\n\n|项目|状态|\n|---|---|\n|模型调用|模拟数据|\n|投资结论|未生成|\n\n仅供演示参考，不构成投资建议。"}
+                yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+                yield "data: [DONE]\n\n"
+                return
             context_event = {
                 "type": "analysis_context",
                 "display_policy": stored_policy.model_dump(mode="json"),
@@ -1952,6 +2005,25 @@ def create_app(
                          "message": str(exc)},
             )
 
+    @api.put("/api/v1/advisor/portfolio/current")
+    def replace_current_portfolio(req: ReplacePortfolioApiRequest, owner_id: str = Depends(owner_dependency)):
+        if req.owner_id != owner_id:
+            raise StoreOwnerError("portfolio owner does not match owner scope")
+        if req.data_mode and req.data_mode != get_runtime_mode_controller().mode.value:
+            return _error_response(409, "DATA_MODE_CHANGED", "数据模式已变化，请刷新页面后重新保存")
+        if not req.positions and req.cash_cny == 0:
+            data = {"status": "SUCCESS", "positions": [], "cash_cny": 0, "total_value_cny": 0, "portfolio": None}
+            active_store.clear_current_portfolio(owner_id, get_runtime_mode_controller().mode.value)
+            return data
+        return copilot_validate_portfolio_ocr_endpoint(req, owner_id)
+
+    @api.get("/api/v1/advisor/portfolio/summary")
+    def get_portfolio_summary(owner_id: str = Depends(owner_dependency)):
+        from app.portfolio.summary import portfolio_summary
+        mode = get_runtime_mode_controller().mode.value
+        result = portfolio_summary(active_store.get_current_portfolio(owner_id, mode))
+        return {**result, "data_mode": mode, "owner_id": owner_id}
+
     @api.get("/api/v1/advisor/portfolio/current")
     def get_current_portfolio(owner_id: str = Depends(owner_dependency)):
         mode = get_runtime_mode_controller().mode.value
@@ -2062,6 +2134,55 @@ def create_app(
         })
         active_store.save_current_portfolio(owner_id, mode.value, calculated)
         return JSONResponse(content=calculated)
+
+    @api.get("/api/v1/user/model-settings")
+    def get_user_model_settings(owner_id: str = Depends(owner_dependency)):
+        setting = user_model_settings.get(owner_id)
+        cfg = setting or copilot_agent.client.config
+        return {"is_configured": bool(cfg.api_key), "scope": "USER" if setting else "SERVER",
+                "model": cfg.model, "base_url": cfg.base_url}
+
+    @api.put("/api/v1/user/model-settings")
+    def save_user_model_settings(req: CopilotConfigApiRequest, owner_id: str = Depends(owner_dependency)):
+        from urllib.parse import urlsplit
+        try:
+            url = urlsplit(req.base_url.strip())
+            port = url.port
+        except ValueError:
+            raise HTTPException(status_code=422, detail="模型服务地址格式无效") from None
+        if url.scheme != "https" or url.hostname not in {"api.deepseek.com", "api.openai.com", "dashscope.aliyuncs.com"} or port not in (None, 443) or url.username or url.password or url.query or url.fragment:
+            raise HTTPException(status_code=422, detail="请选择支持的 HTTPS 模型服务地址")
+        if not req.model.strip() or len(req.model) > 100 or len(req.api_key) > 4096:
+            raise HTTPException(status_code=422, detail="模型名称或密钥格式无效")
+        if req.api_key.strip():
+            user_model_settings[owner_id] = req.model_copy(update={"api_key": req.api_key.strip(), "base_url": req.base_url.strip().rstrip("/")})
+        else:
+            user_model_settings.pop(owner_id, None)
+        return get_user_model_settings(owner_id)
+
+    @api.post("/api/v1/user/model-settings/test")
+    async def test_user_model_settings(owner_id: str = Depends(owner_dependency)):
+        from app.llm.client import AsyncLLMClient, LLMConfig
+        setting = user_model_settings.get(owner_id)
+        config = LLMConfig(**setting.model_dump()) if setting else copilot_agent.client.config
+        if not config.api_key:
+            return _error_response(409, "MODEL_NOT_CONFIGURED", "请先保存 API Key")
+        client = AsyncLLMClient(config.model_copy(update={"timeout_seconds": 8}))
+        async def probe():
+            async with aclosing(client.stream_chat([{"role": "user", "content": "Reply OK."}])) as stream:
+                async for event in stream:
+                    if event.get("type") == "error":
+                        return False
+                    if event.get("type") == "content" and event.get("delta"):
+                        return True
+            return False
+        try:
+            ok = await asyncio.wait_for(probe(), timeout=10)
+        except (TimeoutError, ValueError):
+            ok = False
+        if not ok:
+            return _error_response(502, "MODEL_TEST_FAILED", "模型未返回有效内容，请检查配置或稍后重试")
+        return {"status": "PASS"}
 
     @api.post("/api/v1/copilot/config")
     def copilot_update_config_endpoint(req: CopilotConfigApiRequest):

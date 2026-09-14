@@ -257,7 +257,7 @@ def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> Non
         "open-profile-modal-btn",
         "open-portfolio-modal-btn",
         "global-data-mode-toggle",
-        "open-companion-btn",
+        "portfolio-import-entry",
         "view-mode-toggle",
         "health-status",
         "copilot-chat-messages",
@@ -310,7 +310,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css">\n    <link rel="stylesheet" href="/static/prism-v2.css">' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=20260914-prd2">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-prd2">' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
     agent_markup = markup[agent_start:agent_end]

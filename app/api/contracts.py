@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from app.contracts.evidence import (
     ContractModel,
@@ -433,6 +433,8 @@ class MarketAssessmentResponse(ContractModel):
     summary: NonEmptyStr
     compliance_status: Literal["PASS", "REVIEW_REQUIRED"]
     risk_notice: NonEmptyStr = "仅供研究参考，不构成投资建议。"
+    bars: list[dict[str, Any]] = Field(default_factory=list)
+    history_status: str = "UNAVAILABLE"
 
     @model_validator(mode="after")
     def validate_market_state(self) -> Self:

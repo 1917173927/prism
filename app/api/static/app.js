@@ -5937,7 +5937,12 @@
     // The PRD permits browsing and portfolio input before assessment.  Action
     // endpoints remain individually gated by their existing server-side profile
     // checks, so navigation must not manufacture a C-level profile.
-    if (!hasConfirmedQuestionnaire) return;
+    if (!hasConfirmedQuestionnaire) {
+      const key = ownerStorageKey("prism_welcome_dismissed");
+      if (!workspaceStorage.getItem(key) || new URLSearchParams(window.location.search).get("onboarding") === "1") byId("questionnaire-welcome")?.showModal();
+      return;
+    }
+    byId("questionnaire-welcome")?.close();
 
     if (wasPending && (!window.location.hash || window.location.hash === "#profile")) {
       window.history.replaceState(null, "", "#copilot");
@@ -6108,6 +6113,7 @@
     const name = input?.value.trim();
     if (!name || !result || !status) return;
     status.textContent = "正在读取";
+    byId("market-kline").replaceChildren();
     result.textContent = "正在读取可验证行情与研判状态…";
     try {
       const response = await fetch(`/api/v1/market-assessments/${encodeURIComponent(name)}`, {headers: {"X-Owner-ID": state.ownerId}});
@@ -6121,6 +6127,7 @@
       const summary = document.createElement("p"); summary.textContent = data.summary;
       const audit = document.createElement("small"); audit.textContent = `审查：${data.compliance_status}；观察时间：${data.observed_at || "未提供"}`;
       result.append(heading, detail, summary, audit);
+      renderIndexCandles(data.bars || []);
     } catch (error) {
       status.textContent = "REVIEW_REQUIRED";
       result.textContent = error.message || "市场数据暂不可用。";
@@ -6712,17 +6719,24 @@
     clear(legendContainer);
 
     let items = [];
+    let allocationLabel = "等待数据";
     if (state.portfolioOptimizationRun?.targets?.length) {
+      allocationLabel = "目标结构";
       items = state.portfolioOptimizationRun.targets.map(t => ({
         label: t.asset_name || t.target_id || "资产",
         weight: parseFloat(t.target_weight_pct) || 0,
       }));
     } else if (state.portfolioHealthRun && Array.isArray(state.portfolioHealthRun.sectors)) {
+      allocationLabel = "行业分布";
       items = state.portfolioHealthRun.sectors.map((sector) => ({
         label: sector.name,
         weight: sector.pct,
       }));
+    } else if (displayedPortfolioSummary?.owner_id === state.ownerId && displayedPortfolioSummary?.data_mode === state.dataMode) {
+      items = displayedPortfolioSummary.allocation || [];
+      allocationLabel = "持仓与现金";
     }
+    byId("companion-allocation-badge").textContent = allocationLabel;
 
     if (!items.length) {
       const empty = document.createElement("div");
@@ -8212,6 +8226,9 @@
   }
 
   function renderOverviewWorkspace(personaId) {
+    refreshPortfolioSummary().catch(error => setError(error.message));
+    byId("cf-profile-rank-pill").textContent = activeProfileTag();
+
     const tableBody = byId("overview-industry-table-body");
     const metricsBody = byId("overview-metrics-body");
     const tableVerdict = byId("overview-table-verdict");
@@ -8221,72 +8238,9 @@
     clear(tableBody);
     clear(metricsBody);
 
-    const ovAum = byId("overview-portfolio-aum");
-    const ovCash = byId("overview-portfolio-cash");
-    const ovPnlVal = byId("overview-pnl-val");
-    const ovPnlPct = byId("overview-pnl-pct");
-    const ovBmVal = byId("overview-benchmark-val");
-    const ovBmSub = byId("overview-benchmark-sub");
-
-    const draft = state.ocrPortfolioDraft;
-    if (ovAum && draft?.total_value_cny) {
-      ovAum.textContent = `¥ ${Number(draft.total_value_cny).toLocaleString()}`;
-    }
-    if (ovCash && draft?.cash_cny != null) {
-      ovCash.textContent = `现金另计 ¥ ${Number(draft.cash_cny).toLocaleString()}`;
-    }
-
-    const positions = draft?.positions || [];
-    let totalCost = 0;
-    let totalStockVal = 0;
-    let hasCost = false;
-    positions.forEach((p) => {
-      const qty = Number(p.quantity || 0);
-      const cost = Number(p.cost_price || 0);
-      const price = Number(p.price || 0);
-      const mval = Number(p.calculated_market_value_cny || p.market_value_cny || (qty * price));
-      if (cost > 0 && qty > 0) {
-        totalCost += cost * qty;
-        totalStockVal += (price > 0 ? price * qty : mval);
-        hasCost = true;
-      }
-    });
-
-    if (ovPnlVal && ovPnlPct) {
-      if (hasCost && totalCost > 0) {
-        const diff = totalStockVal - totalCost;
-        const diffPct = (diff / totalCost) * 100;
-        const isUp = diff >= 0;
-        ovPnlVal.textContent = `${isUp ? "+ " : "− "}¥ ${Math.abs(diff).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${isUp ? "↑" : "↓"}`;
-        ovPnlVal.className = `mono ${isUp ? "market-up" : "market-down"}`;
-        ovPnlPct.textContent = `${isUp ? "+" : "−"}${Math.abs(diffPct).toFixed(2)}% (浮动盈亏)`;
-        ovPnlPct.className = isUp ? "market-up" : "market-down";
-      } else if (positions.length > 0) {
-        ovPnlVal.textContent = "待核算成本";
-        ovPnlVal.className = "mono";
-        ovPnlPct.textContent = "未录入初始成本";
-        ovPnlPct.className = "";
-      } else {
-        ovPnlVal.textContent = "等待分析";
-        ovPnlVal.className = "mono";
-        ovPnlPct.textContent = "添加持仓后查看";
-        ovPnlPct.className = "";
-      }
-    }
-
-    if (ovBmVal && ovBmSub) {
-      if (positions.length > 0) {
-        ovBmVal.textContent = `${positions.length} 只个股标的`;
-        ovBmSub.textContent = `沪深 300 基准 · 100% 穿透`;
-      } else {
-        ovBmVal.textContent = "沪深 300";
-        ovBmSub.textContent = "基准比对 · 待加载持仓";
-      }
-    }
-
     const health = state.portfolioHealthRun;
     if (!health) {
-      tableBody.textContent = "添加持仓后，可查看行业分布。";
+      tableBody.textContent = "确认风险设置与持仓并更新分析后，可查看穿透行业分布。";
       metricsBody.textContent = "添加风险设置与持仓后，可查看组合指标。";
       return;
     }
@@ -9211,7 +9165,7 @@
     avatar.textContent = role === "user" ? "你" : "P";
     const bubble = document.createElement("div");
     bubble.className = "chat-bubble";
-    if (typeof content === "string") bubble.textContent = content;
+    if (typeof content === "string") { if (role === "assistant") renderAssistantMarkdown(bubble, content); else bubble.textContent = content; }
     else bubble.append(content);
     row.append(avatar, bubble);
     messages.append(row);
@@ -9380,7 +9334,7 @@
         avatar.textContent = msg.role === "user" ? "你" : "P";
         const bubble = document.createElement("div");
         bubble.className = "chat-bubble";
-        bubble.textContent = msg.content;
+        if (msg.role === "assistant") renderAssistantMarkdown(bubble, msg.content); else bubble.textContent = msg.content;
         row.append(avatar, bubble);
         messagesContainer.append(row);
       });
@@ -9413,7 +9367,25 @@
     stepEl.classList.add(status);
   }
 
+  let activeChatController = null;
   async function handleStreamingChat(customQuery) {
+    if (activeChatController) return;
+    const controller = new AbortController();
+    activeChatController = controller;
+    const send = byId("copilot-submit-query");
+    const progress = byId("chat-send-progress");
+    const cancel = byId("chat-cancel-query");
+    send.disabled = true; cancel.hidden = false; progress.hidden = false;
+    progress.textContent = "正在准备分析…";
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    try { await performStreamingChat(customQuery, controller.signal); }
+    finally {
+      clearTimeout(timeout); activeChatController = null;
+      send.disabled = false; cancel.hidden = true; progress.hidden = true; progress.replaceChildren();
+    }
+  }
+
+  async function performStreamingChat(customQuery, signal) {
     const input = byId("copilot-natural-input");
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
@@ -9427,6 +9399,7 @@
       }
     } catch (error) { setError(error.message || "无法检查分析前提"); return; }
 
+    if (signal.aborted) return;
     if (input) input.value = "";
 
     const chatPanel = byId("copilot-chat-panel");
@@ -9434,6 +9407,7 @@
     if (chatPanel) chatPanel.style.display = "block";
     if (!messagesContainer) return;
 
+    clearChatEmptyState(messagesContainer);
     // User Message Bubble
     const userMsgRow = document.createElement("div");
     userMsgRow.className = "chat-msg user";
@@ -9460,7 +9434,7 @@
     pipelineBox.className = "chat-pipeline-box";
     const pipeHead = document.createElement("div");
     pipeHead.className = "pipeline-header";
-    pipeHead.textContent = "⚙️ 智能投顾多阶段协同执行中…";
+    pipeHead.textContent = "正在分析…";
 
     const stepsGrid = document.createElement("div");
     stepsGrid.className = "pipeline-steps-grid";
@@ -9486,7 +9460,9 @@
     cursor.className = "typing-cursor";
     contentBox.append(cursor);
 
-    aiBubble.append(pipelineBox, thinkingBox, toolsContainer, contentBox);
+    // Progress lives next to Send, and audit details follow the answer.
+    byId("chat-send-progress").replaceChildren(pipeHead);
+    aiBubble.append(contentBox);
     aiMsgRow.append(aiAvatar, aiBubble);
     messagesContainer.append(aiMsgRow);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -9500,8 +9476,10 @@
       const response = await fetch("/api/v1/copilot/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
+        signal,
         body: JSON.stringify({
           message: query,
+          model_mode: byId("chat-runtime-mode")?.value || "AUTO",
           session_truth_id: chatTruth.revision ? "workbench" : null,
           session_truth_revision: chatTruth.revision || null,
           owner_id: state.ownerId,
@@ -9564,9 +9542,9 @@
               const details = document.createElement("details");
               details.className = "chat-audit-details";
               const mode = event.display_policy?.mode || "STANDARD";
-              details.open = mode === "AUDIT_EXPANDED" || (event.warnings || []).length > 0;
+              details.open = mode === "AUDIT_EXPANDED";
               const summary = document.createElement("summary");
-              summary.textContent = `可审计分析链 · ${mode}`;
+              summary.textContent = "分析依据与风险提示";
               const auditBody = document.createElement("div");
               auditBody.className = "chat-audit-body";
               [
@@ -9588,18 +9566,18 @@
                 auditBody.append(strong, list);
               });
               details.append(summary, auditBody);
-              aiBubble.insertBefore(details, contentBox);
+              aiBubble.append(details);
               const policyMode = byId("display-policy-mode");
               if (policyMode) policyMode.textContent = mode;
             } else if (event.type === "thinking") {
               setPipelineStepState(s1, "completed");
               setPipelineStepState(s2, "active");
-              pipeHead.textContent = "🧠 正在调度工具与事实检索…";
+              pipeHead.textContent = "正在核对资料…";
               thinkingBox.style.display = "inline-flex";
             } else if (event.type === "tool_start") {
               setPipelineStepState(s2, "completed");
               setPipelineStepState(s3, "active");
-              pipeHead.textContent = `🔧 正在调用金融工具: ${event.tool}…`;
+              pipeHead.textContent = "正在查询数据…";
               const toolChip = document.createElement("span");
               toolChip.className = "chat-tool-tag";
               toolChip.textContent = `🔧 调度工具: ${event.tool}`;
@@ -9618,10 +9596,10 @@
             } else if (event.type === "token") {
               setPipelineStepState(s3, "completed");
               setPipelineStepState(s4, "active");
-              pipeHead.textContent = "✍️ 正在流式生成投资决策建议…";
+              pipeHead.textContent = "正在生成回复…";
               fullText += event.delta;
               cursor.remove();
-              contentBox.textContent = fullText;
+              renderAssistantMarkdown(contentBox, fullText);
               contentBox.append(cursor);
               messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
@@ -9633,12 +9611,13 @@
       if (streamError) throw new Error(streamError);
       if (!receivedDone) throw new Error("分析连接提前结束，结果不完整");
       cursor.remove();
+      renderAssistantMarkdown(contentBox, fullText);
       chatHistory.push({ role: "assistant", content: fullText });
       saveCopilotChatHistory();
     } catch (err) {
       cursor.remove();
       pipeHead.textContent = "分析未完成";
-      contentBox.textContent = `请求未完成：${err.message || "服务连接异常"}`;
+      contentBox.textContent = signal.aborted ? "分析已停止，可重新发送。" : `请求未完成：${err.message || "服务连接异常"}`;
       recordTruthTurnAlert(aiMsgRow, err.message || "服务连接异常", chatOwner);
     }
   }
@@ -9647,7 +9626,8 @@
     const input = byId("copilot-natural-input");
     const q = (input?.value || "").trim();
     if (!q) {
-      runCopilotHealthCheck();
+      setError("请输入您的问题");
+      input?.focus();
       return;
     }
     handleStreamingChat(q);
@@ -9656,6 +9636,7 @@
   // 大模型 API Key 前端直接配置管理
   const llmConfig = {
     apiKey: "",
+    configured: false,
     baseUrl: "https://api.deepseek.com/v1",
     model: "deepseek-chat",
     provider: "deepseek",
@@ -9666,10 +9647,10 @@
     const label = byId("llm-config-btn-label");
     const badge = byId("chat-model-badge");
 
-    if (llmConfig.apiKey) {
+    if (llmConfig.configured) {
       if (dot) dot.textContent = "🟢";
       if (label) label.textContent = `已接入 (${llmConfig.model})`;
-      if (badge) badge.textContent = `${llmConfig.model} · 实时在线`;
+      if (badge) badge.textContent = `${llmConfig.model} · 已配置`;
     } else {
       if (dot) dot.textContent = "⚪";
       if (label) label.textContent = "大模型配置 (API Key)";
@@ -9677,6 +9658,7 @@
     }
 
     const provSel = byId("llm-provider-select");
+    if (badge && byId("chat-runtime-mode")?.value === "MOCK") badge.textContent = "AI 模拟模式";
     if (provSel) provSel.value = llmConfig.provider || "deepseek";
     const keyInput = byId("llm-api-key-input");
     if (keyInput) keyInput.value = llmConfig.apiKey || "";
@@ -9690,7 +9672,9 @@
     updateLLMConfigUI();
     const modal = byId("llm-config-modal");
     if (modal) {
+      document.body.appendChild(modal);
       modal.style.display = "flex";
+      loadModelSettings().catch(error => setError(error.message));
     }
   }
 
@@ -9701,73 +9685,43 @@
     }
   }
 
-  async function handleSaveLLMConfig() {
-    const keyInput = byId("llm-api-key-input");
-    const urlInput = byId("llm-base-url-input");
-    const modelInput = byId("llm-model-input");
-    const provSel = byId("llm-provider-select");
-    const statusBox = byId("llm-config-status");
-
-    llmConfig.apiKey = (keyInput?.value || "").trim();
-    llmConfig.baseUrl = (urlInput?.value || "https://api.deepseek.com/v1").trim();
-    llmConfig.model = (modelInput?.value || "deepseek-chat").trim();
-    llmConfig.provider = provSel?.value || "custom";
-
-    workspaceStorage.setItem(ownerStorageKey("prism_llm_api_key"), llmConfig.apiKey);
-    workspaceStorage.setItem(ownerStorageKey("prism_llm_base_url"), llmConfig.baseUrl);
-    workspaceStorage.setItem(ownerStorageKey("prism_llm_model"), llmConfig.model);
-    workspaceStorage.setItem(ownerStorageKey("prism_llm_provider"), llmConfig.provider);
-
+  async function loadModelSettings() {
+    const owner = state.ownerId;
+    const response = await fetch("/api/v1/user/model-settings", {headers: {"X-Owner-ID": owner}});
+    if (!response.ok) throw await apiError(response);
+    const settings = await response.json();
+    if (owner !== state.ownerId) return;
+    llmConfig.apiKey = "";
+    llmConfig.configured = settings.is_configured;
+    llmConfig.baseUrl = settings.base_url;
+    llmConfig.model = settings.model;
     updateLLMConfigUI();
-
-    try {
-      await fetch("/api/v1/copilot/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: llmConfig.apiKey,
-          base_url: llmConfig.baseUrl,
-          model: llmConfig.model,
-        }),
-      });
-    } catch (e) {}
-
-    if (statusBox) {
-      statusBox.style.display = "block";
-      statusBox.textContent = llmConfig.apiKey
-        ? `✅ 大模型配置已成功保存！当前模型：${llmConfig.model}`
-        : "✅ 已重置为内置金融智能体引擎";
-    }
-
-    setTimeout(() => {
-      closeLLMConfigModal();
-    }, 1000);
+    byId("llm-config-btn-label").textContent = settings.is_configured ? "模型设置 · 已配置" : "模型设置 · 未配置";
+    byId("llm-config-status").textContent = settings.is_configured ? `已配置 ${settings.model}，可测试连接。` : "填写个人 API Key 或由服务端提供默认配置。";
+    return settings;
   }
 
-  function handleClearLLMConfig() {
-    llmConfig.apiKey = "";
-    llmConfig.baseUrl = "https://api.deepseek.com/v1";
-    llmConfig.model = "deepseek-chat";
-    llmConfig.provider = "deepseek";
+  async function handleSaveLLMConfig() {
+    const status = byId("llm-config-status");
+    const button = byId("btn-save-llm-config");
+    button.disabled = true; status.style.display = "block"; status.textContent = "正在保存…";
+    try {
+      const response = await fetch("/api/v1/user/model-settings", {
+        method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId},
+        body: JSON.stringify({api_key: byId("llm-api-key-input").value.trim(), base_url: byId("llm-base-url-input").value.trim(), model: byId("llm-model-input").value.trim()}),
+      });
+      if (!response.ok) throw await apiError(response);
+      await loadModelSettings();
+      status.textContent = "配置已保存。请测试连接后使用真实接口。";
+      byId("llm-api-key-input").value = "";
+    } catch (error) { status.textContent = `保存失败：${error.message}`; }
+    finally { button.disabled = false; }
+  }
 
-    workspaceStorage.removeItem(ownerStorageKey("prism_llm_api_key"));
-    workspaceStorage.removeItem(ownerStorageKey("prism_llm_base_url"));
-    workspaceStorage.removeItem(ownerStorageKey("prism_llm_model"));
-    workspaceStorage.removeItem(ownerStorageKey("prism_llm_provider"));
-
-    updateLLMConfigUI();
-
-    fetch("/api/v1/copilot/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: "", base_url: "https://api.deepseek.com/v1", model: "deepseek-chat" }),
-    }).catch(() => {});
-
-    const statusBox = byId("llm-config-status");
-    if (statusBox) {
-      statusBox.style.display = "block";
-      statusBox.textContent = "已清空自定义 Key，恢复内置引擎。";
-    }
+  async function handleClearLLMConfig() {
+    byId("llm-api-key-input").value = "";
+    byId("llm-base-url-input").value = "https://api.deepseek.com/v1";
+    await handleSaveLLMConfig();
   }
 
   // 自定义持仓弹窗交互
@@ -9834,6 +9788,8 @@
     else renderPortfolioReadiness();
     const validatedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
     if (typeof renderPortfolio === "function") renderPortfolio(validated.portfolio, validatedSourceTitle);
+    renderOverviewWorkspace(state.selectedPersona);
+    updateVisualCompanion();
     return validated;
   }
 
@@ -9856,7 +9812,7 @@
     const tag = byId("copilot-hero-portfolio-tag");
     if (tag) tag.textContent = `已确认持仓 (${saved.data.positions.length} 项)`;
     const savedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
-    if (typeof renderPortfolio === "function") renderPortfolio(saved.data.portfolio, savedSourceTitle);
+    if (typeof renderPortfolio === "function" && saved.data.portfolio) renderPortfolio(saved.data.portfolio, savedSourceTitle);
     renderPortfolioReadiness();
     renderOverviewWorkspace(state.selectedPersona);
     updateVisualCompanion();
@@ -10273,6 +10229,196 @@
     renderDevAssistResult(await response.json());
   }
 
+  function renderIndexCandles(bars) {
+    const container = byId("market-kline"); container.replaceChildren();
+    if (!bars.length) { container.textContent = "日 K 线暂不可用。"; return; }
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg"); svg.setAttribute("viewBox", "0 0 900 290"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `${bars[0].time} 至 ${bars.at(-1).time} 指数日 K 线`);
+    const low = Math.min(...bars.map(b => b.low)), high = Math.max(...bars.map(b => b.high));
+    const span = high - low || 1, y = value => 240 - (value - low) / span * 210, step = 800 / bars.length;
+    const element = (tag, attrs, content) => { const node = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k,v]) => node.setAttribute(k, String(v))); if (content) node.textContent = content; svg.append(node); return node; };
+    for (let i = 0; i <= 4; i++) { const value = low + span * i / 4; element("line", {x1: 65, x2: 875, y1: y(value), y2: y(value), stroke: "var(--border)"}); element("text", {x: 5, y: y(value) + 4, fill: "var(--text-secondary)", "font-size": 12}, value.toFixed(2)); }
+    bars.forEach((bar, index) => {
+      const x = 70 + index * step + step / 2, color = bar.close >= bar.open ? "var(--market-up)" : "var(--market-down)";
+      element("line", {x1: x, x2: x, y1: y(bar.high), y2: y(bar.low), stroke: color});
+      const body = element("rect", {x: x-step*.3, y: Math.min(y(bar.open), y(bar.close)), width: step*.6, height: Math.max(1, Math.abs(y(bar.close)-y(bar.open))), fill: color});
+      const title = document.createElementNS(ns, "title"); title.textContent = `${bar.time} 开 ${bar.open} 高 ${bar.high} 低 ${bar.low} 收 ${bar.close}`; body.append(title);
+    });
+    element("text", {x: 65, y: 270, fill: "var(--text-secondary)", "font-size": 12}, bars[0].time);
+    element("text", {x: 790, y: 270, fill: "var(--text-secondary)", "font-size": 12}, bars.at(-1).time);
+    container.append(svg);
+  }
+
+  byId("market-load-industries")?.addEventListener("click", async event => {
+    const button = event.currentTarget, output = byId("market-industries"); button.disabled = true; output.textContent = "正在读取行业日线…";
+    try {
+      const response = await fetch("/api/v1/market/industries", {headers: {"X-Owner-ID": state.ownerId}});
+      if (!response.ok) throw await apiError(response);
+      const data = await response.json(); output.replaceChildren();
+      const note = document.createElement("p"); note.textContent = [data.source, data.message].filter(Boolean).join(" · "); output.append(note);
+      const table = document.createElement("table"), header = document.createElement("tr");
+      ["行业", "1 日", "5 日", "20 日", "观察日期"].forEach(label => { const th = document.createElement("th"); th.textContent = label; header.append(th); }); table.append(header);
+      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.append(td); }); table.append(tr); });
+      output.append(table);
+    } catch (error) { output.textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+
+  function renderAssistantMarkdown(target, content) {
+    target.classList.add("markdown-body");
+    if (window.PrismMarkdown) window.PrismMarkdown(target, content);
+    else target.textContent = content;
+  }
+
+  let portfolioSummarySequence = 0;
+  let displayedPortfolioSummary = null;
+  async function refreshPortfolioSummary() {
+    if (!state.ownerId) return;
+    displayedPortfolioSummary = null;
+    const sequence = ++portfolioSummarySequence;
+    const owner = state.ownerId;
+    const mode = state.dataMode;
+    const response = await fetch("/api/v1/advisor/portfolio/summary", {headers: {"X-Owner-ID": owner}});
+    if (!response.ok) throw await apiError(response);
+    const summary = await response.json();
+    if (sequence !== portfolioSummarySequence || owner !== state.ownerId || mode !== state.dataMode || mode !== summary.data_mode) return;
+    displayedPortfolioSummary = summary;
+    renderCompanionAllocation();
+    const amount = value => value == null ? "待补充数据" : `¥ ${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    byId("overview-portfolio-aum").textContent = amount(summary.holdings_value_cny);
+    byId("overview-portfolio-cash").textContent = `现金 ${amount(summary.cash_cny)}`;
+    byId("overview-pnl-val").textContent = amount(summary.pnl_cny);
+    byId("overview-pnl-val").className = summary.pnl_cny == null ? "mono" : `mono ${Number(summary.pnl_cny) >= 0 ? "market-up" : "market-down"}`;
+    byId("overview-pnl-pct").textContent = summary.pnl_pct == null ? "补全成本后计算累计盈亏" : `${summary.pnl_pct}%`;
+    byId("overview-benchmark-label").textContent = "当日盈亏";
+    byId("overview-benchmark-val").textContent = amount(summary.daily_pnl_cny);
+    byId("overview-benchmark-sub").textContent = summary.daily_pnl_cny == null ? "需取得可核验昨收价" : "基于昨收与当前持仓计算";
+    byId("portfolio-empty").hidden = summary.position_count > 0;
+    byId("portfolio-data-label").textContent = !summary.position_count ? "未导入" : mode === "MOCK" ? "演示数据" : "已确认持仓";
+    byId("portfolio-summary-note").textContent = `${summary.position_count} 项持仓 · 当前记录价格；仅供参考，不构成投资建议。`;
+    const body = byId("portfolio-position-rows"); body.replaceChildren();
+    summary.positions.forEach(row => {
+      const tr = document.createElement("tr");
+      [row.name || row.asset_id, row.quantity, row.cost_price ?? "—", row.price, amount(row.market_value_cny), amount(row.pnl_cny), `${row.weight_pct}%`].forEach((value, index) => {
+        const td = document.createElement("td"); td.textContent = String(value);
+        if (index === 0) { const code = document.createElement("small"); code.textContent = row.asset_id; td.append(code); }
+        tr.append(td);
+      });
+      const actions = document.createElement("td");
+      const research = document.createElement("button"); research.type = "button"; research.textContent = "分析";
+      research.className = "copilot-action-btn secondary";
+      research.addEventListener("click", () => { window.location.hash = "copilot"; byId("copilot-natural-input").value = `个股分析：${row.asset_id}`; byId("copilot-natural-input").focus(); });
+      const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "删除";
+      remove.className = "copilot-action-btn secondary";
+      remove.addEventListener("click", async () => {
+        remove.disabled = true;
+        try {
+          if (owner !== state.ownerId || mode !== state.dataMode) throw new Error("账户或模式已变化，请刷新持仓");
+          const persisted = await fetch("/api/v1/advisor/portfolio/current", {headers: {"X-Owner-ID": owner}});
+          if (!persisted.ok) throw await apiError(persisted);
+          const draft = (await persisted.json()).data;
+          if (owner !== state.ownerId || mode !== state.dataMode || !draft) throw new Error("持仓状态已变化，请刷新后重试");
+          await replacePortfolioRows(draft.positions.filter(p => p.asset_id !== row.asset_id), draft.cash_cny);
+        } catch (error) { setError(error.message); remove.disabled = false; }
+      });
+      actions.append(research, remove); tr.append(actions); body.append(tr);
+    });
+  }
+
+  async function replacePortfolioRows(positions, cash) {
+    const owner = state.ownerId, mode = state.dataMode;
+    const response = await fetch("/api/v1/advisor/portfolio/current", {
+      method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
+      body: JSON.stringify({owner_id: owner, data_mode: mode, positions, cash_cny: cash || 0}),
+    });
+    if (!response.ok) throw await apiError(response);
+    const data = await response.json();
+    if (owner !== state.ownerId || mode !== state.dataMode) return;
+    microStore.transact(store => { invalidateDerivedState(store); store.ocrPortfolioDraft = data; store.portfolio = data.portfolio; });
+    renderPortfolioReadiness(); renderOverviewWorkspace(state.selectedPersona); updateVisualCompanion();
+    if (state.profile?.profile && data.portfolio) {
+      try { await refreshPortfolioHealth(); }
+      catch (error) { setError(`持仓已保存，分析暂未更新：${error.message}`); }
+    }
+  }
+
+  byId("chat-cancel-query")?.addEventListener("click", () => activeChatController?.abort());
+  byId("chat-runtime-mode")?.addEventListener("change", updateLLMConfigUI);
+  document.querySelectorAll("[data-chat-prefix]").forEach(button => button.addEventListener("click", () => {
+    const input = byId("copilot-natural-input");
+    const prefixes = [...document.querySelectorAll("[data-chat-prefix]")].map(item => `${item.dataset.chatPrefix}：`);
+    const old = prefixes.find(prefix => input.value.startsWith(prefix));
+    input.value = `${button.dataset.chatPrefix}：${old ? input.value.slice(old.length) : input.value}`;
+    document.querySelectorAll("[data-chat-prefix]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    input.focus(); input.setSelectionRange(input.value.length, input.value.length);
+  }));
+  const dismissWelcome = () => {
+    workspaceStorage.setItem(ownerStorageKey("prism_welcome_dismissed"), "1");
+    const url = new URL(window.location.href); url.searchParams.delete("onboarding");
+    window.history.replaceState(null, "", url);
+    byId("questionnaire-welcome").close();
+  };
+  byId("welcome-later")?.addEventListener("click", dismissWelcome);
+  byId("welcome-start")?.addEventListener("click", () => { dismissWelcome(); window.location.hash = "profile"; });
+  byId("questionnaire-welcome")?.addEventListener("cancel", dismissWelcome);
+  byId("portfolio-import-entry")?.addEventListener("click", openPortfolioModal);
+  document.querySelectorAll("[data-open-portfolio]").forEach(button => button.addEventListener("click", openPortfolioModal));
+  byId("portfolio-add-entry")?.addEventListener("click", () => byId("manual-position-dialog").showModal());
+  byId("manual-position-cancel")?.addEventListener("click", () => byId("manual-position-dialog").close());
+  byId("manual-position-form")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fields = new FormData(form), code = fields.get("code");
+    const button = form.querySelector('[type="submit"]'); button.disabled = true;
+    const errorBox = byId("manual-position-error"); errorBox.textContent = "正在核对持仓…";
+    const owner = state.ownerId, mode = state.dataMode;
+    try {
+      const request = {text: `${code} ${fields.get("quantity")}股 成本价${fields.get("cost")}元${fields.get("price") ? ` 现价${fields.get("price")}元` : ""}`};
+      const response = await fetch("/api/v1/copilot/parse-portfolio", {method: "POST", headers: {"Content-Type": "application/json", "X-Owner-ID": owner}, body: JSON.stringify(request)});
+      if (!response.ok) throw await apiError(response);
+      let data = await response.json();
+      if (data.status === "EMPTY" && mode === "LIVE") {
+        const indexed = await fetch(`/api/v1/copilot/auto-index-security?symbol=${encodeURIComponent(code)}`, {method: "POST", headers: {"X-Owner-ID": owner}});
+        if (!indexed.ok) throw await apiError(indexed);
+        const quote = (await indexed.json()).data;
+        if (quote?.symbol && quote?.price_cny > 0) data = {status: "SUCCESS", positions: [{
+          asset_id: quote.symbol, name: quote.name, asset_class: "EQUITY", sector: "Unclassified",
+          quantity: fields.get("quantity"), cost_price: fields.get("cost"), price: fields.get("price") || quote.price_cny,
+          previous_close: fields.get("price") ? null : quote.previous_close_cny, observed_at: quote.observed_at,
+        }]};
+      }
+      if (owner !== state.ownerId || mode !== state.dataMode) throw new Error("账户或模式已变化，请重新添加");
+      if (data.status !== "SUCCESS" || !data.positions?.length) throw new Error(data.message || "未识别此证券，请核对代码；暂未收录的证券不能直接导入。");
+      const persisted = await fetch("/api/v1/advisor/portfolio/current", {headers: {"X-Owner-ID": owner}});
+      if (!persisted.ok) throw await apiError(persisted);
+      const saved = (await persisted.json()).data;
+      if (owner !== state.ownerId || mode !== state.dataMode) throw new Error("账户或模式已变化，请重新添加");
+      const existing = saved?.positions || [];
+      if (existing.some(p => p.asset_id === data.positions[0].asset_id)) throw new Error("该证券已在持仓中，请删除旧记录后重新录入完整数量。");
+      await replacePortfolioRows([...existing, ...data.positions], saved?.cash_cny || 0);
+      form.reset(); errorBox.textContent = ""; byId("manual-position-dialog").close();
+    } catch (error) { errorBox.textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+  byId("portfolio-export")?.addEventListener("click", () => {
+    const summary = displayedPortfolioSummary;
+    if (!summary?.position_count) { setError("请先导入持仓"); return; }
+    const cells = value => `"${String(value ?? "").replace(/^[=+@-]/, "'$&").replaceAll('"', '""')}"`;
+    const rows = [["数据模式", summary.data_mode], ["证券", "代码", "数量", "成本价", "现价", "市值", "累计盈亏", "占比%"], ...summary.positions.map(p => [p.name, p.asset_id, p.quantity, p.cost_price, p.price, p.market_value_cny, p.pnl_cny, p.weight_pct]), ["仅供参考，不构成投资建议"]];
+    const blob = new Blob(["\uFEFF" + rows.map(row => row.map(cells).join(",")).join("\r\n")], {type: "text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = "Prism-持仓报告.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  byId("test-user-model")?.addEventListener("click", async event => {
+    const status = byId("llm-config-status"); status.style.display = "block"; status.textContent = "正在测试…";
+    event.currentTarget.disabled = true;
+    try {
+      const response = await fetch("/api/v1/user/model-settings/test", {method: "POST", headers: {"X-Owner-ID": state.ownerId}});
+      if (!response.ok) throw await apiError(response);
+      status.textContent = "连接测试通过。";
+    } catch (error) { status.textContent = `连接未通过：${error.message}`; }
+    finally { byId("test-user-model").disabled = false; }
+  });
+
   // Event bindings for P2 panels
   const refHistBtn = byId("refresh-history");
   if (refHistBtn) refHistBtn.addEventListener("click", loadRecommendationHistory);
@@ -10332,7 +10478,7 @@
   const copilotQueryInput = byId("copilot-natural-input");
   if (copilotQueryInput) {
     copilotQueryInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
         handleNaturalQuerySubmit();
       }
@@ -10599,13 +10745,7 @@
         if (el.dataset.persona !== "custom-user") el.hidden = true;
       });
       if (!context.admin) {
-        byId("open-llm-config-btn").hidden = true;
         byId("global-data-mode-toggle").hidden = true;
-      }
-    }
-    if (!context.enabled || context.admin) {
-      for (const [field, key] of Object.entries({apiKey:"prism_llm_api_key", baseUrl:"prism_llm_base_url", model:"prism_llm_model", provider:"prism_llm_provider"})) {
-        llmConfig[field] = workspaceStorage.getItem(ownerStorageKey(key)) || llmConfig[field];
       }
     }
     initializeNavigation();
@@ -10617,6 +10757,7 @@
     loadUserProfile();
     switchPersona("custom-user");
     loadCopilotChatHistory();
+    loadModelSettings().catch(error => setError(error.message));
     updateVisualCompanion();
     initPortfolioModalTabs();
   }

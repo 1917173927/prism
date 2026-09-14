@@ -1934,3 +1934,44 @@ body.prism-ui-v2 {
 .prism-ui-v2 .profile-preferences label { font-size: 13px; color: var(--muted); }
 .prism-ui-v2.prism-theme-dark, body.prism-theme-dark { --surface: #152033; --surface-raised: #1d2a40; --text: #e7edf7; --muted: #aebbd0; --border: #31435f; --border-subtle: #263752; background: #0f1726; }
 @media (max-width: 720px) { .prism-ui-v2 .profile-preferences { grid-template-columns: 1fr; } }
+
+/* PRD repairs retain the post-PR Prism composition and tokens. */
+.prism-ui-v2 .nav-item, .prism-ui-v2 .nav-item strong { font-size: 14px; }
+.prism-ui-v2 .nav-copilot-label > span { font-size: 12px; }
+.chat-capabilities { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 14px 0; }
+.chat-capabilities button { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; background: var(--surface); color: var(--text-secondary); font-size: 13px; cursor: pointer; }
+.chat-capabilities button[aria-pressed="true"] { color: var(--brand); border-color: var(--brand); background: var(--surface-subtle); }
+.prism-ui-v2 .copilot-composer-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+.prism-ui-v2 .copilot-composer-meta > small { margin-right: auto; }
+#chat-send-progress { max-width: 220px; color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; gap: 7px; }
+#chat-send-progress::before { content: ""; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: prd-spin .9s linear infinite; }
+#chat-send-progress .pipeline-header { margin: 0; padding: 0; font: inherit; border: 0; background: transparent; }
+@keyframes prd-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #chat-send-progress::before { animation: none; } }
+.markdown-body { white-space: normal; overflow-wrap: anywhere; line-height: 1.7; }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body h1, .markdown-body h2, .markdown-body h3 { font-family: var(--sans); line-height: 1.4; margin: 18px 0 8px; }
+.markdown-body h1 { font-size: 22px; } .markdown-body h2 { font-size: 19px; } .markdown-body h3 { font-size: 16px; }
+.markdown-body pre { overflow-x: auto; padding: 12px; border-radius: 7px; background: var(--surface-subtle); }
+.markdown-body code { font-family: var(--mono); font-size: .9em; }
+.markdown-body table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.markdown-body th, .markdown-body td { padding: 8px 10px; border: 1px solid var(--border); text-align: left; }
+.markdown-body blockquote { margin-left: 0; padding-left: 12px; border-left: 3px solid var(--brand); color: var(--text-secondary); }
+.prd-dialog { width: min(520px, 92vw); max-height: 88vh; overflow: auto; padding: 26px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text-primary); }
+.prd-dialog::backdrop { background: rgba(20, 24, 28, .35); }
+.prd-dialog label { display: grid; gap: 5px; margin: 12px 0; }
+.prd-dialog input { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: inherit; font: inherit; }
+.prd-dialog p { font-size: 14px; color: var(--text-secondary); }
+.portfolio-detail-card, .portfolio-empty { padding: 20px; margin-bottom: 20px; }
+.portfolio-detail-card th, .portfolio-detail-card td { white-space: nowrap; padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+.portfolio-detail-card td small { display: block; color: var(--text-muted); }
+.portfolio-detail-card td button { margin-right: 8px; }
+.portfolio-dashboard { margin-top: 24px; }
+.portfolio-dashboard .companion-header { padding: 12px 0; }
+.portfolio-dashboard .companion-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 0; overflow: visible; }
+.portfolio-dashboard .companion-card { padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin: 0; }
+.portfolio-dashboard .companion-card-head h4 { font-size: 15px; }
+.prism-ui-v2 .overview-actions { flex-wrap: wrap; }
+.prism-theme-dark { --page: #131820; --text-primary: #e7edf7; --text-secondary: #c0cad8; --text-muted: #a1acba; --surface-subtle: #1d2735; }
+.prism-ui-v2.prism-theme-dark .sidebar { background: #18212e; }
+@media (max-width: 720px) { .portfolio-dashboard .companion-body { grid-template-columns: 1fr; } .chat-capabilities { gap: 6px; } #chat-send-progress { max-width: 150px; } }

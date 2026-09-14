@@ -8,8 +8,12 @@ from app.providers.live_market import MarketDataProvider
 
 class QuoteProvider(MarketDataProvider):
     async def get_quote(self, code: str):
-        assert code == "000001"
+        raise AssertionError("index routes must not use equity quotes")
+
+    async def get_index_quote(self, code: str):
+        assert code == "000001.SH"
         return {
+            "symbol": "000001.SH",
             "price_cny": 3200.5,
             "change_pct": 0.25,
             "observed_at": datetime.now(UTC).isoformat(),

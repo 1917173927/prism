@@ -28,7 +28,11 @@ $env:PRISM_AUTH_ACCOUNTS_FILE = (Resolve-Path data/private/accounts.json).Path
 
 普通账户省略 `--admin`，独立数据空间指定不同 `--owner`。明确更换已有密码时加入 `--replace`，变更后重启服务。浏览器通过标准认证提示框登录。HTTP Basic 没有应用级会话退出或过期机制；此实现不替代公网身份提供方、限流和安全网关。账户文件由本机操作系统权限保护，不应放入共享目录。
 
-认证模式下，聊天历史、浏览器模型密钥和界面画像备注只保留在当前页面内存，刷新后清空；已确认风险问卷及持仓仍从服务端恢复。这样避免同一浏览器切换账户后从本地缓存读到另一账户的聊天或密钥。未启用认证的开发模式保留原缓存行为。
+认证模式下，聊天历史和界面画像备注只保留在当前页面内存，刷新后清空；已确认风险问卷及持仓仍从服务端恢复。个人模型密钥通过“更多 → 模型设置”填写，只保存于服务端当前进程的账户配置，重启需重填；浏览器不缓存或回读明文密钥。服务端默认模型继续由 PRISM_LLM_API_KEY/DEEPSEEK_API_KEY 等环境配置提供，个人配置优先，留空保存恢复默认。
+
+模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。工具在系统临时目录创建独立 SQLite，打印访问地址，不清空原数据库。`?onboarding=1` 可重新弹出首次引导；`?dev=1` 开启开发者界面，在“更多”内切换 AI 默认/真实/Mock 模式。AI 模式与全局行情数据模式分别控制，模拟回复保留演示标识。
+
+Markdown 资源已随仓库提供，正常启动无需 Node。修改 `app/api/static/markdown.src.js` 后运行 `npm ci`、`npm run build:markdown` 重新生成本地脚本。
 
 `GET /api/v1/auth/context` 返回当前身份及管理员标志；`GET /api/v1/access-audit?limit=100` 返回该 owner 的最近访问。审计只记录 owner、方法、路由模板、状态码和时间，不保存请求正文、密码或授权头。本地审计可被本机文件管理员修改，尚不具备独立审计服务的防篡改保证。
 

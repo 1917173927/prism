@@ -209,7 +209,7 @@ class CopilotAgent:
                     "asset_id": info["symbol"],
                     "name": info["name"],
                     "asset_class": "EQUITY",
-                    "sector": info["sector"],
+                    "sector": info.get("sector", "Unclassified"),
                     "quantity": qty,
                     "cost_price": price,
                     "price": price,
@@ -285,6 +285,8 @@ class CopilotAgent:
                     return {"status": "REVIEW_REQUIRED", "positions": [], "parsed_count": 0,
                             "message": f"未取得 {position['name']} 行情，请提供现价后重新导入。"}
                 price = Decimal(str(quote["price_cny"]))
+                position["previous_close"] = quote.get("previous_close_cny")
+                position["observed_at"] = quote.get("observed_at")
             else:
                 price = Decimal(str(position["price"]))
             position["price"] = float(price)

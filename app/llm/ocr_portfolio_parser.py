@@ -114,6 +114,11 @@ def recalculate_portfolio_values(
     holdings_total = Decimal("0")
     for index, raw in enumerate(positions, 1):
         row = dict(raw)
+        for optional_price in ("cost_price", "previous_close"):
+            if row.get(optional_price) is not None:
+                number = Decimal(str(row[optional_price]))
+                if not number.is_finite() or number < 0 or (optional_price == "previous_close" and number == 0):
+                    raise ValueError(f"{optional_price} must be finite and valid")
         quantity = Decimal(str(row.get("quantity", 0)))
         price = Decimal(str(row.get("price", row.get("cost_price", 0))))
         if (
@@ -130,10 +135,15 @@ def recalculate_portfolio_values(
         is_fund = row.get("asset_class") == "FUND_ETF" or code in ETF_LOOKTHROUGH_DATABASE
         asset_type = AssetType.ETF if is_fund else AssetType.STOCK
         security = ETF_LOOKTHROUGH_DATABASE.get(code) if is_fund else A_SHARE_DATABASE.get(code)
+        # User-confirmed domestic equities need not exist in the demo catalogue.
+        # Unknown industry stays unclassified so downstream suitability cannot infer it.
+        if security is None and not is_fund and re.fullmatch(r"(?:(?:600|601|603|605|688)\d{3}\.SH|(?:000|001|002|003|300|301)\d{3}\.SZ)", asset_id):
+            security = {"name": asset_id, "sector": "Unclassified"}
         if not asset_id or security is None:
             raise ValueError(f"unsupported security: {asset_id or 'missing asset_id'}")
         name = str(row.get("name") or security.get("fund_name") or security.get("name") or asset_id)
         sector = None if is_fund else str(security.get("sector") or row.get("sector") or "Unclassified")
+        row["sector"] = sector
         row["market_value_cny"] = float(market_value)
         row["price"] = float(price)
         row["quantity"] = int(quantity)

@@ -168,6 +168,67 @@ class FuyaoFinanceProvider(MarketDataProvider):
                 "UPSTREAM_TIMEOUT", "扶摇数据接口响应超时。"
             ) from exc
 
+    @staticmethod
+    def _index_symbol(symbol: str) -> str:
+        symbol = symbol.strip().upper()
+        if not re.fullmatch(r"\d{6}\.(SH|SZ|TI)", symbol):
+            raise FuyaoProviderError("UNSUPPORTED_INDEX", "当前接口仅支持 A 股及同花顺行业指数。")
+        return symbol
+
+    async def get_index_quote(self, symbol: str) -> dict[str, Any] | None:
+        symbol = self._index_symbol(symbol)
+        async with self._client() as client:
+            data = await self._get(client, "/api/a-share-index/prices/snapshot", {"thscodes": symbol})
+        row = next((row for row in data.get("item", []) if row.get("thscode") == symbol), None)
+        if row is None:
+            return None
+        price = _optional_finite_number(row.get("last_price"), "last_price")
+        change = _optional_finite_number(row.get("price_change_ratio_pct"), "price_change_ratio_pct")
+        observed = _datetime_from_millis(data.get("timestamp"))
+        if price is None or price <= 0 or change is None or observed is None:
+            raise FuyaoProviderError("INVALID_RESPONSE", "指数快照缺少有效价格或观察时间。")
+        return {"symbol": symbol, "price_cny": price, "change_pct": change,
+                "observed_at": observed.isoformat(), "source": "同花顺金融数据 · 指数行情", "is_synthetic": False}
+
+    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+        symbol = self._index_symbol(symbol)
+        end = datetime.now(UTC)
+        async with self._client() as client:
+            data = await self._get(client, "/api/a-share-index/prices/historical", {
+                "thscode": symbol, "interval": "1d", "start": int((end - timedelta(days=90)).timestamp() * 1000), "end": int(end.timestamp() * 1000)})
+        bars = []
+        for row in data.get("item", []):
+            observed = _datetime_from_millis(row.get("date_ms"))
+            values = [_optional_finite_number(row.get(key), key) for key in ("open_price", "high_price", "low_price", "close_price")]
+            if observed is None or any(v is None or v <= 0 for v in values):
+                raise FuyaoProviderError("INVALID_RESPONSE", "指数日线缺少有效日期或 OHLC 数据。")
+            opening, high, low, close = values
+            if not low <= min(opening, close) <= max(opening, close) <= high:
+                raise FuyaoProviderError("INVALID_RESPONSE", "指数日线高低价关系无效。")
+            bars.append({"time": observed.date().isoformat(), "open": opening, "high": high, "low": low, "close": close})
+        if len({bar["time"] for bar in bars}) != len(bars):
+            raise FuyaoProviderError("INVALID_RESPONSE", "指数日线含重复日期。")
+        return sorted(bars, key=lambda bar: bar["time"])
+
+    async def get_industry_observations(self) -> list[dict[str, Any]]:
+        """Bounded twelve-industry observation set; never claim a full-market ranking."""
+        from decimal import Decimal
+        async with self._client() as client:
+            data = await self._get(client, "/api/a-share-index/catalog/ths-index-list", {"tag": "industry"})
+        catalog = [row for row in data.get("item", []) if re.fullmatch(r"881\d{3}\.TI", row.get("thscode", ""))][:12]
+        semaphore = asyncio.Semaphore(2)
+        async def observe(row):
+            async with semaphore:
+                try:
+                    bars = await self.get_index_history(row["thscode"])
+                    def change(days):
+                        return str(((Decimal(str(bars[-1]["close"])) / Decimal(str(bars[-days-1]["close"])) - 1) * 100).quantize(Decimal("0.01"))) if len(bars) > days else None
+                    return {"name": row["name"], "symbol": row["thscode"], "as_of": bars[-1]["time"] if bars else None,
+                            "day_pct": change(1), "five_day_pct": change(5), "twenty_day_pct": change(20), "status": "CALCULATED" if bars else "REVIEW_REQUIRED"}
+                except FuyaoProviderError as exc:
+                    return {"name": row["name"], "symbol": row["thscode"], "status": "REVIEW_REQUIRED", "error_code": exc.code}
+        return await asyncio.gather(*(observe(row) for row in catalog))
+
     async def _get_quote_impl(self, code: str) -> dict[str, Any] | None:
         started = perf_counter()
         thscode = self._normalize_thscode(code, self.A_SHARE_PREFIXES)
