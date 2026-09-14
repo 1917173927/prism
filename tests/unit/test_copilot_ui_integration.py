@@ -47,7 +47,8 @@ def test_copilot_markup_structure() -> None:
         "copilot-chat-messages",
         "portfolio-modal",
         "btn-parse-portfolio",
-        "open-llm-config-btn",
+        "data-source-status",
+        "theme-toggle",
         "llm-config-modal",
         "btn-save-llm-config",
         "btn-clear-llm-config",
@@ -310,7 +311,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css?v=20260914-polish5">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-polish5">' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=20260914-polish6">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-polish6">' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
     agent_markup = markup[agent_start:agent_end]
@@ -463,5 +464,11 @@ def test_market_choices_and_visible_source_controls_are_distinct() -> None:
     assert set(re.findall(r'data-market-index="([^"]+)"', markup)) == {'上证指数', '深证成指', '创业板指', '沪深300'}
     assert markup.count('id="chat-runtime-mode"') == 1
     assert 'id="visible-ai-mode"' in markup and 'id="visible-data-mode"' in markup
+    more_menu = markup.split('<div class="topbar-more-panel">', 1)[1].split('</details>', 1)[0]
+    assert 'id="data-source-status"' in more_menu
+    assert 'id="theme-toggle"' in more_menu
+    for removed_id in ('profile-preferences-title', 'preference-holdings', 'preference-market',
+                       'profile-natural-text', 'profile-proposal-title'):
+        assert f'id="{removed_id}"' not in markup
     holdings_start = markup.index('class="portfolio-holdings-layout"')
     assert holdings_start < markup.index('id="companion-allocation-card"') < markup.index('class="overview-grid"', holdings_start)

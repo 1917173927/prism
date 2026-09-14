@@ -81,6 +81,25 @@ def test_index_quote_uses_shanghai_and_keeps_equity_quote_separate():
     assert requests[1].endswith("q=sz000001")
 
 
+def test_tencent_index_history_returns_validated_daily_ohlc():
+    requested_params = []
+
+    def respond(request):
+        requested_params.append(request.url.params["param"])
+        return httpx.Response(200, json={"data": {"sz399006": {"day": [
+            ["2026-09-11", "3010.00", "3040.00", "3055.00", "2998.00", "1000"],
+            ["2026-09-14", "3042.00", "3025.00", "3050.00", "3012.00", "1200"],
+        ]}}})
+
+    provider = TencentMarketProvider(transport=httpx.MockTransport(respond))
+    bars = asyncio.run(provider.get_index_history("399006.SZ"))
+    assert requested_params == ["sz399006,day,,,90,qfq"]
+    assert bars == [
+        {"time": "2026-09-11", "open": 3010.0, "high": 3055.0, "low": 2998.0, "close": 3040.0},
+        {"time": "2026-09-14", "open": 3042.0, "high": 3050.0, "low": 3012.0, "close": 3025.0},
+    ]
+
+
 def test_fuyao_index_does_not_compare_equity_ticker_and_checks_ohlc():
     def respond(request):
         if request.url.path.endswith("snapshot"):

@@ -2540,7 +2540,9 @@
     state.profileProposalExtraction = null;
     state.profileProposalProfile = null;
     state.profileProposalResolutions = {};
-    if (clearInput) byId("profile-proposal-json").value = "";
+    const proposalInput = byId("profile-proposal-json");
+    if (!proposalInput) return;
+    if (clearInput) proposalInput.value = "";
     setProfileProposalStatus("未预览");
     setProfileProposalConfirmStatus("未确认");
     renderProfileProposal(null);
@@ -6076,36 +6078,37 @@
     const preferences = await response.json();
     if (state.ownerId !== owner) return;
     state.userPreferences = preferences;
-    document.body.classList.toggle("prism-theme-dark", preferences.theme === "DARK");
-    const theme = byId("preference-theme");
-    const holdings = byId("preference-holdings");
-    const market = byId("preference-market");
-    const status = byId("user-preferences-status");
-    if (theme) theme.value = preferences.theme;
-    if (holdings) holdings.checked = preferences.holdings_data_enabled;
-    if (market) market.checked = preferences.market_data_enabled;
-    if (status) status.textContent = "已加载";
+    applyThemePreference(preferences.theme);
   }
 
-  async function saveUserPreferences() {
+  function applyThemePreference(theme) {
+    const dark = theme === "DARK";
+    document.body.classList.toggle("prism-theme-dark", dark);
+    const button = byId("theme-toggle");
+    const label = byId("theme-toggle-label");
+    if (button) button.setAttribute("aria-pressed", String(dark));
+    if (label) label.textContent = dark ? "切换浅色主题" : "切换深色主题";
+  }
+
+  async function saveThemePreference(theme) {
     const owner = state.ownerId;
-    const status = byId("user-preferences-status");
     if (!owner) return;
-    if (status) status.textContent = "保存中";
+    const button = byId("theme-toggle");
+    if (button) button.disabled = true;
     try {
       const response = await fetch("/api/v1/user/preferences", {
         method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
-        body: JSON.stringify({owner_id: owner, theme: byId("preference-theme").value,
-          holdings_data_enabled: byId("preference-holdings").checked,
-          market_data_enabled: byId("preference-market").checked}),
+        body: JSON.stringify({owner_id: owner, theme,
+          holdings_data_enabled: false, market_data_enabled: true}),
       });
       if (!response.ok) throw await apiError(response);
       state.userPreferences = await response.json();
-      document.body.classList.toggle("prism-theme-dark", state.userPreferences.theme === "DARK");
-      if (status) status.textContent = "已保存";
+      applyThemePreference(state.userPreferences.theme);
+      button?.closest("details")?.removeAttribute("open");
     } catch (error) {
-      if (status) status.textContent = "保存失败";
       setError(error.message || "保存用户偏好失败");
+    } finally {
+      if (button) button.disabled = false;
     }
   }
 
@@ -6147,9 +6150,6 @@
   byId("advisor-query-form").addEventListener("submit", runAdvisorQuery);
   byId("confirm-portfolio").addEventListener("click", confirmPortfolioContext);
   byId("confirm-profile").addEventListener("click", confirmProfileContext);
-  byId("preview-profile-proposal").addEventListener("click", previewProfileProposal);
-  byId("extract-natural-profile").addEventListener("click", extractNaturalProfile);
-  byId("confirm-profile-proposal").addEventListener("click", confirmProfileProposal);
   byId("preview-advisor-plan").addEventListener("click", previewAdvisorPlan);
   byId("intent-type").addEventListener("change", clearAdvisorPlan);
   byId("run-research-matrix").addEventListener("click", runResearchMatrix);
@@ -9717,7 +9717,6 @@
     llmConfig.baseUrl = settings.base_url;
     llmConfig.model = settings.model;
     updateLLMConfigUI();
-    byId("llm-config-btn-label").textContent = settings.is_configured ? "模型设置 · 已配置" : "模型设置 · 未配置";
     byId("llm-config-status").textContent = settings.is_configured ? `已配置 ${settings.model}，可测试连接。` : "填写个人 API Key 或由服务端提供默认配置。";
     return settings;
   }
@@ -10676,7 +10675,10 @@
     const input = byId("copilot-natural-input");
     if (input) { input.value = `请分析【${name}】近期走势，并说明数据边界和风险。`; input.focus(); }
   });
-  byId("save-user-preferences")?.addEventListener("click", saveUserPreferences);
+  byId("theme-toggle")?.addEventListener("click", () => {
+    const current = state.userPreferences?.theme || (document.body.classList.contains("prism-theme-dark") ? "DARK" : "LIGHT");
+    saveThemePreference(current === "DARK" ? "LIGHT" : "DARK");
+  });
   byId("logout-local-session")?.addEventListener("click", async () => {
     const response = await fetch("/api/v1/auth/logout", {method: "POST"});
     if (response.ok) window.location.assign("/login");

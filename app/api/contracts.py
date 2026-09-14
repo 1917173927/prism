@@ -395,10 +395,11 @@ class DisplayPolicyResponse(ContractModel):
 
 
 class UserPreferenceUpdateRequest(ContractModel):
-    """Owner-scoped presentation and data-access preferences.
+    """Owner-scoped presentation preferences with fixed data-source policy.
 
-    These flags are a product policy boundary, not browser-only decoration.
-    Trading is deliberately absent: the product never enables order execution.
+    The legacy data flags remain accepted for compatibility. The service always
+    normalizes holdings access off and market data on: positions enter through
+    explicit screenshot/text/manual confirmation, while market data is required.
     """
 
     schema_version: Literal["user-preference-update-request.v1"] = "user-preference-update-request.v1"
@@ -412,8 +413,8 @@ class UserPreferenceResponse(ContractModel):
     schema_version: Literal["user-preference-response.v1"] = "user-preference-response.v1"
     owner_id: NonEmptyStr
     theme: Literal["LIGHT", "DARK"]
-    holdings_data_enabled: bool
-    market_data_enabled: bool
+    holdings_data_enabled: Literal[False] = False
+    market_data_enabled: Literal[True] = True
     trading_enabled: Literal[False] = False
     updated_at: datetime
 
