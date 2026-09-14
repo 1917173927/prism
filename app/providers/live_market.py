@@ -505,8 +505,10 @@ class MarketDataProvider(ABC):
         """Index identity is explicit; equity-only providers must not substitute stocks."""
         return None
 
-    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+    async def get_index_history(self, symbol: str, *, start: datetime | None = None,
+                                end: datetime | None = None) -> list[dict[str, Any]]:
         """Return validated daily OHLC bars when the provider supports them."""
+        del start, end
         return []
 
 
@@ -520,15 +522,17 @@ class TencentMarketProvider(MarketDataProvider):
         code, exchange = symbol.split(".")
         return await self._get_quote(code, exchange.lower())
 
-    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+    async def get_index_history(self, symbol: str, *, start: datetime | None = None,
+                                end: datetime | None = None) -> list[dict[str, Any]]:
         if symbol not in {"000001.SH", "000300.SH", "399001.SZ", "399006.SZ"}:
             return []
         code, exchange = symbol.split(".")
         market_code = f"{exchange.lower()}{code}"
+        requested_days = max(90, min(800, ((end or datetime.now(UTC)) - (start or datetime.now(UTC) - timedelta(days=90))).days))
         async with httpx.AsyncClient(timeout=1.5, transport=self.transport) as client:
             response = await client.get(
                 "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
-                params={"param": f"{market_code},day,,,90,qfq"},
+                params={"param": f"{market_code},day,,,{requested_days},qfq"},
             )
             response.raise_for_status()
         payload = response.json()
@@ -544,12 +548,15 @@ class TencentMarketProvider(MarketDataProvider):
                 raise ValueError("Tencent index history contains an invalid price")
             if not low <= min(opening, close) <= max(opening, close) <= high:
                 raise ValueError("Tencent index history contains invalid OHLC bounds")
+            volume = Decimal(str(row[5])) if len(row) > 5 and row[5] not in (None, "") else None
             bars.append({
                 "time": observed.date().isoformat(),
                 "open": float(opening),
                 "high": float(high),
                 "low": float(low),
                 "close": float(close),
+                "volume": float(volume) if volume is not None and volume.is_finite() and volume >= 0 else None,
+                "turnover": None,
             })
         bars.sort(key=lambda bar: bar["time"])
         if len({bar["time"] for bar in bars}) != len(bars):
@@ -658,7 +665,8 @@ class CompositeMarketProvider(MarketDataProvider):
                 continue
         return None
 
-    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+    async def get_index_history(self, symbol: str, *, start: datetime | None = None,
+                                end: datetime | None = None) -> list[dict[str, Any]]:
         started = perf_counter()
         for provider in self.providers:
             remaining = self.total_timeout - (perf_counter() - started)
@@ -666,7 +674,7 @@ class CompositeMarketProvider(MarketDataProvider):
                 break
             try:
                 bars = await asyncio.wait_for(
-                    provider.get_index_history(symbol),
+                    provider.get_index_history(symbol, start=start, end=end),
                     min(remaining, self.tier_timeout),
                 )
                 if bars:

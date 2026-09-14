@@ -6113,34 +6113,111 @@
   }
 
   let marketRequestSequence = 0;
+  let marketAbortController = null;
+  let marketCatalog = [];
+  let marketRegion = "CN";
+  let marketInterval = "1d";
+  let marketAnalysis = null;
+  let marketQuoteSequence = 0;
+  const activeMarketIndicators = new Set(["boll"]);
+
+  function selectedMarketIndex() {
+    return marketCatalog.find(item => item.market === marketRegion && item.index_id === byId("market-index-input")?.value);
+  }
+
+  function renderMarketIndexCards() {
+    const container = byId("market-index-options");
+    if (!container) return;
+    container.replaceChildren();
+    const rows = marketCatalog.filter(item => item.market === marketRegion);
+    rows.forEach((item, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.marketIndex = item.index_id;
+      button.setAttribute("aria-pressed", String(item.index_id === byId("market-index-input").value));
+      const name = document.createElement("strong"); name.textContent = item.name;
+      const detail = document.createElement("small"); detail.textContent = item.symbol || "iFinD权限待验证";
+      const status = document.createElement("span"); status.className = "market-index-card-status";
+      if (item.quote_status === "LIVE" && item.price != null) {
+        const pct = Number(item.change_pct || 0);
+        status.textContent = `${Number(item.price).toLocaleString("zh-CN", {minimumFractionDigits: item.precision, maximumFractionDigits: item.precision})} · ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+        status.classList.add(pct >= 0 ? "is-up" : "is-down");
+      } else {
+        status.textContent = item.status === "AVAILABLE" ? "待查询" : "UNAVAILABLE";
+      }
+      button.append(name, detail, status);
+      button.addEventListener("click", () => {
+        byId("market-index-input").value = item.index_id;
+        container.querySelectorAll("button").forEach(node => node.setAttribute("aria-pressed", String(node === button)));
+        assessMarket();
+      });
+      container.append(button);
+      if (index === 0 && !rows.some(row => row.index_id === byId("market-index-input").value)) {
+        byId("market-index-input").value = item.index_id;
+        button.setAttribute("aria-pressed", "true");
+      }
+    });
+    byId("market-industries-section").hidden = marketRegion !== "CN";
+  }
+
+  async function loadMarketCatalog() {
+    const response = await fetch("/api/v1/market/catalog", {headers: {"X-Owner-ID": state.ownerId}});
+    if (!response.ok) throw await apiError(response);
+    marketCatalog = await response.json();
+    renderMarketIndexCards();
+  }
+
+  async function loadMarketQuotes() {
+    const sequence = ++marketQuoteSequence;
+    const region = marketRegion;
+    try {
+      const response = await fetch(`/api/v1/market/quotes/${region}`, {headers: {"X-Owner-ID": state.ownerId}});
+      if (!response.ok) throw await apiError(response);
+      const quotes = await response.json();
+      if (sequence !== marketQuoteSequence || region !== marketRegion) return;
+      const indexed = new Map(quotes.map(item => [item.index_id, item]));
+      marketCatalog = marketCatalog.map(item => item.market === region && indexed.has(item.index_id)
+        ? {...item, ...indexed.get(item.index_id), quote_status: indexed.get(item.index_id).status}
+        : item);
+      renderMarketIndexCards();
+    } catch (_) {
+      if (sequence === marketQuoteSequence && region === marketRegion) renderMarketIndexCards();
+    }
+  }
+
   async function assessMarket() {
     const sequence = ++marketRequestSequence;
     const owner = state.ownerId;
-    const input = byId("market-index-input");
     const result = byId("market-result-content");
     const status = byId("market-status");
-    const name = input?.value.trim();
-    if (!name || !result || !status) return;
+    const selected = selectedMarketIndex();
+    if (!selected || !result || !status) return;
+    marketAbortController?.abort();
+    marketAbortController = new AbortController();
     status.textContent = "正在读取";
     byId("market-kline").replaceChildren();
     result.textContent = "正在读取可验证行情与研判状态…";
     try {
-      const response = await fetch(`/api/v1/market-assessments/${encodeURIComponent(name)}`, {headers: {"X-Owner-ID": state.ownerId}});
+      const response = await fetch(`/api/v1/market/analysis/${marketRegion}/${encodeURIComponent(selected.index_id)}?interval=${marketInterval}`,
+        {headers: {"X-Owner-ID": state.ownerId}, signal: marketAbortController.signal});
       if (!response.ok) throw await apiError(response);
       const data = await response.json();
       if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
       status.textContent = data.status;
-      const quote = data.price === null ? "未返回行情" : `${Number(data.price).toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 2})}（${data.change_pct >= 0 ? "+" : ""}${Number(data.change_pct).toFixed(2)}%）`;
+      marketAnalysis = data;
+      const quote = data.price === null ? "未返回行情" : `${Number(data.price).toLocaleString("zh-CN", {minimumFractionDigits: data.precision, maximumFractionDigits: data.precision})}（${data.change_pct >= 0 ? "+" : ""}${Number(data.change_pct).toFixed(2)}%）`;
       result.replaceChildren();
-      const heading = document.createElement("h3"); heading.textContent = data.index_name;
-      const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.freshness} · ${data.source}`;
+      const heading = document.createElement("h3"); heading.textContent = `${data.name}${data.symbol ? ` · ${data.symbol}` : ""}`;
+      const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.currency} · ${data.source}`;
       detail.className = "market-quote-value";
-      const summary = document.createElement("p"); summary.textContent = data.summary;
-      const audit = document.createElement("small"); audit.textContent = `审查：${data.compliance_status}；观察时间：${data.observed_at || "未提供"}`;
-      result.append(heading, detail, summary, audit);
-      renderIndexCandles(data.bars || []);
+      const historyLabel = data.history_status === "LIVE" ? "历史完整" : data.history_status === "REVIEW_REQUIRED" ? "历史窗口部分可用" : "历史不可用";
+      const audit = document.createElement("small"); audit.textContent = `周期：${data.interval === "1M" ? "月线" : "日线"}；${historyLabel}；市场时区：${data.timezone}；观察时间：${data.observed_at || "未提供"}`;
+      result.append(heading, detail, audit);
+      renderIndexCandles(data);
+      renderMarketFactors(data.factors || []);
     } catch (error) {
       if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
+      if (error.name === "AbortError") return;
       status.textContent = "REVIEW_REQUIRED";
       result.textContent = error.message || "市场数据暂不可用。";
     }
@@ -10249,24 +10326,133 @@
     renderDevAssistResult(await response.json());
   }
 
-  function renderIndexCandles(bars) {
-    const container = byId("market-kline"); container.replaceChildren();
-    if (!bars.length) { container.textContent = "日 K 线暂不可用。"; return; }
-    const ns = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(ns, "svg"); svg.setAttribute("viewBox", "0 0 900 290"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `${bars[0].time} 至 ${bars.at(-1).time} 指数日 K 线`);
-    const low = Math.min(...bars.map(b => b.low)), high = Math.max(...bars.map(b => b.high));
-    const span = high - low || 1, y = value => 240 - (value - low) / span * 210, step = 800 / bars.length;
-    const element = (tag, attrs, content) => { const node = document.createElementNS(ns, tag); Object.entries(attrs).forEach(([k,v]) => node.setAttribute(k, String(v))); if (content) node.textContent = content; svg.append(node); return node; };
-    for (let i = 0; i <= 4; i++) { const value = low + span * i / 4; element("line", {x1: 65, x2: 875, y1: y(value), y2: y(value), stroke: "var(--border)"}); element("text", {x: 5, y: y(value) + 4, fill: "var(--text-secondary)", "font-size": 12}, value.toFixed(2)); }
-    bars.forEach((bar, index) => {
-      const x = 70 + index * step + step / 2, color = bar.close >= bar.open ? "var(--market-up)" : "var(--market-down)";
-      element("line", {x1: x, x2: x, y1: y(bar.high), y2: y(bar.low), stroke: color});
-      const body = element("rect", {x: x-step*.3, y: Math.min(y(bar.open), y(bar.close)), width: step*.6, height: Math.max(1, Math.abs(y(bar.close)-y(bar.open))), fill: color});
-      const title = document.createElementNS(ns, "title"); title.textContent = `${bar.time} 开 ${bar.open} 高 ${bar.high} 低 ${bar.low} 收 ${bar.close}`; body.append(title);
+  let renderedMarketChart = null;
+  let marketChartResizeObserver = null;
+
+  function marketRange(months) {
+    if (!renderedMarketChart || !marketAnalysis?.bars?.length) return;
+    if (months === "all") { renderedMarketChart.timeScale().fitContent(); return; }
+    const last = marketAnalysis.bars.at(-1).time;
+    const from = new Date(`${last}T00:00:00Z`);
+    from.setUTCMonth(from.getUTCMonth() - Number(months));
+    renderedMarketChart.timeScale().setVisibleRange({from: from.toISOString().slice(0, 10), to: last});
+  }
+
+  function renderIndexCandles(data) {
+    const container = byId("market-kline");
+    marketChartResizeObserver?.disconnect();
+    marketChartResizeObserver = null;
+    renderedMarketChart?.remove();
+    renderedMarketChart = null;
+    container.replaceChildren();
+    const bars = data.bars || [];
+    if (!bars.length) { container.textContent = `${data.name || "指数"}${data.interval === "1M" ? "月" : "日"} K 线暂不可用。`; return; }
+    if (!window.LightweightCharts) { container.textContent = "行情图组件未能加载。"; return; }
+    const css = getComputedStyle(document.body);
+    const color = name => css.getPropertyValue(name).trim();
+    const chartHeight = 420 + (activeMarketIndicators.has("macd") ? 130 : 0) + (activeMarketIndicators.has("kdj") ? 130 : 0);
+    container.style.height = `${chartHeight}px`;
+    const chart = window.LightweightCharts.createChart(container, {
+      width: container.clientWidth, height: chartHeight,
+      layout: {background: {type: "solid", color: color("--surface")}, textColor: color("--text-secondary"),
+        panes: {separatorColor: color("--border"), separatorHoverColor: color("--brand"), enableResize: true}},
+      grid: {vertLines: {color: color("--border-subtle")}, horzLines: {color: color("--border-subtle")}},
+      crosshair: {mode: window.LightweightCharts.CrosshairMode.Normal},
+      timeScale: {timeVisible: false, secondsVisible: false, borderColor: color("--border"), rightOffset: 2},
+      rightPriceScale: {borderColor: color("--border")},
+      handleScroll: {mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true},
+      handleScale: {mouseWheel: true, pinch: true, axisPressedMouseMove: true},
     });
-    element("text", {x: 65, y: 270, fill: "var(--text-secondary)", "font-size": 12}, bars[0].time);
-    element("text", {x: 790, y: 270, fill: "var(--text-secondary)", "font-size": 12}, bars.at(-1).time);
-    container.append(svg);
+    renderedMarketChart = chart;
+    const candles = chart.addSeries(window.LightweightCharts.CandlestickSeries, {
+      upColor: color("--market-up"), downColor: color("--market-down"), borderVisible: false,
+      wickUpColor: color("--market-up"), wickDownColor: color("--market-down"),
+      priceFormat: {type: "price", precision: data.precision, minMove: 1 / (10 ** data.precision)},
+    }, 0);
+    candles.setData(bars.map(bar => ({time: bar.time, open: Number(bar.open), high: Number(bar.high), low: Number(bar.low), close: Number(bar.close)})));
+
+    const volume = chart.addSeries(window.LightweightCharts.HistogramSeries, {
+      priceFormat: {type: "volume"}, priceScaleId: "volume",
+    }, 1);
+    volume.setData(bars.filter(bar => bar.volume != null).map(bar => ({time: bar.time, value: Number(bar.volume),
+      color: Number(bar.close) >= Number(bar.open) ? `${color("--market-up")}99` : `${color("--market-down")}99`})));
+    chart.panes()[0]?.setHeight(280);
+    chart.panes()[1]?.setHeight(90);
+
+    const indicators = data.indicators || {};
+    const bollByTime = new Map((indicators.boll || []).map(point => [point.time, point]));
+    const macdByTime = new Map((indicators.macd || []).map(point => [point.time, point]));
+    const kdjByTime = new Map((indicators.kdj || []).map(point => [point.time, point]));
+    if (activeMarketIndicators.has("boll")) {
+      [["upper", "#8b5cf6"], ["middle", color("--brand")], ["lower", "#0ea5e9"]].forEach(([field, lineColor]) => {
+        const series = chart.addSeries(window.LightweightCharts.LineSeries, {color: lineColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false}, 0);
+        series.setData((indicators.boll || []).map(point => ({time: point.time, value: Number(point[field])})));
+      });
+    }
+    let paneIndex = 2;
+    if (activeMarketIndicators.has("macd")) {
+      const histogram = chart.addSeries(window.LightweightCharts.HistogramSeries, {priceLineVisible: false, lastValueVisible: false}, paneIndex);
+      histogram.setData((indicators.macd || []).map(point => ({time: point.time, value: Number(point.histogram), color: Number(point.histogram) >= 0 ? color("--market-up") : color("--market-down")})));
+      [["diff", "#0ea5e9"], ["dea", color("--brand")]].forEach(([field, lineColor]) => {
+        const series = chart.addSeries(window.LightweightCharts.LineSeries, {color: lineColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false}, paneIndex);
+        series.setData((indicators.macd || []).map(point => ({time: point.time, value: Number(point[field])})));
+      });
+      chart.panes()[paneIndex]?.setHeight(120); paneIndex += 1;
+    }
+    if (activeMarketIndicators.has("kdj")) {
+      [["k", "#0ea5e9"], ["d", color("--brand")], ["j", "#8b5cf6"]].forEach(([field, lineColor]) => {
+        const series = chart.addSeries(window.LightweightCharts.LineSeries, {color: lineColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false}, paneIndex);
+        series.setData((indicators.kdj || []).map(point => ({time: point.time, value: Number(point[field])})));
+      });
+      chart.panes()[paneIndex]?.setHeight(120);
+    }
+    const rows = new Map(bars.map(bar => [bar.time, bar]));
+    chart.subscribeCrosshairMove(param => {
+      const timeKey = typeof param.time === "string" ? param.time : param.time && typeof param.time === "object"
+        ? `${param.time.year}-${String(param.time.month).padStart(2, "0")}-${String(param.time.day).padStart(2, "0")}` : "";
+      const bar = rows.get(timeKey);
+      if (!bar) return;
+      const pct = Number(bar.open) ? (Number(bar.close) / Number(bar.open) - 1) * 100 : 0;
+      const bollPoint = bollByTime.get(bar.time), macdPoint = macdByTime.get(bar.time), kdjPoint = kdjByTime.get(bar.time);
+      const indicatorText = [
+        bollPoint && `BOLL ${bollPoint.upper}/${bollPoint.middle}/${bollPoint.lower}`,
+        macdPoint && `MACD ${macdPoint.diff}/${macdPoint.dea}/${macdPoint.histogram}`,
+        kdjPoint && `KDJ ${kdjPoint.k}/${kdjPoint.d}/${kdjPoint.j}`,
+      ].filter(Boolean).join(" · ");
+      byId("market-crosshair-info").textContent = `${bar.time}（${data.timezone}） · 开 ${bar.open} 高 ${bar.high} 低 ${bar.low} 收 ${bar.close} · ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}% · 成交量 ${bar.volume == null ? "—" : Number(bar.volume).toLocaleString("zh-CN")} · 成交额 ${bar.turnover == null ? "—" : Number(bar.turnover).toLocaleString("zh-CN")}${indicatorText ? ` · ${indicatorText}` : ""}`;
+    });
+    chart.timeScale().fitContent();
+    marketChartResizeObserver = new ResizeObserver(entries => {
+      const width = Math.floor(entries[0]?.contentRect.width || 0);
+      if (width > 0 && renderedMarketChart === chart) chart.applyOptions({width});
+    });
+    marketChartResizeObserver.observe(container);
+  }
+
+  function renderMarketFactors(factors) {
+    const container = byId("market-factors"); container.replaceChildren();
+    if (!factors.length) {
+      const empty = document.createElement("p"); empty.className = "market-factor-empty";
+      empty.textContent = "宏观因子尚未取得；指数行情与技术指标可独立使用。";
+      container.append(empty); return;
+    }
+    const strength = value => value == null ? "样本不足" : Math.abs(Number(value)) < .2 ? "弱" : Math.abs(Number(value)) <= .5 ? "中等" : "较强";
+    factors.forEach(factor => {
+      const card = document.createElement("article"); card.className = "market-factor-card";
+      const heading = document.createElement("header");
+      const title = document.createElement("strong"); title.textContent = factor.name;
+      heading.append(title, chip(factor.status, factor.status === "LIVE" ? "pass" : "review"));
+      const value = document.createElement("p"); value.className = "market-factor-value";
+      value.textContent = factor.latest_value == null ? "数据不可用" : `${Number(factor.latest_value).toLocaleString("zh-CN")} ${factor.unit}`;
+      const correlation = document.createElement("dl"); correlation.className = "market-factor-correlations";
+      [["20期相关", factor.correlation_20], ["60期相关", factor.correlation_60]].forEach(([label, number]) => {
+        const dt = document.createElement("dt"); dt.textContent = label;
+        const dd = document.createElement("dd"); dd.textContent = number == null ? "—" : `${Number(number).toFixed(2)} · ${Number(number) >= 0 ? "正" : "负"}相关 · ${strength(number)}`;
+        correlation.append(dt, dd);
+      });
+      const meta = document.createElement("small"); meta.textContent = `${factor.source} · 样本 ${factor.sample_size || 0} · ${factor.observed_at || "未取得时间"}`;
+      card.append(heading, value, correlation, meta); container.append(card);
+    });
   }
 
   byId("market-load-industries")?.addEventListener("click", async event => {
@@ -10365,11 +10551,29 @@
   byId("chat-cancel-query")?.addEventListener("click", () => activeChatController?.abort());
   byId("chat-runtime-mode")?.addEventListener("change", updateLLMConfigUI);
   byId("data-source-status")?.addEventListener("click", openLLMConfigModal);
-  document.querySelectorAll("[data-market-index]").forEach(button => button.addEventListener("click", () => {
-    byId("market-index-input").value = button.dataset.marketIndex;
-    document.querySelectorAll("[data-market-index]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+  document.querySelectorAll("[data-market-region]").forEach(button => button.addEventListener("click", () => {
+    marketRegion = button.dataset.marketRegion;
+    document.querySelectorAll("[data-market-region]").forEach(item => item.setAttribute("aria-selected", String(item === button)));
+    const first = marketCatalog.find(item => item.market === marketRegion);
+    if (first) byId("market-index-input").value = first.index_id;
+    marketAnalysis = null;
+    renderMarketIndexCards();
+    loadMarketQuotes();
     assessMarket();
   }));
+  document.querySelectorAll("[data-market-interval]").forEach(button => button.addEventListener("click", () => {
+    marketInterval = button.dataset.marketInterval;
+    document.querySelectorAll("[data-market-interval]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    assessMarket();
+  }));
+  document.querySelectorAll("[data-market-indicator]").forEach(button => button.addEventListener("click", () => {
+    const indicator = button.dataset.marketIndicator;
+    if (activeMarketIndicators.has(indicator)) activeMarketIndicators.delete(indicator); else activeMarketIndicators.add(indicator);
+    button.setAttribute("aria-pressed", String(activeMarketIndicators.has(indicator)));
+    if (marketAnalysis) renderIndexCandles(marketAnalysis);
+  }));
+  document.querySelectorAll("[data-market-range]").forEach(button => button.addEventListener("click", () => marketRange(button.dataset.marketRange)));
+  byId("market-fit-chart")?.addEventListener("click", () => renderedMarketChart?.timeScale().fitContent());
   document.querySelectorAll("[data-chat-prefix]").forEach(button => button.addEventListener("click", () => {
     const input = byId("copilot-natural-input");
     const prefixes = [...document.querySelectorAll("[data-chat-prefix]")].map(item => `${item.dataset.chatPrefix}：`);
@@ -10669,7 +10873,7 @@
   byId("market-assess-button")?.addEventListener("click", assessMarket);
   byId("market-index-input")?.addEventListener("keydown", (event) => { if (event.key === "Enter") assessMarket(); });
   byId("market-followup-button")?.addEventListener("click", () => {
-    const name = byId("market-index-input")?.value.trim();
+    const name = selectedMarketIndex()?.name;
     if (!name) return;
     window.location.hash = "copilot";
     const input = byId("copilot-natural-input");
@@ -10777,11 +10981,17 @@
         byId("global-data-mode-toggle").hidden = true;
       }
     }
+    // Establish the owner namespace before any owner-scoped startup requests
+    // (including market catalog/quote cards) are issued.
+    state.ownerId = authenticatedOwner || byId("owner-id")?.value.trim() || "demo-owner";
     initializeNavigation();
     checkHealth();
     updateLLMConfigUI();
     await fetchRuntimeDataMode();
     await loadUserPreferences();
+    await loadMarketCatalog();
+    loadMarketQuotes();
+    assessMarket();
     initRuntimeDataMode();
     loadUserProfile();
     switchPersona("custom-user");

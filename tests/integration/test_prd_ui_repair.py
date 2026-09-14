@@ -95,8 +95,8 @@ def test_tencent_index_history_returns_validated_daily_ohlc():
     bars = asyncio.run(provider.get_index_history("399006.SZ"))
     assert requested_params == ["sz399006,day,,,90,qfq"]
     assert bars == [
-        {"time": "2026-09-11", "open": 3010.0, "high": 3055.0, "low": 2998.0, "close": 3040.0},
-        {"time": "2026-09-14", "open": 3042.0, "high": 3050.0, "low": 3012.0, "close": 3025.0},
+        {"time": "2026-09-11", "open": 3010.0, "high": 3055.0, "low": 2998.0, "close": 3040.0, "volume": 1000.0, "turnover": None},
+        {"time": "2026-09-14", "open": 3042.0, "high": 3050.0, "low": 3012.0, "close": 3025.0, "volume": 1200.0, "turnover": None},
     ]
 
 

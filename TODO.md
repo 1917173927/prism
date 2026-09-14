@@ -188,6 +188,7 @@
 - [ ] Obtain the scoring appendix referenced by the competition brief.
 - [ ] Confirm reuse/provenance terms for both upstream repositories; neither root currently exposes a LICENSE/NOTICE file.
 - [ ] Choose the Prism repository license before any public publication.
+- [ ] 取得并验证港股、美股四个指数及三项宏观因子的正式iFinD代码、展示权限、配额与再分发许可后，完成真实LIVE联调；验证前维持 `UNAVAILABLE`。
 
 These inputs block claims of real SkillHub integration or submission readiness, but they do not block fixture-driven contract and vertical-slice development.
 

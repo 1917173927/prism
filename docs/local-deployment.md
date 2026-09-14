@@ -109,3 +109,16 @@ npm run build:workflow
 | 买入禁投 | 明确资产、类别或行业排除 | 精确匹配 | 无法解释的约束 UNVERIFIED |
 
 结果附事实来源、版本及指纹。HALLUCINATED_DATA 在此表示结构化断言与已锁定事实不符或引用未知事实，不是对整段自然语言真实性的通用判定。本页流式分析中断记录最多保留20条，可点击定位对应消息；刷新或账户切换后清空，不将其冒充持久化审计。
+
+## 第8章 跨市场大盘行情
+
+“大盘鉴别”固定注册国内、港股和美股各4个指数。国内指数可复用已配置的同花顺金融数据服务；港美股必须在服务端配置 `IFIND_QUANT_REFRESH_TOKEN` 及对应指数代码，未验证代码或权限时返回 `UNAVAILABLE`，不使用ETF、国内指数或演示价格替代。
+
+美国10年期国债收益率、Brent原油近月和COMEX黄金近月分别通过 `IFIND_US10Y_EDB_ID`、`IFIND_BRENT_CODE`、`IFIND_COMEX_GOLD_CODE` 配置。任一因子不可用时仅该卡片降级，不阻断指数K线、量能和技术指标。国内及港股相关性只使用严格早于本地收盘日期的因子观测，避免引入随后才产生的美国市场数据；相关性不代表因果关系。
+
+Lightweight Charts 5.2.1及Apache-2.0许可已随静态资源发布，不依赖运行时CDN。修改图表交互后应至少执行：
+
+```powershell
+node --check app/api/static/app.js
+.venv/Scripts/python.exe -m pytest tests/unit/test_market_analysis.py tests/unit/test_ifind_quant_provider.py tests/integration/test_prd_personalization_api.py
+```

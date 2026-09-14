@@ -7,11 +7,12 @@
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/static/styles.css?v=20260914-polish6">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-polish6">
+    <link rel="stylesheet" href="/static/styles.css?v=20260914-market1">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-market2">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
-    <script src="/static/app.js?v=20260914-polish6" defer></script>
+    <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
+    <script src="/static/app.js?v=20260914-market2" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -857,22 +858,38 @@
             </div>
             <span id="market-status" class="status-chip">等待查询</span>
           </div>
+          <div class="market-region-tabs" role="tablist" aria-label="市场分类">
+            <button type="button" role="tab" data-market-region="CN" aria-selected="true">国内</button>
+            <button type="button" role="tab" data-market-region="HK" aria-selected="false">港股</button>
+            <button type="button" role="tab" data-market-region="US" aria-selected="false">美股</button>
+          </div>
           <div class="market-query-row">
-            <span class="market-section-label">A 股主要指数</span>
-            <input id="market-index-input" type="hidden" value="上证指数"><div class="market-index-options" role="group" aria-label="选择大盘指数"><button type="button" data-market-index="上证指数" aria-pressed="true"><strong>上证指数</strong><small>000001.SH</small></button><button type="button" data-market-index="深证成指" aria-pressed="false"><strong>深证成指</strong><small>399001.SZ</small></button><button type="button" data-market-index="创业板指" aria-pressed="false"><strong>创业板指</strong><small>399006.SZ</small></button><button type="button" data-market-index="沪深300" aria-pressed="false"><strong>沪深300</strong><small>000300.SH</small></button></div>
-            <button id="market-assess-button" type="button" class="copilot-action-btn primary">更新行情</button>
-            <button id="market-followup-button" type="button" class="copilot-action-btn secondary">在 AI 对话中追问</button>
+            <input id="market-index-input" type="hidden" value="sse-composite">
+            <div id="market-index-options" class="market-index-options" role="group" aria-label="选择大盘指数"></div>
+            <div class="market-query-actions"><button id="market-assess-button" type="button" class="copilot-action-btn primary">更新行情</button>
+            <button id="market-followup-button" type="button" class="copilot-action-btn secondary">在 AI 对话中追问</button></div>
           </div>
           <section class="surface market-result" aria-live="polite">
-            <div id="market-result-content">选择上方指数，查看最新行情与近 90 日日 K 线。</div>
-            <div id="market-kline" aria-label="指数日 K 线"></div>
+            <div id="market-result-content">选择市场和指数，查看可验证行情。</div>
+            <div class="market-chart-toolbar" aria-label="行情图设置">
+              <div role="group" aria-label="K线周期"><button type="button" data-market-interval="1d" aria-pressed="true">日线</button><button type="button" data-market-interval="1M" aria-pressed="false">月线</button></div>
+              <div role="group" aria-label="技术指标"><button type="button" data-market-indicator="boll" aria-pressed="true">BOLL</button><button type="button" data-market-indicator="macd" aria-pressed="false">MACD</button><button type="button" data-market-indicator="kdj" aria-pressed="false">KDJ</button></div>
+              <div role="group" aria-label="显示范围"><button type="button" data-market-range="3">3月</button><button type="button" data-market-range="6">6月</button><button type="button" data-market-range="12">1年</button><button type="button" data-market-range="24">2年</button><button type="button" data-market-range="all">全部</button></div>
+              <button id="market-fit-chart" type="button">适配全部</button>
+            </div>
+            <div id="market-crosshair-info" class="market-crosshair-info" aria-live="polite">移动十字线查看日期、价格与量能</div>
+            <div id="market-kline" aria-label="指数行情图"></div>
           </section>
-          <section class="surface portfolio-detail-card">
+          <section class="surface portfolio-detail-card market-factor-section">
+            <div class="market-section-heading"><div><h3>宏观因子联动</h3><p>同期相关性不代表因果关系。</p></div><span class="status-chip">20 / 60 期</span></div>
+            <div id="market-factors" class="market-factor-grid" aria-live="polite"><div class="empty-state">读取指数后显示美债、油价与金价联动。</div></div>
+          </section>
+          <section id="market-industries-section" class="surface portfolio-detail-card">
             <h3>行业轮动观察</h3><p>对照固定观察行业的短中期涨跌幅，查看相对强弱变化。</p>
             <button id="market-load-industries" type="button" class="copilot-action-btn secondary">读取行业表现</button>
             <div id="market-industries" aria-live="polite"></div>
           </section>
-          <p>港美股：恒生指数、恒生科技、道琼斯、纳斯达克、标普 500 的独立行情授权尚未验证，暂不展示替代报价。</p>
+          <p>港美股独立行情授权尚未验证；未取得权限时不展示替代报价。</p>
           <p class="market-risk-note">数据来源、观察时间及审查状态会随结果展示。仅供研究参考，不构成投资建议。</p>
         </section>
 

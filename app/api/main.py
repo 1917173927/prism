@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from contextlib import aclosing, asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 import os
@@ -42,6 +42,9 @@ from app.api.contracts import (
     DisplayPolicyResponse,
     DisplayPolicyUpdateRequest,
     MarketAssessmentResponse,
+    MarketAnalysisResponse,
+    MarketCatalogItem,
+    MarketQuoteCard,
     ProfileSummaryResponse,
     QuestionnaireConfirmationRequest,
     QuestionnaireConfirmationResponse,
@@ -59,6 +62,15 @@ from app.api.contracts import (
     ResearchScenarioResponse,
 )
 from app.recommendation import RecommendationCompositionResult
+from app.market_analysis import (
+    INDEX_REGISTRY,
+    aggregate_monthly,
+    correlated_returns,
+    find_index,
+    technical_indicators,
+    volume_summary,
+)
+from app.providers.ifind_quant import IFindQuantError, IFindQuantProvider
 from app.research import ResearchSpecialistMatrixRequest
 from app.stock import (
     StockResearchRequest,
@@ -405,6 +417,7 @@ def create_app(
     market_provider: MarketDataProvider | None = None,
     wencai_provider: WencaiSkillHubProvider | None = None,
     live_finance_provider: FuyaoFinanceProvider | None = None,
+    ifind_quant_provider: IFindQuantProvider | None = None,
 ) -> FastAPI:
     """Create an API instance with an explicitly injectable store and clock.
 
@@ -456,6 +469,7 @@ def create_app(
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider()
     active_live_finance = live_finance_provider or FuyaoFinanceProvider()
+    active_ifind_quant = ifind_quant_provider or IFindQuantProvider()
     live_probe_lock = asyncio.Lock()
 
     @asynccontextmanager
@@ -805,6 +819,154 @@ def create_app(
                       "rows": rows, "source": "同花顺金融数据 · 行业指数日线", "message": "固定观察行业的 1、5、20 个交易日涨跌幅；不代表全市场排名。"}
             industry_cache.update(result=result, expires=monotonic() + 60)
             return result
+
+    @api.get("/api/v1/market/catalog", response_model=list[MarketCatalogItem])
+    def get_market_catalog(owner_id: str = Depends(owner_dependency)) -> list[MarketCatalogItem]:
+        del owner_id
+        return [MarketCatalogItem(
+            market=item.market, index_id=item.index_id, name=item.name, symbol=item.symbol,
+            currency=item.currency, timezone=item.timezone, precision=item.precision,
+            status="AVAILABLE" if item.market == "CN" or (item.symbol and active_ifind_quant.is_configured) else "UNAVAILABLE",
+        ) for item in INDEX_REGISTRY]
+
+    @api.get("/api/v1/market/quotes/{market}", response_model=list[MarketQuoteCard])
+    async def get_market_quotes(
+        market: str,
+        owner_id: str = Depends(owner_dependency),
+    ) -> list[MarketQuoteCard]:
+        del owner_id
+        normalized_market = market.strip().upper()
+        selected_items = [item for item in INDEX_REGISTRY if item.market == normalized_market]
+        if not selected_items:
+            raise HTTPException(status_code=404, detail="market is not registered")
+
+        async def read_quote(item) -> MarketQuoteCard:
+            unavailable = MarketQuoteCard(
+                market=item.market, index_id=item.index_id, name=item.name,
+                symbol=item.symbol, currency=item.currency, precision=item.precision,
+                status="UNAVAILABLE", source="iFinD代码或行情权限尚未配置",
+            )
+            if item.symbol is None:
+                return unavailable
+            provider = active_live_finance if item.market == "CN" and active_live_finance.is_configured else active_market_quotes
+            try:
+                quote = await (provider.get_index_quote(item.symbol) if item.market == "CN"
+                               else active_ifind_quant.get_index_quote(item.symbol))
+            except (FuyaoProviderError, IFindQuantError, TimeoutError, ValueError, ArithmeticError):
+                return unavailable
+            if quote is None or quote.get("symbol") != item.symbol:
+                return unavailable
+            try:
+                observed_at = datetime.fromisoformat(str(quote["observed_at"]))
+                return MarketQuoteCard(
+                    market=item.market, index_id=item.index_id, name=item.name,
+                    symbol=item.symbol, currency=item.currency, precision=item.precision,
+                    status="LIVE", source=str(quote.get("source", "iFinD行情")),
+                    observed_at=observed_at, price=Decimal(str(quote["price_cny"])),
+                    change_pct=Decimal(str(quote["change_pct"])),
+                )
+            except (KeyError, TypeError, ValueError, ArithmeticError):
+                return unavailable
+
+        return list(await asyncio.gather(*(read_quote(item) for item in selected_items)))
+
+    @api.get("/api/v1/market/analysis/{market}/{index_id}", response_model=MarketAnalysisResponse)
+    async def get_market_analysis(
+        market: str,
+        index_id: str,
+        interval: str = Query(default="1d", pattern=r"^(1d|1M)$"),
+        owner_id: str = Depends(owner_dependency),
+    ) -> MarketAnalysisResponse:
+        del owner_id
+        selected = find_index(market.strip().upper(), index_id.strip())
+        if selected is None:
+            raise HTTPException(status_code=404, detail="market index is not registered")
+        end_time = active_clock().astimezone(UTC)
+        start_time = end_time - timedelta(days=3653 if interval == "1M" else 731)
+        if selected.symbol is None:
+            return MarketAnalysisResponse(
+                market=selected.market, index_id=selected.index_id, name=selected.name,
+                currency=selected.currency, timezone=selected.timezone, precision=selected.precision,
+                interval=interval, status="REVIEW_REQUIRED", source="iFinD代码或港美股权限尚未配置",
+            )
+
+        quote = None
+        daily_bars: list[dict] = []
+        provider = active_live_finance if selected.market == "CN" and active_live_finance.is_configured else active_market_quotes
+        try:
+            if selected.market == "CN":
+                quote = await provider.get_index_quote(selected.symbol)
+                daily_bars = await provider.get_index_history(selected.symbol, start=start_time, end=end_time)
+            elif active_ifind_quant.is_configured:
+                quote = await active_ifind_quant.get_index_quote(selected.symbol)
+                daily_bars = await active_ifind_quant.get_index_history(selected.symbol, start_time.date(), end_time.date())
+        except (FuyaoProviderError, IFindQuantError, TimeoutError, ValueError, ArithmeticError):
+            quote, daily_bars = None, []
+        if quote is None or quote.get("symbol") != selected.symbol or not daily_bars:
+            return MarketAnalysisResponse(
+                market=selected.market, index_id=selected.index_id, name=selected.name,
+                symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
+                precision=selected.precision, interval=interval, status="REVIEW_REQUIRED",
+                source="iFinD未返回可验证的指数行情",
+            )
+
+        bars = aggregate_monthly(daily_bars) if interval == "1M" else daily_bars
+        # A fallback provider can return a valid shorter history. Preserve it,
+        # but expose that the requested ten-year monthly window is incomplete.
+        history_status = "LIVE" if interval == "1d" or len(bars) >= 120 else "REVIEW_REQUIRED"
+        latest = Decimal(str(bars[-1]["close"]))
+        previous = Decimal(str(bars[-2]["close"])) if len(bars) > 1 else Decimal(str(bars[-1]["open"]))
+        change = latest - previous
+        change_pct = change / previous * Decimal(100) if previous else Decimal(0)
+        factor_definitions = (
+            ("us10y", "美国10年期国债收益率", "%", True),
+            ("brent", "Brent原油近月", "USD/桶", False),
+            ("comex-gold", "COMEX黄金近月", "USD/盎司", False),
+        )
+
+        async def analyze_factor(factor_id: str, name: str, unit: str, is_yield: bool) -> dict:
+            unavailable = {"factor_id": factor_id, "name": name, "unit": unit, "status": "UNAVAILABLE",
+                           "source": "iFinD因子权限或代码未配置", "sample_size": 0}
+            if not active_ifind_quant.is_configured:
+                return unavailable
+            try:
+                points = await active_ifind_quant.get_factor_history(factor_id, start_time.date(), end_time.date())
+            except (IFindQuantError, TimeoutError, ValueError, ArithmeticError):
+                return unavailable
+            if not points:
+                return unavailable
+            correlation = correlated_returns(
+                bars, points, yield_factor=is_yield, monthly=interval == "1M", market=selected.market,
+            )
+            cutoff = str(bars[-1]["time"])[:7] if interval == "1M" else str(bars[-1]["time"])[:10]
+            def point_key(point: dict) -> str:
+                return str(point["time"])[:7] if interval == "1M" else str(point["time"])[:10]
+            strict_factor_cutoff = selected.market in {"CN", "HK"}
+            eligible_points = []
+            for point in points:
+                observed_key = point_key(point)
+                if observed_key < cutoff or (not strict_factor_cutoff and observed_key == cutoff):
+                    eligible_points.append(point)
+            if not eligible_points:
+                return unavailable
+            latest_point = eligible_points[-1]
+            latest_value = Decimal(str(latest_point["value"]))
+            previous_value = Decimal(str(eligible_points[-2]["value"])) if len(eligible_points) > 1 else latest_value
+            factor_observed_at = datetime.fromisoformat(str(latest_point["time"])[:10]).replace(tzinfo=UTC)
+            return {"factor_id": factor_id, "name": name, "unit": unit, "status": "LIVE",
+                    "source": "iFinD QuantAPI", "observed_at": factor_observed_at, "latest_value": latest_value,
+                    "change": latest_value - previous_value, **correlation}
+
+        factors = await asyncio.gather(*(analyze_factor(*definition) for definition in factor_definitions))
+        return MarketAnalysisResponse(
+            market=selected.market, index_id=selected.index_id, name=selected.name,
+            symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
+            precision=selected.precision, interval=interval, status="CALCULATED",
+            source=str(quote.get("source", "iFinD行情")), history_status=history_status,
+            observed_at=datetime.fromisoformat(quote["observed_at"]),
+            price=latest, change=change, change_pct=change_pct, bars=bars,
+            volume=volume_summary(bars), indicators=technical_indicators(bars), factors=factors,
+        )
 
     @api.get("/api/v1/market-assessments/{index_name}", response_model=MarketAssessmentResponse)
     async def get_market_assessment(

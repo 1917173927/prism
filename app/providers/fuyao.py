@@ -190,12 +190,14 @@ class FuyaoFinanceProvider(MarketDataProvider):
         return {"symbol": symbol, "price_cny": price, "change_pct": change,
                 "observed_at": observed.isoformat(), "source": "同花顺金融数据 · 指数行情", "is_synthetic": False}
 
-    async def get_index_history(self, symbol: str) -> list[dict[str, Any]]:
+    async def get_index_history(self, symbol: str, *, start: datetime | None = None,
+                                end: datetime | None = None) -> list[dict[str, Any]]:
         symbol = self._index_symbol(symbol)
-        end = datetime.now(UTC)
+        end = end or datetime.now(UTC)
+        start = start or end - timedelta(days=90)
         async with self._client() as client:
             data = await self._get(client, "/api/a-share-index/prices/historical", {
-                "thscode": symbol, "interval": "1d", "start": int((end - timedelta(days=90)).timestamp() * 1000), "end": int(end.timestamp() * 1000)})
+                "thscode": symbol, "interval": "1d", "start": int(start.timestamp() * 1000), "end": int(end.timestamp() * 1000)})
         bars = []
         for row in data.get("item", []):
             observed = _datetime_from_millis(row.get("date_ms"))
@@ -205,7 +207,12 @@ class FuyaoFinanceProvider(MarketDataProvider):
             opening, high, low, close = values
             if not low <= min(opening, close) <= max(opening, close) <= high:
                 raise FuyaoProviderError("INVALID_RESPONSE", "指数日线高低价关系无效。")
-            bars.append({"time": observed.date().isoformat(), "open": opening, "high": high, "low": low, "close": close})
+            volume = _optional_finite_number(row.get("volume"), "volume")
+            turnover = _optional_finite_number(row.get("turnover"), "turnover")
+            if (volume is not None and volume < 0) or (turnover is not None and turnover < 0):
+                raise FuyaoProviderError("INVALID_RESPONSE", "指数日线量能字段无效。")
+            bars.append({"time": observed.date().isoformat(), "open": opening, "high": high, "low": low,
+                         "close": close, "volume": volume, "turnover": turnover})
         if len({bar["time"] for bar in bars}) != len(bars):
             raise FuyaoProviderError("INVALID_RESPONSE", "指数日线含重复日期。")
         return sorted(bars, key=lambda bar: bar["time"])

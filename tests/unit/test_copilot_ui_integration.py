@@ -311,7 +311,8 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css?v=20260914-polish6">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-polish6">' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=20260914-market1">\n    <link rel="stylesheet" href="/static/prism-v2.css?v=20260914-market2">' in markup
+    assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
     agent_markup = markup[agent_start:agent_end]
@@ -461,7 +462,10 @@ def test_allocation_chart_is_isolated_from_sector_donut_styles() -> None:
 
 def test_market_choices_and_visible_source_controls_are_distinct() -> None:
     markup = (STATIC / 'index.html').read_text(encoding='utf-8')
-    assert set(re.findall(r'data-market-index="([^"]+)"', markup)) == {'上证指数', '深证成指', '创业板指', '沪深300'}
+    assert set(re.findall(r'data-market-region="([^"]+)"', markup)) == {'CN', 'HK', 'US'}
+    assert set(re.findall(r'data-market-interval="([^"]+)"', markup)) == {'1d', '1M'}
+    assert set(re.findall(r'data-market-indicator="([^"]+)"', markup)) == {'boll', 'macd', 'kdj'}
+    assert 'id="market-index-options"' in markup
     assert markup.count('id="chat-runtime-mode"') == 1
     assert 'id="visible-ai-mode"' in markup and 'id="visible-data-mode"' in markup
     more_menu = markup.split('<div class="topbar-more-panel">', 1)[1].split('</details>', 1)[0]
