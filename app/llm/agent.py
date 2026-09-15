@@ -208,6 +208,14 @@ class CopilotAgent:
         }
         if normalized in harmless:
             return False
+        # Compound greetings still need no external financial facts. Require
+        # full coverage so a greeting cannot exempt an appended stock query.
+        conversational_parts = ("你好", "您好", "你是谁", "你能做什么", "你能干什么", "谢谢", "感谢", "再见")
+        remainder = normalized
+        for part in conversational_parts:
+            remainder = remainder.replace(part, "")
+        if normalized and not remainder:
+            return False
         educational_markers = ("什么是", "是什么", "是什么意思", "如何理解", "解释一下", "介绍一下", "了解一下", "举例说明", "概念", "区别")
         educational_concepts = (
             "股票", "基金", "etf", "债券", "可转债", "市盈率", "pe", "市净率", "pb", "股息率",

@@ -25,6 +25,9 @@ def test_education_wording_does_not_require_external_data(question):
 def test_live_or_personal_questions_still_require_tools(question):
     assert CopilotAgent._requires_grounded_tool(question)
 
+def test_compound_greeting_does_not_require_tools():
+    assert not CopilotAgent._requires_grounded_tool("你好，你是谁，你能干什么")
+
 
 def test_structured_financial_tool_is_exposed_and_validated():
     assert "query_financial_data" in {t["function"]["name"] for t in COPILOT_TOOLS}
