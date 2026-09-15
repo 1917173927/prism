@@ -2104,14 +2104,17 @@ body.prism-ui-v2 {
   .prism-ui-v2 .topbar .profile-actions-menu,.prism-ui-v2 .topbar .topbar-more-menu { width: auto; min-width: 0; }
 }
 
-/* Keep process feedback beside Send, outside the answer history. */
-#chat-send-progress { width: min(420px, 48vw); max-width: none; }
-#chat-send-progress .chat-pipeline-box { margin: 0; padding: 6px 8px; border: 0; background: transparent; }
-#chat-send-progress .pipeline-header { font-size: 11px; margin: 0 0 4px; }
-#chat-send-progress .pipeline-steps-grid { display: flex; flex-wrap: wrap; gap: 4px 10px; }
-#chat-send-progress .pipeline-step { font-size: 11px; padding: 0; }
+/* Quiet, persistent progress to the left of the composer actions. */
+.prism-ui-v2 .copilot-composer-meta { flex-wrap: nowrap; align-items: center; }
+#chat-send-progress { flex: 1; width: auto; min-width: 0; max-width: none; color: var(--text-muted); font-size: 11px; }
+#chat-send-progress .chat-pipeline-box { margin: 0; padding: 0; border: 0; background: transparent; gap: 3px; }
+#chat-send-progress .pipeline-header { font-size: 11px; font-weight: 400; margin: 0; padding: 0; border: 0; color: var(--text-secondary); }
+#chat-send-progress .pipeline-steps-grid { display: flex; flex-wrap: wrap; gap: 3px 8px; }
+#chat-send-progress .pipeline-step { font-size: 11px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--text-muted); font-weight: 400; }
+#chat-send-progress .pipeline-step + .pipeline-step::before { content: "›"; margin-right: 3px; color: var(--text-muted); }
+#chat-send-progress .pipeline-step.active { color: var(--brand); font-weight: 600; }
+#chat-send-progress .pipeline-step.failed { color: #c2410c; }
+#chat-send-progress .step-dot { display: none; }
+#copilot-submit-query, #chat-cancel-query { flex-shrink: 0; }
 #questionnaire-section-tabs { scroll-margin-top: 20px; }
-@media (max-width: 720px) {
-  #chat-send-progress { width: 100%; order: 5; }
-}
 .copilot-metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }

@@ -9678,7 +9678,7 @@
     const dot = document.createElement("span");
     dot.className = "step-dot";
     const txt = document.createElement("span");
-    txt.textContent = `${num}.${label}`;
+    txt.textContent = label;
     step.append(dot, txt);
     return step;
   }

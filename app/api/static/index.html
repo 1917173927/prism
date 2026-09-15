@@ -12,7 +12,7 @@
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260915-chat-cards" defer></script>
+    <script src="/static/app.js?v=20260915-progress-left" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -307,14 +307,13 @@
                 <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
                 <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="我更在意控制回撤，这套持仓需要怎么调整？" autocomplete="off"></textarea>
                 <div class="copilot-composer-meta">
-                  <small>结合当前持仓与投资偏好进行分析</small>
+                  <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
 
                   <button id="chat-cancel-query" type="button" hidden>停止</button>
                   <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
                     <span>发送</span>
                     <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
                   </button>
-                  <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
                 </div>
               </div>
 
