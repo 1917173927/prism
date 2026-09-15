@@ -326,6 +326,42 @@ def test_agent_allows_general_financial_education_without_live_tool() -> None:
     assert CopilotAgent._requires_grounded_tool("什么是沪深300市盈率") is True
 
 
+def test_real_model_turn_pins_tools_to_live_without_global_live_mode(monkeypatch) -> None:
+    """Real model chat must not require or consume the workspace MOCK provider."""
+    controller = SimpleNamespace(mode=DataMode.MOCK)
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: controller)
+
+    class ToolClient:
+        is_configured = True
+
+        async def stream_chat(self, messages, tools=None):
+            assert any(message["content"] == "上一轮问题" for message in messages)
+            yield {"type": "tool_call", "name": "query_stock_quote", "arguments": {"symbol": "600519"}}
+
+    async def collect():
+        agent = CopilotAgent(llm_client=ToolClient())
+        seen = []
+
+        async def execute(name, args, persona, portfolio, data_mode=None):
+            seen.append(data_mode)
+            return {
+                "status": "BLOCKED",
+                "execution_context": {"data_mode": "LIVE", "is_synthetic": False},
+            }
+
+        agent._execute_tool = execute
+        events = [event async for event in agent.stream_chat(
+            "继续查询",
+            history=[CopilotMessage(role="user", content="上一轮问题")],
+            tool_data_mode=DataMode.LIVE,
+        )]
+        return seen, events
+
+    seen, events = asyncio.run(collect())
+    assert seen == [DataMode.LIVE]
+    assert any(event["type"] == "tool_done" for event in events)
+
+
 def test_live_market_provider_stock_quote() -> None:
     async def _run():
         provider = LiveMarketProvider()

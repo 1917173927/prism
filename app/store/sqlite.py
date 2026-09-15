@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import re
 import sqlite3
 from threading import RLock
 from typing import Any, Protocol
@@ -45,6 +46,14 @@ class ContextMemoryCorruptError(StoreCorruptError):
 
 
 class DecisionEventStore(Protocol):
+    def create_local_account(self, account: dict[str, Any]) -> dict[str, Any]: ...
+    def get_local_account(self, username: str) -> dict[str, Any] | None: ...
+    def change_local_password(self, username: str, salt: str, password_hash: str, updated_at: str) -> None: ...
+    def create_auth_session(self, session: dict[str, str]) -> None: ...
+    def get_auth_session(self, token_hash: str, now: str, idle_expires_at: str) -> dict[str, Any] | None: ...
+    def revoke_auth_session(self, token_hash: str, revoked_at: str) -> None: ...
+    def revoke_owner_sessions(self, owner_id: str, revoked_at: str) -> None: ...
+
     def record_access(self, owner_id: str | None, method: str, route: str, status_code: int) -> None: ...
 
     def list_access(self, owner_id: str, limit: int = 100) -> list[dict[str, Any]]: ...
@@ -196,6 +205,92 @@ class SQLiteDecisionEventStore:
                 self._connection.execute("PRAGMA journal_mode = WAL")
             self._connection.execute("PRAGMA busy_timeout = 3000")
             self._run_migrations()
+
+    def create_local_account(self, account: dict[str, Any]) -> dict[str, Any]:
+        username = str(account.get("username", ""))
+        owner_id = _validate_owner(str(account.get("owner_id", "")))
+        if not re.fullmatch(r"[A-Za-z0-9_.@-]{3,100}", username):
+            raise ValueError("invalid username")
+        if len(bytes.fromhex(str(account.get("salt", "")))) != 16:
+            raise ValueError("invalid password salt")
+        if len(bytes.fromhex(str(account.get("password_hash", "")))) != 64:
+            raise ValueError("invalid password digest")
+        if type(account.get("admin", False)) is not bool:
+            raise ValueError("invalid account role")
+        try:
+            with self._lock:
+                self._connection.execute(
+                    "INSERT INTO local_accounts(username,owner_id,salt,password_hash,admin,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",
+                    (username, owner_id, account["salt"], account["password_hash"], int(account.get("admin", False)),
+                     account["created_at"], account["updated_at"]),
+                )
+        except Exception as exc:
+            if "UNIQUE" in str(exc).upper() or "DUPLICATE" in str(exc).upper():
+                raise StoreConflictError("account already exists") from None
+            raise
+        return {"username": username, "owner_id": owner_id, "admin": bool(account.get("admin", False))}
+
+    def get_local_account(self, username: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT username,owner_id,salt,password_hash,admin,created_at,updated_at FROM local_accounts WHERE username=?",
+                (username,),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["admin"] = bool(result["admin"])
+        return result
+
+    def change_local_password(self, username: str, salt: str, password_hash: str, updated_at: str) -> None:
+        if len(bytes.fromhex(salt)) != 16 or len(bytes.fromhex(password_hash)) != 64:
+            raise ValueError("invalid password digest")
+        if self.get_local_account(username) is None:
+            raise StoreError("account not found")
+        with self._lock:
+            self._connection.execute(
+                "UPDATE local_accounts SET salt=?,password_hash=?,updated_at=? WHERE username=?",
+                (salt, password_hash, updated_at, username),
+            )
+
+    def create_auth_session(self, session: dict[str, str]) -> None:
+        with self._lock:
+            self._connection.execute(
+                "INSERT INTO auth_sessions(token_hash,username,owner_id,issued_at,last_seen_at,idle_expires_at,absolute_expires_at,revoked_at) VALUES (?,?,?,?,?,?,?,NULL)",
+                (session["token_hash"], session["username"], _validate_owner(session["owner_id"]),
+                 session["issued_at"], session["last_seen_at"], session["idle_expires_at"], session["absolute_expires_at"]),
+            )
+
+    def get_auth_session(self, token_hash: str, now: str, idle_expires_at: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT s.*,a.salt,a.password_hash,a.admin FROM auth_sessions s JOIN local_accounts a ON a.username=s.username WHERE s.token_hash=?",
+                (token_hash,),
+            ).fetchone()
+            if row is None or row["revoked_at"] is not None or row["idle_expires_at"] <= now or row["absolute_expires_at"] <= now:
+                return None
+            next_idle = min(idle_expires_at, row["absolute_expires_at"])
+            self._connection.execute(
+                "UPDATE auth_sessions SET last_seen_at=?,idle_expires_at=? WHERE token_hash=?",
+                (now, next_idle, token_hash),
+            )
+        result = dict(row)
+        result["admin"] = bool(result["admin"])
+        return result
+
+    def revoke_auth_session(self, token_hash: str, revoked_at: str) -> None:
+        with self._lock:
+            self._connection.execute(
+                "UPDATE auth_sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL",
+                (revoked_at, token_hash),
+            )
+
+    def revoke_owner_sessions(self, owner_id: str, revoked_at: str) -> None:
+        with self._lock:
+            self._connection.execute(
+                "UPDATE auth_sessions SET revoked_at=? WHERE owner_id=? AND revoked_at IS NULL",
+                (revoked_at, _validate_owner(owner_id)),
+            )
 
     def get_session_truth(self, owner_id: str, session_id: str) -> dict[str, Any] | None:
         with self._lock:

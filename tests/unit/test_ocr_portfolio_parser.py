@@ -121,3 +121,47 @@ def test_ocr_api_upload_file_endpoint():
     assert data["status"] == "SUCCESS"
     assert data["parsed_count"] == 2
     assert data["cash_cny"] == 50000.0
+
+
+def test_ocr_extracts_two_line_name_only_broker_layout_and_excludes_zero_position():
+    """Regression for the broker layout where each slash header maps to two rows."""
+    def item(x, y, text, score=0.99):
+        return ([[x, y], [x + 70, y], [x + 70, y + 20], [x, y + 20]], text, score)
+
+    result_rows = [
+        item(20, 85, "市值"), item(186, 85, "持仓/可用"),
+        item(359, 85, "成本/现价"), item(529, 85, "当日盈亏"),
+        item(21, 135, "冠农股份"), item(240, 135, "6500"),
+        item(384, 135, "11.580"), item(514, 135, "-3,051.00"),
+        item(21, 165, "67,730.00"), item(239, 165, "3300"),
+        item(384, 165, "10.420"), item(524, 165, "-4.310%"),
+        item(22, 213, "莲花控股"), item(277, 213, "0", 0.826),
+        item(384, 213, "13.262"), item(528, 213, "1,440.00"),
+        item(20, 243, "0.00"), item(384, 243, "13.180"),
+        item(526, 243, "10.017%"), item(450, 297, "查看已清仓股票"),
+    ]
+
+    class FakeEngine:
+        def __call__(self, _):
+            return result_rows, 0.01
+
+    parser = OCRPortfolioParser()
+    parser._engine = FakeEngine()
+    image = Image.new("RGB", (613, 340), "white")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    parsed = parser.parse_image_bytes(buffer.getvalue())
+
+    assert parsed["cash_observed"] is False
+    assert parsed["account_total_value_cny"] is None
+    assert parsed["parsed_count"] == 1
+    position = parsed["positions"][0]
+    assert position["name"] == "冠农股份"
+    assert position["asset_id"] == "600251.SH"
+    assert position["quantity"] == 6500
+    assert position["available_quantity"] == 3300
+    assert position["cost_price"] == 11.58
+    assert position["price"] == 10.42
+    assert position["market_value_cny"] == 67730.0
+    assert parsed["zero_positions"][0]["name"] == "莲花控股"
+    assert parsed["zero_positions"][0]["zero_position"] is True

@@ -28,6 +28,9 @@ def load_local_env(path: Path) -> None:
 
 load_local_env(Path(__file__).resolve().parents[1] / ".env")
 env = os.environ.copy()
+# This command is the explicit unauthenticated demo entrypoint. Normal Uvicorn
+# startup keeps database-backed accounts enabled.
+env["PRISM_DEV_NO_AUTH"] = "true"
 if args.fresh:
     preview_dir = Path(tempfile.mkdtemp(prefix="prism-preview-"))
     env["PRISM_DB_PATH"] = str(preview_dir / "preview.sqlite3")

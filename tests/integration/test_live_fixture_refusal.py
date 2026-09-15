@@ -100,6 +100,9 @@ def test_live_mode_refuses_every_default_fixture_research_run() -> None:
         response = client.get(endpoint, headers=headers)
         assert response.status_code == 409, endpoint
         assert response.json()["error_code"] == "LIVE_RESEARCH_NOT_AVAILABLE"
+        assert response.json()["status"] == "UNAVAILABLE"
+        assert response.json()["actual_source"] is None
+        assert response.json()["missing_fields"]
 
     for endpoint, payload in requests:
         response = client.post(endpoint, headers=headers, json=payload)
@@ -133,6 +136,48 @@ def test_live_mode_refuses_every_default_fixture_research_run() -> None:
     assert workflow_save.status_code == 409
     assert workflow_save.json()["error_code"] == "LIVE_RESEARCH_NOT_AVAILABLE"
     store.close()
+
+
+def test_capability_gap_report_never_marks_fixture_research_available() -> None:
+    reset_runtime_mode_controller(DataMode.LIVE)
+    client = TestClient(create_app())
+    response = client.get(
+        "/api/v1/runtime/capability-gaps",
+        headers={"X-Owner-ID": "gap-report-owner"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "INCOMPLETE"
+    by_capability = {item["capability"]: item for item in body["items"]}
+    for capability in ("stock_research", "fund_research", "convertible_bond_research",
+                       "specialist_matrix", "advisor", "scenario"):
+        item = by_capability[capability]
+        assert item["status"] == "UNAVAILABLE"
+        assert item["missing"]
+        assert item["verification"]
+
+
+def test_authenticated_workspace_refuses_fixture_even_when_global_mode_is_mock() -> None:
+    reset_runtime_mode_controller(DataMode.MOCK)
+    client = TestClient(create_app(auth_enabled=True))
+    registered = client.post("/api/v1/auth/register", json={
+        "username": "fixture-guard-user",
+        "password": "fixture-guard-password",
+        "password_confirmation": "fixture-guard-password",
+    })
+    assert registered.status_code == 201
+    response = client.get("/api/v1/advisor/stock-research-template")
+    assert response.status_code == 409
+    assert response.json()["error_code"] == "LIVE_RESEARCH_NOT_AVAILABLE"
+    assert response.json()["actual_source"] is None
+    for endpoint in (
+        "/api/v1/copilot/live-quote?symbol=600519",
+        "/api/v1/copilot/live-fund?fund_code=588000",
+    ):
+        direct = client.get(endpoint)
+        assert direct.status_code == 409
+        assert direct.json()["error_code"] == "REAL_DATA_MODE_REQUIRED"
+        assert direct.json()["actual_source"] is None
 
 
 @pytest.mark.parametrize("declared_mode", [None, "LIVE"])

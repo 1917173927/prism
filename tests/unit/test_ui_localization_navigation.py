@@ -74,3 +74,23 @@ def test_navigation_renderer_syncs_hash_selection_and_safe_localization() -> Non
         "需复核的安全问题（issue）",
     ):
         assert label not in script
+
+
+def test_authenticated_ui_removes_mock_chat_and_marks_unready_tools() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    login = (STATIC / "login.html").read_text(encoding="utf-8")
+
+    assert 'accountAccessEnabled = context.enabled === true' in script
+    assert 'querySelector(\'option[value="MOCK"]\')' in script
+    assert 'formalUnavailable ? "工具数据 · 未就绪"' in script
+    assert "正式账户不允许切换至 Mock 数据" in script
+    assert 'connectionStatus: "NONE"' in script
+    assert 'llmConfig.connectionStatus = settings.is_configured ? "SAVED" : "NONE"' in script
+    assert 'llmConfig.connectionStatus = "CONNECTED"' in script
+    assert 'llmConfig.connectionStatus = "FAILED"' in script
+    assert "已保存待测试" in script
+    assert "连接测试通过" in script
+    assert "连接失败" in script
+    assert 'document.querySelector(\'#username\')' in login
+    assert 'document.querySelector(\'#password\')' in login
+    assert 'document.querySelector(\'#confirmation\')' in login
