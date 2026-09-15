@@ -39,6 +39,17 @@ Markdown 资源已随仓库提供，正常启动无需 Node。修改 `app/api/st
 
 `GET /api/v1/auth/context` 返回当前身份及管理员标志；`GET /api/v1/access-audit?limit=100` 返回该 owner 的最近访问。审计只记录 owner、方法、路由模板、状态码和时间，不保存请求正文、密码或授权头。本地审计可被本机文件管理员修改，尚不具备独立审计服务的防篡改保证。
 
+### 一、问财凭据验证与更新
+
+当前主页面没有问财 Key 编辑入口。本机部署维护者可在仓库根目录使用下列命令；默认仅验证现有凭据，`--configure` 会隐藏新 Key 的输入，九项真实查询全部通过后才替换原配置。失败保留原凭据，Key 不进入命令历史或输出。
+
+```powershell
+.venv/Scripts/python.exe -m tools.wencai_setup
+.venv/Scripts/python.exe -m tools.wencai_setup --configure
+```
+
+保存成功后重新启动 Prism。该工具使用 `PRISM_SECRET_STORE_PATH` 或当前仓库 `data/private/prism-secrets.json`，需由同一 Windows 账户运行。部分 Skill 返回 401 时应核实相应权限；不能将某项成功等同于全部授权。聊天会执行本次所需的真实查询，并依据实际返回判断，不以九项汇总状态阻断可用查询；其他页面的汇总能力闸门保持原契约。
+
 ## 第3章 备份与恢复
 
 工具使用 SQLite 在线备份接口读取已提交数据，包括 WAL 中的数据；输出必须是尚不存在的路径，并执行完整性校验。以下为示例路径，每次备份使用新文件名。

@@ -229,6 +229,25 @@ def test_wencai_setting_is_project_scoped_and_survives_restart(tmp_path) -> None
     restarted_store.close()
 
 
+def test_wencai_partial_skill_metadata_from_another_worktree_loads_safely(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    protected.set("provider:wencai", json.dumps({
+        "api_key": "partial-secret", "base_url": "https://openapi.iwencai.com",
+        "contract_verified": False, "verified_skills": ["announcement-search"],
+    }))
+    store = SQLiteDecisionEventStore(":memory:")
+    try:
+        client = TestClient(create_app(store, secret_store=protected))
+        response = client.get("/api/v1/runtime/wencai-settings")
+        assert response.status_code == 200
+        assert response.json()["is_configured"] is True
+        assert response.json()["contract_verified"] is False
+        assert "partial-secret" not in response.text
+        assert json.loads(protected.get("provider:wencai"))["verified_skills"] == ["announcement-search"]
+    finally:
+        store.close()
+
+
 def test_wencai_real_probe_status_is_persisted_for_restart(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     store = SQLiteDecisionEventStore(":memory:")

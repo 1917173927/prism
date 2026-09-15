@@ -208,7 +208,7 @@ class CopilotAgent:
         }
         if normalized in harmless:
             return False
-        educational_markers = ("什么是", "是什么", "是什么意思", "如何理解", "解释一下", "概念", "区别")
+        educational_markers = ("什么是", "是什么", "是什么意思", "如何理解", "解释一下", "介绍一下", "了解一下", "举例说明", "概念", "区别")
         educational_concepts = (
             "股票", "基金", "etf", "债券", "可转债", "市盈率", "pe", "市净率", "pb", "股息率",
             "每股收益", "净资产收益率", "roe", "波动率", "最大回撤", "夏普比率",
@@ -218,6 +218,10 @@ class CopilotAgent:
         has_educational_marker = any(marker in normalized for marker in educational_markers)
         has_educational_concept = any(concept in normalized for concept in educational_concepts)
         residual = normalized
+        # Strip only conversational wrappers. Unknown entities, dates and
+        # personal/live-data requests remain and still require grounding.
+        residual = re.sub(r"^(?:请|请问|麻烦|能不能|能否|可以|我想|帮我)+", "", residual)
+        residual = re.sub(r"^(?:用)?(?:通俗|简单|易懂)(?:的)?(?:语言|方式)", "", residual)
         removable_tokens = set((*educational_markers, *educational_concepts, "的", "和", "与", "及"))
         for token in sorted(removable_tokens, key=len, reverse=True):
             residual = residual.replace(token, "")
@@ -232,6 +236,7 @@ class CopilotAgent:
             "query_stock_quote": ({"symbol"}, {"symbol"}),
             "query_fund_lookthrough": ({"fund_code"}, {"fund_code"}),
             "query_wencai_semantic": ({"query", "channel"}, {"query"}),
+            "query_financial_data": ({"query", "category"}, {"query", "category"}),
             "run_portfolio_health_check": ({"portfolio_summary"}, set()),
             "generate_portfolio_rebalance": ({"target_sector_cap"}, set()),
         }
@@ -241,6 +246,10 @@ class CopilotAgent:
         if set(args) - allowed or required - set(args):
             return {}, "模型工具参数未通过契约校验。"
         sanitized = dict(args)
+        if name == "query_financial_data" and sanitized["category"] not in (
+            "market", "company", "industry", "macro", "fund", "convertible_bond"
+        ):
+            return {}, "模型工具参数未通过契约校验。"
         for key in ("symbol", "fund_code", "query", "portfolio_summary"):
             if key in sanitized and (not isinstance(sanitized[key], str) or not sanitized[key].strip() or len(sanitized[key]) > 1000):
                 return {}, "模型工具参数未通过契约校验。"
@@ -489,12 +498,15 @@ class CopilotAgent:
                         "is_synthetic": False,
                     },
                 }
-            if name == "query_wencai_semantic":
-                if not controller.is_wencai_ready:
+            if name in {"query_wencai_semantic", "query_financial_data"}:
+                # The aggregate probe requires all nine skills. A permission
+                # failure on one skill must not block a different live query.
+                # Each provider call validates its own HTTP/business response.
+                if not self.skillhub_provider.is_configured:
                     return {
                         "status": "FAILED",
                         "error_code": "AUTH_FAILED",
-                        "message": "问财 SkillHub 凭据或服务端契约确认未就绪，LIVE 模式拒绝执行非真实外部调用，未回退模拟数据。",
+                        "message": "问财 SkillHub 尚未配置凭据，无法执行真实数据查询。",
                         "execution_context": {
                             "data_mode": "LIVE",
                             "provider": "wencai_skillhub_provider",
@@ -504,23 +516,43 @@ class CopilotAgent:
                     }
                 from app.providers.contracts import ProviderOperation, ProviderRequest
                 channel = str(args.get("channel", "announcement"))
+                operations = {
+                    "market": ProviderOperation.MARKET_DATA,
+                    "company": ProviderOperation.COMPANY_DATA,
+                    "industry": ProviderOperation.INDUSTRY_DATA,
+                    "macro": ProviderOperation.MACRO_DATA,
+                    "fund": ProviderOperation.FUND_DATA,
+                    "convertible_bond": ProviderOperation.CONVERTIBLE_BOND_DATA,
+                }
                 req = ProviderRequest(
                     request_id=f"live-copilot-{int(datetime.now(UTC).timestamp())}",
-                    operation=(
+                    operation=operations[args["category"]] if name == "query_financial_data" else (
                         ProviderOperation.SEARCH_REPORTS
                         if channel == "report"
                         else ProviderOperation.SEARCH_NEWS
                     ),
                     subject=str(args.get("query", "市场行情")),
-                    parameters={"channel": channel},
+                    parameters={"limit": 5} if name == "query_financial_data" else {"channel": channel},
                 )
                 res = await self.skillhub_provider.execute(req)
-                if res.status.value == "FAILED":
+                if res.status.value == "FAILED" and name == "query_wencai_semantic":
                     error_code = res.issues[0].code.value if res.issues else "PROVIDER_FAILED"
                     await controller.record_wencai_failure(error_code)
                     if self.on_wencai_failure is not None:
                         await self.on_wencai_failure(error_code)
                 fields = dict(res.records[0].fields) if res.records else {}
+                if name == "query_financial_data":
+                    raw_rows = fields.get("items")
+                    rows = [dict(row) for row in raw_rows if isinstance(row, dict)][:5] if isinstance(raw_rows, (list, tuple)) else []
+                    return {
+                        "status": res.status.value,
+                        "query": args["query"], "category": args["category"],
+                        "items": rows, "missing_fields": list(res.missing_fields),
+                        "error_code": res.issues[0].code.value if res.issues else None,
+                        "message": "问财数据请求失败，请检查数据服务凭据与权限。" if res.status.value == "FAILED" else None,
+                        "retrieved_at": res.retrieved_at.isoformat(),
+                        "execution_context": {"data_mode": "LIVE", "provider": "wencai_skillhub_provider", "is_synthetic": False},
+                    }
                 raw_items = fields.get("items")
                 items: list[dict[str, Any]] = []
                 if isinstance(raw_items, (list, tuple)):
@@ -545,6 +577,8 @@ class CopilotAgent:
                         })
                 return {
                     "status": res.status.value,
+                    "error_code": res.issues[0].code.value if res.issues else None,
+                    "message": "问财检索请求失败，请检查数据服务凭据与权限。" if res.status.value == "FAILED" else None,
                     "source": "iwencai.com / SkillHub (Official Live)",
                     "query": str(args["query"]),
                     "channel": channel,
@@ -560,10 +594,28 @@ class CopilotAgent:
                     },
                 }
             if name in {"run_portfolio_health_check", "generate_portfolio_rebalance"}:
+                if name == "run_portfolio_health_check" and portfolio and portfolio.get("session_truth") and portfolio.get("profile") and portfolio.get("data_mode") == "LIVE":
+                    from app.portfolio.health import PortfolioHealthRequest, calculate_portfolio_health
+                    try:
+                        # Context comes from the API's verified truth lock;
+                        # user tool arguments never supply financial inputs.
+                        health = calculate_portfolio_health(PortfolioHealthRequest(
+                            request_id="chat-health",
+                            owner_id=portfolio["profile"]["owner_id"],
+                            calculated_at=datetime.now(UTC),
+                            portfolio=portfolio["portfolio"], profile=portfolio["profile"],
+                        ))
+                    except (ValueError, KeyError):
+                        return {"status": "BLOCKED", "error_code": "INVALID_DETERMINISTIC_CONTEXT",
+                                "message": "已锁定持仓或画像未通过确定性输入校验，请重新确认。"}
+                    return {"status": "SUCCESS", "health": health.model_dump(mode="json"),
+                            "execution_context": {"data_mode": "LIVE", "provider": "deterministic_risk_engine", "is_synthetic": False}}
                 return {
                     "status": "BLOCKED",
                     "error_code": "DETERMINISTIC_CONTEXT_REQUIRED",
-                    "message": "该工具必须通过结构化持仓与画像的确定性接口执行；LIVE 聊天不回退模拟计算。",
+                    "message": ("请先确认当前真实数据模式下的风险问卷与持仓，并锁定分析前提，再执行持仓体检。"
+                                if name == "run_portfolio_health_check" else
+                                "调仓需要已刷新持仓、明确目标权重与换手约束；请在调仓计划入口确认这些条件后执行确定性测算。"),
                     "execution_context": {
                         "data_mode": "LIVE",
                         "provider": "deterministic_api_required",
@@ -702,6 +754,7 @@ class CopilotAgent:
         check_tool = next((t for t in executed_tools if t["tool"] == "run_portfolio_health_check"), None)
         rebalance_tool = next((t for t in executed_tools if t["tool"] == "generate_portfolio_rebalance"), None)
         wencai_tool = next((t for t in executed_tools if t["tool"] == "query_wencai_semantic"), None)
+        financial_tool = next((t for t in executed_tools if t["tool"] == "query_financial_data"), None)
 
         if len(executed_tools) > 1:
             return "\n\n".join(
@@ -709,7 +762,7 @@ class CopilotAgent:
                 for tool in executed_tools
             )
 
-        selected_tool = stock_tool or fund_tool or check_tool or rebalance_tool or wencai_tool
+        selected_tool = stock_tool or fund_tool or check_tool or rebalance_tool or wencai_tool or financial_tool
         context = (selected_tool or {}).get("result", {}).get("execution_context", {})
         mode_label = context.get("data_mode", "未标注")
 
@@ -727,7 +780,13 @@ class CopilotAgent:
             change = stock.get("change_pct")
             change_text = "未提供" if change is None else f"{change:+.2f}%"
             lines.append(f"1. **行情字段**：价格 **¥{field(stock, 'price_cny')}**，涨跌幅 `{change_text}`，市盈率 PE(TTM) **{field(stock, 'pe_ttm', ' 倍')}**，估值分位 **{field(stock, 'valuation_quantile_pct', '%')}**，所属行业 **{field(stock, 'industry')}**。")
-            lines.append(f"2. **财务字段**：ROE **{field(stock, 'roe_pct', '%')}**，毛利率 **{field(stock, 'gross_margin_pct', '%')}**，资产负债率 **{field(stock, 'debt_ratio_pct', '%')}**。")
+            financial_fields = [(label, key) for label, key in (
+                ("ROE", "roe_pct"), ("毛利率", "gross_margin_pct"), ("资产负债率", "debt_ratio_pct")
+            ) if stock.get(key) is not None]
+            if financial_fields:
+                lines.append("2. **财务字段**：" + "，".join(f"{label} **{field(stock, key, '%')}**" for label, key in financial_fields) + "。")
+            else:
+                lines.append("2. 本次报价接口不提供完整财报；财务指标需通过问财财务查询取得。")
             lines.append(f"数据时间：{field(stock, 'observed_at')}。")
             lines.append("3. **计算边界**：聊天层不计算适当性、配置比例或风险闸门；相关结论需提交结构化画像与持仓到后端确定性服务。")
 
@@ -746,6 +805,22 @@ class CopilotAgent:
             chk = check_tool["result"]
             if chk.get("status") != "SUCCESS":
                 return chk.get("message", "结构化持仓体检未执行。")
+            if "health" in chk:
+                health = chk["health"]
+                lines.extend([
+                    "### 持仓健康度核查报告",
+                    f"确定性核查状态：{health['status']}；持仓总市值：{health['total_market_value_cny']} 元。",
+                    f"行业 HHI：{health['sector_hhi']}；阈值：{health['hhi_limit']}；裁决：{health['hhi_verdict']}。",
+                    "|行业|实际占比 %|约束 %|裁决|", "|---|---:|---|---|",
+                ])
+                for sector in health["sectors"]:
+                    operator = "≥" if sector["limit_operator"] == "MIN" else "≤"
+                    lines.append(f"|{sector['name']}|{sector['weight_pct']}|{operator} {sector['limit_pct']}|{sector['verdict']}|")
+                lines.append(f"核查时间：{health['calculated_at']}；底稿状态：{health['source_exposure_status']}。")
+                if health.get("issues"):
+                    lines.append("数据限制：" + "、".join(health["issues"]))
+                lines.append("以上为后端确定性计算结果，不生成买卖指令。")
+                return "\n".join(lines)
             is_over = chk.get("is_over_budget", True)
             lines.append(f"### 持仓健康度核查报告")
             lines.append(f"尊敬的 {name}，根据您的 {tag} 画像（回撤容忍 ≤{persona.get('max_drawdown', 15)}%）：\n")
@@ -766,6 +841,24 @@ class CopilotAgent:
             for s in reb["steps"]:
                 action_text = "卖出 (SELL)" if s["action"] == "SELL" else "买入 (BUY)"
                 lines.append(f"{s['step']}. **{action_text}** {s['asset']}：调整比例 `{s['weight_delta']}`")
+
+        elif financial_tool:
+            result = financial_tool["result"]
+            if result.get("status") not in {"SUCCESS", "PARTIAL", "EMPTY"}:
+                return f"{result.get('message') or '问财结构化数据查询未完成。'}（{result.get('error_code') or 'FAILED'}）"
+            lines.append("### 问财结构化数据查询")
+            lines.append(f"查询：{result['query']}；状态：{result['status']}。")
+            rows = result.get("items") or []
+            if not rows:
+                lines.append("未取得匹配数据，不以模型常识补值。")
+            for index, row in enumerate(rows, 1):
+                lines.append(f"\n记录 {index}：")
+                for key, value in row.items():
+                    rendered = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list, tuple)) else str(value) if value is not None else "未提供"
+                    lines.append(f"- {key}：{rendered}")
+            if result.get("missing_fields"):
+                lines.append("缺失字段：" + "、".join(result["missing_fields"]))
+            lines.append(f"来源：问财 SkillHub；检索时间：{result['retrieved_at']}。保留上游字段及报告期，未生成独立审计或估值结论。")
 
         elif wencai_tool:
             result = wencai_tool["result"]

@@ -69,6 +69,8 @@ def test_lock_blocks_drift_and_binds_chat_to_server_facts(monkeypatch):
             assert client.post("/api/v1/copilot/chat", headers=headers, json=request).status_code == 200
             assert captured["persona_info"]["max_drawdown"] != 99
             assert captured["portfolio_context"]["portfolio"] == data["portfolio"]
+            assert captured["portfolio_context"]["profile"]["owner_id"] == "owner"
+            assert captured["portfolio_context"]["profile"]["max_drawdown_tolerance_pct"] != 99
             assert client.post("/api/v1/copilot/chat", headers=headers, json={**request, "portfolio_snapshot_id":"wrong"}).status_code == 409
             new_data = recalculate_portfolio_values([{"asset_id":"600519.SH", "quantity":200, "price":1000}], Decimal(20000), "owner")
             store.save_current_portfolio("owner", "LIVE", new_data)

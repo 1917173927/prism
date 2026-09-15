@@ -334,6 +334,10 @@ class WencaiConfigApiRequest(BaseModel):
 
 class WencaiStoredConfig(WencaiConfigApiRequest):
     contract_verified: bool = False
+    # Other local worktrees may have persisted per-skill probe metadata in
+    # the shared protected store. Accept it without promoting readiness;
+    # chat queries still validate their own live provider response.
+    verified_skills: tuple[str, ...] = ()
 
 
 class AuthLoginRequest(BaseModel):
@@ -2461,7 +2465,7 @@ def create_app(
             req.persona_info = {"name":"当前账户", "tag":profile["risk_level"],
                                 "max_drawdown":profile["max_drawdown_tolerance_pct"], "budget_cap":"以确定性风险闸门为准"}
             req.portfolio_context = {"session_truth":{"session_id":req.session_truth_id, "revision":record["revision"]},
-                                     "data_mode":facts["data_mode"], "portfolio":bundle}
+                                     "data_mode":facts["data_mode"], "portfolio":bundle, "profile":profile}
         stored_profile = active_store.get_latest_behavior_profile(scoped_owner) if scoped_owner else None
         stored_policy = active_store.get_display_policy(scoped_owner) if scoped_owner else None
         if stored_policy is None:
