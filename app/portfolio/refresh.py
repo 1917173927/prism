@@ -79,10 +79,10 @@ class LivePortfolioProviderAdapter:
         try:
             result = await getter(requested)
         except Exception:
-            # Do not turn one failed batch into a burst of per-position calls;
-            # the caller can retry the complete refresh.  This is especially
-            # important for a rate-limited live provider.
-            self._prefetched_quotes = {asset_id: None for asset_id in requested}
+            # A batch timeout is not evidence that every symbol is missing.
+            # Clear the cache so _execute_fuyao can perform its bounded,
+            # independently validated per-symbol request below.
+            self._prefetched_quotes = {}
             return
         if isinstance(result, dict):
             prefetched: dict[str, dict[str, Any] | None] = {}

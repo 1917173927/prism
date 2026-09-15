@@ -11054,10 +11054,17 @@
     const sequence = ++portfolioReportSequence;
     displayedPortfolioReport = null;
     renderPortfolioReport(null);
-    const response = await fetch("/api/v1/advisor/portfolio/report", {headers: {"X-Owner-ID": expectedOwner}});
+    let response = await fetch("/api/v1/advisor/portfolio/report", {headers: {"X-Owner-ID": expectedOwner}});
     if (response.status === 404) {
       if (sequence === portfolioReportSequence && expectedOwner === state.ownerId && expectedMode === state.dataMode) renderPortfolioReport(null);
       return null;
+    }
+    if (!response.ok) {
+      // Report generation is read-only and deterministic; a single retry
+      // handles a transient provider/store race without asking the user to
+      // repeat the portfolio refresh.
+      await new Promise(resolve => setTimeout(resolve, 180));
+      response = await fetch("/api/v1/advisor/portfolio/report", {headers: {"X-Owner-ID": expectedOwner}});
     }
     if (!response.ok) throw await apiError(response);
     const report = await response.json();

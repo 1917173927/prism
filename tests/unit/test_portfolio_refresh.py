@@ -501,6 +501,17 @@ class _BatchedLiveFuyaoFinanceProvider(_LiveFuyaoFinanceProvider):
         self.single_calls += 1
         return await super().get_quote(code)
 
+class _BatchTimeoutLiveFuyaoFinanceProvider(_LiveFuyaoFinanceProvider):
+    def __init__(self) -> None:
+        self.single_calls = 0
+
+    async def get_quotes(self, codes):
+        raise TimeoutError("batch timeout")
+
+    async def get_quote(self, code: str):
+        self.single_calls += 1
+        return await super().get_quote(code)
+
 class _LiveFundFinanceProvider:
     async def get_quote(self, code: str):
         return None
@@ -576,6 +587,16 @@ def test_live_refresh_uses_one_batch_quote_request_when_provider_supports_it():
     assert body.status == "REVIEW_REQUIRED"
     assert finance.batch_calls == 1
     assert finance.single_calls == 0
+
+def test_live_refresh_retries_each_quote_after_batch_timeout():
+    request = PortfolioRefreshRequest.model_validate(_request(_portfolio()))
+    finance = _BatchTimeoutLiveFuyaoFinanceProvider()
+    adapter = LivePortfolioProviderAdapter(finance, stock_quote_available=True)
+
+    body = asyncio.run(refresh_portfolio_live(request, adapter))
+
+    assert finance.single_calls == 1
+    assert next(row for row in body.positions if row.asset_id == "300750.SZ").price_cny == Decimal("338.25")
 
 def test_live_refresh_uses_real_quote_with_confirmed_sector_when_wencai_fails():
     portfolio = _portfolio()
