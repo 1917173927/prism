@@ -16,6 +16,8 @@ import pytest
 _ORIGINAL_SECRET_STORE_PATH = os.environ.get("PRISM_SECRET_STORE_PATH")
 _TEST_SECRET_DIR = Path(tempfile.mkdtemp(prefix="prism-pytest-secrets-"))
 os.environ["PRISM_SECRET_STORE_PATH"] = str(_TEST_SECRET_DIR / "secrets.json")
+_ORIGINAL_DB_PATH = os.environ.get("PRISM_DB_PATH")
+os.environ["PRISM_DB_PATH"] = str(_TEST_SECRET_DIR / "test.sqlite3")
 
 from app.runtime.mode import DataMode, reset_runtime_mode_controller
 
@@ -33,4 +35,8 @@ def pytest_unconfigure(config):
         os.environ.pop("PRISM_SECRET_STORE_PATH", None)
     else:
         os.environ["PRISM_SECRET_STORE_PATH"] = _ORIGINAL_SECRET_STORE_PATH
+    if _ORIGINAL_DB_PATH is None:
+        os.environ.pop("PRISM_DB_PATH", None)
+    else:
+        os.environ["PRISM_DB_PATH"] = _ORIGINAL_DB_PATH
     shutil.rmtree(_TEST_SECRET_DIR, ignore_errors=True)

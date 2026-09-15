@@ -106,6 +106,11 @@ def test_locked_live_health_uses_deterministic_service_and_rejects_mock():
     answer = agent._synthesize_grounded_response("体检", {}, [{"tool": "run_portfolio_health_check", "result": result}], context)
     assert "120000.00" in answer and "HHI" in answer
     assert "减仓" not in answer
+    assert "已锁定的持仓快照" in answer
+    assert "|\n\n核查时间" in answer
+    result["health"]["sectors"][0]["sector_key"] = "UNCLASSIFIED"
+    incomplete_answer = agent._synthesize_grounded_response("体检", {}, [{"tool": "run_portfolio_health_check", "result": result}], context)
+    assert "行业数据待确认" in incomplete_answer
     context["data_mode"] = "MOCK"
     assert asyncio.run(agent._execute_tool("run_portfolio_health_check", {}, {}, context, DataMode.LIVE))["status"] == "BLOCKED"
 

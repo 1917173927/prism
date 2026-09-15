@@ -302,7 +302,8 @@ def test_frontend_keeps_safe_dom_and_renders_sector_result_below_chart():
     assert 'tech_exposure_pct: "38.50"' not in script
     assert 'await refreshPortfolioHealth()' in script
     assert 'liveCapabilities.portfolio_refresh === true' in script
-    assert 'liveCapabilities.stock_quote === true && state.wencaiConfigured === true' in script
+    assert 'liveCapabilities.stock_quote === true' in script
+    assert 'liveCapabilities.stock_quote === true && state.wencaiConfigured === true' not in script
     assert 'status: "BLOCKED"' in script
     assert 'error.errorCode = payload?.error_code || null' in script
     assert 'err.errorCode === "LIVE_PORTFOLIO_REFRESH_REQUIRED"' in script

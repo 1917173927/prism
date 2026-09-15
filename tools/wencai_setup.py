@@ -11,11 +11,11 @@ import asyncio
 import getpass
 import json
 import os
-from pathlib import Path
 import warnings
 
 from app.providers.skillhub import WencaiSkillHubProvider
 from app.security import ProtectedSecretStore, SecretProtectionError
+from app.runtime.paths import default_private_data_dir
 
 
 async def verify_and_save(store, config: dict, *, save: bool) -> bool:
@@ -41,7 +41,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="验证或更新本机问财凭据，不显示密钥。")
     parser.add_argument("--configure", action="store_true", help="安全输入新 Key，验证通过后保存")
     args = parser.parse_args()
-    path = os.getenv("PRISM_SECRET_STORE_PATH") or str(Path(__file__).resolve().parents[1] / "data/private/prism-secrets.json")
+    path = os.getenv("PRISM_SECRET_STORE_PATH") or str(default_private_data_dir() / "prism-secrets.json")
     try:
         store = ProtectedSecretStore(path)
         if args.configure:

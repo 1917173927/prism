@@ -809,14 +809,17 @@ class CopilotAgent:
                 health = chk["health"]
                 lines.extend([
                     "### 持仓健康度核查报告",
+                    "本次基于已锁定的持仓快照计算，并未在本轮重新获取行情。",
                     f"确定性核查状态：{health['status']}；持仓总市值：{health['total_market_value_cny']} 元。",
                     f"行业 HHI：{health['sector_hhi']}；阈值：{health['hhi_limit']}；裁决：{health['hhi_verdict']}。",
-                    "|行业|实际占比 %|约束 %|裁决|", "|---|---:|---|---|",
                 ])
+                if any(row["sector_key"] == "UNCLASSIFIED" for row in health["sectors"]):
+                    lines.append("行业数据待确认：未分类资产单独归集；当前行业占比和 HHI 不能代表已核实的行业分布。请在持仓明细中确认行业后重新分析。")
+                lines.extend(["", "|行业|实际占比 %|约束 %|裁决|", "|---|---:|---|---|"])
                 for sector in health["sectors"]:
                     operator = "≥" if sector["limit_operator"] == "MIN" else "≤"
                     lines.append(f"|{sector['name']}|{sector['weight_pct']}|{operator} {sector['limit_pct']}|{sector['verdict']}|")
-                lines.append(f"核查时间：{health['calculated_at']}；底稿状态：{health['source_exposure_status']}。")
+                lines.append(f"\n核查时间：{health['calculated_at']}；底稿状态：{health['source_exposure_status']}。")
                 if health.get("issues"):
                     lines.append("数据限制：" + "、".join(health["issues"]))
                 lines.append("以上为后端确定性计算结果，不生成买卖指令。")

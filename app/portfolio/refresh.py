@@ -30,6 +30,11 @@ from app.providers.contracts import (
     ProviderStatus,
 )
 from app.providers.fingerprint import compute_request_fingerprint
+from app.providers.wencai_normalization import (
+    canonical_sector_from_wencai,
+    decode_stock_identity,
+    decode_stock_quote_fields,
+)
 
 
 class StructuredFinanceProvider(Protocol):
@@ -59,6 +64,60 @@ class LivePortfolioProviderAdapter:
         self._wencai_available = wencai_available
         self.wencai_failure_codes: set[str] = set()
         self.wencai_metadata_succeeded = False
+        self._prefetched_quotes: dict[str, dict[str, Any] | None] = {}
+
+    async def prefetch_quotes(self, asset_ids: list[str]) -> None:
+        """Use a provider batch endpoint when available to avoid rate bursts."""
+        self._prefetched_quotes = {}
+        getter = getattr(self._finance_provider, "get_quotes", None)
+        if not callable(getter) or not asset_ids:
+            return
+        requested = tuple(dict.fromkeys(str(asset_id).strip().upper() for asset_id in asset_ids))
+        try:
+            result = await getter(requested)
+        except Exception:
+            # Do not turn one failed batch into a burst of per-position calls;
+            # the caller can retry the complete refresh.  This is especially
+            # important for a rate-limited live provider.
+            self._prefetched_quotes = {asset_id: None for asset_id in requested}
+            return
+        if isinstance(result, dict):
+            prefetched: dict[str, dict[str, Any] | None] = {}
+            for asset_id, quote in result.items():
+                if quote is None or isinstance(quote, dict):
+                    prefetched[str(asset_id).strip().upper()] = quote
+                    if isinstance(quote, dict) and quote.get("symbol"):
+                        prefetched[str(quote["symbol"]).strip().upper()] = quote
+            # A batch response is authoritative for every requested key.  A
+            # missing row is a reviewable missing quote, not permission to
+            # silently fan out into old per-position calls.
+            self._prefetched_quotes = {}
+            for asset_id in requested:
+                alias = next(
+                    (key for key in prefetched if key.startswith(f"{asset_id}.")),
+                    None,
+                )
+                self._prefetched_quotes[asset_id] = prefetched.get(
+                    asset_id if asset_id in prefetched else alias
+                )
+            self._prefetched_quotes.update(prefetched)
+
+    @staticmethod
+    def _confirmed_sector(request: ProviderRequest) -> str | None:
+        """Return only an explicitly user-confirmed sector for this position.
+
+        A failed industry enrichment must not turn a confirmed portfolio row
+        into a fabricated classification.  The persisted OCR/import flow
+        records the user's confirmation in ``source``; rows without that
+        provenance remain fail-closed and still require live metadata.
+        """
+        sector = str(request.parameters.get("existing_sector") or "").strip()
+        source = str(request.parameters.get("existing_sector_source") or "").casefold()
+        if not sector or "user-confirmed" not in source:
+            return None
+        if sector.casefold() in {"unknown", "unclassified"}:
+            return None
+        return sector
 
     @staticmethod
     def _failed(request: ProviderRequest, error: BaseException) -> ProviderResult:
@@ -110,10 +169,74 @@ class LivePortfolioProviderAdapter:
             issues=issues,
         )
 
+    async def _query_industry(
+        self,
+        asset_id: str,
+        *,
+        request_id: str,
+        as_of: datetime | None,
+        timeout_ms: int,
+        stage: str,
+    ) -> tuple[str | None, str | None, str | None, tuple[ProviderIssue, ...], bool]:
+        """Fetch and decode one real industry row without binding another asset."""
+        if not self._wencai_available or self._wencai_provider is None:
+            return None, None, None, (), False
+        enrichment_request = ProviderRequest(
+            request_id=request_id,
+            operation=ProviderOperation.INDUSTRY_DATA,
+            subject=f"{asset_id} 所属同花顺行业 股票简称",
+            as_of=as_of,
+            parameters={"asset_id": asset_id},
+            timeout_ms=timeout_ms,
+        )
+        try:
+            enrichment = await self._wencai_provider.execute(enrichment_request)
+        except Exception as exc:
+            self.wencai_failure_codes.add(ProviderIssueCode.TRANSPORT_ERROR.value)
+            return (
+                None,
+                None,
+                None,
+                (ProviderIssue(
+                    code=ProviderIssueCode.TRANSPORT_ERROR,
+                    stage=stage,
+                    safe_message=f"Wencai industry enrichment failed: {type(exc).__name__}",
+                    retriable=True,
+                ),),
+                False,
+            )
+
+        if enrichment.status == ProviderStatus.FAILED:
+            failure_code = (
+                enrichment.issues[0].code
+                if enrichment.issues
+                else ProviderIssueCode.INVALID_RESPONSE
+            )
+            self.wencai_failure_codes.add(failure_code.value)
+            issues = enrichment.issues or (ProviderIssue(
+                code=ProviderIssueCode.INVALID_RESPONSE,
+                stage=stage,
+                safe_message="Wencai industry enrichment returned a failed response",
+                retriable=True,
+            ),)
+            return None, None, None, tuple(issues), False
+
+        identity = decode_stock_identity(enrichment, asset_id)
+        industry = identity.get("industry")
+        if not industry:
+            return None, None, None, (), False
+        sector = canonical_sector_from_wencai(industry)
+        name = identity.get("name")
+        source = enrichment.records[0].source if enrichment.records else None
+        return sector, str(name) if name not in (None, "") else None, source, (), sector is not None
+
     async def _execute_fuyao(self, request: ProviderRequest) -> ProviderResult | None:
         asset_id = str(request.parameters.get("asset_id") or request.subject).split()[0]
         if request.operation == ProviderOperation.MARKET_DATA and self._stock_quote_available:
-            quote = await self._finance_provider.get_quote(asset_id)
+            if asset_id in self._prefetched_quotes:
+                quote = self._prefetched_quotes[asset_id]
+            else:
+                quote = await self._finance_provider.get_quote(asset_id)
             if quote is None:
                 return self._empty(request, "fuyao_finance_api")
             if quote.get("is_synthetic") is not False:
@@ -122,66 +245,32 @@ class LivePortfolioProviderAdapter:
             enriched_name = None
             enrichment_source = None
             enrichment_issues: list[ProviderIssue] = []
-            if self._wencai_available and self._wencai_provider is not None:
-                enrichment_request = ProviderRequest(
-                    request_id=f"{request.request_id}:industry",
-                    operation=ProviderOperation.COMPANY_DATA,
-                    subject=f"{asset_id} 所属同花顺行业 股票简称",
-                    as_of=request.as_of,
-                    parameters={"asset_id": asset_id},
-                    timeout_ms=request.timeout_ms,
-                )
-                try:
-                    enrichment = await self._wencai_provider.execute(enrichment_request)
-                except Exception as exc:
-                    enrichment = None
-                    self.wencai_failure_codes.add(ProviderIssueCode.TRANSPORT_ERROR.value)
-                    enrichment_issues.append(ProviderIssue(
-                        code=ProviderIssueCode.TRANSPORT_ERROR,
-                        stage="portfolio_industry_enrichment",
-                        safe_message=f"Wencai industry enrichment failed: {type(exc).__name__}",
-                        retriable=True,
-                    ))
-                if enrichment is not None and enrichment.status == ProviderStatus.FAILED:
-                    failure_code = (
-                        enrichment.issues[0].code
-                        if enrichment.issues
-                        else ProviderIssueCode.INVALID_RESPONSE
-                    )
-                    self.wencai_failure_codes.add(failure_code.value)
-                    enrichment_issues.extend(enrichment.issues or (ProviderIssue(
-                        code=ProviderIssueCode.INVALID_RESPONSE,
-                        stage="portfolio_industry_enrichment",
-                        safe_message="Wencai industry enrichment returned a failed response",
-                        retriable=True,
-                    ),))
-                if enrichment is not None and enrichment.status in {
-                    ProviderStatus.SUCCESS,
-                    ProviderStatus.PARTIAL,
-                }:
-                    for record in enrichment.records:
-                        items = record.fields.get("items")
-                        if not isinstance(items, (list, tuple)):
-                            continue
-                        match = next(
-                            (
-                                item for item in items
-                                if isinstance(item, dict)
-                                and str(item.get("股票代码") or "").split(".")[0]
-                                == asset_id.split(".")[0]
-                            ),
-                            None,
-                        )
-                        if match is None:
-                            continue
-                        sector = _canonical_sector_from_wencai(
-                            match.get("所属同花顺行业") or match.get("所属申万行业")
-                        )
-                        if sector is not None:
-                            self.wencai_metadata_succeeded = True
-                        enriched_name = match.get("股票简称")
-                        enrichment_source = record.source
-                        break
+            (
+                sector,
+                enriched_name,
+                enrichment_source,
+                industry_issues,
+                metadata_succeeded,
+            ) = await self._query_industry(
+                asset_id,
+                request_id=f"{request.request_id}:industry",
+                as_of=request.as_of,
+                timeout_ms=request.timeout_ms,
+                stage="portfolio_industry_enrichment",
+            )
+            confirmed_sector = self._confirmed_sector(request)
+            if not sector and confirmed_sector:
+                # The quote remains externally observed and non-synthetic;
+                # only the missing enrichment field is retained from the
+                # user's explicitly confirmed portfolio classification.  The
+                # failed Wencai request is still recorded in
+                # ``wencai_failure_codes`` by ``_query_industry`` so runtime
+                # capability status does not falsely become READY.
+                sector = confirmed_sector
+                enrichment_source = "user-confirmed sector"
+                industry_issues = ()
+            enrichment_issues.extend(industry_issues)
+            self.wencai_metadata_succeeded = self.wencai_metadata_succeeded or metadata_succeeded
             fields = {
                 "price_cny": quote.get("price_cny"),
                 "observed_at": quote.get("observed_at"),
@@ -221,6 +310,31 @@ class LivePortfolioProviderAdapter:
                 for item in raw_holdings
                 if isinstance(item, dict)
             ] if isinstance(raw_holdings, list) else []
+            if holdings and self._wencai_available and self._wencai_provider is not None:
+                semaphore = asyncio.Semaphore(4)
+
+                async def enrich_holding(index: int, holding: dict[str, Any]) -> dict[str, Any]:
+                    async with semaphore:
+                        sector, _, source, issues, metadata_succeeded = await self._query_industry(
+                            str(holding.get("underlying_asset_id") or ""),
+                            request_id=f"{request.request_id}:industry:{index + 1}",
+                            as_of=request.as_of,
+                            timeout_ms=request.timeout_ms,
+                            stage="portfolio_fund_industry_enrichment",
+                        )
+                    if issues:
+                        self.wencai_failure_codes.update(issue.code.value for issue in issues)
+                    if metadata_succeeded:
+                        self.wencai_metadata_succeeded = True
+                    return {
+                        **holding,
+                        "sector": sector or holding.get("sector"),
+                        "source": source,
+                    }
+
+                holdings = list(await asyncio.gather(
+                    *(enrich_holding(index, holding) for index, holding in enumerate(holdings))
+                ))
             coverage = sum(
                 (Decimal(str(item["weight_pct"])) for item in holdings if item.get("weight_pct") is not None),
                 Decimal("0"),
@@ -231,13 +345,17 @@ class LivePortfolioProviderAdapter:
                 "sector": None,
                 "name": fund.get("fund_name"),
                 "top_holdings": holdings,
-                "coverage_pct": coverage,
+                # ProviderRecord fields are JSON values; keep Decimal math
+                # local to the adapter and serialize the derived coverage.
+                "coverage_pct": float(coverage),
                 "source": fund.get("source") or "Fuyao fund periodic disclosure API",
             }
             missing = tuple(
-                name for name in ("price_cny", "observed_at", "sector", "top_holdings")
+                name for name in ("price_cny", "observed_at", "top_holdings")
                 if fields.get(name) in (None, "", [])
             )
+            if holdings and any(not item.get("sector") for item in holdings):
+                missing = (*missing, "holding_sector")
             return self._result(request, fields, source=str(fields["source"]), missing_fields=missing)
         return None
 
@@ -249,7 +367,16 @@ class LivePortfolioProviderAdapter:
         except Exception as exc:
             result = self._failed(request, exc)
         if self._wencai_available and self._wencai_provider is not None:
-            return await self._wencai_provider.execute(request)
+            wencai_request = request
+            if request.operation == ProviderOperation.MARKET_DATA:
+                # The portfolio contract needs industry classification.  A
+                # generic market query can be unauthorized even when the
+                # official industry Skill is available, so route the fallback
+                # to the operation that actually supplies the required field.
+                wencai_request = request.model_copy(
+                    update={"operation": ProviderOperation.INDUSTRY_DATA}
+                )
+            return await self._wencai_provider.execute(wencai_request)
         if result is not None:
             return result
         return self._failed(request, RuntimeError("no verified live provider capability"))
@@ -322,23 +449,6 @@ def _parse_datetime(value: object, field_name: str) -> datetime:
     return parsed
 
 
-def _canonical_sector_from_wencai(value: object) -> str | None:
-    if isinstance(value, (list, tuple)):
-        labels = " ".join(str(item) for item in value)
-    else:
-        labels = str(value or "")
-    mappings = (
-        (("半导体", "电子", "计算机", "通信", "软件", "互联网"), "Technology"),
-        (("电力设备", "电池", "机械", "汽车", "军工", "制造"), "Industrials"),
-        (("食品", "饮料", "白酒", "消费", "医药", "生物", "医疗"), "Consumer"),
-        (("银行", "保险", "金融", "煤炭", "石油", "有色", "钢铁", "化工", "公用", "房地产"), "Finance"),
-    )
-    for keywords, canonical in mappings:
-        if any(keyword in labels for keyword in keywords):
-            return canonical
-    return None
-
-
 def _wencai_observed_at(fields: dict[str, object], item: dict[str, object]) -> str | None:
     for key in ("最新价时间", "行情时间", "更新时间", "数据时间"):
         value = item.get(key) or fields.get(key)
@@ -359,28 +469,15 @@ def _record_fields(result: ProviderResult, position: Position) -> dict[str, obje
     if all(key in fields for key in ("price_cny", "observed_at", "sector")):
         return fields
 
-    raw_items = fields.get("items")
-    if not isinstance(raw_items, (list, tuple)):
+    identity = decode_stock_identity(result, position.asset_id)
+    quote = decode_stock_quote_fields(result, position.asset_id)
+    if not identity and not quote:
         return fields
-    expected_code = position.asset_id.split(".")[0]
-    item = next(
-        (
-            dict(candidate)
-            for candidate in raw_items
-            if isinstance(candidate, dict)
-            and str(candidate.get("股票代码") or "").split(".")[0] == expected_code
-        ),
-        None,
-    )
-    if item is None:
-        return fields
-    industry = item.get("所属同花顺行业") or item.get("所属申万行业")
-    observed_at = _wencai_observed_at(fields, item)
     return {
-        "price_cny": item.get("最新价"),
-        "observed_at": observed_at,
-        "sector": _canonical_sector_from_wencai(industry),
-        "name": item.get("股票简称") or position.asset_name,
+        "price_cny": quote.get("price_cny"),
+        "observed_at": quote.get("observed_at") or _wencai_observed_at(fields, {}),
+        "sector": canonical_sector_from_wencai(identity.get("industry")),
+        "name": identity.get("name") or position.asset_name,
         "source": "iwencai.com / SkillHub (Official Live)",
     }
 
@@ -460,6 +557,8 @@ async def _refresh_position(
         parameters={
             "asset_id": position.asset_id,
             "asset_type": position.asset_type.value,
+            "existing_sector": position.sector,
+            "existing_sector_source": position.source,
         },
         timeout_ms=2000,
     )
@@ -496,11 +595,15 @@ async def _refresh_position(
 
     missing: list[str] = list(result.missing_fields)
     issues: list[str] = list(_provider_issue_messages(result))
+    is_fund = position.asset_type in {AssetType.ETF, AssetType.MUTUAL_FUND}
     price: Decimal | None = None
     observed_at: datetime | None = None
     sector = ""
     try:
         price = _parse_decimal(fields.get("price_cny"), "price_cny")
+        if price <= 0:
+            price = None
+            raise ValueError("price_cny must be positive")
     except ValueError as exc:
         issues.append(str(exc))
         missing.append("price_cny")
@@ -510,10 +613,10 @@ async def _refresh_position(
         issues.append(str(exc))
         missing.append("observed_at")
     sector = str(fields.get("sector") or "").strip()
-    if not sector:
+    if not sector and not is_fund:
         issues.append("sector is missing")
         missing.append("sector")
-    if price is None or observed_at is None or not sector:
+    if price is None or observed_at is None:
         row = PortfolioPositionRefresh(
             position_id=position.position_id,
             asset_id=position.asset_id,
@@ -532,14 +635,16 @@ async def _refresh_position(
     refreshed = position.model_copy(
         update={
             "asset_name": str(fields.get("name") or position.asset_name),
-            "sector": sector,
+            "sector": sector or (position.sector if is_fund else "Unclassified"),
             "market_value": market_value,
             "as_of": observed_at,
             "source": str(fields.get("source") or provider_name),
         }
     )
     fund_snapshot = None
-    if position.asset_type in {AssetType.ETF, AssetType.MUTUAL_FUND}:
+    if is_fund and not any(
+        field in missing for field in ("top_holdings", "holding_sector")
+    ):
         try:
             fund_snapshot = _fund_snapshot(position, fields, request.owner_id, observed_at)
         except ValueError as exc:
@@ -582,6 +687,12 @@ async def refresh_portfolio_live(
 ) -> PortfolioRefreshResponse:
     positions = request.portfolio.position_snapshot.positions
     non_cash = [position for position in positions if position.asset_type != AssetType.CASH]
+    if isinstance(provider, LivePortfolioProviderAdapter):
+        await provider.prefetch_quotes([
+            position.asset_id
+            for position in non_cash
+            if position.asset_type == AssetType.STOCK
+        ])
     results = await asyncio.gather(
         *(_refresh_position(request, position, provider) for position in non_cash)
     )
@@ -606,9 +717,18 @@ async def refresh_portfolio_live(
     rows = sorted(rows, key=lambda row: row.position_id)
     all_ready = all(row.status in {"REFRESHED", "SKIPPED"} for row in rows)
     fund_snapshots = [snapshot for _, _, snapshot in results if snapshot is not None]
-    if not all_ready:
-        issues = tuple(issue for row in rows for issue in row.issues)
-        missing = tuple(dict.fromkeys(field for row in rows for field in row.missing_fields))
+    issues = tuple(issue for row in rows for issue in row.issues)
+    missing = tuple(dict.fromkeys(field for row in rows for field in row.missing_fields))
+    # Equity-only reports can show verified prices while retaining unknown
+    # sectors. Such a bundle is REVIEW_REQUIRED and never authorizes trading
+    # targets. Missing prices or fund disclosures still return no bundle.
+    partial_equity_report = bool(non_cash) and all(
+        position.asset_type == AssetType.STOCK for position in non_cash
+    ) and all(
+        row.status == "SKIPPED" or (row.price_cny is not None and row.observed_at is not None)
+        for row in rows
+    )
+    if not all_ready and not partial_equity_report:
         return PortfolioRefreshResponse(
             request_id=request.request_id,
             owner_id=request.owner_id,
@@ -646,11 +766,13 @@ async def refresh_portfolio_live(
         owner_id=request.owner_id,
         as_of=request.as_of,
         data_mode="LIVE",
-        status="COMPLETE",
+        status="COMPLETE" if all_ready else "REVIEW_REQUIRED",
         portfolio=portfolio,
         positions=tuple(rows),
         provider=getattr(provider, "name", "unknown_provider"),
         is_synthetic=False,
+        missing_fields=missing,
+        issues=issues,
     )
 
 

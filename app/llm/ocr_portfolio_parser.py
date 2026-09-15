@@ -234,6 +234,7 @@ def recalculate_portfolio_values(
     holdings_total = Decimal("0")
     for index, raw in enumerate(positions, 1):
         row = dict(raw)
+        sector_confirmed = bool(row.pop("_sector_confirmed", False))
         for optional_price in ("cost_price", "previous_close"):
             if row.get(optional_price) is not None:
                 number = Decimal(str(row[optional_price]))
@@ -281,7 +282,12 @@ def recalculate_portfolio_values(
         if not asset_id or security is None:
             raise ValueError(f"unsupported security: {asset_id or 'missing asset_id'}")
         name = str(row.get("name") or security.get("fund_name") or security.get("name") or asset_id)
-        sector = None if is_fund else str(security.get("sector") or row.get("sector") or "Unclassified")
+        provided_sector = str(row.get("sector") or "").strip()
+        sector = None if is_fund else (
+            provided_sector if sector_confirmed and provided_sector
+            and provided_sector.casefold() not in {"unknown", "unclassified"}
+            else str(security.get("sector") or "Unclassified")
+        )
         row["sector"] = sector
         row["market_value_cny"] = float(market_value)
         row["price"] = float(price)

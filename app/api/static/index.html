@@ -12,7 +12,7 @@
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260915-portfolio-report3" defer></script>
+    <script src="/static/app.js?v=20260915-key-portfolio-repair" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -523,7 +523,7 @@
                     <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存配置</span>
                   </button>
                 </div>
-                <p class="modal-hint">默认使用服务端配置。配置状态会说明个人密钥是否已由操作系统安全机制持久化；浏览器和接口不会回读明文，留空保存可删除个人配置并恢复默认。</p>
+                <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。需要删除时使用“恢复服务端默认”。</p>
                 <button id="test-user-model" type="button" class="copilot-action-btn secondary">测试连接</button>
                 <div id="llm-config-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>

@@ -120,14 +120,30 @@ class FuyaoFinanceProvider(MarketDataProvider):
         path: str,
         params: dict[str, Any],
     ) -> dict[str, Any]:
-        try:
-            response = await client.get(path, params=params)
-            response.raise_for_status()
-            payload = response.json()
-        except httpx.TimeoutException as exc:
-            raise FuyaoProviderError("UPSTREAM_TIMEOUT", "扶摇数据接口响应超时。") from exc
-        except (httpx.HTTPError, ValueError) as exc:
-            raise FuyaoProviderError("UPSTREAM_UNAVAILABLE", "扶摇数据接口暂时不可用。") from exc
+        for attempt in range(3):
+            try:
+                response = await client.get(path, params=params)
+                if response.status_code == 429:
+                    if attempt < 2:
+                        try:
+                            retry_after = float(response.headers.get("Retry-After", "0.25"))
+                        except (TypeError, ValueError):
+                            retry_after = 0.25
+                        await asyncio.sleep(min(max(retry_after, 0.1), 0.75))
+                        continue
+                    raise FuyaoProviderError(
+                        "UPSTREAM_RATE_LIMITED",
+                        "扶摇数据接口请求过于频繁，请稍后重试。",
+                    )
+                response.raise_for_status()
+                payload = response.json()
+                break
+            except httpx.TimeoutException as exc:
+                raise FuyaoProviderError("UPSTREAM_TIMEOUT", "扶摇数据接口响应超时。") from exc
+            except (httpx.HTTPError, ValueError) as exc:
+                raise FuyaoProviderError("UPSTREAM_UNAVAILABLE", "扶摇数据接口暂时不可用。") from exc
+        else:
+            raise FuyaoProviderError("UPSTREAM_UNAVAILABLE", "扶摇数据接口暂时不可用。")
 
         if not isinstance(payload, dict):
             raise FuyaoProviderError("INVALID_RESPONSE", "扶摇数据接口返回了无效响应。")
@@ -167,6 +183,82 @@ class FuyaoFinanceProvider(MarketDataProvider):
             raise FuyaoProviderError(
                 "UPSTREAM_TIMEOUT", "扶摇数据接口响应超时。"
             ) from exc
+
+    async def get_quotes(
+        self, codes: list[str] | tuple[str, ...]
+    ) -> dict[str, dict[str, Any] | None]:
+        """Fetch a bounded batch of A-share snapshots in one real request."""
+        symbols = tuple(dict.fromkeys(
+            self._normalize_thscode(code, self.A_SHARE_PREFIXES) for code in codes
+        ))
+        if not symbols:
+            return {}
+        try:
+            return await asyncio.wait_for(
+                self._get_quotes_impl(symbols), timeout=self._timeout_seconds
+            )
+        except TimeoutError as exc:
+            raise FuyaoProviderError(
+                "UPSTREAM_TIMEOUT", "扶摇数据接口响应超时。"
+            ) from exc
+
+    async def _get_quotes_impl(
+        self, symbols: tuple[str, ...]
+    ) -> dict[str, dict[str, Any] | None]:
+        started = perf_counter()
+        async with self._client() as client:
+            quote_result = await self._get(
+                client,
+                "/api/a-share/prices/snapshot",
+                {"thscodes": ",".join(symbols)},
+            )
+        items = quote_result.get("item")
+        if not isinstance(items, list):
+            return {symbol: None for symbol in symbols}
+        observed = _datetime_from_millis(quote_result.get("timestamp"))
+        if observed is None:
+            raise FuyaoProviderError("MISSING_TIMESTAMP", "扶摇行情缺少可核验的数据时间。")
+        retrieved = datetime.now(UTC)
+        by_symbol = {
+            str(item.get("thscode") or "").strip().upper(): item
+            for item in items
+            if isinstance(item, dict)
+        }
+        quotes: dict[str, dict[str, Any] | None] = {}
+        for symbol in symbols:
+            item = by_symbol.get(symbol)
+            ticker = item.get("ticker") if item else None
+            last_price = item.get("last_price") if item else None
+            if (
+                not isinstance(ticker, str)
+                or ticker != symbol[:6]
+                or not isinstance(last_price, (int, float))
+                or isinstance(last_price, bool)
+                or not math.isfinite(float(last_price))
+                or last_price <= 0
+            ):
+                quotes[symbol] = None
+                continue
+            quotes[symbol] = {
+                "symbol": symbol,
+                "name": item.get("name"),
+                "price_cny": float(last_price),
+                "previous_close_cny": _optional_finite_number(item.get("prev_price"), "prev_price"),
+                "observed_at": observed.isoformat(),
+                "retrieved_at": retrieved.isoformat(),
+                "provider_tier": "LIVE_PRIMARY",
+                "quote_latency_ms": round((perf_counter() - started) * 1000, 2),
+                "staleness_seconds": round(max(0.0, (retrieved - observed).total_seconds()), 2),
+                "is_synthetic": False,
+                "missing_fields": [
+                    "name", "pe_ttm", "pb", "roe_pct", "valuation_quantile_pct"
+                ] if not item.get("name") else [
+                    "pe_ttm", "pb", "roe_pct", "valuation_quantile_pct"
+                ],
+                "fallback_reasons": [],
+                "source": "Fuyao structured financial data API",
+            }
+        return quotes
 
     @staticmethod
     def _index_symbol(symbol: str) -> str:
@@ -289,6 +381,13 @@ class FuyaoFinanceProvider(MarketDataProvider):
         if observed is None:
             raise FuyaoProviderError("MISSING_TIMESTAMP", "扶摇行情缺少可核验的数据时间。")
         retrieved = datetime.now(UTC)
+        missing_fields = [
+            field
+            for field in ("pe_ttm", "pb", "roe_pct", "valuation_quantile_pct")
+            if field not in item or item.get(field) in (None, "")
+        ]
+        if not name:
+            missing_fields.insert(0, "name")
         return {
             "symbol": thscode,
             "name": name or thscode,
@@ -310,7 +409,10 @@ class FuyaoFinanceProvider(MarketDataProvider):
             "observed_at": observed.isoformat(),
             "retrieved_at": retrieved.isoformat(),
             "is_synthetic": False,
-            "missing_fields": ["name"] if not name else [],
+            # Fuyao's quote endpoint is intentionally quote-only.  Mark the
+            # financial fields explicitly so downstream callers cannot mistake
+            # a successful price response for a complete valuation snapshot.
+            "missing_fields": missing_fields,
             "fallback_reasons": [],
             "source": "Fuyao structured financial data API",
         }
@@ -406,11 +508,20 @@ class FuyaoFinanceProvider(MarketDataProvider):
         capabilities = {"stock_quote": False, "fund_lookthrough": False}
         if not self.is_configured:
             return capabilities
-        quote_result, fund_result = await asyncio.gather(
-            self.get_quote("600519"),
-            self.get_fund_lookthrough("510300"),
-            return_exceptions=True,
-        )
+        # The upstream applies a per-key request limit.  The old probe issued
+        # four requests concurrently (quote + metadata and two fund calls),
+        # so a valid key could be downgraded to MOCK by a transient 429.  A
+        # single snapshot proves the quote capability; keep the fund probe
+        # separate so the maximum burst is limited to the fund endpoint pair.
+        try:
+            quote_batch = await self.get_quotes(["600519"])
+            quote_result = quote_batch.get("600519.SH")
+        except Exception as exc:
+            quote_result = exc
+        try:
+            fund_result = await self.get_fund_lookthrough("510300")
+        except Exception as exc:
+            fund_result = exc
         for name, result in zip(capabilities, (quote_result, fund_result)):
             capabilities[name] = not isinstance(result, BaseException) and result is not None
             self.last_probe_errors[name] = (

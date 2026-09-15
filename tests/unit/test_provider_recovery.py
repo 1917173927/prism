@@ -13,7 +13,7 @@ def test_failed_probe_keeps_error_code_and_can_recover(monkeypatch):
     controller = RuntimeModeController()
     monkeypatch.setattr("app.api.main.get_runtime_mode_controller", lambda: controller)
     provider = FuyaoFinanceProvider(api_key="test-key")
-    provider.get_quote = AsyncMock(side_effect=[FuyaoProviderError("UPSTREAM_TIMEOUT", "safe"), {"price_cny": 1}])
+    provider.get_quotes = AsyncMock(side_effect=[FuyaoProviderError("UPSTREAM_TIMEOUT", "safe"), {"600519.SH": {"price_cny": 1}}])
     provider.get_fund_lookthrough = AsyncMock(side_effect=[FuyaoProviderError("FUYAO_2001", "safe"), {"holdings": []}])
     with TestClient(create_app(live_finance_provider=provider)) as client:
         first = client.get("/api/v1/runtime/data-mode").json()["data"]

@@ -12,6 +12,7 @@ from app.portfolio.refresh import LivePortfolioProviderAdapter, PortfolioRefresh
 from app.providers.contracts import (
     ProviderIssue,
     ProviderIssueCode,
+    ProviderOperation,
     ProviderRecord,
     ProviderRequest,
     ProviderResult,
@@ -262,7 +263,11 @@ def test_live_refresh_keeps_fuyao_quote_in_review_without_real_sector_source():
 
     assert body.status == "REVIEW_REQUIRED"
     assert body.is_synthetic is False
-    assert body.portfolio is None
+    assert body.portfolio is not None
+    stock = body.portfolio.position_snapshot.positions[0]
+    assert stock.sector == "Unclassified"
+    quote = next(row for row in body.positions if row.asset_id == stock.asset_id)
+    assert stock.market_value == quote.price_cny * stock.quantity
     assert "sector" in body.missing_fields
 
 
@@ -472,3 +477,157 @@ def test_mock_refresh_keeps_fixture_data_explicitly_synthetic(monkeypatch):
     assert body["data_mode"] == "MOCK"
     assert body["is_synthetic"] is True
     assert body["portfolio"]["bundle_id"] == portfolio.bundle_id
+
+
+class _BatchedLiveFuyaoFinanceProvider(_LiveFuyaoFinanceProvider):
+    def __init__(self) -> None:
+        self.batch_calls = 0
+        self.single_calls = 0
+
+    async def get_quotes(self, codes):
+        self.batch_calls += 1
+        return {
+            "300750.SZ": {
+                "symbol": "300750.SZ",
+                "name": "宁德时代",
+                "price_cny": 338.25,
+                "observed_at": "2026-09-15T10:30:00+08:00",
+                "source": "Fuyao structured financial data API",
+                "is_synthetic": False,
+            }
+        }
+
+    async def get_quote(self, code: str):
+        self.single_calls += 1
+        return await super().get_quote(code)
+
+class _LiveFundFinanceProvider:
+    async def get_quote(self, code: str):
+        return None
+
+    async def get_fund_lookthrough(self, code: str):
+        return {
+            "fund_code": "510300.SH",
+            "fund_name": "测试 ETF",
+            "net_asset_value_cny": 4.2,
+            "top_holdings": [{
+                "asset_id": "300750.SZ",
+                "name": "宁德时代",
+                "weight_pct": 12.5,
+                "sector": "Industrials",
+            }],
+            "observed_at": "2026-06-30T00:00:00+08:00",
+            "is_synthetic": False,
+            "source": "test fund disclosure",
+        }
+
+class _LiveFundWithoutSectorFinanceProvider(_LiveFundFinanceProvider):
+    async def get_fund_lookthrough(self, code: str):
+        fund = await super().get_fund_lookthrough(code)
+        fund["top_holdings"][0]["sector"] = None
+        return fund
+
+def test_live_fund_adapter_serializes_derived_coverage_and_keeps_disclosure_time():
+    adapter = LivePortfolioProviderAdapter(
+        _LiveFundFinanceProvider(),
+        fund_lookthrough_available=True,
+    )
+    request = ProviderRequest(
+        request_id="fund-adapter-test",
+        operation=ProviderOperation.FUND_DATA,
+        subject="510300.SH",
+        as_of=datetime(2026, 9, 7, 10, 0, tzinfo=UTC),
+        parameters={"asset_id": "510300.SH", "asset_type": "ETF"},
+    )
+
+    result = asyncio.run(adapter.execute(request))
+
+    assert result.status == ProviderStatus.SUCCESS
+    fields = dict(result.records[0].fields)
+    assert fields["coverage_pct"] == 12.5
+    assert fields["observed_at"] == "2026-06-30T00:00:00+08:00"
+
+def test_live_fund_refresh_reports_missing_holding_sector_without_false_top_holdings_gap():
+    adapter = LivePortfolioProviderAdapter(
+        _LiveFundWithoutSectorFinanceProvider(),
+        fund_lookthrough_available=True,
+    )
+    request = PortfolioRefreshRequest.model_validate(_request(_portfolio(AssetType.ETF)))
+
+    response = asyncio.run(refresh_portfolio_live(request, adapter))
+
+    row = next(item for item in response.positions if item.asset_id == "300750.SZ")
+    assert response.status == "REVIEW_REQUIRED"
+    assert row.missing_fields == ("holding_sector",)
+    assert "top_holdings" not in row.missing_fields
+
+def test_live_refresh_uses_one_batch_quote_request_when_provider_supports_it():
+    portfolio = _portfolio()
+    request = PortfolioRefreshRequest.model_validate(_request(portfolio))
+    finance = _BatchedLiveFuyaoFinanceProvider()
+    adapter = LivePortfolioProviderAdapter(
+        finance,
+        stock_quote_available=True,
+        wencai_available=False,
+    )
+
+    body = asyncio.run(refresh_portfolio_live(request, adapter))
+
+    assert body.status == "REVIEW_REQUIRED"
+    assert finance.batch_calls == 1
+    assert finance.single_calls == 0
+
+def test_live_refresh_uses_real_quote_with_confirmed_sector_when_wencai_fails():
+    portfolio = _portfolio()
+    confirmed_position = portfolio.position_snapshot.positions[0].model_copy(
+        update={"source": "user-confirmed OCR import"}
+    )
+    portfolio = portfolio.model_copy(update={
+        "position_snapshot": portfolio.position_snapshot.model_copy(
+            update={"positions": (confirmed_position,)}
+        )
+    })
+    request = PortfolioRefreshRequest.model_validate(_request(portfolio))
+    adapter = LivePortfolioProviderAdapter(
+        _LiveFuyaoFinanceProvider(),
+        stock_quote_available=True,
+        wencai_provider=_FailedPortfolioProvider(),
+        wencai_available=True,
+    )
+
+    body = asyncio.run(refresh_portfolio_live(request, adapter))
+
+    assert body.status == "COMPLETE"
+    assert body.is_synthetic is False
+    assert adapter.wencai_metadata_succeeded is False
+    assert ProviderIssueCode.AUTH_FAILED.value in adapter.wencai_failure_codes
+    refreshed = body.portfolio.position_snapshot.positions[0]
+    assert refreshed.market_value == Decimal("33825.00")
+    assert refreshed.sector == "Industrials"
+    assert "user-confirmed sector" in refreshed.source
+    row = next(item for item in body.positions if item.asset_id == "300750.SZ")
+    assert row.status == "REFRESHED"
+    assert row.price_cny == Decimal("338.25")
+    assert row.missing_fields == ()
+
+
+def test_partial_real_quote_report_is_not_trusted_for_optimization():
+    controller = reset_runtime_mode_controller(mode=DataMode.LIVE)
+    asyncio.run(controller.apply_fuyao_probe({"stock_quote": True, "fund_lookthrough": False}))
+    client = TestClient(create_app(live_finance_provider=_LiveFuyaoFinanceProvider()))
+    response = client.post("/api/v1/advisor/portfolio/refresh",
+        headers={"X-Owner-ID": "refresh-owner"}, json=_request(_portfolio()))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "REVIEW_REQUIRED"
+    assert body["portfolio"] is not None
+    assert "sector" in body["missing_fields"]
+    questionnaire = FixturePortfolioOptimizationService().template("refresh-owner").questionnaire.model_dump(mode="json")
+    result = client.post("/api/v1/advisor/portfolio-optimization-runs",
+        headers={"X-Owner-ID": "refresh-owner"}, json={
+            "request_id": "incomplete-must-not-optimize", "owner_id": "refresh-owner",
+            "generated_at": "2026-09-15T10:31:00+08:00", "questionnaire": questionnaire,
+            "portfolio": body["portfolio"], "scenario_id": "BASELINE_READY",
+        })
+    assert result.status_code == 409
+    assert result.json()["error_code"] == "LIVE_PORTFOLIO_REFRESH_REQUIRED"

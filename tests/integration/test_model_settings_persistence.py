@@ -84,7 +84,7 @@ def test_user_model_setting_survives_app_restart_without_key_disclosure(tmp_path
     restarted_db.close()
 
 
-def test_empty_key_deletes_persisted_user_setting(tmp_path) -> None:
+def test_empty_key_preserves_setting_until_explicit_delete(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     client, db = _client(protected, tmp_path / "accounts.json")
     headers = _headers()
@@ -94,12 +94,16 @@ def test_empty_key_deletes_persisted_user_setting(tmp_path) -> None:
         "model": "deepseek-chat",
     })
 
-    deleted = client.put("/api/v1/user/model-settings", headers=headers, json={
+    saved = client.put("/api/v1/user/model-settings", headers=headers, json={
         "api_key": "",
         "base_url": "https://api.deepseek.com/v1",
         "model": "deepseek-chat",
     })
 
+    assert saved.status_code == 200
+    assert saved.json()["is_configured"] is True
+    assert json.loads(protected.get(f"llm:{OWNER}"))["api_key"] == "delete-me"
+    deleted = client.delete("/api/v1/user/model-settings", headers=headers)
     assert deleted.status_code == 200
     assert deleted.json()["scope"] == "SERVER"
     assert protected.get(f"llm:{OWNER}") is None
@@ -121,12 +125,25 @@ def test_rotation_and_delete_invalidate_another_app_instance(tmp_path) -> None:
     second.put("/api/v1/user/model-settings", headers=headers, json={**base, "api_key": "rotated-key"})
     assert "rotated-key" in first_store.get(f"llm:{OWNER}")
 
-    second.put("/api/v1/user/model-settings", headers=headers, json={**base, "api_key": ""})
+    second.delete("/api/v1/user/model-settings", headers=headers)
     refreshed = first.get("/api/v1/user/model-settings", headers=headers).json()
     assert refreshed["scope"] == "SERVER"
     assert refreshed["is_configured"] is False
     first_db.close()
     second_db.close()
+
+
+def test_empty_key_cannot_reuse_another_providers_credential(tmp_path):
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    client, db = _client(protected, tmp_path / "accounts.json")
+    try:
+        client.put("/api/v1/user/model-settings", headers=_headers(), json={"api_key": "deepseek-secret"})
+        response = client.put("/api/v1/user/model-settings", headers=_headers(), json={
+            "api_key": "", "base_url": "https://api.openai.com/v1", "model": "other-model"})
+        assert response.status_code == 422
+        assert json.loads(protected.get(f"llm:{OWNER}"))["api_key"] == "deepseek-secret"
+    finally:
+        db.close()
 
 
 def test_unauthenticated_local_mode_persists_one_machine_scoped_secret(tmp_path) -> None:
@@ -314,4 +331,19 @@ def test_wencai_empty_probe_does_not_verify_live_contract(tmp_path) -> None:
     assert get_runtime_mode_controller().is_wencai_ready is False
     stored = json.loads(protected.get("provider:wencai"))
     assert stored["contract_verified"] is False
+    store.close()
+
+
+def test_model_connection_test_reports_safe_provider_error():
+    async def rejected(self, messages, tools=None):
+        yield {"type": "error", "message": "模型服务返回 HTTP 401，请检查服务配置或稍后重试。"}
+    store = SQLiteDecisionEventStore(":memory:")
+    client = TestClient(create_app(store))
+    headers = {"X-Owner-ID": "probe-owner"}
+    assert client.put("/api/v1/user/model-settings", headers=headers, json={"api_key": "invalid-test-secret"}).status_code == 200
+    with patch("app.api.main.AsyncLLMClient.stream_chat", rejected):
+        response = client.post("/api/v1/user/model-settings/test", headers=headers)
+    assert response.status_code == 502
+    assert "HTTP 401" in response.json()["message"]
+    assert "invalid-test-secret" not in response.text
     store.close()

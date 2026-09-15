@@ -221,6 +221,7 @@ from app.store.contracts import build_decision_event
 from app.llm import CopilotAgent, CopilotMessage
 from app.llm.client import AsyncLLMClient, LLMConfig
 from app.security import ProtectedSecretStore, SecretProtectionError
+from app.runtime.paths import default_private_data_dir
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
@@ -317,6 +318,12 @@ class CopilotConfirmPortfolioOcrApiRequest(CopilotValidatePortfolioOcrApiRequest
 
 class ReplacePortfolioApiRequest(CopilotValidatePortfolioOcrApiRequest):
     data_mode: Literal["MOCK", "LIVE"] | None = None
+
+
+class ConfirmPortfolioSectorsApiRequest(BaseModel):
+    owner_id: str = Field(min_length=1)
+    data_mode: Literal["MOCK", "LIVE"]
+    sectors: dict[str, Literal["Technology", "Industrials", "Consumer", "Healthcare", "Finance", "Cyclical"]] = Field(min_length=1)
 
 
 class CopilotConfigApiRequest(BaseModel):
@@ -2622,8 +2629,24 @@ def create_app(
                 "LIVE 持仓存在未核验价格；请提供真实价格后再保存",
             )
         try:
+            saved = active_store.get_current_portfolio(owner_id, mode.value)
+            confirmed_sectors = {
+                row["asset_id"]: row.get("sector") for row in (saved or {}).get("positions", [])
+                if "user-confirmed sector" in str(row.get("price_source") or "")
+            }
+            positions = []
+            for item in req.positions:
+                row = dict(item)
+                row.pop("_sector_confirmed", None)
+                if row.get("sector") and confirmed_sectors.get(row.get("asset_id")) == row["sector"]:
+                    row["_sector_confirmed"] = True
+                    source = str(row.get("price_source") or "user-confirmed portfolio")
+                    if "user-confirmed sector" not in source:
+                        source += " + user-confirmed sector"
+                    row["price_source"] = source
+                positions.append(row)
             calculated = recalculate_portfolio_values(
-                req.positions, req.cash_cny, req.owner_id,
+                positions, req.cash_cny, req.owner_id,
                 allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
             )
             active_store.save_current_portfolio(owner_id, mode.value, calculated)
@@ -2653,6 +2676,41 @@ def create_app(
         mode = get_runtime_mode_controller().mode.value
         result = portfolio_summary(active_store.get_current_portfolio(owner_id, mode))
         return {**result, "data_mode": mode, "owner_id": owner_id}
+
+    @api.patch("/api/v1/advisor/portfolio/sectors")
+    def confirm_portfolio_sectors(req: ConfirmPortfolioSectorsApiRequest, owner_id: str = Depends(owner_dependency)):
+        from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+        from app.portfolio.contracts import AssetType
+        if req.owner_id != owner_id:
+            raise StoreOwnerError("portfolio owner does not match owner scope")
+        mode = get_runtime_mode_controller().mode
+        if req.data_mode != mode.value:
+            return _error_response(409, "DATA_MODE_CHANGED", "数据模式已变化，请刷新持仓")
+        saved = active_store.get_current_portfolio(owner_id, mode.value)
+        if not saved or not saved.get("portfolio"):
+            return _error_response(404, "PORTFOLIO_EMPTY", "请先确认持仓")
+        bundle = PortfolioImportBundle.model_validate(saved["portfolio"])
+        stock_ids = {p.asset_id for p in bundle.position_snapshot.positions if p.asset_type == AssetType.STOCK}
+        if not set(req.sectors).issubset(stock_ids):
+            return _error_response(422, "INVALID_SECTOR_ASSET", "仅可确认当前持有股票的行业")
+        positions = []
+        for item in saved["positions"]:
+            row = dict(item)
+            source = str(row.get("price_source") or "user-confirmed portfolio")
+            if row["asset_id"] in req.sectors:
+                row["sector"] = req.sectors[row["asset_id"]]
+                if "user-confirmed sector" not in source:
+                    source += " + user-confirmed sector"
+            row["_sector_confirmed"] = "user-confirmed sector" in source
+            row["price_source"] = source
+            positions.append(row)
+        calculated = recalculate_portfolio_values(
+            positions, Decimal(str(saved["cash_cny"])), owner_id,
+            allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
+        )
+        active_store.save_current_portfolio(owner_id, mode.value, calculated)
+        trusted_live_portfolios.pop(owner_id, None)
+        return JSONResponse(content=calculated)
 
     @api.get(
         "/api/v1/advisor/portfolio/report",
@@ -2835,9 +2893,16 @@ def create_app(
                 "LIVE 持仓存在未核验价格；请重新识别并取得真实报价后再确认",
             )
         try:
-            confirmed_positions = [
-                item.model_dump(mode="json") for item in req.positions
-            ]
+            confirmed_positions = []
+            for item in req.positions:
+                payload = item.model_dump(mode="json")
+                sector = str(payload.get("sector") or "").strip()
+                if sector and sector.casefold() not in {"unknown", "unclassified"}:
+                    payload["_sector_confirmed"] = True
+                    source = str(payload.get("price_source") or "user-confirmed OCR import")
+                    if "user-confirmed sector" not in source.casefold():
+                        payload["price_source"] = f"{source} + user-confirmed sector"
+                confirmed_positions.append(payload)
             calculated = recalculate_portfolio_values(
                 confirmed_positions, req.cash_cny, owner_id,
                 allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
@@ -2907,23 +2972,33 @@ def create_app(
             raise HTTPException(status_code=422, detail="请选择支持的 HTTPS 模型服务地址")
         if not req.model.strip() or len(req.model) > 100 or len(req.api_key) > 4096:
             raise HTTPException(status_code=422, detail="模型名称或密钥格式无效")
-        if req.api_key.strip():
-            setting = req.model_copy(update={"api_key": req.api_key.strip(), "base_url": req.base_url.strip().rstrip("/")})
-            scope = model_setting_scope(owner_id)
-            if active_secret_store is not None:
-                try:
-                    active_secret_store.set(f"llm:{scope}", setting.model_dump_json())
-                except (SecretProtectionError, ValueError) as exc:
-                    raise HTTPException(status_code=503, detail="模型密钥安全保存失败") from exc
-            user_model_settings[scope] = setting
-        else:
-            scope = model_setting_scope(owner_id)
-            if active_secret_store is not None:
-                try:
-                    active_secret_store.delete(f"llm:{scope}")
-                except (SecretProtectionError, ValueError) as exc:
-                    raise HTTPException(status_code=503, detail="模型密钥安全删除失败") from exc
-            user_model_settings.pop(scope, None)
+        api_key = req.api_key.strip()
+        if not api_key:
+            existing = persisted_model_setting(owner_id)
+            if existing is None:
+                return _error_response(409, "MODEL_NOT_CONFIGURED", "请先输入 API Key，再保存配置")
+            if urlsplit(existing.base_url).hostname != url.hostname:
+                raise HTTPException(status_code=422, detail="更换服务商时请填写对应的 API Key")
+            api_key = existing.api_key
+        setting = req.model_copy(update={"api_key": api_key, "base_url": req.base_url.strip().rstrip("/"), "model": req.model.strip()})
+        scope = model_setting_scope(owner_id)
+        if active_secret_store is not None:
+            try:
+                active_secret_store.set(f"llm:{scope}", setting.model_dump_json())
+            except (SecretProtectionError, ValueError) as exc:
+                raise HTTPException(status_code=503, detail="模型密钥安全保存失败") from exc
+        user_model_settings[scope] = setting
+        return get_user_model_settings(owner_id)
+
+    @api.delete("/api/v1/user/model-settings")
+    def delete_user_model_settings(owner_id: str = Depends(owner_dependency)):
+        scope = model_setting_scope(owner_id)
+        if active_secret_store is not None:
+            try:
+                active_secret_store.delete(f"llm:{scope}")
+            except (SecretProtectionError, ValueError) as exc:
+                raise HTTPException(status_code=503, detail="模型密钥安全删除失败") from exc
+        user_model_settings.pop(scope, None)
         return get_user_model_settings(owner_id)
 
     @api.post("/api/v1/user/model-settings/test")
@@ -2936,16 +3011,16 @@ def create_app(
             async with aclosing(client.stream_chat([{"role": "user", "content": "Reply OK."}])) as stream:
                 async for event in stream:
                     if event.get("type") == "error":
-                        return False
+                        return False, event.get("message") or "模型连接未完成"
                     if event.get("type") == "content" and event.get("delta"):
-                        return True
-            return False
+                        return True, None
+            return False, "模型未返回有效内容，请检查配置或稍后重试"
         try:
-            ok = await asyncio.wait_for(probe(), timeout=10)
+            ok, failure = await asyncio.wait_for(probe(), timeout=10)
         except (TimeoutError, ValueError):
-            ok = False
+            ok, failure = False, "模型连接测试超时，请稍后重试"
         if not ok:
-            return _error_response(502, "MODEL_TEST_FAILED", "模型未返回有效内容，请检查配置或稍后重试")
+            return _error_response(502, "MODEL_TEST_FAILED", failure)
         return {"status": "PASS"}
 
     @api.get("/api/v1/runtime/wencai-settings")
@@ -3187,8 +3262,8 @@ def create_app(
         if controller.mode == DataMode.LIVE:
             trusted_live_portfolios.pop(owner_id, None)
             live_capabilities = controller.capabilities["LIVE"]
-            stock_quote_available = bool(live_capabilities.get("stock_quote"))
-            fund_lookthrough_available = bool(live_capabilities.get("fund_lookthrough"))
+            stock_quote_available = bool(live_capabilities.get("stock_quote") or getattr(active_live_finance, "is_configured", False))
+            fund_lookthrough_available = bool(live_capabilities.get("fund_lookthrough") or getattr(active_live_finance, "is_configured", False))
             if not (
                 stock_quote_available
                 or fund_lookthrough_available
@@ -3447,7 +3522,7 @@ def create_app(
 _DEFAULT_SECRET_STORE = (
     ProtectedSecretStore(
         os.getenv("PRISM_SECRET_STORE_PATH")
-        or str(Path(__file__).resolve().parents[2] / "data/private/prism-secrets.json")
+        or str(default_private_data_dir() / "prism-secrets.json")
     )
     if os.name == "nt"
     else None
@@ -3455,7 +3530,7 @@ _DEFAULT_SECRET_STORE = (
 
 app = create_app(
     database_url=os.getenv("PRISM_DATABASE_URL") or None,
-    database_path=os.getenv("PRISM_DB_PATH") or str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3"),
+    database_path=os.getenv("PRISM_DB_PATH") or str(default_private_data_dir() / "prism.sqlite3"),
     auth_accounts_path=os.getenv("PRISM_AUTH_ACCOUNTS_FILE") or None,
     auth_enabled=os.getenv("PRISM_DEV_NO_AUTH", "").strip().lower() not in {"1", "true", "yes"},
     secret_store=_DEFAULT_SECRET_STORE,

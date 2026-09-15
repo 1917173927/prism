@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from app.llm.agent import CopilotAgent
-from app.providers.fuyao import FuyaoFinanceProvider, FuyaoProviderError
+from app.providers.fuyao import CAPABILITY_FAILURE_CODES, FuyaoFinanceProvider, FuyaoProviderError
 from app.runtime.mode import DataMode, reset_runtime_mode_controller
 
 
@@ -52,7 +52,7 @@ def test_fuyao_quote_normalizes_snapshot_and_metadata() -> None:
         assert quote["change_pct"] == 0.688
         assert quote["provider_tier"] == "LIVE_PRIMARY"
         assert quote["is_synthetic"] is False
-        assert quote["missing_fields"] == []
+        assert quote["missing_fields"] == ["pe_ttm", "pb", "roe_pct", "valuation_quantile_pct"]
 
     asyncio.run(run())
 
@@ -280,5 +280,112 @@ def test_copilot_live_tool_reports_provider_failure_without_mock_data() -> None:
         assert result["execution_context"]["is_synthetic"] is False
         assert "data" not in result
         reset_runtime_mode_controller(mode=DataMode.MOCK)
+
+    asyncio.run(run())
+
+
+def test_fuyao_quotes_use_one_bounded_batch_snapshot() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/a-share/prices/snapshot"
+        assert request.url.params["thscodes"] == "600519.SH,300750.SZ"
+        return httpx.Response(200, json={
+            "code": 0,
+            "data": {
+                "timestamp": 1788742800000,
+                "item": [
+                    {"thscode": "600519.SH", "ticker": "600519", "last_price": 1500.25},
+                    {"thscode": "300750.SZ", "ticker": "300750", "last_price": 338.25},
+                ],
+            },
+        })
+
+    async def run() -> None:
+        provider = FuyaoFinanceProvider(
+            api_key="test-key", transport=httpx.MockTransport(handler)
+        )
+        quotes = await provider.get_quotes(["600519", "300750.SZ", "600519.SH"])
+        assert set(quotes) == {"600519.SH", "300750.SZ"}
+        assert quotes["600519.SH"]["price_cny"] == 1500.25
+        assert quotes["300750.SZ"]["price_cny"] == 338.25
+        assert quotes["300750.SZ"]["is_synthetic"] is False
+
+    asyncio.run(run())
+
+def test_fuyao_retries_rate_limit_and_keeps_transient_error_out_of_capability_revocation() -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        assert request.url.path == "/api/a-share/prices/snapshot"
+        attempts += 1
+        if attempts < 3:
+            return httpx.Response(429, headers={"Retry-After": "0.1"})
+        return httpx.Response(200, json={
+            "code": 0,
+            "data": {
+                "timestamp": 1788742800000,
+                "item": [{
+                    "thscode": "600519.SH", "ticker": "600519", "last_price": 1500.25,
+                }],
+            },
+        })
+
+    async def run() -> None:
+        provider = FuyaoFinanceProvider(
+            api_key="test-key", transport=httpx.MockTransport(handler)
+        )
+        quote = await provider.get_quotes(["600519"])
+        assert quote["600519.SH"]["price_cny"] == 1500.25
+        assert attempts == 3
+
+    asyncio.run(run())
+    assert "UPSTREAM_RATE_LIMITED" not in CAPABILITY_FAILURE_CODES
+
+def test_fuyao_probe_serializes_capability_checks_and_avoids_metadata_burst() -> None:
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        paths.append(path)
+        if path == "/api/a-share/prices/snapshot":
+            assert request.url.params["thscodes"] == "600519.SH"
+            return httpx.Response(200, json={
+                "code": 0,
+                "data": {
+                    "timestamp": 1788742800000,
+                    "item": [{
+                        "thscode": "600519.SH", "ticker": "600519", "last_price": 1500.25,
+                    }],
+                },
+            })
+        if path == "/api/fund/profile/detail":
+            return httpx.Response(200, json={
+                "code": 0,
+                "data": {"item": [{
+                    "thscode": "510300.SH", "fund_name": "沪深300ETF", "unit_nav": 4.12,
+                }]},
+            })
+        if path == "/api/fund/portfolio/holdings":
+            return httpx.Response(200, json={
+                "code": 0,
+                "data": {"item": [{
+                    "thscode": "600519.SH", "stock_name": "贵州茅台",
+                    "hold_ratio": 5.1, "end_date_ms": 1759161600000,
+                }]},
+            })
+        raise AssertionError(f"unexpected path: {path}")
+
+    async def run() -> None:
+        provider = FuyaoFinanceProvider(
+            api_key="test-key", transport=httpx.MockTransport(handler)
+        )
+        capabilities = await provider.probe_capabilities()
+        assert capabilities == {"stock_quote": True, "fund_lookthrough": True}
+        assert paths[0] == "/api/a-share/prices/snapshot"
+        assert paths.count("/api/a-share/prices/snapshot") == 1
+        assert "/api/meta/tickers/search" not in paths
+        assert set(paths[1:]) == {
+            "/api/fund/profile/detail", "/api/fund/portfolio/holdings",
+        }
 
     asyncio.run(run())

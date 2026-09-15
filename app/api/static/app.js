@@ -5602,8 +5602,8 @@
       setPortfolioOptimizationStatus("正在刷新真实行情…", "review");
       const health = await refreshPortfolioHealth();
       if (!health || state.portfolioRefreshRun?.status !== "COMPLETE") {
-        setPortfolioOptimizationStatus("行情待复核", "review");
-        setError("真实行情刷新尚未完成，不能基于旧价格生成目标权重。");
+        setPortfolioOptimizationStatus("持仓信息待补全", "review");
+        setError(portfolioRefreshProblem());
         return null;
       }
     }
@@ -5795,6 +5795,13 @@
       empty.className = "empty-state";
       empty.textContent = state.events.length ? "选择一条回执查看详情。" : "这个隔离标识还没有保存的决策事件。";
       byId("detail-content").append(empty);
+      if (accountAccessEnabled) {
+        // Formal sessions load each available workflow on demand. Hidden
+        // fixture catalogues must not surface errors on the chat homepage.
+        await loadContextMemory(requestOwner);
+        if (state.ownerId === requestOwner && state.events.length) await loadEvent(state.events[0].event_id);
+        return;
+      }
       try {
         await loadTemplateContext(requestOwner, templateSequence);
       } catch (error) {
@@ -6670,6 +6677,9 @@
         await runPortfolioOptimization();
       }
       if (!state.portfolioOptimizationRun?.targets?.length) {
+        if (state.dataMode === "LIVE" && state.portfolioRefreshRun?.status !== "COMPLETE") {
+          throw new Error(portfolioRefreshProblem());
+        }
         throw new Error("缺少已计算的目标权重，请先生成组合目标结构");
       }
       await ensureDependency("PORTFOLIO_CONTEXT");
@@ -7914,7 +7924,11 @@
     const liveCapabilities = (state.capabilities && state.capabilities.LIVE) || {};
     const shouldRefresh = state.dataMode !== "LIVE"
       || liveCapabilities.portfolio_refresh === true
-      || (liveCapabilities.stock_quote === true && state.wencaiConfigured === true);
+      || liveCapabilities.stock_quote === true
+      || liveCapabilities.fund_lookthrough === true
+      // A previous probe failure is not a permanent block. The backend
+      // verifies this refresh; incomplete prices still stop optimization.
+      || Boolean(portfolio?.position_snapshot?.positions?.length);
     if (shouldRefresh) {
       const refreshResponse = await fetch("/api/v1/advisor/portfolio/refresh", {
         method: "POST",
@@ -7935,11 +7949,11 @@
         await fetchRuntimeDataMode();
         throw new Error(refreshPayload.message || "最新数据刷新失败，未使用旧数据继续计算");
       }
-      if (refreshPayload.status !== "COMPLETE" || !refreshPayload.portfolio) {
+      if (!["COMPLETE", "REVIEW_REQUIRED"].includes(refreshPayload.status) || !refreshPayload.portfolio) {
         microStore.transact((store) => { store.portfolioRefreshRun = refreshPayload; });
         renderPortfolioRefreshStatus(refreshPayload);
         if (refreshPayload.data_mode === "LIVE") await fetchRuntimeDataMode();
-        throw new Error("最新数据不完整，组合体检已暂停并等待复核");
+        throw new Error(portfolioRefreshProblem(refreshPayload));
       }
       microStore.transact((store) => {
         store.portfolio = refreshPayload.portfolio;
@@ -7997,6 +8011,19 @@
     return health;
   }
 
+  function portfolioRefreshProblem(refresh = state.portfolioRefreshRun) {
+    const rows = Array.isArray(refresh?.positions) ? refresh.positions : [];
+    const missingSectors = rows.filter(row => row.missing_fields?.some(field => ["sector", "holding_sector"].includes(field)));
+    if (missingSectors.length) {
+      const prefix = refresh?.portfolio ? "真实报价已更新；" : "";
+      return `${prefix}以下持仓行业未确认：${missingSectors.map(row => row.asset_id).join("、")}。请补充持仓行业后重新生成方案。`;
+    }
+    const missingPrices = rows.filter(row => row.status !== "SKIPPED" && (!row.price_cny || !row.observed_at));
+    return missingPrices.length
+      ? `以下持仓的真实报价或报价时间暂不可用：${missingPrices.map(row => row.asset_id).join("、")}。请稍后重试。`
+      : "真实持仓数据尚未完整刷新，请检查持仓信息与数据服务状态后重试。";
+  }
+
   function renderPortfolioRefreshStatus(refresh) {
     const target = byId("portfolio-refresh-status");
     if (!target) return;
@@ -8023,7 +8050,7 @@
       ? `LIVE · 未刷新 · ${refresh.issues?.[0] || "使用已确认持仓进行计算"}`
       : complete
       ? `${isLive ? "LIVE · 真实数据刷新" : "MOCK · 合成数据"} · ${sourceLabel} · ${freshness}`
-      : `${isLive ? "LIVE · 需要复核" : "MOCK · 需要复核"} · ${refresh.issues?.[0] || "数据未完整刷新"}`;
+      : `${isLive ? "LIVE · 需要复核" : "MOCK · 需要复核"} · ${portfolioRefreshProblem(refresh)}`;
     target.className = `portfolio-refresh-status ${complete ? "complete" : "review"}`;
   }
 
@@ -8647,6 +8674,7 @@
       const hasBreaches = health.has_breaches;
       const requiresReview = health.status !== "PASS";
       const technologySector = sectors.find((sector) => sector.sectorKey === "TECHNOLOGY");
+      const incompleteIndustries = sectors.some(sector => sector.sectorKey === "UNCLASSIFIED" && sector.pct > 0);
 
       clear(output);
       const card = document.createElement("div");
@@ -8661,7 +8689,7 @@
       icon.className = "decision-verdict-icon";
       icon.append(createSvgIcon(requiresReview ? "icon-alert" : "icon-shield-check", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = hasBreaches
+      h3.textContent = incompleteIndustries ? "真实报价已更新，行业信息待确认" : hasBreaches
         ? "发现需要关注的组合风险"
         : requiresReview
           ? "部分数据需要补充"
@@ -8696,7 +8724,7 @@
       cContent.className = "callout-content";
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
-      cTitle.textContent = hasBreaches
+      cTitle.textContent = incompleteIndustries ? "部分体检结果 · 行业待补全" : hasBreaches
         ? "部分持仓比例超出你的设置"
         : requiresReview
           ? "部分指标缺少完整数据"
@@ -8711,6 +8739,10 @@
             : "当前各项指标均在预设范围内。" );
       
       cContent.append(cTitle, cP);
+      if (incompleteIndustries) {
+        cP.textContent = `${portfolioRefreshProblem()} 未分类资产被单独归集，当前行业占比和 HHI 不能视为已核实的行业分布；市值与现金指标仍可计算。`;
+        cContent.append(buildCopilotDrilldownRow([{href: "#overview", text: "查看持仓并确认行业"}]));
+      }
       callout.append(cIcon, cContent);
 
       // Metrics with tooltips
@@ -9271,7 +9303,10 @@
       const health = state.portfolioHealthRun || await refreshPortfolioHealth();
       if (!health) throw new Error("当前持仓体检未完成，不能确认调仓约束。");
       const optimization = await runPortfolioOptimization();
-      if (!optimization?.targets?.length) throw new Error(optimization?.summary || "未能生成目标权重，请检查画像、持仓和缺失数据。");
+      if (!optimization?.targets?.length) throw new Error(
+        state.portfolioRefreshRun?.status === "REVIEW_REQUIRED" ? portfolioRefreshProblem()
+          : optimization?.summary || "未能生成目标权重，请检查画像、持仓和缺失数据。"
+      );
       const plan = await runPortfolioRebalancing();
       if (!plan) throw new Error("调仓测算未完成，请检查目标权重和持仓输入。");
       const persona = PERSONAS[state.selectedPersona || "persona-zhang-r3"];
@@ -9370,10 +9405,13 @@
       const errCard = document.createElement("div");
       errCard.className = "copilot-empty-output";
       const h4 = document.createElement("h4");
-      h4.textContent = "方案生成失败";
+      h4.textContent = state.portfolioRefreshRun?.status === "REVIEW_REQUIRED" ? "方案待补充持仓信息" : "方案生成失败";
       const p = document.createElement("p");
       p.textContent = err.message || "未能生成调仓方案";
       errCard.append(h4, p);
+      if (state.portfolioRefreshRun?.status === "REVIEW_REQUIRED") {
+        errCard.append(buildCopilotDrilldownRow([{href: "#overview", text: "查看持仓并确认行业"}]));
+      }
       output.append(errCard);
     }
   }
@@ -9988,6 +10026,18 @@
             } else if (event.type === "tool_done") {
               const toolStatus = event.result?.status || "FAILED";
               const currentToolFailed = ["FAILED", "BLOCKED", "REJECTED"].includes(toolStatus);
+              if (event.result?.error_code === "DETERMINISTIC_CONTEXT_REQUIRED") {
+                const action = document.createElement("button");
+                action.type = "button"; action.className = "copilot-action-btn secondary";
+                if (event.tool === "run_portfolio_health_check") {
+                  action.textContent = "核对并确认分析资料";
+                  action.addEventListener("click", confirmSessionTruth);
+                } else {
+                  action.textContent = "打开调仓测算";
+                  action.addEventListener("click", runCopilotRebalance);
+                }
+                toolsContainer.append(action);
+              }
               toolFailed = toolFailed || currentToolFailed;
               toolCompleted = toolCompleted || !currentToolFailed;
               if (currentToolFailed) setPipelineStepState(s2, "failed");
@@ -10057,6 +10107,7 @@
       if (!receivedDone) throw new Error("分析连接提前结束，结果不完整");
       if (turnContextRevision !== chatContextRevision) return;
       cursor.remove();
+      thinkingBox.style.display = "none";
       renderAssistantMarkdown(contentBox, fullText);
       chatHistory.push({ role: "assistant", content: fullText });
       saveCopilotChatHistory();
@@ -10093,6 +10144,27 @@
     model: "deepseek-chat",
     provider: "deepseek",
   };
+  let llmFormDirty = false;
+  let modelSettingsSequence = 0;
+
+  function syncLLMConfigForm() {
+    const provider = byId("llm-provider-select");
+    if (provider) provider.value = llmConfig.provider;
+    const url = byId("llm-base-url-input");
+    if (url) url.value = llmConfig.baseUrl;
+    const model = byId("llm-model-input");
+    if (model) model.value = llmConfig.model;
+    const key = byId("llm-api-key-input");
+    if (key) key.placeholder = llmConfig.configured ? "已安全保存；留空保留，填写可替换" : "请输入 API Key";
+  }
+
+  function setLLMFormBusy(busy) {
+    ["llm-provider-select", "llm-api-key-input", "llm-base-url-input", "llm-model-input",
+      "btn-save-llm-config", "btn-clear-llm-config", "test-user-model"].forEach(id => {
+      const element = byId(id);
+      if (element) element.disabled = busy;
+    });
+  }
 
   function updateLLMConfigUI() {
     updateVisibleSourceStatus();
@@ -10118,19 +10190,14 @@
       if (badge) badge.textContent = authenticatedOwner ? "服务端分析配置" : "内置分析引擎";
     }
 
-    const provSel = byId("llm-provider-select");
     if (badge && byId("chat-runtime-mode")?.value === "MOCK") badge.textContent = "AI 模拟模式";
-    if (provSel) provSel.value = llmConfig.provider || "deepseek";
-    const keyInput = byId("llm-api-key-input");
-    if (keyInput) keyInput.value = llmConfig.apiKey || "";
-    const urlInput = byId("llm-base-url-input");
-    if (urlInput) urlInput.value = llmConfig.baseUrl || "https://api.deepseek.com/v1";
-    const modelInput = byId("llm-model-input");
-    if (modelInput) modelInput.value = llmConfig.model || "deepseek-chat";
   }
 
   function openLLMConfigModal() {
     updateLLMConfigUI();
+    llmFormDirty = false;
+    byId("llm-api-key-input").value = "";
+    syncLLMConfigForm();
     const modal = byId("llm-config-modal");
     if (modal) {
       document.body.appendChild(modal);
@@ -10159,42 +10226,60 @@
 
   async function loadModelSettings() {
     const owner = state.ownerId;
+    const sequence = ++modelSettingsSequence;
     const response = await fetch("/api/v1/user/model-settings", {headers: {"X-Owner-ID": owner}});
     if (!response.ok) throw await apiError(response);
     const settings = await response.json();
-    if (owner !== state.ownerId) return;
+    if (owner !== state.ownerId || sequence !== modelSettingsSequence) return;
     llmConfig.apiKey = "";
     llmConfig.configured = settings.is_configured;
     llmConfig.connectionStatus = settings.is_configured ? "SAVED" : "NONE";
     llmConfig.baseUrl = settings.base_url;
     llmConfig.model = settings.model;
+    llmConfig.provider = settings.base_url.includes("dashscope.aliyuncs.com") ? "qwen"
+      : settings.base_url.includes("api.openai.com") ? "openai" : "deepseek";
     updateLLMConfigUI();
+    if (!llmFormDirty) syncLLMConfigForm();
     const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
-    byId("llm-config-status").textContent = settings.is_configured ? `已保存待测试 · ${settings.model} · ${persistence}。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
+    const status = byId("llm-config-status");
+    status.style.display = "block";
+    status.textContent = settings.is_configured ? `已保存待测试 · ${settings.model} · ${persistence}。密钥不回显，留空保存会保留现有密钥。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
     return settings;
   }
 
   async function handleSaveLLMConfig() {
     const status = byId("llm-config-status");
-    const button = byId("btn-save-llm-config");
-    button.disabled = true; status.style.display = "block"; status.textContent = "正在保存…";
+    const owner = state.ownerId;
+    ++modelSettingsSequence;
+    setLLMFormBusy(true); status.style.display = "block"; status.textContent = "正在保存…";
     try {
       const response = await fetch("/api/v1/user/model-settings", {
-        method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId},
+        method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
         body: JSON.stringify({api_key: byId("llm-api-key-input").value.trim(), base_url: byId("llm-base-url-input").value.trim(), model: byId("llm-model-input").value.trim()}),
       });
       if (!response.ok) throw await apiError(response);
-      await loadModelSettings();
-      status.textContent = "已保存待测试。请执行连接测试后使用真实接口。";
+      if (owner !== state.ownerId) return;
+      llmFormDirty = false;
       byId("llm-api-key-input").value = "";
+      await loadModelSettings();
     } catch (error) { status.textContent = `保存失败：${error.message}`; }
-    finally { button.disabled = false; }
+    finally { setLLMFormBusy(false); }
   }
 
   async function handleClearLLMConfig() {
-    byId("llm-api-key-input").value = "";
-    byId("llm-base-url-input").value = "https://api.deepseek.com/v1";
-    await handleSaveLLMConfig();
+    const status = byId("llm-config-status");
+    const owner = state.ownerId;
+    ++modelSettingsSequence;
+    setLLMFormBusy(true);
+    try {
+      const response = await fetch("/api/v1/user/model-settings", {method: "DELETE", headers: {"X-Owner-ID": owner}});
+      if (!response.ok) throw await apiError(response);
+      if (owner !== state.ownerId) return;
+      llmFormDirty = false;
+      byId("llm-api-key-input").value = "";
+      await loadModelSettings();
+    } catch (error) { status.style.display = "block"; status.textContent = `恢复失败：${error.message}`; }
+    finally { setLLMFormBusy(false); }
   }
 
   // 自定义持仓弹窗交互
@@ -11200,6 +11285,37 @@
         } catch (error) { setError(error.message); remove.disabled = false; }
       });
       actions.append(diagnose, remove); tr.append(actions); body.append(tr);
+      if (!["ETF", "MUTUAL_FUND", "FUND", "CASH"].includes(row.asset_class)) {
+        const industry = document.createElement("select");
+        industry.setAttribute("aria-label", `${row.asset_id} 行业`);
+        [["", "选择行业"], ["Technology", "科技半导体"], ["Industrials", "先进制造"], ["Consumer", "消费"], ["Healthcare", "医药"], ["Finance", "金融"], ["Cyclical", "周期"]].forEach(([value, label]) => {
+          const option = document.createElement("option"); option.value = value; option.textContent = label; industry.append(option);
+        });
+        industry.value = row.sector || "";
+        const confirm = document.createElement("button"); confirm.type = "button";
+        confirm.className = "copilot-action-btn secondary"; confirm.textContent = "确认行业";
+        confirm.setAttribute("aria-label", `确认 ${row.asset_id} 行业`);
+        confirm.addEventListener("click", async () => {
+          if (!industry.value) { setError("请先选择已核对的持仓行业。"); return; }
+          confirm.disabled = true;
+          try {
+            if (owner !== state.ownerId || mode !== state.dataMode) throw new Error("账户或模式已变化，请刷新持仓");
+            const response = await fetch("/api/v1/advisor/portfolio/sectors", {
+              method: "PATCH", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
+              body: JSON.stringify({owner_id: owner, data_mode: mode, sectors: {[row.asset_id]: industry.value}}),
+            });
+            if (!response.ok) throw await apiError(response);
+            const data = await response.json();
+            if (owner !== state.ownerId || mode !== state.dataMode) return;
+            microStore.transact(store => { invalidateDerivedState(store); store.ocrPortfolioDraft = data; store.portfolio = data.portfolio; });
+            setError("");
+            await refreshPortfolioSummary();
+            await refreshPortfolioHealth();
+          } catch (error) { setError(error.message); }
+          finally { confirm.disabled = false; }
+        });
+        actions.append(industry, confirm);
+      }
     });
     try {
       await refreshPortfolioReport(owner, mode);
@@ -11326,20 +11442,30 @@
   });
   byId("close-portfolio-diagnosis")?.addEventListener("click", () => byId("portfolio-diagnosis-drawer")?.close());
   byId("test-user-model")?.addEventListener("click", async event => {
+    if (llmFormDirty) {
+      const status = byId("llm-config-status");
+      status.style.display = "block";
+      status.textContent = "请先保存当前输入，再测试连接。";
+      return;
+    }
     const status = byId("llm-config-status"); status.style.display = "block"; status.textContent = "正在测试…";
-    event.currentTarget.disabled = true;
+    const owner = state.ownerId;
+    const sequence = ++modelSettingsSequence;
+    setLLMFormBusy(true);
     try {
-      const response = await fetch("/api/v1/user/model-settings/test", {method: "POST", headers: {"X-Owner-ID": state.ownerId}});
+      const response = await fetch("/api/v1/user/model-settings/test", {method: "POST", headers: {"X-Owner-ID": owner}});
       if (!response.ok) throw await apiError(response);
+      if (owner !== state.ownerId || sequence !== modelSettingsSequence) return;
       llmConfig.connectionStatus = "CONNECTED";
       status.textContent = "连接测试通过。";
       updateLLMConfigUI();
     } catch (error) {
+      if (owner !== state.ownerId || sequence !== modelSettingsSequence) return;
       llmConfig.connectionStatus = "FAILED";
       status.textContent = `连接失败：${error.message}`;
       updateLLMConfigUI();
     }
-    finally { byId("test-user-model").disabled = false; }
+    finally { setLLMFormBusy(false); }
   });
 
   // Event bindings for P2 panels
@@ -11481,8 +11607,12 @@
   });
 
   const provSel = byId("llm-provider-select");
+  ["llm-api-key-input", "llm-base-url-input", "llm-model-input"].forEach(id => {
+    byId(id)?.addEventListener("input", () => { llmFormDirty = true; });
+  });
   if (provSel) {
     provSel.addEventListener("change", () => {
+      llmFormDirty = true;
       const p = provSel.value;
       const urlInput = byId("llm-base-url-input");
       const modelInput = byId("llm-model-input");
