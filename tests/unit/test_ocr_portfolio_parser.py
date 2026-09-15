@@ -123,10 +123,12 @@ def test_ocr_api_upload_file_endpoint():
     assert data["cash_cny"] == 50000.0
 
 
-def test_ocr_extracts_two_line_name_only_broker_layout_and_excludes_zero_position():
+@pytest.mark.parametrize("scale", [0.6, 1, 2.1, 3])
+def test_ocr_extracts_two_line_name_only_broker_layout_and_excludes_zero_position(scale):
     """Regression for the broker layout where each slash header maps to two rows."""
     def item(x, y, text, score=0.99):
-        return ([[x, y], [x + 70, y], [x + 70, y + 20], [x, y + 20]], text, score)
+        width = 10 if text == "0" else 70
+        return ([[x, y], [x + width, y], [x + width, y + 20], [x, y + 20]], text, score)
 
     result_rows = [
         item(20, 85, "市值"), item(186, 85, "持仓/可用"),
@@ -141,13 +143,16 @@ def test_ocr_extracts_two_line_name_only_broker_layout_and_excludes_zero_positio
         item(526, 243, "10.017%"), item(450, 297, "查看已清仓股票"),
     ]
 
+    result_rows = [([[x * scale, y * scale] for x, y in box], text, score)
+                   for box, text, score in result_rows]
+
     class FakeEngine:
         def __call__(self, _):
             return result_rows, 0.01
 
     parser = OCRPortfolioParser()
     parser._engine = FakeEngine()
-    image = Image.new("RGB", (613, 340), "white")
+    image = Image.new("RGB", (int(613 * scale), int(340 * scale)), "white")
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     parsed = parser.parse_image_bytes(buffer.getvalue())
@@ -165,3 +170,51 @@ def test_ocr_extracts_two_line_name_only_broker_layout_and_excludes_zero_positio
     assert position["market_value_cny"] == 67730.0
     assert parsed["zero_positions"][0]["name"] == "莲花控股"
     assert parsed["zero_positions"][0]["zero_position"] is True
+
+
+@pytest.mark.parametrize("scale", [0.5, 1, 2])
+def test_fullscreen_reordered_columns_and_account_summary(scale):
+    """Geometry from a full-screen broker table, without storing account images."""
+    def item(x, y, width, text):
+        return ([[x * scale, y * scale], [(x + width) * scale, y * scale],
+                 [(x + width) * scale, (y + 50) * scale], [x * scale, (y + 50) * scale]], text, .99)
+
+    cells = [
+        item(520, 188, 280, "证券账户"),
+        item(47, 574, 183, "总资产"), item(458, 574, 124, "总盈亏"),
+        item(875, 574, 284, "当日参考盈亏"),
+        item(46, 650, 223, "91,135.53"), item(464, 650, 249, "-10,440.45"),
+        item(875, 650, 354, "-2,850.00 -3.03%"),
+        item(46, 775, 125, "总市值"), item(459, 775, 226, "可用逆回购"),
+        item(872, 775, 191, "可取 转账"),
+        item(47, 851, 222, "67,201.00"), item(459, 851, 223, "23,933.53"),
+        item(44, 1009, 154, "持仓股"),
+        item(44, 1126, 93, "市值"), item(523, 1126, 94, "盈亏"),
+        item(731, 1126, 222, "持仓/可用"), item(1097, 1126, 202, "成本/现价"),
+        item(47, 1231, 192, "冠农股份"), item(391, 1231, 223, "-10,440.45"),
+        item(845, 1231, 109, "6700"), item(1148, 1231, 141, "11.588"),
+        item(47, 1295, 198, "67,201.00"), item(410, 1295, 206, "-13.447%"),
+        item(919, 1295, 34, "0"), item(1148, 1295, 141, "10.030"),
+        item(956, 1411, 278, "查看已清仓股票"), item(71, 1527, 188, "持仓管理"),
+    ]
+    parser = OCRPortfolioParser()
+    parser._engine = lambda _: (cells, .01)
+    buffer = io.BytesIO()
+    Image.new("RGB", (int(1320 * scale), int(2868 * scale)), "white").save(buffer, format="PNG")
+    result = parser.parse_image_bytes(buffer.getvalue())
+    assert result["parsed_count"] == 1
+    assert result["cash_observed"] is True
+    assert result["cash_cny"] == 23933.53
+    assert result["account_total_observed"] is True
+    assert result["total_value_cny"] == result["account_total_value_cny"] == 91135.53
+    assert result["weights_balanced"] is True
+    position = result["positions"][0]
+    assert position["quantity"] == 6700
+    assert position["available_quantity"] == 0
+    assert position["cost_price"] == 11.588
+    assert position["price"] == 10.03
+    assert position["market_value_cny"] == 67201
+    assert position["pnl_cny"] == -10440.45
+    assert position["pnl_pct"] == -13.447
+    assert position.get("day_pnl_cny") is None
+    assert "MISSING_OBSERVED_AT" in position["review_reasons"]

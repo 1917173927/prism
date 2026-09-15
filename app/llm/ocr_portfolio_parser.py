@@ -13,6 +13,7 @@ import re
 import unicodedata
 from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_UP
+from statistics import median
 from typing import Any
 from uuid import uuid4
 
@@ -50,7 +51,7 @@ def _decimal_cell(text: str) -> Decimal | None:
 
 
 def _parse_two_line_broker_layout(
-    rows: list[list[dict[str, Any]]], image_width: int
+    rows: list[list[dict[str, Any]]]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Parse slash-header broker tables with two vertically stacked values."""
     header_index = next((index for index, row in enumerate(rows)
@@ -59,49 +60,54 @@ def _parse_two_line_broker_layout(
     if header_index is None:
         return [], []
 
-    left_limit = float(image_width) * 0.25
-    quantity_limit = float(image_width) * 0.55
-    price_limit = float(image_width) * 0.82
-    primary_rows: list[tuple[int, list[dict[str, Any]]]] = []
+    headers = [cell for cell in rows[header_index]
+               if any(label in cell["text"] for label in
+                      ("市值", "持仓/可用", "成本/现价", "盈亏"))]
+    if len(headers) != 4:
+        return [], []
+
+    def column(cell):
+        center = (cell["box"][0][0] + cell["box"][2][0]) / 2
+        return min(headers, key=lambda h: abs(
+            center - (h["box"][0][0] + h["box"][2][0]) / 2))["text"]
+
+    def values(row, label):
+        return [(value, cell) for cell in row if label in column(cell)
+                and (value := _decimal_cell(cell["text"])) is not None]
+
+    primary_rows = []
     for index, row in enumerate(rows[header_index + 1:], header_index + 1):
         text = "".join(cell["text"] for cell in row)
-        if "查看已清仓" in text:
+        if any(marker in text for marker in ("查看已清仓", "持仓管理", "批量买入", "持仓资讯")):
             break
-        left_text = "".join(cell["text"] for cell in row
-            if cell["xm"] < left_limit and re.search(r"[\u4e00-\u9fff]", cell["text"]))
-        if left_text:
+        if any("市值" in column(cell) and re.search(r"[\u4e00-\u9fff]", cell["text"])
+               for cell in row):
             primary_rows.append((index, row))
-
-    def values(row, lower, upper=None):
-        output = []
-        for cell in row:
-            if cell["xm"] < lower or (upper is not None and cell["xm"] >= upper):
-                continue
-            value = _decimal_cell(cell["text"])
-            if value is not None:
-                output.append((value, cell))
-        return output
 
     positions: list[dict[str, Any]] = []
     zero_positions: list[dict[str, Any]] = []
     for row_index, primary in primary_rows:
         name = "".join(cell["text"] for cell in primary
-            if cell["xm"] < left_limit and re.search(r"[\u4e00-\u9fff]", cell["text"])).strip()
+            if "市值" in column(cell) and re.search(r"[\u4e00-\u9fff]", cell["text"])).strip()
         primary_y = sum(cell["yc"] for cell in primary) / len(primary)
         secondary: list[dict[str, Any]] = []
         if row_index + 1 < len(rows):
             following = rows[row_index + 1]
             following_y = sum(cell["yc"] for cell in following) / len(following)
-            if 8 <= following_y - primary_y <= 42:
+            text_height = median(abs(cell["box"][2][1] - cell["box"][0][1])
+                                 for cell in primary)
+            if (0.6 * text_height <= following_y - primary_y <= 1.9 * text_height
+                    and not any(re.search(r"[\u4e00-\u9fff]", cell["text"])
+                                for cell in following)):
                 secondary = following
 
-        quantities = values(primary, left_limit, quantity_limit)
-        available = values(secondary, left_limit, quantity_limit)
-        costs = values(primary, quantity_limit, price_limit)
-        prices = values(secondary, quantity_limit, price_limit)
-        market_values = values(secondary, 0, left_limit)
-        pnls = values(primary, price_limit)
-        pnl_pcts = values(secondary, price_limit)
+        quantities = values(primary, "持仓/可用")
+        available = values(secondary, "持仓/可用")
+        costs = values(primary, "成本/现价")
+        prices = values(secondary, "成本/现价")
+        market_values = values(secondary, "市值")
+        pnls = values(primary, "盈亏")
+        pnl_pcts = values(secondary, "盈亏")
         if not name or not quantities or not costs or not prices:
             continue
 
@@ -147,8 +153,34 @@ def _parse_two_line_broker_layout(
             },
             "zero_position": quantity == 0,
         }
+        if not any("当日" in h["text"] for h in headers):
+            parsed["pnl_cny"] = parsed.pop("day_pnl_cny")
+            parsed["pnl_pct"] = parsed.pop("day_pnl_pct")
         (zero_positions if quantity == 0 else positions).append(parsed)
     return positions, zero_positions
+
+
+def _broker_account_summary(rows: list[list[dict[str, Any]]]) -> dict[str, float]:
+    """Read labeled account values above the table; available shares are not cash."""
+    summary = {}
+    for index, row in enumerate(rows):
+        if any("持仓股" in cell["text"] or "持仓/可用" in cell["text"] for cell in row):
+            break
+        for cell in row:
+            label = re.sub(r"\s+", "", cell["text"])
+            key = ("account_total_value_cny" if label == "总资产" else
+                   "cash_cny" if label in {"可用", "可用逆回购", "可用资金", "可用现金"} else None)
+            if key is None or index + 1 >= len(rows):
+                continue
+            height = abs(cell["box"][2][1] - cell["box"][0][1])
+            candidates = [value for below in rows[index + 1]
+                          if 0.6 * height <= below["yc"] - cell["yc"] <= 2.5 * height
+                          and abs(below["xm"] - cell["xm"]) <= height * 0.5
+                          and re.fullmatch(r"[\d,]+(?:\.\d+)?", below["text"])
+                          and (value := _decimal_cell(below["text"])) is not None]
+            if len(candidates) == 1:
+                summary[key] = float(candidates[0])
+    return summary
 
 
 def levenshtein_distance(left: str, right: str) -> int:
@@ -448,7 +480,7 @@ class OCRPortfolioParser:
         rows: list[list[dict[str, Any]]] = []
         curr_row: list[dict[str, Any]] = []
         curr_yc = -999.0
-        y_tolerance = 18.0
+        y_tolerance = 0.4 * median(abs(b["box"][2][1] - b["box"][0][1]) for b in boxes)
 
         for b in boxes:
             if not b["text"]:
@@ -470,20 +502,21 @@ class OCRPortfolioParser:
         reported_total_assets = 0.0
         has_low_confidence = False
 
-        two_line_positions, zero_positions = _parse_two_line_broker_layout(rows, img.width)
+        two_line_positions, zero_positions = _parse_two_line_broker_layout(rows)
         if two_line_positions or zero_positions:
             holdings_value = round(sum(item["market_value_cny"] for item in two_line_positions), 2)
-            validation = validate_portfolio_values(two_line_positions, 0.0, holdings_value)
+            summary = _broker_account_summary(rows)
+            cash = summary.get("cash_cny", 0.0)
+            total = summary.get("account_total_value_cny", holdings_value + cash)
+            validation = validate_portfolio_values(two_line_positions, cash, total)
             return {
                 "status": "SUCCESS" if two_line_positions else "EMPTY",
                 "schema_version": "portfolio-ocr-bundle.v1",
-                # This is the subtotal represented by active holdings.  The
-                # screenshot contains neither cash nor an account-total field.
-                "total_value_cny": holdings_value,
-                "account_total_value_cny": None,
-                "account_total_observed": False,
-                "cash_cny": 0.0,
-                "cash_observed": False,
+                "total_value_cny": total,
+                "account_total_value_cny": summary.get("account_total_value_cny"),
+                "account_total_observed": "account_total_value_cny" in summary,
+                "cash_cny": cash,
+                "cash_observed": "cash_cny" in summary,
                 "positions": two_line_positions,
                 "zero_positions": zero_positions,
                 "parsed_count": len(two_line_positions),
