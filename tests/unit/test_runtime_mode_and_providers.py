@@ -180,7 +180,7 @@ class TestRuntimeModeController:
             assert controller.revision == 2
         asyncio.run(_run())
 
-    def test_runtime_failure_invalidates_capability_and_leaves_no_unready_live_state(self):
+    def test_runtime_failure_invalidates_capability_and_keeps_live_fail_closed(self):
         async def _run():
             os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
             controller = RuntimeModeController(initial_mode=DataMode.MOCK)
@@ -198,7 +198,7 @@ class TestRuntimeModeController:
                 "fund_lookthrough", "UPSTREAM_TIMEOUT"
             )
             status = controller.get_status()
-            assert status["data_mode"] == "MOCK"
+            assert status["data_mode"] == "LIVE"
             assert status["live_ready"] is False
             assert status["live_verification"] == "FAILED"
 

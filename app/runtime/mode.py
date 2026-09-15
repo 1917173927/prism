@@ -221,9 +221,6 @@ class RuntimeModeController:
             if auto_activate and self.is_live_ready and self._mode != DataMode.LIVE:
                 self._mode = DataMode.LIVE
                 self._revision += 1
-            elif not self.is_live_ready and self._mode == DataMode.LIVE:
-                self._mode = DataMode.MOCK
-                self._revision += 1
             self._updated_at = checked_at
 
     async def record_fuyao_capability_failure(
@@ -239,9 +236,6 @@ class RuntimeModeController:
             self._fuyao_capability_errors[capability] = error_code
             available_count = sum(self._fuyao_capabilities.values())
             self._fuyao_verification = "DEGRADED" if available_count else "FAILED"
-            if not self.is_live_ready and self._mode == DataMode.LIVE:
-                self._mode = DataMode.MOCK
-                self._revision += 1
             self._updated_at = checked_at
 
     async def record_wencai_failure(self, error_code: str) -> None:
@@ -251,9 +245,6 @@ class RuntimeModeController:
             self._wencai_available = False
             self._wencai_checked_at = checked_at
             self._wencai_last_error_code = error_code
-            if not self.is_live_ready and self._mode == DataMode.LIVE:
-                self._mode = DataMode.MOCK
-                self._revision += 1
             self._updated_at = checked_at
 
     async def record_portfolio_metadata_result(
@@ -309,9 +300,6 @@ class RuntimeModeController:
             self._wencai_last_error_code = None if available else (error_code or "PROBE_FAILED")
             if auto_activate and self.is_live_ready and self._mode != DataMode.LIVE:
                 self._mode = DataMode.LIVE
-                self._revision += 1
-            elif not self.is_live_ready and self._mode == DataMode.LIVE:
-                self._mode = DataMode.MOCK
                 self._revision += 1
             self._updated_at = checked_at
 

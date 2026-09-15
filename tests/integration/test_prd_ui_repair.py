@@ -63,7 +63,7 @@ def test_auto_chat_refuses_implicit_mock_without_model(monkeypatch, tmp_path):
         assert response.json()["error_code"] == "MODEL_NOT_CONFIGURED"
 
 
-def test_live_model_mode_requires_live_tool_data(monkeypatch, tmp_path):
+def test_live_model_mode_is_independent_from_workspace_tool_mode(monkeypatch, tmp_path):
     from types import SimpleNamespace
     from app.runtime.mode import DataMode
 
@@ -74,15 +74,15 @@ def test_live_model_mode_requires_live_tool_data(monkeypatch, tmp_path):
             "model_mode": "LIVE",
             "llm_config": {"api_key": "test", "base_url": "https://api.deepseek.com/v1", "model": "test"},
         })
-        assert response.status_code == 409
-        assert response.json()["error_code"] == "DATA_MODE_NOT_LIVE"
+        assert response.status_code == 200
+        assert "DATA_MODE_NOT_LIVE" not in response.text
         auto_response = client.post("/api/v1/copilot/chat", json={
             "message": "测试",
             "model_mode": "AUTO",
             "llm_config": {"api_key": "test", "base_url": "https://api.deepseek.com/v1", "model": "test"},
         })
-        assert auto_response.status_code == 409
-        assert auto_response.json()["error_code"] == "DATA_MODE_NOT_LIVE"
+        assert auto_response.status_code == 200
+        assert "DATA_MODE_NOT_LIVE" not in auto_response.text
 
 
 def test_unlocked_chat_strips_unverified_personal_context(monkeypatch, tmp_path):
@@ -122,7 +122,8 @@ def test_unlocked_chat_strips_unverified_personal_context(monkeypatch, tmp_path)
     assert "一般回答" in response.text
     assert captured["persona_info"] is None
     assert captured["portfolio_context"] is None
-    assert captured["history"] == []
+    assert len(captured["history"]) == 1
+    assert captured["history"][0].role == "assistant"
 
 
 def test_dynamic_quick_tags_keep_direct_live_intent_route():

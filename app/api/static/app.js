@@ -146,6 +146,7 @@
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
+  let accountAccessEnabled = false;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
   async function refreshSessionTruth() {
     const owner = state.ownerId;
@@ -5797,11 +5798,13 @@
     if (!btn || !label) return;
 
     const isLive = (state.dataMode === "LIVE");
+    const formalUnavailable = accountAccessEnabled && !isLive;
     const liveReady = state.liveReady === true;
     btn.classList.toggle("mode-live", isLive);
     btn.classList.toggle("mode-mock", !isLive);
     const liveCapabilities = (state.capabilities && state.capabilities.LIVE) || {};
-    label.textContent = isLive ? liveModeLabelForUser() : "MOCK · 合成数据";
+    label.textContent = isLive ? liveModeLabelForUser() : formalUnavailable ? "工具数据 · 未就绪" : "MOCK · 合成数据";
+    btn.disabled = accountAccessEnabled && isLive;
     const capabilitySummary = [
       `A 股行情${liveCapabilities.stock_quote ? "可用" : "不可用"}`,
       `场内基金披露${liveCapabilities.fund_lookthrough ? "可用" : "不可用"}`,
@@ -5826,12 +5829,16 @@
       control.disabled = unavailable;
       control.setAttribute(
         "title",
-        unavailable ? `${unavailableMessage}；可切换至 MOCK 查看示例数据` : "",
+        unavailable ? (accountAccessEnabled ? unavailableMessage : `${unavailableMessage}；可切换至 MOCK 查看示例数据`) : "",
       );
     });
   }
 
   function openDataModeConfirmModal() {
+    if (accountAccessEnabled && state.dataMode === "LIVE") {
+      alert("正式账户不允许切换至 Mock 数据；如需演示，请使用显式开发预览命令。");
+      return;
+    }
     const modal = byId("modal-data-mode-confirm");
     if (!modal) return;
     closeLLMConfigModal();
@@ -7283,7 +7290,7 @@
         const parsed = JSON.parse(saved);
         PERSONAS["custom-user"] = { ...DEFAULT_USER_PROFILE, ...parsed };
       }
-      const conversationProfile = localStorage.getItem("prism_conversation_profile_v1");
+      const conversationProfile = workspaceStorage.getItem(ownerStorageKey("prism_conversation_profile_v1"));
       if (conversationProfile) {
         PERSONAS["custom-user"] = {
           ...PERSONAS["custom-user"],
@@ -9448,7 +9455,7 @@
       updatedAt: new Date().toISOString(),
     };
     try {
-      localStorage.setItem("prism_conversation_profile_v1", JSON.stringify(saved));
+      workspaceStorage.setItem(ownerStorageKey("prism_conversation_profile_v1"), JSON.stringify(saved));
     } catch (e) {}
     state.conversationProfileDraft = null;
     saveUserProfile({
@@ -9880,6 +9887,7 @@
   const llmConfig = {
     apiKey: "",
     configured: false,
+    connectionStatus: "NONE",
     baseUrl: "https://api.deepseek.com/v1",
     model: "deepseek-chat",
     provider: "deepseek",
@@ -9891,10 +9899,18 @@
     const label = byId("llm-config-btn-label");
     const badge = byId("chat-model-badge");
 
-    if (llmConfig.configured) {
-      if (dot) dot.textContent = "🟢";
-      if (label) label.textContent = `已接入 (${llmConfig.model})`;
-      if (badge) badge.textContent = `${llmConfig.model} · 已配置`;
+    if (llmConfig.configured && llmConfig.connectionStatus === "CONNECTED") {
+      if (dot) dot.textContent = "●";
+      if (label) label.textContent = `连接通过 (${llmConfig.model})`;
+      if (badge) badge.textContent = `${llmConfig.model} · 连接通过`;
+    } else if (llmConfig.configured && llmConfig.connectionStatus === "FAILED") {
+      if (dot) dot.textContent = "●";
+      if (label) label.textContent = `连接失败 (${llmConfig.model})`;
+      if (badge) badge.textContent = `${llmConfig.model} · 连接失败`;
+    } else if (llmConfig.configured) {
+      if (dot) dot.textContent = "●";
+      if (label) label.textContent = `已保存待测试 (${llmConfig.model})`;
+      if (badge) badge.textContent = `${llmConfig.model} · 已保存待测试`;
     } else {
       if (dot) dot.textContent = "⚪";
       if (label) label.textContent = "大模型配置 (API Key)";
@@ -9926,10 +9942,11 @@
     const mode = byId("chat-runtime-mode")?.value || "AUTO";
     const ai = byId("visible-ai-mode"), data = byId("visible-data-mode");
     if (!ai || !data) return;
-    ai.textContent = mode === "MOCK" ? "AI · MOCK 模拟" : llmConfig.configured ? "AI · 真实接口已配置" : mode === "LIVE" ? "AI · 真实接口未配置" : "AI · 本地规则";
-    ai.dataset.mode = mode === "MOCK" ? "mock" : llmConfig.configured ? "live" : "pending";
-    data.textContent = state.dataMode === "LIVE" ? "工具数据 · LIVE" : "工具数据 · MOCK";
-    data.dataset.mode = state.dataMode === "LIVE" ? "live" : "mock";
+    const modelStatus = llmConfig.connectionStatus;
+    ai.textContent = mode === "MOCK" ? "AI · MOCK 模拟" : modelStatus === "CONNECTED" ? "AI · 连接通过" : modelStatus === "FAILED" ? "AI · 连接失败" : llmConfig.configured ? "AI · 已保存待测试" : mode === "LIVE" ? "AI · 真实接口未配置" : "AI · 本地规则";
+    ai.dataset.mode = mode === "MOCK" ? "mock" : modelStatus === "CONNECTED" ? "live" : modelStatus === "FAILED" ? "error" : "pending";
+    data.textContent = state.dataMode === "LIVE" ? "工具数据 · LIVE" : accountAccessEnabled ? "工具数据 · 未就绪" : "工具数据 · MOCK";
+    data.dataset.mode = state.dataMode === "LIVE" ? "live" : accountAccessEnabled ? "pending" : "mock";
   }
 
   function closeLLMConfigModal() {
@@ -9947,11 +9964,12 @@
     if (owner !== state.ownerId) return;
     llmConfig.apiKey = "";
     llmConfig.configured = settings.is_configured;
+    llmConfig.connectionStatus = settings.is_configured ? "SAVED" : "NONE";
     llmConfig.baseUrl = settings.base_url;
     llmConfig.model = settings.model;
     updateLLMConfigUI();
     const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
-    byId("llm-config-status").textContent = settings.is_configured ? `已配置 ${settings.model} · ${persistence}，可测试连接。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
+    byId("llm-config-status").textContent = settings.is_configured ? `已保存待测试 · ${settings.model} · ${persistence}。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
     return settings;
   }
 
@@ -9966,7 +9984,7 @@
       });
       if (!response.ok) throw await apiError(response);
       await loadModelSettings();
-      status.textContent = "配置已保存。请测试连接后使用真实接口。";
+      status.textContent = "已保存待测试。请执行连接测试后使用真实接口。";
       byId("llm-api-key-input").value = "";
     } catch (error) { status.textContent = `保存失败：${error.message}`; }
     finally { button.disabled = false; }
@@ -10206,7 +10224,11 @@
     const sumBar = document.createElement("div");
     sumBar.className = "ocr-summary-bar";
     const sumLeft = document.createElement("div");
-    sumLeft.textContent = `识别出 ${data.positions.length} 笔持仓 · 可用现金 ¥${data.cash_cny.toLocaleString()} · 资产总计 ¥${data.total_value_cny.toLocaleString()}`;
+    const cashLabel = data.cash_observed === false ? "现金未显示" : `可用现金 ¥${Number(data.cash_cny).toLocaleString()}`;
+    const totalLabel = data.account_total_observed === false
+      ? `持仓市值小计 ¥${Number(data.total_value_cny).toLocaleString()}（非账户总资产）`
+      : `账户总资产 ¥${Number(data.account_total_value_cny ?? data.total_value_cny).toLocaleString()}`;
+    sumLeft.textContent = `识别出 ${data.positions.length} 笔当前持仓 · ${cashLabel} · ${totalLabel}`;
     const sumRight = document.createElement("span");
     sumRight.className = data.has_low_confidence_items ? "cf-verdict cf-verdict-warning" : "cf-verdict cf-verdict-pass";
     if (data.has_low_confidence_items) {
@@ -10224,7 +10246,7 @@
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
-    ["代码", "名称", "持股/份额", "成本价", "当前市价", "持仓市值", "置信度", "审核裁决"].forEach(h => {
+    ["代码", "名称", "持股/可用", "成本价", "当前市价", "持仓市值", "报价时间", "置信度", "审核裁决"].forEach(h => {
       const th = document.createElement("th");
       th.textContent = h;
       headerRow.append(th);
@@ -10242,7 +10264,11 @@
       }
 
       const tdCode = document.createElement("td");
-      tdCode.textContent = pos.asset_id;
+      const codeInput = document.createElement("input");
+      codeInput.className = "ocr-edit-input";
+      codeInput.value = pos.asset_id || pos.identity_candidates?.[0]?.asset_id || "";
+      codeInput.placeholder = "600000.SH";
+      tdCode.append(codeInput);
 
       const tdName = document.createElement("td");
       tdName.textContent = pos.name;
@@ -10252,16 +10278,30 @@
       qtyInput.type = "number";
       qtyInput.className = "ocr-edit-input";
       qtyInput.value = pos.quantity;
-      tdQty.append(qtyInput);
+      const availableText = document.createElement("small");
+      availableText.textContent = pos.available_quantity == null ? "可用未识别" : `可用 ${pos.available_quantity}`;
+      tdQty.append(qtyInput, availableText);
 
       const tdCost = document.createElement("td");
-      tdCost.textContent = `¥${pos.cost_price}`;
+      const costInput = document.createElement("input");
+      costInput.type = "number"; costInput.step = "0.001"; costInput.className = "ocr-edit-input";
+      costInput.value = pos.cost_price ?? "";
+      tdCost.append(costInput);
 
       const tdPrice = document.createElement("td");
-      tdPrice.textContent = `¥${pos.price}`;
+      const priceInput = document.createElement("input");
+      priceInput.type = "number"; priceInput.step = "0.001"; priceInput.className = "ocr-edit-input";
+      priceInput.value = pos.price ?? "";
+      tdPrice.append(priceInput);
 
       const tdVal = document.createElement("td");
       tdVal.textContent = `¥${pos.market_value_cny.toLocaleString()}`;
+
+      const tdObserved = document.createElement("td");
+      const observedInput = document.createElement("input");
+      observedInput.type = "datetime-local"; observedInput.className = "ocr-edit-input";
+      observedInput.value = pos.observed_at ? String(pos.observed_at).slice(0, 16) : "";
+      tdObserved.append(observedInput);
 
       const tdConf = document.createElement("td");
       if (pos.needs_review) {
@@ -10283,10 +10323,10 @@
       }
       tdVerdict.append(vTag);
 
-      tr.append(tdCode, tdName, tdQty, tdCost, tdPrice, tdVal, tdConf, tdVerdict);
+      tr.append(tdCode, tdName, tdQty, tdCost, tdPrice, tdVal, tdObserved, tdConf, tdVerdict);
       tbody.append(tr);
 
-      inputControls.push({ pos, qtyInput });
+      inputControls.push({ pos, codeInput, qtyInput, costInput, priceInput, observedInput });
     });
     table.append(tbody);
     tableWrapper.append(table);
@@ -10321,10 +10361,19 @@
     confirmBtn.addEventListener("click", async () => {
       confirmBtn.disabled = true;
       try {
-        const editedPositions = inputControls.map(({ pos, qtyInput }) => {
+        const editedPositions = inputControls.map(({ pos, codeInput, qtyInput, costInput, priceInput, observedInput }) => {
           const val = Number(qtyInput.value);
           if (!Number.isInteger(val) || val <= 0) throw new Error("持仓数量必须为正整数");
-          return { ...pos, quantity: val };
+          const assetId = codeInput.value.trim().toUpperCase();
+          if (!/^\d{6}\.(SH|SZ|BJ)$/.test(assetId)) throw new Error("请核对并填写完整证券代码，例如 600251.SH");
+          const cost = Number(costInput.value), price = Number(priceInput.value);
+          if (!(cost > 0) || !(price > 0)) throw new Error("成本价与当前市价必须为正数");
+          if (!observedInput.value) throw new Error("请补充截图对应的报价时间");
+          const reasons = (pos.review_reasons || []).filter(reason => !["MISSING_OBSERVED_AT", "SECURITY_IDENTITY_REQUIRED"].includes(reason));
+          return { ...pos, asset_id: assetId, quantity: val, cost_price: cost, price,
+            observed_at: new Date(observedInput.value).toISOString(),
+            price_source: pos.price_source || "user-confirmed broker screenshot",
+            review_reasons: reasons, needs_review: reasons.length > 0 };
         });
         const validated = await validateAndActivatePortfolio(data, editedPositions);
         if (!validated) return;
@@ -10341,6 +10390,12 @@
     actions.append(confirmBtn);
 
     card.append(sumBar, tableWrapper, callout, actions);
+    if (Array.isArray(data.zero_positions) && data.zero_positions.length) {
+      const excluded = document.createElement("p");
+      excluded.className = "research-boundary";
+      excluded.textContent = `已识别并排除零持仓：${data.zero_positions.map(item => item.name).join("、")}`;
+      card.insertBefore(excluded, actions);
+    }
     container.append(card);
   }
 
@@ -10801,8 +10856,14 @@
     try {
       const response = await fetch("/api/v1/user/model-settings/test", {method: "POST", headers: {"X-Owner-ID": state.ownerId}});
       if (!response.ok) throw await apiError(response);
+      llmConfig.connectionStatus = "CONNECTED";
       status.textContent = "连接测试通过。";
-    } catch (error) { status.textContent = `连接未通过：${error.message}`; }
+      updateLLMConfigUI();
+    } catch (error) {
+      llmConfig.connectionStatus = "FAILED";
+      status.textContent = `连接失败：${error.message}`;
+      updateLLMConfigUI();
+    }
     finally { byId("test-user-model").disabled = false; }
   });
 
@@ -11030,9 +11091,43 @@
     const current = state.userPreferences?.theme || (document.body.classList.contains("prism-theme-dark") ? "DARK" : "LIGHT");
     saveThemePreference(current === "DARK" ? "LIGHT" : "DARK");
   });
+  byId("open-password-change")?.addEventListener("click", () => {
+    byId("password-change-error").textContent = "";
+    byId("password-change-form").reset();
+    byId("password-change-dialog").showModal();
+  });
+  byId("cancel-password-change")?.addEventListener("click", () => byId("password-change-dialog").close());
+  byId("password-change-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const error = byId("password-change-error");
+    error.textContent = "";
+    const response = await fetch("/api/v1/auth/change-password", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        current_password: byId("current-password").value,
+        new_password: byId("new-password").value,
+        new_password_confirmation: byId("new-password-confirmation").value,
+      }),
+    });
+    if (!response.ok) {
+      const detail = await apiError(response);
+      error.textContent = detail.message || "密码修改失败";
+      return;
+    }
+    activeChatController?.abort();
+    marketAbortController?.abort();
+    transientStorage.clear();
+    window.location.replace("/login");
+  });
   byId("logout-local-session")?.addEventListener("click", async () => {
     const response = await fetch("/api/v1/auth/logout", {method: "POST"});
-    if (response.ok) window.location.assign("/login");
+    if (response.ok) {
+      activeChatController?.abort();
+      marketAbortController?.abort();
+      transientStorage.clear();
+      window.location.replace("/login");
+    }
     else setError("退出登录失败，请刷新后重试。");
   });
 
@@ -11117,9 +11212,13 @@
     const response = await fetch("/api/v1/auth/context");
     if (!response.ok) throw new Error("无法确认账户身份，请重新登录后刷新");
     const context = await response.json();
+    accountAccessEnabled = context.enabled === true;
     authenticatedOwner = context.enabled ? context.owner_id : null;
     if (context.enabled && !authenticatedOwner) throw new Error("账户身份无效");
     if (authenticatedOwner) {
+      const mockOption = byId("chat-runtime-mode")?.querySelector('option[value="MOCK"]');
+      if (mockOption) mockOption.remove();
+      if (byId("chat-runtime-mode")?.value === "MOCK") byId("chat-runtime-mode").value = "AUTO";
       byId("owner-id").readOnly = true;
       document.querySelectorAll("[data-persona]").forEach(el => {
         if (el.dataset.persona !== "custom-user") el.hidden = true;

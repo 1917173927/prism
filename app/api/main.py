@@ -13,11 +13,11 @@ import os
 import re
 from time import monotonic
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from app.api.access import LocalAccessMiddleware, load_accounts
+from app.api.access import LocalAccessMiddleware, LocalAccount, load_accounts, password_digest
 from app.service.natural_profile import NaturalProfileRequest, NaturalProfileError, extract_natural_profile
 from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status, fingerprint, SessionAssertionsRequest, check_session_assertions
 from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
@@ -285,12 +285,18 @@ class ConfirmedOcrPosition(BaseModel):
     asset_class: str | None = None
     sector: str | None = None
     quantity: Decimal = Field(gt=0)
+    available_quantity: Decimal | None = Field(default=None, ge=0)
     cost_price: Decimal | None = Field(default=None, gt=0)
     previous_close: Decimal | None = Field(default=None, gt=0)
     observed_at: str | None = None
     price_source: str | None = None
     price: Decimal = Field(gt=0)
     market_value_cny: Decimal | None = Field(default=None, ge=0)
+    day_pnl_cny: Decimal | None = None
+    day_pnl_pct: Decimal | None = None
+    field_sources: dict[str, str] = Field(default_factory=dict)
+    identity_candidates: list[dict[str, Any]] = Field(default_factory=list)
+    zero_position: bool = False
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
     confidence_pct: Decimal | None = Field(default=None, ge=0, le=100)
     needs_review: bool = False
@@ -327,6 +333,23 @@ class WencaiConfigApiRequest(BaseModel):
 
 class WencaiStoredConfig(WencaiConfigApiRequest):
     contract_verified: bool = False
+
+
+class AuthLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    username: str = Field(min_length=3, max_length=100, pattern=r"^[A-Za-z0-9_.@-]+$")
+    password: str = Field(min_length=12, max_length=512)
+
+
+class AuthRegisterRequest(AuthLoginRequest):
+    password_confirmation: str = Field(min_length=12, max_length=512)
+
+
+class AuthPasswordChangeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    current_password: str = Field(min_length=12, max_length=512)
+    new_password: str = Field(min_length=12, max_length=512)
+    new_password_confirmation: str = Field(min_length=12, max_length=512)
 
 
 class MemorySearchRequest(BaseModel):
@@ -422,6 +445,7 @@ def create_app(
     database_path: str | Path = ":memory:",
     database_url: str | None = None,
     auth_accounts_path: str | Path | None = None,
+    auth_enabled: bool | None = None,
     clock: Callable[[], datetime] | None = None,
     advisor_service: FixtureAdvisorQueryService | None = None,
     specialist_service: FixtureResearchSpecialistMatrixService | None = None,
@@ -450,6 +474,7 @@ def create_app(
     """
 
     accounts = load_accounts(auth_accounts_path) if auth_accounts_path else {}
+    access_enabled = bool(accounts) if auth_enabled is None else auth_enabled
     active_secret_store = secret_store
     owned_store = store is None
     if store is not None and database_url is not None:
@@ -464,6 +489,21 @@ def create_app(
     else:
         active_store = SQLiteDecisionEventStore(database_path)
     active_clock = clock or (lambda: datetime.now(UTC))
+    # Import legacy JSON accounts once so persistent sessions can satisfy the
+    # database foreign key. Existing database accounts remain authoritative.
+    for legacy_account in accounts.values():
+        if active_store.get_local_account(legacy_account.username) is not None:
+            continue
+        timestamp = active_clock().isoformat()
+        active_store.create_local_account({
+            "username": legacy_account.username,
+            "owner_id": legacy_account.owner_id,
+            "salt": legacy_account.salt,
+            "password_hash": legacy_account.password_hash,
+            "admin": legacy_account.admin,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        })
     active_advisor = advisor_service or FixtureAdvisorQueryService()
     active_specialist = specialist_service or FixtureResearchSpecialistMatrixService()
     active_stock = stock_service or FixtureStockResearchService()
@@ -514,15 +554,33 @@ def create_app(
     def reject_fixture_execution_in_live(
         service: object, capability: str
     ) -> JSONResponse | None:
-        if (
-            get_runtime_mode_controller().mode == DataMode.LIVE
-            and service_uses_fixture(service)
+        if service_uses_fixture(service) and (
+            access_enabled or get_runtime_mode_controller().mode == DataMode.LIVE
         ):
-            return _error_response(
-                409,
-                "LIVE_RESEARCH_NOT_AVAILABLE",
-                f"{capability}尚未接入真实研究服务；LIVE 模式拒绝返回演示数据",
-            )
+            return JSONResponse(status_code=409, content={
+                "schema_version": "api-error.v1",
+                "status": "UNAVAILABLE",
+                "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+                "message": f"{capability}尚未接入真实研究服务；正式账户拒绝返回演示数据",
+                "actual_source": None,
+                "observed_at": None,
+                "missing_fields": ["live_provider", "complete_required_fields", "independent_evidence"],
+                "failure_reason": "configured implementation is fixture-only",
+            })
+        return None
+
+    def reject_mock_in_formal(capability: str) -> JSONResponse | None:
+        if access_enabled and get_runtime_mode_controller().mode != DataMode.LIVE:
+            return JSONResponse(status_code=409, content={
+                "schema_version": "api-error.v1",
+                "status": "UNAVAILABLE",
+                "error_code": "REAL_DATA_MODE_REQUIRED",
+                "message": f"{capability}需要真实数据能力；正式账户不返回 Mock 或 Fixture 数据",
+                "actual_source": None,
+                "observed_at": None,
+                "missing_fields": ["verified_live_provider"],
+                "failure_reason": "runtime data mode is not LIVE",
+            })
         return None
 
     user_model_settings: dict[str, CopilotConfigApiRequest] = {}
@@ -543,7 +601,7 @@ def create_app(
         # Without account authentication this is a single-user loopback
         # workbench.  Use one installation-scoped DPAPI slot instead of
         # pretending the caller-controlled owner label is an identity boundary.
-        if active_secret_store is not None and not accounts:
+        if active_secret_store is not None and not access_enabled:
             return "local:workbench"
         return owner_id
 
@@ -648,8 +706,11 @@ def create_app(
         redoc_url=None,
         lifespan=lifespan,
     )
-    if accounts:
-        api.add_middleware(LocalAccessMiddleware, accounts=accounts, audit=active_store.record_access)
+    if access_enabled:
+        api.add_middleware(
+            LocalAccessMiddleware, accounts=accounts, store=active_store,
+            audit=active_store.record_access, clock=active_clock,
+        )
     api.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     @api.exception_handler(RequestValidationError)
@@ -804,33 +865,104 @@ def create_app(
     @api.get("/api/v1/auth/context")
     def auth_context(request: Request):
         account = getattr(request.state, "account", None)
-        return {"enabled": bool(accounts), "owner_id": account.owner_id if account else None,
+        if access_enabled and account is None:
+            raise HTTPException(status_code=401, detail="local account authentication required")
+        return {"enabled": access_enabled, "owner_id": account.owner_id if account else None,
                 "admin": account.admin if account else False}
 
-    @api.post("/api/v1/auth/login")
-    def create_local_login(request: Request):
-        account = getattr(request.state, "account", None)
-        if account is None:
-            raise HTTPException(status_code=401, detail="local account authentication required")
-        # FastAPI keeps the constructed middleware stack separately; retrieve
-        # the live instance from the request path instead of trusting client data.
+    def access_layer(request: Request) -> LocalAccessMiddleware:
         layer = request.app.middleware_stack
         while layer is not None and not isinstance(layer, LocalAccessMiddleware):
             layer = getattr(layer, "app", None)
         if layer is None:
             raise HTTPException(status_code=409, detail="local session mode is disabled")
-        response = JSONResponse({"owner_id": account.owner_id, "local_demo": True})
-        response.set_cookie("prism_local_session", layer.issue_session(account), httponly=True, samesite="lax")
+        return layer
+
+    @api.post("/api/v1/auth/login")
+    async def create_local_login(request: Request, credentials: AuthLoginRequest | None = Body(default=None)):
+        layer = access_layer(request)
+        if credentials is None:
+            import base64
+            try:
+                scheme, encoded = request.headers.get("authorization", "").split(" ", 1)
+                if scheme.lower() != "basic":
+                    raise ValueError
+                username, password = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
+                credentials = AuthLoginRequest(username=username, password=password)
+            except (ValueError, UnicodeError, ValidationError):
+                return _error_response(401, "AUTH_INVALID", "用户名或密码无效")
+        account = await layer.authenticate(credentials.username, credentials.password)
+        if account is None:
+            return _error_response(401, "AUTH_INVALID", "用户名或密码无效")
+        response = JSONResponse({"owner_id": account.owner_id, "username": account.username,
+                                 "admin": account.admin})
+        response.set_cookie(
+            "prism_local_session", layer.issue_session(account), httponly=True,
+            samesite="lax", secure=request.url.scheme == "https", max_age=24 * 60 * 60,
+        )
+        return response
+
+    @api.post("/api/v1/auth/register", status_code=201)
+    async def register_local_account(credentials: AuthRegisterRequest, request: Request):
+        if credentials.password != credentials.password_confirmation:
+            return _error_response(422, "PASSWORD_CONFIRMATION", "两次输入的密码不一致")
+        if credentials.username.casefold() in {name.casefold() for name in accounts}:
+            return _error_response(409, "ACCOUNT_EXISTS", "用户名已存在")
+        from starlette.concurrency import run_in_threadpool
+        from secrets import token_hex
+        salt = token_hex(16)
+        digest = await run_in_threadpool(password_digest, credentials.password, salt)
+        now = active_clock().isoformat()
+        account = LocalAccount(
+            username=credentials.username,
+            owner_id="usr-" + uuid4().hex,
+            salt=salt,
+            password_hash=digest,
+            admin=False,
+        )
+        try:
+            active_store.create_local_account({
+                "username": account.username, "owner_id": account.owner_id,
+                "salt": account.salt, "password_hash": account.password_hash,
+                "admin": False, "created_at": now, "updated_at": now,
+            })
+        except StoreConflictError:
+            return _error_response(409, "ACCOUNT_EXISTS", "用户名已存在")
+        layer = access_layer(request)
+        response = JSONResponse({"owner_id": account.owner_id, "username": account.username,
+                                 "admin": False}, status_code=201)
+        response.set_cookie(
+            "prism_local_session", layer.issue_session(account), httponly=True,
+            samesite="lax", secure=request.url.scheme == "https", max_age=24 * 60 * 60,
+        )
         return response
 
     @api.post("/api/v1/auth/logout")
     def local_logout(request: Request):
-        layer = request.app.middleware_stack
-        while layer is not None and not isinstance(layer, LocalAccessMiddleware):
-            layer = getattr(layer, "app", None)
-        if layer is not None:
-            layer.revoke_session(request.cookies.get("prism_local_session"))
+        layer = access_layer(request)
+        layer.revoke_session(request.cookies.get("prism_local_session"))
         response = JSONResponse({"logged_out": True})
+        response.delete_cookie("prism_local_session")
+        return response
+
+    @api.post("/api/v1/auth/change-password")
+    async def change_local_password(credentials: AuthPasswordChangeRequest, request: Request):
+        account = getattr(request.state, "account", None)
+        if account is None:
+            return _error_response(401, "AUTH_REQUIRED", "请先登录")
+        if credentials.new_password != credentials.new_password_confirmation:
+            return _error_response(422, "PASSWORD_CONFIRMATION", "两次输入的新密码不一致")
+        layer = access_layer(request)
+        verified = await layer.authenticate(account.username, credentials.current_password)
+        if verified is None:
+            return _error_response(401, "AUTH_INVALID", "当前密码无效")
+        from starlette.concurrency import run_in_threadpool
+        from secrets import token_hex
+        salt = token_hex(16)
+        digest = await run_in_threadpool(password_digest, credentials.new_password, salt)
+        active_store.change_local_password(account.username, salt, digest, active_clock().isoformat())
+        layer.revoke_owner_sessions(account.owner_id)
+        response = JSONResponse({"password_changed": True, "reauthentication_required": True})
         response.delete_cookie("prism_local_session")
         return response
 
@@ -848,6 +980,43 @@ def create_app(
             "revision": controller.revision,
             "live_ready": controller.is_live_ready,
             "capabilities": controller.capabilities,
+        }
+
+    @api.get("/api/v1/runtime/capability-gaps")
+    def get_runtime_capability_gaps(owner_id: str = Depends(owner_dependency)):
+        del owner_id
+        controller = get_runtime_mode_controller()
+        definitions = (
+            ("security_identity", "证券身份识别", controller.is_wencai_ready,
+             ["完整交易所证券目录、历史简称与市场代码"], "查询名称后返回唯一代码、市场和可追溯来源"),
+            ("stock_research", "股票研究", not service_uses_fixture(active_stock),
+             ["同期间财报", "估值历史序列", "独立证据来源"], "完整研究接口返回非合成字段、观察时间与双来源证据"),
+            ("fund_research", "基金研究", not service_uses_fixture(active_fund),
+             ["净值与基准历史", "费率", "披露持仓及行业覆盖率"], "基金研究接口通过完整字段与披露日期校验"),
+            ("convertible_bond_research", "可转债研究", not service_uses_fixture(active_convertible_bond),
+             ["转股条款原文", "债券行情", "评级、现金流和流动性"], "条款、行情及公式输入均带真实来源"),
+            ("specialist_matrix", "研究矩阵", not service_uses_fixture(active_specialist),
+             ["宏观、行业及单标的真实研究节点", "独立来源"], "所有必需节点完成且来源指纹互相独立"),
+            ("advisor", "投顾查询", not service_uses_fixture(active_advisor),
+             ["真实研究输出", "已确认账户画像与持仓"], "适当性闸门基于账户事实并引用完整真实研究"),
+            ("scenario", "情景分析", not service_uses_fixture(active_scenario_simulation),
+             ["已确认持仓基线", "明确的假设参数"], "结果标为假设测算且输入基线可追溯"),
+            ("portfolio_refresh", "持仓刷新", controller.capabilities["LIVE"].get("portfolio_refresh", False),
+             ["扶摇真实报价", "问财证券与行业元数据"], "逐项报价与行业元数据均通过真实探测"),
+        )
+        items = [{
+            "capability": key,
+            "label": label,
+            "status": "AVAILABLE" if available else "UNAVAILABLE",
+            "missing": [] if available else missing,
+            "impact": None if available else f"{label}不能在 LIVE 模式完成验收",
+            "required_interface_or_permission": None if available else "对应真实 Provider 的字段与访问权限",
+            "verification": verification,
+        } for key, label, available, missing, verification in definitions]
+        return {
+            "status": "COMPLETE" if all(item["status"] == "AVAILABLE" for item in items) else "INCOMPLETE",
+            "data_mode": controller.mode.value,
+            "items": items,
         }
 
     @api.post(
@@ -957,7 +1126,7 @@ def create_app(
         active_store.save_user_preferences(owner_id, response.model_dump(mode="json"))
         # Authenticated deployments audit responses in LocalAccessMiddleware;
         # development mode has no middleware, so retain a single explicit row.
-        if not accounts:
+        if not access_enabled:
             active_store.record_access(owner_id, "PUT", "/api/v1/user/preferences", 200)
         return response
 
@@ -1346,6 +1515,10 @@ def create_app(
         controller = get_runtime_mode_controller()
         try:
             target_mode = str(req.target_mode).upper()
+            if access_enabled and target_mode == "MOCK":
+                return _error_response(
+                    409, "FORMAL_MOCK_DISABLED", "正式账户不启用 Mock 数据；开发演示需显式设置 PRISM_DEV_NO_AUTH=true"
+                )
             if (
                 target_mode == "LIVE"
                 and active_live_finance.is_configured
@@ -2273,7 +2446,6 @@ def create_app(
             req.portfolio_snapshot_id = None
             req.persona_info = None
             req.portfolio_context = None
-            req.history = []
         if req.session_truth_id:
             if not scoped_owner:
                 raise StoreOwnerError("session truth requires an owner")
@@ -2312,8 +2484,6 @@ def create_app(
         configured = bool((req.llm_config or {}).get("api_key")) or copilot_agent.client.is_configured
         if req.model_mode != "MOCK" and not configured:
             return _error_response(409, "MODEL_NOT_CONFIGURED", "请在更多 → 模型设置中配置 API Key")
-        if req.model_mode != "MOCK" and controller.mode != DataMode.LIVE:
-            return _error_response(409, "DATA_MODE_NOT_LIVE", "真实模型调用要求工具数据同时处于 LIVE")
 
         async def sse_generator():
             context_event = {
@@ -2357,6 +2527,10 @@ def create_app(
             }
             yield f"data: {json.dumps(context_event, ensure_ascii=False)}\n\n"
             if req.model_mode == "MOCK":
+                if access_enabled:
+                    yield "data: " + json.dumps({"type": "error", "message": "正式账户不启用 AI Mock 回复"}, ensure_ascii=False) + "\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
                 payload = {"type": "token", "delta": "## 演示回复\n\n当前为 **AI 模拟模式**。\n\n- 可测试对话、持仓导入与页面联动。\n- 正式分析请切换真实接口并配置模型。\n\n|项目|状态|\n|---|---|\n|模型调用|模拟数据|\n|投资结论|未生成|\n\n仅供演示参考，不构成投资建议。"}
                 yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
                 yield "data: [DONE]\n\n"
@@ -2368,6 +2542,7 @@ def create_app(
                 persona_info=req.persona_info,
                 portfolio_context=req.portfolio_context,
                 llm_config=req.llm_config,
+                tool_data_mode=DataMode.LIVE,
             )) as stream:
                 async for chunk in stream:
                     if req.session_truth_id:
@@ -2398,7 +2573,9 @@ def create_app(
     @api.post("/api/v1/copilot/parse-portfolio")
     async def copilot_parse_portfolio_endpoint(req: CopilotParsePortfolioApiRequest):
         """Natural language to structured portfolio entity extraction."""
-        result = await copilot_agent.parse_portfolio_from_text(req.text)
+        result = await copilot_agent.parse_portfolio_from_text(
+            req.text, data_mode=DataMode.LIVE if access_enabled else None
+        )
         return JSONResponse(content=result)
 
     @api.post("/api/v1/copilot/parse-portfolio-ocr")
@@ -2430,6 +2607,12 @@ def create_app(
         if req.owner_id != owner_id:
             raise StoreOwnerError("OCR portfolio owner does not match owner scope")
         mode = get_runtime_mode_controller().mode
+        if any("MISSING_OBSERVED_AT" in (item.get("review_reasons") or []) for item in req.positions):
+            return _error_response(
+                422,
+                "OCR_OBSERVED_AT_REQUIRED",
+                "截图未显示报价时间；请核对并补充截图对应时间后再确认",
+            )
         if mode == DataMode.LIVE and any(
             "MISSING_OBSERVED_FIELDS" in (item.get("review_reasons") or [])
             for item in req.positions
@@ -2442,7 +2625,7 @@ def create_app(
         try:
             calculated = recalculate_portfolio_values(
                 req.positions, req.cash_cny, req.owner_id,
-                allow_synthetic_lookthrough=mode == DataMode.MOCK,
+                allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
             )
             active_store.save_current_portfolio(owner_id, mode.value, calculated)
             return JSONResponse(content=calculated)
@@ -2577,6 +2760,12 @@ def create_app(
         from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
 
         mode = get_runtime_mode_controller().mode
+        if any("MISSING_OBSERVED_AT" in item.review_reasons for item in req.positions):
+            return _error_response(
+                422,
+                "OCR_OBSERVED_AT_REQUIRED",
+                "截图未显示报价时间；请核对并补充截图对应时间后再确认",
+            )
         if mode == DataMode.LIVE and any(
             "MISSING_OBSERVED_FIELDS" in item.review_reasons for item in req.positions
         ):
@@ -2591,7 +2780,7 @@ def create_app(
             ]
             calculated = recalculate_portfolio_values(
                 confirmed_positions, req.cash_cny, owner_id,
-                allow_synthetic_lookthrough=mode == DataMode.MOCK,
+                allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
             )
             portfolio = PortfolioImportBundle.model_validate(calculated["portfolio"])
             confirmed_at = active_clock()
@@ -2639,7 +2828,7 @@ def create_app(
         cfg = setting or copilot_agent.client.config
         setting_scope = (
             "LOCAL_MACHINE"
-            if active_secret_store is not None and not accounts
+            if active_secret_store is not None and not access_enabled
             else "USER"
         )
         return {"is_configured": bool(cfg.api_key), "scope": setting_scope if setting else "SERVER",
@@ -2986,6 +3175,8 @@ def create_app(
                 await controller.record_wencai_failure("PORTFOLIO_REFRESH_FAILED")
                 await persist_wencai_failure("PORTFOLIO_REFRESH_FAILED")
             return response
+        if blocked := reject_mock_in_formal("组合刷新"):
+            return blocked
         return refresh_portfolio_mock(request)
 
     @api.post("/api/v1/runtime/provider-query")
@@ -3037,6 +3228,8 @@ def create_app(
                 },
             )
         controller = get_runtime_mode_controller()
+        if blocked := reject_mock_in_formal("股票行情"):
+            return blocked
         if controller.mode == DataMode.LIVE:
             try:
                 data = await active_live_finance.get_quote(symbol)
@@ -3121,6 +3314,8 @@ def create_app(
                 },
             )
         controller = get_runtime_mode_controller()
+        if blocked := reject_mock_in_formal("基金披露持仓"):
+            return blocked
         if controller.mode == DataMode.LIVE:
             try:
                 data = await active_live_finance.get_fund_lookthrough(fund_code)
@@ -3202,6 +3397,7 @@ app = create_app(
     database_url=os.getenv("PRISM_DATABASE_URL") or None,
     database_path=os.getenv("PRISM_DB_PATH") or str(Path(__file__).resolve().parents[2] / "data/private/prism.sqlite3"),
     auth_accounts_path=os.getenv("PRISM_AUTH_ACCOUNTS_FILE") or None,
+    auth_enabled=os.getenv("PRISM_DEV_NO_AUTH", "").strip().lower() not in {"1", "true", "yes"},
     secret_store=_DEFAULT_SECRET_STORE,
 )
 

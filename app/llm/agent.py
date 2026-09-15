@@ -72,6 +72,7 @@ class CopilotAgent:
         persona_info: dict[str, Any] | None = None,
         portfolio_context: dict[str, Any] | None = None,
         llm_config: dict[str, Any] | None = None,
+        tool_data_mode: DataMode | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream coordinator progress, tool execution, and grounded advisory response."""
 
@@ -117,7 +118,10 @@ class CopilotAgent:
         yield {"type": "start", "timestamp": datetime.now(UTC).isoformat()}
 
         executed_tools: list[dict[str, Any]] = []
-        request_data_mode = get_runtime_mode_controller().mode
+        # Model selection and financial-data selection are independent. The
+        # API pins real-model turns to LIVE tools, so a MOCK workspace cannot
+        # leak fixture data into an otherwise real conversation.
+        request_data_mode = tool_data_mode or get_runtime_mode_controller().mode
         has_usable_output = False
         has_error = False
         pending_content: list[str] = []
@@ -256,7 +260,9 @@ class CopilotAgent:
             sanitized["target_sector_cap"] = float(value)
         return sanitized, None
 
-    async def parse_portfolio_from_text(self, text: str) -> dict[str, Any]:
+    async def parse_portfolio_from_text(
+        self, text: str, *, data_mode: DataMode | None = None
+    ) -> dict[str, Any]:
         """Parse natural language into structured portfolio bundle."""
         text_clean = text.strip()
         # Normalize grouped numbers before extracting quantities, costs and cash.
@@ -266,7 +272,7 @@ class CopilotAgent:
             lambda match: match.group(0).replace(",", ""),
             text_clean,
         )
-        request_mode = get_runtime_mode_controller().mode
+        request_mode = data_mode or get_runtime_mode_controller().mode
 
         # Extract cash (supports "2万元现金", "现金2万元", "现金 20000元", etc.)
         cash = 0.0

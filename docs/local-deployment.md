@@ -9,29 +9,29 @@
 | `PRISM_DB_PATH` | `data/private/prism.sqlite3` | 本地持久化 | SQLite 回归与备份恢复 |
 | `PRISM_DATABASE_URL` | 未设置 | PostgreSQL 连接配置，设置后优先于 SQLite | 真实 PostgreSQL 17.11 隔离回归；不自动搬迁旧数据 |
 | `PRISM_SECRET_STORE_PATH` | `data/private/prism-secrets.json` | Windows DPAPI 保护的本地凭据文件 | 文件只保存密文；必须由同一 Windows 账户运行 Prism 才能解密 |
-| `PRISM_AUTH_ACCOUNTS_FILE` | 未设置 | 启用 HTTP Basic 账户校验 | 本地回环；跨机器必须先配置 HTTPS |
+| `PRISM_AUTH_ACCOUNTS_FILE` | 未设置 | 一次性兼容导入旧 JSON 账户 | 新账户及会话均写入当前数据库 |
+| `PRISM_DEV_NO_AUTH` | `false` | 显式开启无认证开发演示 | 仅本机开发；正式或共享环境禁止启用 |
 | `HITHINK_FINANCE_API_KEY` | 未设置 | 扶摇服务端凭据 | 真实能力探测成功后可用 |
 | `IWENCAI_API_KEY` / `IWENCAI_BASE_URL` | 未设置 / `https://openapi.iwencai.com` | 问财 OpenAPI 服务端凭据与地址 | 配置 Skill 版本头并完成真实查询后可用 |
 | `WENCAI_SKILLHUB_CONTRACT_VERIFIED` | `false` | 问财响应契约人工确认闸门 | `true` 后允许问财 LIVE 能力 |
 | `/api/health` | 无认证 | 进程和数据模式健康检查 | 不等于供应商可用性承诺 |
 
-未设置认证文件时为开发模式，`X-Owner-ID` 只是数据命名空间，不构成访问保护。认证开启后所有页面及业务接口需要认证，服务端将身份绑定到固定 owner；普通账户无权修改全局模型和数据模式。认证文件无效时启动失败，不自动回退到开发模式。
+正常启动默认启用本地账户。未登录的页面导航重定向至 Prism 登录页，API 返回 JSON 401；服务端会话 Cookie 设置 `HttpOnly` 与 `SameSite=Lax`，HTTPS 下同时设置 `Secure`。会话最长 24 小时、连续空闲 2 小时失效；退出撤销当前会话，修改密码撤销该账户全部会话。只有显式设置 `PRISM_DEV_NO_AUTH=true` 才进入无认证开发演示，此时 `X-Owner-ID` 仅为数据命名空间，不构成访问保护。
 
 ## 第2章 启动与账户管理
 
-在仓库根目录执行。密码通过交互输入，不放进命令历史；生成文件只保存随机盐和 scrypt 摘要。已有持仓属于 `demo-owner` 时，使用该 owner 可继续读取已有数据。运行前由使用者自行设置密码，不提供公共默认密码。
+在仓库根目录执行。首次启动可直接在登录页注册普通账户；owner ID 由服务端生成，新账户从空持仓、空画像和空聊天开始。管理员只能通过本地命令创建。密码通过交互输入，不放进命令历史；数据库只保存随机盐和 scrypt 摘要，不保存明文密码。
 
 ```powershell
 .venv/Scripts/python.exe tools/local_account.py --username local-admin --owner demo-owner --admin
-$env:PRISM_AUTH_ACCOUNTS_FILE = (Resolve-Path data/private/accounts.json).Path
 .venv/Scripts/python.exe -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-普通账户省略 `--admin`，独立数据空间指定不同 `--owner`。明确更换已有密码时加入 `--replace`，变更后重启服务。浏览器通过标准认证提示框登录。HTTP Basic 没有应用级会话退出或过期机制；此实现不替代公网身份提供方、限流和安全网关。账户文件由本机操作系统权限保护，不应放入共享目录。
+本地管理命令与服务入口使用相同的数据库选择规则：存在 `PRISM_DATABASE_URL` 时写入 PostgreSQL；否则使用显式 `--database`，再否则写入 `PRISM_DB_PATH` 或默认 SQLite 文件。为避免误写，设置 `PRISM_DATABASE_URL` 时禁止同时传入 `--database`。普通账户可在页面注册；命令中的 `--admin` 仅用于创建管理员。明确轮换现有密码时增加 `--replace`，其 owner 和角色必须保持一致，且该账户全部会话立即撤销。`PRISM_AUTH_ACCOUNTS_FILE` 仅保留旧 JSON 账户兼容导入和旧 Basic 客户端兼容，不再作为浏览器登录机制。此本地账户体系不替代公网身份提供方、速率限制和安全网关。
 
-认证模式下，聊天历史和界面画像备注只保留在当前页面内存，刷新后清空；已确认风险问卷及持仓仍从服务端恢复。Windows 本地运行时，模型密钥通过“更多 → 模型设置”填写，由当前 Windows 账户的 DPAPI 加密并保存到 `PRISM_SECRET_STORE_PATH`；服务重启后继续生效，浏览器和接口不缓存或回读明文密钥。启用 `PRISM_AUTH_ACCOUNTS_FILE` 后按账户隔离密钥；未启用认证的回环单用户工作台使用一个本机密钥槽，不把可由调用者填写的 owner 标签误作身份边界。留空保存会删除当前作用域的密钥并恢复服务端默认。服务端默认模型继续由 `PRISM_LLM_API_KEY`、`DEEPSEEK_API_KEY` 等环境配置提供。在非 Windows 部署中，只有部署环境的 Secret/环境变量能够持久化；页面填写的个人密钥仅在当前服务进程内有效，不会明文落盘。
+认证模式下，持仓、画像、聊天历史、偏好、工作流、审计记录和个人模型配置均按认证 owner 隔离。切换账户或退出时，页面中止未完成请求并清理当前账户的临时状态。Windows 本地运行时，模型密钥通过“更多 → 模型设置”填写，由当前 Windows 账户的 DPAPI 加密并按 owner 保存到 `PRISM_SECRET_STORE_PATH`；服务重启后继续生效，浏览器和接口不缓存或回读明文密钥。无认证开发演示仅使用一个本机密钥槽，不把可由调用者填写的 owner 标签误作身份边界。留空保存会删除当前作用域的密钥并恢复服务端默认。服务端默认模型继续由 `PRISM_LLM_API_KEY`、`DEEPSEEK_API_KEY` 等环境配置提供。在非 Windows 部署中，只有部署环境的 Secret/环境变量能够持久化；页面填写的个人密钥仅在当前服务进程内有效，不会明文落盘。
 
-模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。工具在系统临时目录创建独立 SQLite，打印访问地址，不清空原数据库。`?onboarding=1` 可重新弹出首次引导；右上角 AI/工具数据状态按钮可打开统一配置面板，切换 AI 默认/真实/Mock 模式、配置个人 API Key；全局工具数据切换保留管理员权限检查。`?dev=1` 仍可开启其他开发工具。AI 模式与全局行情数据模式分别控制，模拟回复保留演示标识。
+模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。该命令是显式无认证开发入口，会设置 `PRISM_DEV_NO_AUTH=true`，在系统临时目录创建独立 SQLite，且不清空原数据库。正式账户模式拒绝 Mock/Fixture 业务结果；开发预览中的模拟回复和数据始终保留演示标识。
 
 本地可在仓库根目录创建被 Git 忽略的 `.env`，启动脚本和 `tools/dev_preview.py` 会将其中的服务端变量注入当前进程；直接运行 Uvicorn 时需先在当前 shell 设置同名环境变量。供应商密钥不进入前端、数据库或 Git。
 

@@ -258,6 +258,7 @@
                 <span id="mode-toggle-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
                 <span id="mode-toggle-text">更多工具</span>
               </button>
+              <button id="open-password-change" class="topbar-theme-toggle" type="button">修改密码</button>
               <button id="logout-local-session" class="topbar-logout" type="button">退出登录</button>
               <div class="health" id="health-status" aria-live="polite" hidden></div>
             </div>
@@ -407,6 +408,18 @@
               </section>
             </aside>
           </div>
+
+          <dialog id="password-change-dialog" class="truth-dialog" aria-labelledby="password-change-title">
+            <form id="password-change-form" method="dialog" class="truth-confirm-card">
+              <h3 id="password-change-title">修改账户密码</h3>
+              <p>修改成功后，当前账户的全部登录会话将失效。</p>
+              <label>当前密码<input id="current-password" type="password" minlength="12" maxlength="512" autocomplete="current-password" required></label>
+              <label>新密码<input id="new-password" type="password" minlength="12" maxlength="512" autocomplete="new-password" required></label>
+              <label>确认新密码<input id="new-password-confirmation" type="password" minlength="12" maxlength="512" autocomplete="new-password" required></label>
+              <p id="password-change-error" class="research-boundary" role="alert"></p>
+              <div class="modal-actions"><button id="cancel-password-change" type="button" class="copilot-action-btn secondary">取消</button><button type="submit" class="copilot-action-btn primary">确认修改</button></div>
+            </form>
+          </dialog>
 
           <!-- 自定义真实持仓录入弹窗 (支持截图 OCR 与文本 NER 双模) -->
           <div id="portfolio-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="portfolio-modal-title">

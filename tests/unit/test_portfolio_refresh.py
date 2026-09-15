@@ -445,7 +445,10 @@ def test_live_refresh_failure_revokes_wencai_runtime_capability(monkeypatch):
     assert response.status_code == 200
     assert response.json()["status"] == "REVIEW_REQUIRED"
     status = client.get("/api/v1/runtime/data-mode").json()["data"]
-    assert status["data_mode"] == "MOCK"
+    # A failed upstream capability must fail closed without silently switching
+    # the whole workspace onto synthetic data.
+    assert status["data_mode"] == "LIVE"
+    assert status["wencai_ready"] is False
     assert status["wencai_ready"] is False
     assert status["capabilities"]["LIVE"]["portfolio_refresh"] is False
     assert status["wencai_capability_status"]["last_error_code"] == "PORTFOLIO_REFRESH_FAILED"

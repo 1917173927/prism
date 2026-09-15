@@ -30,6 +30,126 @@ CONFIDENCE_THRESHOLD = 0.85
 
 SUMMARY_KEYWORDS = ("总资产", "合计", "总计", "资产总计", "净资产", "可用资金", "资金余额", "可用现金", "可用", "可取")
 
+# Traceable security identities used only for resolving names displayed by a
+# broker.  No price, sector, valuation, or research field is supplied here.
+_SECURITY_IDENTITY_SNAPSHOT = {
+    "冠农股份": {"asset_id": "600251.SH", "market": "SSE", "source": "SSE listed-company directory"},
+    "莲花控股": {"asset_id": "600186.SH", "market": "SSE", "source": "SSE listed-company directory"},
+}
+
+
+def _decimal_cell(text: str) -> Decimal | None:
+    cleaned = re.sub(r"[^\d.\-]", "", text.replace(",", ""))
+    if not cleaned or cleaned in {"-", ".", "-."} or cleaned.count(".") > 1:
+        return None
+    try:
+        value = Decimal(cleaned)
+    except ArithmeticError:
+        return None
+    return value if value.is_finite() else None
+
+
+def _parse_two_line_broker_layout(
+    rows: list[list[dict[str, Any]]], image_width: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Parse slash-header broker tables with two vertically stacked values."""
+    header_index = next((index for index, row in enumerate(rows)
+        if "持仓/可用" in "".join(cell["text"] for cell in row)
+        and "成本/现价" in "".join(cell["text"] for cell in row)), None)
+    if header_index is None:
+        return [], []
+
+    left_limit = float(image_width) * 0.25
+    quantity_limit = float(image_width) * 0.55
+    price_limit = float(image_width) * 0.82
+    primary_rows: list[tuple[int, list[dict[str, Any]]]] = []
+    for index, row in enumerate(rows[header_index + 1:], header_index + 1):
+        text = "".join(cell["text"] for cell in row)
+        if "查看已清仓" in text:
+            break
+        left_text = "".join(cell["text"] for cell in row
+            if cell["xm"] < left_limit and re.search(r"[\u4e00-\u9fff]", cell["text"]))
+        if left_text:
+            primary_rows.append((index, row))
+
+    def values(row, lower, upper=None):
+        output = []
+        for cell in row:
+            if cell["xm"] < lower or (upper is not None and cell["xm"] >= upper):
+                continue
+            value = _decimal_cell(cell["text"])
+            if value is not None:
+                output.append((value, cell))
+        return output
+
+    positions: list[dict[str, Any]] = []
+    zero_positions: list[dict[str, Any]] = []
+    for row_index, primary in primary_rows:
+        name = "".join(cell["text"] for cell in primary
+            if cell["xm"] < left_limit and re.search(r"[\u4e00-\u9fff]", cell["text"])).strip()
+        primary_y = sum(cell["yc"] for cell in primary) / len(primary)
+        secondary: list[dict[str, Any]] = []
+        if row_index + 1 < len(rows):
+            following = rows[row_index + 1]
+            following_y = sum(cell["yc"] for cell in following) / len(following)
+            if 8 <= following_y - primary_y <= 42:
+                secondary = following
+
+        quantities = values(primary, left_limit, quantity_limit)
+        available = values(secondary, left_limit, quantity_limit)
+        costs = values(primary, quantity_limit, price_limit)
+        prices = values(secondary, quantity_limit, price_limit)
+        market_values = values(secondary, 0, left_limit)
+        pnls = values(primary, price_limit)
+        pnl_pcts = values(secondary, price_limit)
+        if not name or not quantities or not costs or not prices:
+            continue
+
+        identity = _SECURITY_IDENTITY_SNAPSHOT.get(name)
+        identity_candidates = [dict(identity)] if identity else []
+        quantity = quantities[0][0]
+        available_quantity = available[0][0] if available else None
+        cost = costs[0][0]
+        price = prices[0][0]
+        market_value = market_values[0][0] if market_values else quantity * price
+        confidence = round(min(cell["score"] for cell in primary + secondary), 3)
+        reasons = []
+        if identity is None:
+            reasons.append("SECURITY_IDENTITY_REQUIRED")
+        if not market_values:
+            reasons.append("MISSING_REPORTED_MARKET_VALUE")
+        reasons.append("MISSING_OBSERVED_AT")
+        parsed = {
+            "asset_id": identity["asset_id"] if identity else "",
+            "name": name,
+            "asset_class": "EQUITY",
+            "sector": "Unclassified",
+            "quantity": int(quantity),
+            "available_quantity": int(available_quantity) if available_quantity is not None else None,
+            "cost_price": float(cost),
+            "price": float(price),
+            "market_value_cny": float(market_value.quantize(Decimal("0.01"))),
+            "day_pnl_cny": float(pnls[0][0]) if pnls else None,
+            "day_pnl_pct": float(pnl_pcts[0][0]) if pnl_pcts else None,
+            "confidence": confidence,
+            "confidence_pct": round(confidence * 100, 1),
+            "needs_review": bool(reasons) or confidence < CONFIDENCE_THRESHOLD,
+            "original_code": None,
+            "review_reasons": reasons,
+            "identity_candidates": identity_candidates,
+            "field_sources": {
+                "identity": identity["source"] if identity else "unresolved broker display name",
+                "quantity": "broker screenshot OCR",
+                "available_quantity": "broker screenshot OCR",
+                "cost_price": "broker screenshot OCR",
+                "price": "broker screenshot OCR",
+                "market_value_cny": "broker screenshot OCR" if market_values else "quantity × price",
+            },
+            "zero_position": quantity == 0,
+        }
+        (zero_positions if quantity == 0 else positions).append(parsed)
+    return positions, zero_positions
+
 
 def levenshtein_distance(left: str, right: str) -> int:
     previous = list(range(len(right) + 1))
@@ -343,6 +463,32 @@ class OCRPortfolioParser:
         cash_cny = 0.0
         reported_total_assets = 0.0
         has_low_confidence = False
+
+        two_line_positions, zero_positions = _parse_two_line_broker_layout(rows, img.width)
+        if two_line_positions or zero_positions:
+            holdings_value = round(sum(item["market_value_cny"] for item in two_line_positions), 2)
+            validation = validate_portfolio_values(two_line_positions, 0.0, holdings_value)
+            return {
+                "status": "SUCCESS" if two_line_positions else "EMPTY",
+                "schema_version": "portfolio-ocr-bundle.v1",
+                # This is the subtotal represented by active holdings.  The
+                # screenshot contains neither cash nor an account-total field.
+                "total_value_cny": holdings_value,
+                "account_total_value_cny": None,
+                "account_total_observed": False,
+                "cash_cny": 0.0,
+                "cash_observed": False,
+                "positions": two_line_positions,
+                "zero_positions": zero_positions,
+                "parsed_count": len(two_line_positions),
+                **validation,
+                "confidence_threshold": CONFIDENCE_THRESHOLD,
+                "raw_ocr_lines": [{
+                    "text": box["text"],
+                    "confidence": round(box["score"], 3),
+                    "box": box["box"],
+                } for box in boxes],
+            }
 
         # 2. Extract Cash and Summary Totals
         for row in rows:
