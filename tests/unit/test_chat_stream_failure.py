@@ -44,8 +44,9 @@ assert.equal(storage.has('owner:chat'),false);
 assert.equal(storage.get('owner:model'),'model-secret-reference');
 assert.equal(storage.get('owner:portfolio'),'portfolio-snapshot');
 assert.equal(byId('copilot-natural-input').value,'');
-assert.equal(byId('chat-send-progress').hidden,true);
-assert.deepEqual(byId('chat-send-progress').children,[]);
+assert.equal(byId('chat-send-progress').hidden,false);
+assert.match(byId('chat-send-progress').textContent,/理解问题/);
+
 assert.deepEqual(byId('copilot-chat-messages').children,['welcome']);
 assert.deepEqual(byId('copilot-decision-output').children,[]);
 assert.equal(byId('copilot-chat-panel').style.display,'block');

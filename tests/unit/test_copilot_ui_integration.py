@@ -349,9 +349,9 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert 'progressTrack.className = "chat-progress-track"' in script
     assert 'progressBar.className = "chat-progress-bar"' in script
     assert 'progressBar.style.width = "60%"' in script
-    assert 'byId("chat-send-progress").replaceChildren(progressLabel, progressTrack)' in script
+    assert 'byId("chat-send-progress").replaceChildren(pipelineBox)' in script
     assert 'pipelineBox.append(pipeHead, stepsGrid)' in script
-    assert 'aiBubble.append(pipelineBox, thinkingBox, toolsContainer, contentBox)' in script
+    assert 'aiBubble.append(contentBox)' in script
     for stage_label in ("理解问题", "查询真实数据（按需）", "核验事实与约束", "组织回答"):
         assert stage_label in script
     assert 'setPipelineStepState(s2, "skipped")' in script
@@ -488,7 +488,7 @@ def test_market_choices_and_visible_source_controls_are_distinct() -> None:
     assert set(re.findall(r'data-market-interval="([^"]+)"', markup)) == {'1d', '1M'}
     assert set(re.findall(r'data-market-indicator="([^"]+)"', markup)) == {'boll', 'macd', 'kdj'}
     assert 'id="market-index-options"' in markup
-    assert markup.count('id="chat-runtime-mode"') == 1
+    assert markup.count('id="chat-runtime-mode"') == 0
     assert 'id="visible-ai-mode"' in markup and 'id="visible-data-mode"' in markup
     more_menu = markup.split('<div class="topbar-more-panel">', 1)[1].split('</details>', 1)[0]
     assert 'id="data-source-status"' in more_menu

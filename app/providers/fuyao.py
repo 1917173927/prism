@@ -309,6 +309,72 @@ class FuyaoFinanceProvider(MarketDataProvider):
             raise FuyaoProviderError("INVALID_RESPONSE", "指数日线含重复日期。")
         return sorted(bars, key=lambda bar: bar["time"])
 
+    async def get_stock_research(self, code: str) -> dict[str, Any] | None:
+        """Enrich a quote with disclosed financials; never invent valuation history."""
+        if not re.fullmatch(r"\d{6}(?:\.(?:SH|SZ|BJ))?", code.strip().upper()):
+            if not re.fullmatch(r"[\w*· -]{1,80}", code.strip()) or code.strip().isdigit():
+                raise FuyaoProviderError("INVALID_SYMBOL", "请输入股票名称或有效证券代码。")
+            async with self._client() as client:
+                found = await self._get(client, "/api/meta/tickers/search", {"q": code.strip(), "asset_type": "a-share", "limit": 5})
+            candidates = {item.get("thscode") for item in (found.get("item") or [])
+                          if isinstance(item, dict) and item.get("name") == code.strip() and item.get("asset_type") == "a-share"}
+            candidates.discard(None)
+            if len(candidates) != 1:
+                raise FuyaoProviderError("AMBIGUOUS_SYMBOL", "未能唯一匹配该股票名称，请补充证券代码。")
+            code = candidates.pop()
+        quote = await self.get_quote(code)
+        if quote is None:
+            return None
+        result = dict(quote)
+        symbol = quote["symbol"]
+        issues = []
+        async with self._client() as client:
+            async def fetch(path, params):
+                try:
+                    return await self._get(client, path, params)
+                except FuyaoProviderError as exc:
+                    issues.append({"code": exc.code, "message": exc.safe_message})
+                    return {}
+            def rows(data, key):
+                values = data.get(key)
+                return [item for item in values if isinstance(item, dict)] if isinstance(values, list) else []
+            valuation, income = await asyncio.gather(
+                fetch("/api/a-share/valuations/snapshot", {"thscodes": symbol}),
+                fetch("/api/a-share/financials/income-statements", {"thscode": symbol, "period": "quarterly", "limit": 1}),
+            )
+            row = next((r for r in rows(valuation, "item") if r.get("thscode") == symbol), {})
+            for source, target in (("pe_ttm", "pe_ttm"), ("pb_mrq", "pb")):
+                value = row.get(source)
+                if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+                    result[target] = value
+            valuation_time = _datetime_from_millis(valuation.get("timestamp"))
+            result["valuation_observed_at"] = valuation_time.isoformat() if valuation_time else None
+            row = next((r for r in rows(income, "item") if r.get("thscode") == symbol and r.get("currency") == "CNY"), {})
+            period_end = _datetime_from_millis(row.get("period_end_ms"))
+            report_date = _datetime_from_millis(row.get("report_date_ms"))
+            if period_end and report_date and report_date <= datetime.now(UTC) and period_end <= report_date:
+                report = f"{period_end.year}-{(period_end.month + 2) // 3}"
+                indicators = await fetch("/api/a-share/financials/indicators", {"thscode": symbol, "report": report})
+                if indicators.get("thscode") == symbol and indicators.get("report") == report:
+                    aliases = {"index_weighted_avg_roe": "roe_pct", "sale_gross_margin": "gross_margin_pct", "assets_debt_ratio": "debt_ratio_pct"}
+                    for ability in rows(indicators, "abilities"):
+                        for item in rows(ability, "indicators"):
+                            target = aliases.get(item.get("index_id"))
+                            value = item.get("value")
+                            if target and value is not None and not isinstance(value, bool):
+                                try:
+                                    number = float(value)
+                                    if math.isfinite(number):
+                                        result[target] = number
+                                except (ValueError, TypeError):
+                                    pass
+                    result["financial_report_period"] = report
+                    result["financial_report_date"] = report_date.isoformat()
+        result["financial_source"] = "Fuyao financial statements and indicators"
+        result["financial_issues"] = issues
+        result["missing_fields"] = [field for field in quote.get("missing_fields", []) if result.get(field) is None]
+        return result
+
     async def get_industry_observations(self) -> list[dict[str, Any]]:
         """Bounded twelve-industry observation set; never claim a full-market ranking."""
         from decimal import Decimal

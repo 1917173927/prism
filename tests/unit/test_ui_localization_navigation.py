@@ -88,7 +88,7 @@ def test_authenticated_ui_removes_mock_chat_and_marks_unready_tools() -> None:
     assert 'llmConfig.connectionStatus = settings.is_configured ? "SAVED" : "NONE"' in script
     assert 'llmConfig.connectionStatus = "CONNECTED"' in script
     assert 'llmConfig.connectionStatus = "FAILED"' in script
-    assert "已保存待测试" in script
+    assert "已保存" in script
     assert "连接测试通过" in script
     assert "连接失败" in script
     assert 'document.querySelector(\'#username\')' in login

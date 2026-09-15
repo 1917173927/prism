@@ -440,9 +440,8 @@ class CopilotAgent:
         if is_live:
             if name == "query_stock_quote":
                 try:
-                    data = await self.live_finance_provider.get_quote(
-                        str(args["symbol"])
-                    )
+                    fetch_quote = getattr(self.live_finance_provider, "get_stock_research", self.live_finance_provider.get_quote)
+                    data = await fetch_quote(str(args["symbol"]))
                 except FuyaoProviderError as exc:
                     if exc.code in CAPABILITY_FAILURE_CODES:
                         await controller.record_fuyao_capability_failure("stock_quote", exc.code)
@@ -775,20 +774,19 @@ class CopilotAgent:
             if stock_result.get("status") != "SUCCESS":
                 return stock_result.get("message", "行情底稿不可用，无法形成研判。")
             stock = stock_result["data"]
-            lines.append(f"### 个股底稿字段：{stock['name']} ({stock['symbol']})")
-            lines.append(f"本次数据模式：{mode_label}；来源：{context.get('provider', '未标注')}。以下仅转述工具字段，缺失项不补值，不代表审计结论或投资建议。\n")
             change = stock.get("change_pct")
             change_text = "未提供" if change is None else f"{change:+.2f}%"
-            lines.append(f"1. **行情字段**：价格 **¥{field(stock, 'price_cny')}**，涨跌幅 `{change_text}`，市盈率 PE(TTM) **{field(stock, 'pe_ttm', ' 倍')}**，估值分位 **{field(stock, 'valuation_quantile_pct', '%')}**，所属行业 **{field(stock, 'industry')}**。")
-            financial_fields = [(label, key) for label, key in (
-                ("ROE", "roe_pct"), ("毛利率", "gross_margin_pct"), ("资产负债率", "debt_ratio_pct")
+            lines.append(f"{stock['name']}（{stock['symbol']}）：报价 ¥{field(stock, 'price_cny')}，涨跌幅 {change_text}（{mode_label}）。明细见下方研判卡片。")
+            available = [(label, key, unit) for label, key, unit in (
+                ("ROE", "roe_pct", "%"), ("行业", "industry", "")
             ) if stock.get(key) is not None]
-            if financial_fields:
-                lines.append("2. **财务字段**：" + "，".join(f"{label} **{field(stock, key, '%')}**" for label, key in financial_fields) + "。")
-            else:
-                lines.append("2. 本次报价接口不提供完整财报；财务指标需通过问财财务查询取得。")
-            lines.append(f"数据时间：{field(stock, 'observed_at')}。")
-            lines.append("3. **计算边界**：聊天层不计算适当性、配置比例或风险闸门；相关结论需提交结构化画像与持仓到后端确定性服务。")
+            if available:
+                lines.append("；".join(f"{label}：{field(stock, key, unit)}" for label, key, unit in available) + "。")
+            if stock.get("financial_report_period"):
+                lines.append(f"财务报告期：{stock['financial_report_period']}。历史估值分位尚未接入，暂不据此判断高估或低估。")
+            elif stock.get("financial_issues"):
+                lines.extend(item["message"] for item in stock["financial_issues"])
+            return "\n".join(lines)
 
         elif fund_tool:
             fund_result = fund_tool["result"]

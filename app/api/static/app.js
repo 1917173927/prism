@@ -1968,6 +1968,10 @@
     }
   }
 
+  function scrollQuestionnaireToTop() {
+    byId("questionnaire-section-tabs")?.scrollIntoView({block: "start", behavior: "instant"});
+  }
+
   function renderQuestionnaire() {
     const template = state.questionnaireTemplate;
     const panel = byId("questionnaire-questions");
@@ -1987,6 +1991,7 @@
       button.addEventListener("click", () => {
         state.questionnaireSectionIndex = index;
         renderQuestionnaire();
+        scrollQuestionnaireToTop();
       });
       li.append(button);
       sectionTabs.append(li);
@@ -2017,7 +2022,12 @@
           input.checked = state.questionnaireAnswers?.[question.question_id]?.score === score;
           input.addEventListener("change", () => saveQuestionnaireScore(question, score));
           const span = document.createElement("span");
-          span.textContent = score === 1 ? "1 · 很低" : score === 5 ? "5 · 很高" : String(score);
+          const degrees = question.question_id === "Q12"
+            ? ["几乎没有影响", "影响较小", "影响一般", "影响较大", "影响非常大"]
+            : question.question_id === "Q17"
+              ? ["几乎不参考", "少量参考", "适度参考", "较多参考", "高度参考"]
+              : ["很低", "较低", "中等", "较高", "很高"];
+          span.textContent = degrees[score - question.minimum_score];
           label.append(input, span);
           choices.append(label);
         }
@@ -8936,7 +8946,7 @@
 
     try {
       const endpoint = isFund ? "live-fund?fund_code=" : "live-quote?symbol=";
-      let resp = await fetch(`/api/v1/copilot/${endpoint}${encodeURIComponent(stockSymbol)}`);
+      let resp = await fetch(`/api/v1/copilot/${endpoint}${encodeURIComponent(stockSymbol)}${isFund ? "" : "&include_financials=true"}`);
       if (!isContextRequestCurrent(token)) return;
       let autoDependencyCompleted = false;
 
@@ -9077,148 +9087,8 @@
       const quote = res.data;
       if (!quote) throw new Error("未获取到标的底稿数据");
 
-      const requiredFinancialFields = ["pe_ttm", "pb", "roe_pct", "valuation_quantile_pct"];
-      const missingFinancialFields = requiredFinancialFields.filter((field) => !hasFinancialNumber(quote[field]) || (quote.missing_fields || []).includes(field));
-      if (missingFinancialFields.length) {
-        clear(output);
-        const card = document.createElement("div");
-        card.className = "copilot-decision-card";
-        const banner = document.createElement("div");
-        banner.className = "decision-banner hold";
-        const title = document.createElement("h3");
-        title.textContent = `${quote.name} (${quote.symbol}) 行情已获取，财务适配性暂不可计算`;
-        const status = document.createElement("span");
-        status.className = "cf-verdict cf-verdict-hold";
-        status.textContent = "REVIEW_REQUIRED 财务字段缺失";
-        banner.append(title, status);
-        const body = document.createElement("div");
-        body.className = "decision-card-body";
-        const message = document.createElement("p");
-        message.textContent = `报价 ¥${quote.price_cny}；数据模式 ${res.execution_context?.data_mode || "未标注"}；来源层级 ${quote.provider_tier || "未知"}；数据时间 ${quote.observed_at || "未提供"}；缺少 ${missingFinancialFields.join("、")}，因此不生成估值与配置结论。`;
-        body.append(message);
-        card.append(banner, body);
-        output.append(card);
-        return;
-      }
-
-      const providerTier = quote.provider_tier || "UNSPECIFIED";
-      const sourceIsLive = providerTier === "LIVE_PRIMARY" || providerTier === "LIVE_SECONDARY";
-      const verdictBannerClass = sourceIsLive ? "buy" : "hold";
-      const verdictTitle = `标的底稿：${quote.name} (${quote.symbol}) · ${providerTier}`;
-      const verdictChipText = sourceIsLive ? "QUOTE 行情快照已获取" : "STATIC 静态底稿";
-      const verdictChipClass = sourceIsLive ? "cf-verdict-pass" : "cf-verdict-hold";
-
       clear(output);
-      const card = document.createElement("div");
-      card.className = "copilot-decision-card";
-
-      // Banner
-      const banner = document.createElement("div");
-      banner.className = `decision-banner ${verdictBannerClass}`;
-      const titleWrap = document.createElement("div");
-      titleWrap.className = "decision-verdict-title";
-      const icon = document.createElement("span");
-      icon.className = "decision-verdict-icon";
-      icon.append(createSvgIcon(sourceIsLive ? "icon-check" : "icon-file-text", "prism-icon prism-icon-lg"));
-      const h3 = document.createElement("h3");
-      h3.textContent = verdictTitle;
-      titleWrap.append(icon, h3);
-
-      const statusChip = document.createElement("span");
-      statusChip.className = `cf-verdict ${verdictChipClass}`;
-      statusChip.append(createSvgIcon(sourceIsLive ? "icon-check" : "icon-file-text", "prism-icon"), document.createTextNode(` ${verdictChipText}`));
-      banner.append(titleWrap, statusChip);
-
-      // Body
-      const body = document.createElement("div");
-      body.className = "decision-card-body";
-
-      if (autoDependencyCompleted || quote.auto_indexed) {
-        const autoNotice = document.createElement("div");
-        autoNotice.className = "doc-callout doc-callout-info";
-        autoNotice.style.marginBottom = "14px";
-        const anIcon = document.createElement("div");
-        anIcon.className = "callout-icon";
-        anIcon.append(createSvgIcon("icon-check", "prism-icon"));
-        const anContent = document.createElement("div");
-        anContent.className = "callout-content";
-        const anTitle = document.createElement("div");
-        anTitle.className = "callout-title";
-        anTitle.textContent = "已自动完成前置底稿建档依赖";
-        const anText = document.createElement("p");
-        anText.textContent = `系统检测到标的代码 [${cleanCode}] 初始未收录，已按主行情源、备用行情源、静态底稿顺序尝试建档；缺失财务字段保持显式缺失。`;
-        anContent.append(anTitle, anText);
-        autoNotice.append(anIcon, anContent);
-        body.append(autoNotice);
-      }
-
-      // Callout
-      const callout = document.createElement("div");
-      callout.className = sourceIsLive ? "doc-callout doc-callout-info" : "doc-callout doc-callout-warning";
-      const cIcon = document.createElement("div");
-      cIcon.className = "callout-icon";
-      cIcon.append(createSvgIcon(sourceIsLive ? "icon-file-text" : "icon-alert", "prism-icon"));
-      const cContent = document.createElement("div");
-      cContent.className = "callout-content";
-      const cTitle = document.createElement("div");
-      cTitle.className = "callout-title";
-      cTitle.textContent = `基本面概况（所属行业：${quote.sector} / ${quote.sub_industry || quote.sector}）`;
-      const cP = document.createElement("p");
-      cP.textContent = `${quote.name}（${quote.symbol}）当前报价 ¥${Number(quote.price_cny).toFixed(2)}，动态市盈率 TTM ${Number(quote.pe_ttm).toFixed(1)} 倍，历史估值分位 ${Number(quote.valuation_quantile_pct).toFixed(1)}%。毛利率 ${Number(quote.gross_margin_pct).toFixed(1)}%，ROE ${Number(quote.roe_pct).toFixed(1)}%，资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。`;
-      cContent.append(cTitle, cP);
-      callout.append(cIcon, cContent);
-
-      // Metrics row with genuine backend data
-      const metricsRow = document.createElement("div");
-      metricsRow.className = "decision-metrics-row";
-      const changePrefix = quote.change_pct >= 0 ? "+" : "";
-      metricsRow.append(
-        buildCopilotMetricBox("最新报价 / 日涨跌", `¥${Number(quote.price_cny).toFixed(2)} (${changePrefix}${Number(quote.change_pct).toFixed(2)}%)`, false, sourceIsLive, `数据源：${quote.provider || "行情接口"}`),
-        buildCopilotMetricBox("估值分位", `${Number(quote.valuation_quantile_pct).toFixed(1)}%`, false, false, "历史分位数参考。"),
-        buildCopilotMetricBox("数据时效", quote.staleness_seconds == null ? "未提供" : `${Number(quote.staleness_seconds).toFixed(0)} 秒前`, false, sourceIsLive, "数据更新时间间隔。"),
-        buildCopilotMetricBox("ROE / 毛利率", `${Number(quote.roe_pct).toFixed(1)}% / ${Number(quote.gross_margin_pct).toFixed(1)}%`, false, false, "来自最新财报披露。")
-      );
-
-      // Factual audit lineage
-      const reasonsWrap = document.createElement("div");
-      const reasonsHead = document.createElement("h4");
-      reasonsHead.style.margin = "0 0 8px";
-      reasonsHead.style.fontSize = "14px";
-      const rHeadIcon = createSvgIcon("icon-file-text", "prism-icon");
-      rHeadIcon.style.marginRight = "6px";
-      reasonsHead.append(rHeadIcon, document.createTextNode(" 基本面与参考数据："));
-      const reasonsList = document.createElement("ul");
-      reasonsList.className = "decision-reasons-list";
-
-      const r1 = document.createElement("li");
-      const r1Bold = document.createElement("strong");
-      r1Bold.textContent = "行情与财务：";
-      r1.append(r1Bold, document.createTextNode(`数据源：${quote.provider || "行情接口"}；资产负债率 ${Number(quote.debt_ratio_pct).toFixed(1)}%。`));
-
-      const r2 = document.createElement("li");
-      const r2Bold = document.createElement("strong");
-      r2Bold.textContent = "行业与市值：";
-      r2.append(r2Bold, document.createTextNode(`所属 ${quote.sector} / ${quote.sub_industry || "未提供"}；总市值约 ¥${Number(quote.market_cap_cny || 0).toLocaleString()}。`));
-
-      const r3 = document.createElement("li");
-      const r3Bold = document.createElement("strong");
-      r3Bold.textContent = "需要注意：";
-      r3.append(r3Bold, document.createTextNode(`${(quote.missing_fields && quote.missing_fields.length > 0) ? `部分字段暂未更新（${quote.missing_fields.join("、")}）；` : ""}可进入组合工具评估该标的对你整体组合的影响。`));
-
-      reasonsList.append(r1, r2, r3);
-      reasonsWrap.append(reasonsHead, reasonsList);
-
-      body.append(callout, metricsRow, reasonsWrap);
-
-      // Drilldown links
-      body.append(buildCopilotDrilldownRow([
-        { href: "#stock-research", text: "查看完整研究" },
-        { href: "#evidence", text: "查看数据来源" },
-        { href: "#portfolio-optimization", text: "查看组合目标" }
-      ]));
-
-      card.append(banner, body);
-      output.append(card);
+      output.append(buildCopilotStockCard(res));
     } catch (err) {
       if (!isContextRequestCurrent(token)) return;
       if (token.dataMode === "LIVE") await fetchRuntimeDataMode();
@@ -9237,6 +9107,45 @@
 
   function hasFinancialNumber(value) {
     return (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) && Number.isFinite(Number(value));
+  }
+
+  function buildCopilotStockCard(result) {
+    const quote = result.data;
+    if (!quote) throw new Error("未返回个股数据。");
+    const card = document.createElement("div");
+    card.className = "copilot-decision-card";
+    const banner = document.createElement("div"); banner.className = "decision-banner hold";
+    const title = document.createElement("h3");
+    title.textContent = `${quote.name} (${quote.symbol}) · 个股研判`;
+    const status = document.createElement("span"); status.className = "cf-verdict cf-verdict-hold";
+    const financialKeys = ["pe_ttm", "pb", "roe_pct", "gross_margin_pct", "debt_ratio_pct"];
+    const complete = financialKeys.every(key => hasFinancialNumber(quote[key]));
+    status.textContent = complete ? "行情与财务已取得" : "部分数据可用";
+    banner.append(title, status);
+    const body = document.createElement("div"); body.className = "decision-card-body";
+    const metrics = document.createElement("div"); metrics.className = "copilot-metrics-row";
+    [["最新价", "price_cny", " 元"], ["涨跌幅", "change_pct", "%"], ["PE（TTM）", "pe_ttm", " 倍"],
+     ["PB（MRQ）", "pb", " 倍"], ["加权 ROE（报告期）", "roe_pct", "%"], ["销售毛利率", "gross_margin_pct", "%"],
+     ["资产负债率", "debt_ratio_pct", "%"]].forEach(([label, key, unit]) => {
+      appendReportMetric(metrics, label, hasFinancialNumber(quote[key]) ? `${Number(quote[key]).toFixed(2)}${unit}` : "暂未取得");
+    });
+    body.append(metrics);
+    const period = document.createElement("p"); period.className = "research-boundary";
+    period.textContent = `行情时间：${quote.observed_at || "未提供"}；财务报告期：${quote.financial_report_period || "未提供"}；披露日期：${quote.financial_report_date?.slice(0, 10) || "未提供"}。ROE 为报告期值，不自动年化。`;
+    body.append(period);
+    const limits = document.createElement("p");
+    limits.textContent = "现有指标用于比较估值与财务表现；历史估值分位暂未接入，个人配置适当性需结合风险画像和组合约束判断。仅供研究参考，不构成交易建议。";
+    body.append(limits);
+    for (const issue of quote.financial_issues || []) {
+      const message = document.createElement("p"); message.textContent = `财务数据：${issue.message}（${issue.code}）`; body.append(message);
+    }
+    const source = document.createElement("details");
+    const summary = document.createElement("summary"); summary.textContent = "数据来源与时间";
+    const evidence = document.createElement("p");
+    evidence.textContent = `${quote.source || result.source || "未提供"}；${quote.financial_source || "财务来源未提供"}。估值快照最新有效时间：${quote.valuation_observed_at || "未提供"}，不表示各项指标同时更新。`;
+    source.append(summary, evidence); body.append(source);
+    card.append(banner, body);
+    return card;
   }
 
   function buildCopilotFundCard(result) {
@@ -9754,7 +9663,7 @@
     const input = byId("copilot-natural-input");
     if (input) input.value = "";
     const progress = byId("chat-send-progress");
-    if (progress) { progress.hidden = true; progress.replaceChildren(); }
+    if (progress) { progress.hidden = false; progress.textContent = "理解问题 → 查询数据 → 核验依据 → 组织回答"; }
     const msgs = byId("copilot-chat-messages");
     if (msgs) { clear(msgs); renderChatWelcome(); }
     const output = byId("copilot-decision-output");
@@ -9795,7 +9704,8 @@
     try { await performStreamingChat(customQuery, controller.signal); }
     finally {
       clearTimeout(timeout); activeChatController = null;
-      send.disabled = false; cancel.hidden = true; progress.hidden = true; progress.replaceChildren();
+      send.disabled = false; cancel.hidden = true; progress.hidden = false;
+      if (controller.signal.aborted && progress.textContent === "正在准备分析…") progress.textContent = "分析已停止，可重新发送。";
     }
   }
 
@@ -9887,8 +9797,8 @@
 
     // The compact bar reports overall activity next to Send. The four-stage
     // card stays mounted in the answer so each real stream transition remains visible.
-    byId("chat-send-progress").replaceChildren(progressLabel, progressTrack);
-    aiBubble.append(pipelineBox, thinkingBox, toolsContainer, contentBox);
+    byId("chat-send-progress").replaceChildren(pipelineBox);
+    aiBubble.append(contentBox);
     aiMsgRow.append(aiAvatar, aiBubble);
     messagesContainer.append(aiMsgRow);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -10024,6 +9934,10 @@
               toolChip.textContent = `调用工具：${event.tool}`;
               toolsContainer.append(toolChip);
             } else if (event.type === "tool_done") {
+              if (event.tool === "query_stock_quote" && event.result?.status === "SUCCESS" && event.result.data) {
+                const output = byId("copilot-decision-output");
+                if (output) { clear(output); output.append(buildCopilotStockCard(event.result)); }
+              }
               const toolStatus = event.result?.status || "FAILED";
               const currentToolFailed = ["FAILED", "BLOCKED", "REJECTED"].includes(toolStatus);
               if (event.result?.error_code === "DETERMINISTIC_CONTEXT_REQUIRED") {
@@ -10036,7 +9950,7 @@
                   action.textContent = "打开调仓测算";
                   action.addEventListener("click", runCopilotRebalance);
                 }
-                toolsContainer.append(action);
+                aiBubble.append(action);
               }
               toolFailed = toolFailed || currentToolFailed;
               toolCompleted = toolCompleted || !currentToolFailed;
@@ -10160,7 +10074,7 @@
 
   function setLLMFormBusy(busy) {
     ["llm-provider-select", "llm-api-key-input", "llm-base-url-input", "llm-model-input",
-      "btn-save-llm-config", "btn-clear-llm-config", "test-user-model"].forEach(id => {
+      "btn-save-llm-config", "btn-clear-llm-config"].forEach(id => {
       const element = byId(id);
       if (element) element.disabled = busy;
     });
@@ -10182,8 +10096,8 @@
       if (badge) badge.textContent = `${llmConfig.model} · 连接失败`;
     } else if (llmConfig.configured) {
       if (dot) dot.textContent = "●";
-      if (label) label.textContent = `已保存待测试 (${llmConfig.model})`;
-      if (badge) badge.textContent = `${llmConfig.model} · 已保存待测试`;
+      if (label) label.textContent = `已保存 (${llmConfig.model})`;
+      if (badge) badge.textContent = `${llmConfig.model} · 已保存`;
     } else {
       if (dot) dot.textContent = "⚪";
       if (label) label.textContent = "大模型配置 (API Key)";
@@ -10211,7 +10125,7 @@
     const ai = byId("visible-ai-mode"), data = byId("visible-data-mode");
     if (!ai || !data) return;
     const modelStatus = llmConfig.connectionStatus;
-    ai.textContent = mode === "MOCK" ? "AI · MOCK 模拟" : modelStatus === "CONNECTED" ? "AI · 连接通过" : modelStatus === "FAILED" ? "AI · 连接失败" : llmConfig.configured ? "AI · 已保存待测试" : mode === "LIVE" ? "AI · 真实接口未配置" : "AI · 本地规则";
+    ai.textContent = mode === "MOCK" ? "AI · MOCK 模拟" : modelStatus === "CONNECTED" ? "AI · 连接通过" : modelStatus === "FAILED" ? "AI · 连接失败" : llmConfig.configured ? "AI · 已保存" : mode === "LIVE" ? "AI · 真实接口未配置" : "AI · 本地规则";
     ai.dataset.mode = mode === "MOCK" ? "mock" : modelStatus === "CONNECTED" ? "live" : modelStatus === "FAILED" ? "error" : "pending";
     data.textContent = state.dataMode === "LIVE" ? "工具数据 · LIVE" : accountAccessEnabled ? "工具数据 · 未就绪" : "工具数据 · MOCK";
     data.dataset.mode = state.dataMode === "LIVE" ? "live" : accountAccessEnabled ? "pending" : "mock";
@@ -10243,7 +10157,7 @@
     const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
     const status = byId("llm-config-status");
     status.style.display = "block";
-    status.textContent = settings.is_configured ? `已保存待测试 · ${settings.model} · ${persistence}。密钥不回显，留空保存会保留现有密钥。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
+    status.textContent = settings.is_configured ? `已保存 · ${settings.model} · ${persistence}。密钥不回显，留空保存会保留现有密钥。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
     return settings;
   }
 
@@ -10262,7 +10176,21 @@
       llmFormDirty = false;
       byId("llm-api-key-input").value = "";
       await loadModelSettings();
-    } catch (error) { status.textContent = `保存失败：${error.message}`; }
+      if (owner !== state.ownerId) return;
+      status.textContent = "配置已保存，正在自动测试连接…";
+      try {
+        const tested = await fetch("/api/v1/user/model-settings/test", {method: "POST", headers: {"X-Owner-ID": owner}});
+        if (!tested.ok) throw await apiError(tested);
+        if (owner !== state.ownerId) return;
+        llmConfig.connectionStatus = "CONNECTED";
+        status.textContent = "配置已持久化保存，连接测试通过。";
+      } catch (error) {
+        if (owner !== state.ownerId) return;
+        llmConfig.connectionStatus = "FAILED";
+        status.textContent = `配置已保存，但连接测试失败：${error.message}。请修改后重新保存。`;
+      }
+      updateLLMConfigUI();
+    } catch (error) { if (owner === state.ownerId) status.textContent = `保存失败：${error.message}`; }
     finally { setLLMFormBusy(false); }
   }
 
@@ -11410,32 +11338,6 @@
     finally { button.disabled = false; }
   });
   byId("close-portfolio-diagnosis")?.addEventListener("click", () => byId("portfolio-diagnosis-drawer")?.close());
-  byId("test-user-model")?.addEventListener("click", async event => {
-    if (llmFormDirty) {
-      const status = byId("llm-config-status");
-      status.style.display = "block";
-      status.textContent = "请先保存当前输入，再测试连接。";
-      return;
-    }
-    const status = byId("llm-config-status"); status.style.display = "block"; status.textContent = "正在测试…";
-    const owner = state.ownerId;
-    const sequence = ++modelSettingsSequence;
-    setLLMFormBusy(true);
-    try {
-      const response = await fetch("/api/v1/user/model-settings/test", {method: "POST", headers: {"X-Owner-ID": owner}});
-      if (!response.ok) throw await apiError(response);
-      if (owner !== state.ownerId || sequence !== modelSettingsSequence) return;
-      llmConfig.connectionStatus = "CONNECTED";
-      status.textContent = "连接测试通过。";
-      updateLLMConfigUI();
-    } catch (error) {
-      if (owner !== state.ownerId || sequence !== modelSettingsSequence) return;
-      llmConfig.connectionStatus = "FAILED";
-      status.textContent = `连接失败：${error.message}`;
-      updateLLMConfigUI();
-    }
-    finally { setLLMFormBusy(false); }
-  });
 
   // Event bindings for P2 panels
   const refHistBtn = byId("refresh-history");
@@ -11463,6 +11365,7 @@
   if (questionnairePrevious) questionnairePrevious.addEventListener("click", () => {
     state.questionnaireSectionIndex = Math.max(0, state.questionnaireSectionIndex - 1);
     renderQuestionnaire();
+    scrollQuestionnaireToTop();
   });
   const questionnaireNext = byId("questionnaire-next");
   if (questionnaireNext) questionnaireNext.addEventListener("click", () => {
@@ -11477,6 +11380,7 @@
       state.questionnaireSectionIndex + 1,
     );
     renderQuestionnaire();
+    scrollQuestionnaireToTop();
   });
   const questionnairePreview = byId("questionnaire-preview");
   if (questionnairePreview) questionnairePreview.addEventListener("click", previewFullQuestionnaire);
@@ -11799,6 +11703,7 @@
       });
       if (!context.admin) {
         byId("global-data-mode-toggle").hidden = true;
+        byId("runtime-mode-switcher-wrap").hidden = true;
       }
     }
     // Establish the owner namespace before any owner-scoped startup requests

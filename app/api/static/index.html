@@ -12,7 +12,7 @@
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260915-auto-industry-quota" defer></script>
+    <script src="/static/app.js?v=20260915-chat-cards" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -308,12 +308,13 @@
                 <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="我更在意控制回撤，这套持仓需要怎么调整？" autocomplete="off"></textarea>
                 <div class="copilot-composer-meta">
                   <small>结合当前持仓与投资偏好进行分析</small>
-                  <div id="chat-send-progress" role="status" aria-live="polite" hidden></div>
+
                   <button id="chat-cancel-query" type="button" hidden>停止</button>
                   <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
                     <span>发送</span>
                     <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
                   </button>
+                  <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
                 </div>
               </div>
 
@@ -483,13 +484,12 @@
                 <button id="close-llm-config-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
               </div>
               <div class="copilot-modal-body">
-                <label class="model-mode-control">AI 回复模式 <select id="chat-runtime-mode"><option value="AUTO">默认模型</option><option value="LIVE">真实接口</option><option value="MOCK">Mock 模拟</option></select></label>
 <div class="runtime-mode-switcher-wrap" id="runtime-mode-switcher-wrap" aria-label="数据模式控制">
               <button class="global-data-mode-btn mode-mock" id="global-data-mode-toggle" type="button" title="点击切换运行数据模式 (MOCK / LIVE)">
                 <span class="mode-status-indicator" aria-hidden="true"></span>
                 <span class="mode-label-text" id="global-data-mode-label">MOCK · 合成数据</span>
               </button>
-            </div><p class="source-mode-help">AI 模式控制回复方式，工具数据模式控制组合研究与持仓数据空间。大盘页独立请求真实行情，以结果来源为准。个人密钥优先于服务端默认配置。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口，配置仅用于当前账户。</p>
+            </div><p class="source-mode-help">个人配置优先于服务端默认配置；保存后自动测试连接。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口，配置仅用于当前账户。</p>
 
                 <div style="margin-bottom:12px;">
                   <label for="llm-provider-select" style="font-size:12.5px; font-weight:600; display:block; margin-bottom:4px;">服务商预设：</label>
@@ -524,7 +524,6 @@
                   </button>
                 </div>
                 <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。需要删除时使用“恢复服务端默认”。</p>
-                <button id="test-user-model" type="button" class="copilot-action-btn secondary">测试连接</button>
                 <div id="llm-config-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>
             </div>

@@ -297,7 +297,7 @@ def test_frontend_keeps_safe_dom_and_renders_sector_result_below_chart():
     assert 'store.portfolioHealthRun = null;' in script
     assert 'byId("donut-sector-detail")' in script
     assert "renderSectorDetail(s);" in script
-    assert 'quote.staleness_seconds == null ? "未提供"' in script
+    assert 'quote.valuation_observed_at || "未提供"' in script
     assert 'risk_score: "35.00"' not in script
     assert 'tech_exposure_pct: "38.50"' not in script
     assert 'await refreshPortfolioHealth()' in script

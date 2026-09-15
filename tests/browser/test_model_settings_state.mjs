@@ -33,14 +33,18 @@ assert.equal(byId("llm-api-key-input").value, "unsaved-draft");
 assert.equal(byId("llm-model-input").value, "typed-model", "late GET must not overwrite a draft");
 
 let sent;
+let tested = 0;
 byId("llm-base-url-input").value = settings.base_url;
 context.fetch = async (_url, options) => {
   if (options.method === "PUT") sent = JSON.parse(options.body);
+  if (_url.endsWith("/test")) tested++;
   return {ok: true, json: async () => settings};
 };
 await run("handleSaveLLMConfig()");
 assert.equal(sent.api_key, "unsaved-draft", "save must send what was typed");
 assert.equal(sent.model, "typed-model");
+assert.equal(tested, 1, "saving automatically tests the persisted configuration");
+assert.match(byId("llm-config-status").textContent, /连接测试通过/);
 assert.equal(byId("llm-api-key-input").value, "", "clear only after successful save");
 assert.match(byId("llm-api-key-input").placeholder, /已安全保存/);
 assert.match(byId("llm-config-status").textContent, /持久化/);
@@ -49,6 +53,11 @@ byId("llm-api-key-input").value = "keep-on-error";
 context.fetch = async () => ({ok: false});
 await run("handleSaveLLMConfig()");
 assert.equal(byId("llm-api-key-input").value, "keep-on-error");
+assert.equal(byId("llm-api-key-input").disabled, false);
+
+context.fetch = async (url) => ({ok: !url.endsWith("/test"), json: async () => settings});
+await run("handleSaveLLMConfig()");
+assert.match(byId("llm-config-status").textContent, /配置已保存，但连接测试失败/);
 assert.equal(byId("llm-api-key-input").disabled, false);
 
 let deleted = false;

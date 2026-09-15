@@ -238,7 +238,7 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
         pytest.skip("Node.js required for frontend behavior regression")
     source = (Path(__file__).resolve().parents[2] / "app/api/static/app.js").read_text(encoding="utf-8")
     prefix = source.partition("  microStore.subscribe((store) => {")[0]
-    names = ["hasFinancialNumber", "buildCopilotFundCard", "runCopilotStockResearch",
+    names = ["buildCopilotStockCard", "appendReportMetric", "hasFinancialNumber", "buildCopilotFundCard", "runCopilotStockResearch",
              "requirePortfolioAnalysisContext", "renderPortfolioReadiness",
              "ensureDependency", "confirmProfileContext", "renderCompanionRisk",
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
@@ -352,8 +352,10 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
       pe_ttm:null,pb:0,roe_pct:0,valuation_quantile_pct:0},execution_context:{data_mode:"LIVE"}})});
     byId("copilot-stock-input").value = "600519.SH";
     await runCopilotStockResearch();
-    assert.match(output.textContent, /财务字段缺失/);
-    assert.match(output.textContent, /pe_ttm/);
+    assert.match(output.textContent, /部分数据可用/);
+    assert.match(output.textContent, /历史估值分位暂未接入/);
+    assert.match(output.textContent, /PE（TTM）/);
+    assert.match(output.textContent, /0.00%/);
     assert.doesNotMatch(output.textContent, /NaN/);
 
     state.profile = {profile:{risk_level:"BALANCED",max_drawdown_tolerance_pct:"12"},questionnaire:{loss_tolerance_score:3}};

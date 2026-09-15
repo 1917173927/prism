@@ -112,3 +112,24 @@ def test_report_binds_profile_range_and_configuration_reference() -> None:
     assert report.concentration.single_asset_limit_pct is not None
     assert report.base_protection.profile_reference_pct is not None
     assert report.configuration_reference
+
+
+def test_metadata_and_cost_changes_create_distinct_immutable_reports():
+    from copy import deepcopy
+    data = _portfolio_data()
+    first = build_portfolio_report(data, owner_id="report-owner", data_mode="MOCK")
+    enriched = deepcopy(data)
+    enriched["portfolio"]["position_snapshot"]["positions"][0]["sector"] = "Industrials"
+    enriched["positions"][0]["sector"] = "Industrials"
+    enriched["positions"][0]["cost_price"] = 800
+    second = build_portfolio_report(enriched, owner_id="report-owner", data_mode="MOCK")
+    assert first.source_snapshot_id == second.source_snapshot_id
+    assert first.report_id != second.report_id
+    assert second.report_id == build_portfolio_report(enriched, owner_id="report-owner", data_mode="MOCK").report_id
+    store = SQLiteDecisionEventStore(":memory:")
+    try:
+        store.save_portfolio_report(first)
+        store.save_portfolio_report(second)
+        assert store.get_portfolio_report("report-owner", "MOCK", first.report_id) == first
+    finally:
+        store.close()

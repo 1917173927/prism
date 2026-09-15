@@ -259,23 +259,13 @@ class PortfolioReport(ContractModel):
         return self
 
 
-def _report_identity(
-    bundle: PortfolioImportBundle,
-    data_mode: str,
-    profile: RiskProfile | None,
-) -> str:
+def _report_identity(report: PortfolioReport) -> str:
+    # A snapshot can gain verified metadata without changing its upstream ID.
+    # Content-addressing preserves old reports while making repeated reads stable.
     payload = json.dumps(
-        {
-            "bundle_id": bundle.bundle_id,
-            "snapshot_id": bundle.position_snapshot.snapshot_id,
-            "data_mode": data_mode,
-            "profile_id": profile.profile_id if profile is not None else None,
-            "profile_version": profile.profile_version if profile is not None else None,
-            "ruleset_version": REPORT_RULESET_VERSION,
-        },
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
+        {"report": report.model_dump(mode="json", exclude={"report_id"}),
+         "ruleset_version": REPORT_RULESET_VERSION},
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     )
     return "portfolio-report-" + sha256(payload.encode("utf-8")).hexdigest()[:32]
 
@@ -676,8 +666,8 @@ def build_portfolio_report(
         else "持仓事实已生成，风险画像对照待完成"
     )
     source_as_of = bundle.position_snapshot.as_of
-    return PortfolioReport(
-        report_id=_report_identity(bundle, data_mode, profile),
+    report = PortfolioReport(
+        report_id="pending",
         owner_id=owner_id,
         data_mode=data_mode,
         generated_at=source_as_of,
@@ -709,6 +699,7 @@ def build_portfolio_report(
             "本报告仅供投资研究与风险复核参考，不构成投资建议或交易指令。",
         ),
     )
+    return report.model_copy(update={"report_id": _report_identity(report)})
 
 
 __all__ = [

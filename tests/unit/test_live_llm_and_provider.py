@@ -215,19 +215,19 @@ def test_explicit_announcement_question_omits_unrequested_quote_template() -> No
     ]
     output = agent._synthesize_grounded_response("请概括贵州茅台最新公告", {}, tools, None)
     assert "贵州茅台半年度报告" in output
-    assert "个股底稿字段" in output
+    assert "研判卡片" in output
     assert "1277.96" in output
     combined_output = agent._synthesize_grounded_response(
         "请概括贵州茅台最新公告并说明 ROE", {}, tools, None
     )
     assert "贵州茅台半年度报告" in combined_output
-    assert "个股底稿字段" in combined_output
+    assert "研判卡片" in combined_output
     assert "18.2%" in combined_output
     industry_output = agent._synthesize_grounded_response(
         "请给我贵州茅台最新公告并说明所属行业", {}, tools, None
     )
     assert "贵州茅台半年度报告" in industry_output
-    assert "个股底稿字段" in industry_output
+    assert "研判卡片" in industry_output
     assert "白酒" in industry_output
 
 

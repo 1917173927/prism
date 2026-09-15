@@ -3324,6 +3324,7 @@ def create_app(
     async def copilot_live_quote_endpoint(
         symbol: str = "300750",
         auto_complete_dependency: bool = False,
+        include_financials: bool = False,
     ):
         """Query real-time stock quote and valuation data."""
         clean_code = _validated_exchange_code(symbol, VALID_A_SHARE_PREFIXES)
@@ -3341,7 +3342,8 @@ def create_app(
             return blocked
         if controller.mode == DataMode.LIVE:
             try:
-                data = await active_live_finance.get_quote(symbol)
+                fetch_quote = getattr(active_live_finance, "get_stock_research", active_live_finance.get_quote) if include_financials else active_live_finance.get_quote
+                data = await fetch_quote(symbol)
             except FuyaoProviderError as exc:
                 if exc.code in CAPABILITY_FAILURE_CODES:
                     await controller.record_fuyao_capability_failure("stock_quote", exc.code)
