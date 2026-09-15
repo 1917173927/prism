@@ -154,6 +154,49 @@ def test_delete_last_position_and_restore_empty_portfolio(tmp_path):
         assert client.get("/api/v1/advisor/portfolio/summary", headers=headers).json()["position_count"] == 0
 
 
+def test_current_portfolio_report_is_persisted_and_owner_scoped(tmp_path):
+    with TestClient(create_app(database_path=tmp_path / "portfolio-report.db")) as client:
+        headers = {"X-Owner-ID": "report-owner"}
+        payload = {
+            "owner_id": "report-owner",
+            "cash_cny": 1000,
+            "positions": [{
+                "asset_id": "600519.SH",
+                "name": "贵州茅台",
+                "quantity": 10,
+                "price": 1000,
+                "cost_price": 900,
+                "previous_close": 990,
+            }],
+        }
+        assert client.put("/api/v1/advisor/portfolio/current", headers=headers, json=payload).status_code == 200
+
+        response = client.get("/api/v1/advisor/portfolio/report", headers=headers)
+        assert response.status_code == 200
+        report = response.json()
+        assert report["schema_version"] == "portfolio-report.v1"
+        assert report["position_count"] == 1
+        assert report["total_value_cny"] == "11000.00"
+        assert report["concentration"]["top_asset_name"] == "贵州茅台"
+        assert report["pnl_summary"]["loss_position_count"] == 0
+        assert report["base_protection"]["defensive_weight_pct"] == "9.09"
+        assert report["configuration_reference"]
+        assert {row["group_key"] for row in report["asset_structure"]} == {
+            "stock", "etf", "convertible", "bond", "cash", "other",
+        }
+
+        saved = client.get(
+            f"/api/v1/advisor/portfolio/reports/{report['report_id']}",
+            headers=headers,
+        )
+        assert saved.status_code == 200
+        assert saved.json() == report
+        assert client.get(
+            f"/api/v1/advisor/portfolio/reports/{report['report_id']}",
+            headers={"X-Owner-ID": "another-owner"},
+        ).status_code == 404
+
+
 def test_index_quote_uses_shanghai_and_keeps_equity_quote_separate():
     requests = []
     def respond(request):

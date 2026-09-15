@@ -7,12 +7,12 @@
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/static/styles.css?v=20260915-chat-stages1">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260915-chat-stages1">
+    <link rel="stylesheet" href="/static/styles.css?v=20260915-profile-result2">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260915-portfolio-report1">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260915-chat-stages1" defer></script>
+    <script src="/static/app.js?v=20260915-portfolio-report3" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -650,30 +650,64 @@
 
           <section class="metric-strip" aria-label="组合摘要">
             <article>
-              <span>组合市值</span>
+              <span>持仓市值</span>
               <strong class="mono" id="overview-portfolio-aum">—</strong>
               <small id="overview-portfolio-cash">现金另计 —</small>
             </article>
             <article>
-              <span id="overview-pnl-label">浮动盈亏</span>
+              <span id="overview-pnl-label">当日盈亏</span>
               <strong class="mono" id="overview-pnl-val">—</strong>
-              <small id="overview-pnl-pct">等待数据</small>
+              <small id="overview-pnl-pct">等待昨收价</small>
             </article>
             <article>
-              <span id="overview-benchmark-label">标的覆盖</span>
+              <span id="overview-benchmark-label">累计盈亏</span>
               <strong class="mono" id="overview-benchmark-val">—</strong>
-              <small id="overview-benchmark-sub">沪深 300 基准</small>
+              <small id="overview-benchmark-sub">等待成本价</small>
             </article>
             <article>
-              <span>组合提示</span>
-              <strong><span class="status-chip" id="overview-hhi-chip">等待分析</span></strong>
-              <small id="overview-alert-note">关注持仓集中度与行业占比上限</small>
+              <span>持仓数量</span>
+              <strong class="mono" id="overview-position-count">—</strong>
+              <small id="overview-position-sub">等待持仓</small>
             </article>
           </section>
 
           <section id="portfolio-empty" class="surface portfolio-empty" hidden>
             <h3>添加你的第一笔持仓</h3><p>支持截图识别、文字录入和手动添加。</p>
             <button type="button" data-open-portfolio>导入持仓</button>
+          </section>
+          <section id="portfolio-report-card" class="surface portfolio-report-card" hidden aria-labelledby="portfolio-report-title">
+            <header class="portfolio-report-header">
+              <div>
+                <span class="eyebrow">正式快照报告</span>
+                <h3 id="portfolio-report-title">持仓分析报告</h3>
+                <p id="portfolio-report-meta" class="portfolio-report-meta"></p>
+              </div>
+              <div class="portfolio-report-actions">
+                <span id="portfolio-report-status" class="status-chip">待生成</span>
+                <button id="portfolio-report-refresh" type="button" class="copilot-action-btn secondary">重新生成</button>
+              </div>
+            </header>
+            <div id="portfolio-report-headline" class="portfolio-report-headline"></div>
+            <div id="portfolio-report-observations" class="portfolio-report-observations"></div>
+            <div class="portfolio-report-grid">
+              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-structure-title">
+                <h4 id="portfolio-report-structure-title">资产结构</h4>
+                <div id="portfolio-report-asset-structure"></div>
+              </section>
+              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-risk-title">
+                <h4 id="portfolio-report-risk-title">风险对照</h4>
+                <div id="portfolio-report-risk-summary"></div>
+              </section>
+              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-concentration-title">
+                <h4 id="portfolio-report-concentration-title">集中度与浮亏</h4>
+                <div id="portfolio-report-concentration-summary"></div>
+              </section>
+              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-protection-title">
+                <h4 id="portfolio-report-protection-title">底仓保护与配置参考</h4>
+                <div id="portfolio-report-protection-summary"></div>
+              </section>
+            </div>
+            <p id="portfolio-report-disclosure" class="portfolio-report-disclosure"></p>
           </section>
 <div class="portfolio-holdings-layout">
           <section class="surface portfolio-detail-card">
@@ -1453,9 +1487,22 @@
             <div class="profile-purpose-callout">
               <div>
                 <strong>评级如何确定</strong>
-                <p>19 题问卷用于了解你的风险承受能力；如补充交易记录，系统会结合实际投资行为审慎确定评级。</p>
+                <p>19 题问卷用于了解你的风险承受能力、投资经验和个性化需求，确认后生成八维量化画像与资产配置参考。</p>
               </div>
             </div>
+
+            <section class="profile-summary-section" aria-labelledby="profile-summary-title">
+              <div class="profile-summary-heading">
+                <div>
+                  <span class="eyebrow clay">双轨汇总</span>
+                  <h3 id="profile-summary-title">评级与偏好摘要</h3>
+                </div>
+                <button id="refresh-profile-summary" class="query-submit secondary" type="button">刷新偏好</button>
+              </div>
+              <div id="profile-summary-content" class="profile-summary-content" aria-live="polite">
+                <div class="empty-state">完成测评后可查看风险等级与设置。</div>
+              </div>
+            </section>
 
             <form id="questionnaire-form" class="questionnaire-shell" novalidate>
               <div class="questionnaire-progress-head">
@@ -1479,19 +1526,6 @@
                 <button id="questionnaire-confirm" class="query-submit" type="submit">确认问卷</button>
               </div>
             </form>
-
-            <section class="profile-summary-section" aria-labelledby="profile-summary-title">
-              <div class="profile-summary-heading">
-                <div>
-                  <span class="eyebrow clay">双轨汇总</span>
-                  <h3 id="profile-summary-title">评级与偏好摘要</h3>
-                </div>
-                <button id="refresh-profile-summary" class="query-submit secondary" type="button">刷新偏好</button>
-              </div>
-              <div id="profile-summary-content" class="profile-summary-content" aria-live="polite">
-                <div class="empty-state">完成测评后可查看风险等级与设置。</div>
-              </div>
-            </section>
 
             <section class="profile-display-preference" aria-labelledby="display-preference-title">
               <div>
@@ -1726,6 +1760,17 @@
         </div>
       </div>
     </div>
+  <dialog id="portfolio-diagnosis-drawer" class="portfolio-diagnosis-drawer" aria-labelledby="portfolio-diagnosis-title">
+    <header class="portfolio-diagnosis-header">
+      <div>
+        <span class="eyebrow">持仓诊断</span>
+        <h2 id="portfolio-diagnosis-title">标的诊断</h2>
+        <p id="portfolio-diagnosis-code" class="portfolio-report-meta"></p>
+      </div>
+      <button id="close-portfolio-diagnosis" type="button" class="copilot-action-btn secondary">关闭</button>
+    </header>
+    <div id="portfolio-diagnosis-content"></div>
+  </dialog>
   <dialog id="truth-drawer" aria-labelledby="truth-drawer-title" style="margin-right:0;width:min(640px,92vw);height:90vh;overflow:auto;border:1px solid #ccd3ca;border-radius:12px;padding:24px">
   <h2 id="truth-drawer-title">本次分析资料</h2>
   <button id="close-truth-drawer" type="button" class="query-submit secondary">关闭</button>

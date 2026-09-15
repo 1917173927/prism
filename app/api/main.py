@@ -134,10 +134,10 @@ from app.profile import (
     DisplayPolicySource,
     QUESTIONNAIRE_TEMPLATE,
     QuestionnaireTemplate,
-    BehaviorEventType,
     behavior_event_from_portfolio,
     build_display_policy,
     build_questionnaire_snapshot,
+    build_profile_presentation,
     calculate_behavior_profile,
     effective_risk_profile,
 )
@@ -189,6 +189,7 @@ from app.portfolio import (
     refresh_portfolio_live,
     refresh_portfolio_mock,
 )
+from app.portfolio.report import PortfolioReport, build_portfolio_report
 from app.portfolio.health import (
     PortfolioHealthRequest,
     PortfolioHealthResponse,
@@ -1380,7 +1381,10 @@ def create_app(
             confirmed_at=request.evaluated_at,
             snapshot_version=1 if current is None else current.snapshot_version + 1,
         )
-        return QuestionnairePreviewResponse(snapshot=snapshot)
+        return QuestionnairePreviewResponse(
+            snapshot=snapshot,
+            presentation=build_profile_presentation(snapshot),
+        )
 
     @api.post(
         "/api/v1/advisor/profile/questionnaire/confirm",
@@ -1400,7 +1404,11 @@ def create_app(
             snapshot_version=1 if current is None else current.snapshot_version + 1,
         )
         stored, created = active_store.save_questionnaire_snapshot(snapshot)
-        return QuestionnaireConfirmationResponse(snapshot=stored, created=created)
+        return QuestionnaireConfirmationResponse(
+            snapshot=stored,
+            presentation=build_profile_presentation(stored),
+            created=created,
+        )
 
     @api.get(
         "/api/v1/advisor/profile/summary",
@@ -1417,32 +1425,19 @@ def create_app(
             updated_at=active_clock(),
             source=DisplayPolicySource.DEFAULT,
         )
-        events = active_store.list_behavior_events(owner_id)
-        trade_count = sum(item.event_type == BehaviorEventType.TRADE for item in events)
-        snapshot_count = sum(item.event_type == BehaviorEventType.POSITION_SNAPSHOT for item in events)
         gaps: list[str] = []
         actions: list[str] = []
         effective = snapshot.profile if snapshot is not None else None
         if snapshot is None:
             gaps.append("尚未完成 19 题风险问卷")
             actions.append("完成风险测评")
-        if trade_count < 3:
-            gaps.append(f"90 日交易记录不足：当前 {trade_count} 条，至少需要 3 条")
-            actions.append("导入交易记录")
-        if snapshot_count < 2:
-            gaps.append(f"持仓快照不足：当前 {snapshot_count} 次，至少需要 2 次")
-            actions.append("确认持仓快照")
         if snapshot is not None and behavior is not None:
             if behavior.questionnaire_profile_id == snapshot.profile.profile_id:
                 effective = effective_risk_profile(snapshot.profile, behavior)
-            else:
-                gaps.append("行为画像基于旧问卷，需要重新计算")
-                actions.append("重新计算行为画像")
-        if behavior is not None and behavior.evidence_status.value == "INSUFFICIENT_DATA":
-            gaps.append("行为证据尚未达到计算条件")
         return ProfileSummaryResponse(
             owner_id=owner_id,
             questionnaire_snapshot=snapshot,
+            presentation=build_profile_presentation(snapshot) if snapshot is not None else None,
             behavior_profile=behavior,
             effective_profile=effective,
             display_policy=policy,
@@ -2654,6 +2649,67 @@ def create_app(
         mode = get_runtime_mode_controller().mode.value
         result = portfolio_summary(active_store.get_current_portfolio(owner_id, mode))
         return {**result, "data_mode": mode, "owner_id": owner_id}
+
+    @api.get(
+        "/api/v1/advisor/portfolio/report",
+        response_model=PortfolioReport,
+    )
+    def get_current_portfolio_report(
+        owner_id: str = Depends(owner_dependency),
+    ) -> PortfolioReport | JSONResponse:
+        """Return and persist one immutable report for the current portfolio snapshot."""
+        mode = get_runtime_mode_controller().mode.value
+        data = active_store.get_current_portfolio(owner_id, mode)
+        if data is None or not data.get("portfolio"):
+            return _error_response(404, "PORTFOLIO_EMPTY", "请先确认持仓后生成正式报告")
+        try:
+            bundle = PortfolioImportBundle.model_validate(data["portfolio"])
+            snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+            profile = snapshot.profile if snapshot is not None else None
+            presentation = build_profile_presentation(snapshot) if snapshot is not None else None
+            health = None
+            if profile is not None:
+                try:
+                    health = calculate_portfolio_health(
+                        PortfolioHealthRequest(
+                            request_id=f"portfolio-report-health-{bundle.bundle_id}",
+                            owner_id=owner_id,
+                            calculated_at=bundle.position_snapshot.as_of,
+                            portfolio=bundle,
+                            profile=profile,
+                        )
+                    )
+                except ValueError:
+                    # The portfolio fact report remains usable when a profile
+                    # comparison cannot be completed; the response records the
+                    # unavailable risk layer explicitly.
+                    health = None
+            report = build_portfolio_report(
+                data,
+                owner_id=owner_id,
+                data_mode=mode,
+                profile=profile,
+                presentation=presentation,
+                health=health,
+            )
+            stored, _ = active_store.save_portfolio_report(report)
+            return stored
+        except (ArithmeticError, TypeError, ValueError):
+            return _error_response(422, "PORTFOLIO_REPORT_FAILED", "持仓正式报告生成失败，请刷新后重试")
+
+    @api.get(
+        "/api/v1/advisor/portfolio/reports/{report_id}",
+        response_model=PortfolioReport,
+    )
+    def get_saved_portfolio_report(
+        report_id: str,
+        owner_id: str = Depends(owner_dependency),
+    ) -> PortfolioReport | JSONResponse:
+        mode = get_runtime_mode_controller().mode.value
+        report = active_store.get_portfolio_report(owner_id, mode, report_id)
+        if report is None:
+            return _error_response(404, "PORTFOLIO_REPORT_NOT_FOUND", "未找到该持仓报告")
+        return report
 
     @api.get("/api/v1/advisor/portfolio/current")
     def get_current_portfolio(owner_id: str = Depends(owner_dependency)):

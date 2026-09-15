@@ -295,6 +295,9 @@
   }
 
   function renderInvalidatedDerivedState() {
+    portfolioReportSequence += 1;
+    displayedPortfolioReport = null;
+    renderPortfolioReport(null);
     renderResearchMatrix(null);
     renderStockResearch(null);
     renderFundResearch(null);
@@ -1827,6 +1830,17 @@
     aid: "辅助需求",
   });
 
+  const PROFILE_RADAR_LABELS = Object.freeze({
+    risk: "风险承受",
+    exp: "投资经验",
+    act: "操作活跃",
+    res: "研究习惯",
+    inf: "信息投入",
+    ai: "AI 信任",
+    per: "个性需求",
+    aid: "辅助需求",
+  });
+
   const RISK_LEVEL_LABELS = Object.freeze({
     CONSERVATIVE: "保守型",
     BALANCED: "平衡型",
@@ -2085,13 +2099,134 @@
     return card;
   }
 
+  function profileScore(value) {
+    const score = Number(value);
+    return Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0;
+  }
+
+  function profileResultSection(title, description = "") {
+    const section = document.createElement("article");
+    section.className = "profile-result-section";
+    const header = document.createElement("header");
+    const heading = document.createElement("h4");
+    heading.textContent = title;
+    header.append(heading);
+    if (description) {
+      const note = document.createElement("p");
+      note.textContent = description;
+      header.append(note);
+    }
+    const body = document.createElement("div");
+    body.className = "profile-result-section-body";
+    section.append(header, body);
+    return { section, body };
+  }
+
+  function renderProfileRadar(presentation) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "profile-radar-visual";
+    const svgNS = "http://www.w3.org/2000/svg";
+    const dimensions = Array.isArray(presentation?.dimensions) ? presentation.dimensions : [];
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 320 280");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "八维投资者画像雷达图");
+    const title = document.createElementNS(svgNS, "title");
+    title.textContent = "八维投资者画像雷达图";
+    svg.append(title);
+    if (!dimensions.length) {
+      wrapper.append(svg);
+      return wrapper;
+    }
+
+    const cx = 160;
+    const cy = 132;
+    const radius = 86;
+    const angleFor = (index) => -Math.PI / 2 + (index * 2 * Math.PI) / dimensions.length;
+    const pointFor = (distance, index) => {
+      const angle = angleFor(index);
+      return [cx + distance * Math.cos(angle), cy + distance * Math.sin(angle)];
+    };
+    const pointsFor = (distance) => dimensions.map((_, index) => pointFor(distance, index).map((value) => value.toFixed(2)).join(",")).join(" ");
+
+    [20, 40, 60, 80, 100].forEach((level) => {
+      const ring = document.createElementNS(svgNS, "polygon");
+      ring.setAttribute("points", pointsFor((radius * level) / 100));
+      ring.setAttribute("class", "profile-radar-ring");
+      svg.append(ring);
+    });
+
+    dimensions.forEach((item, index) => {
+      const [x, y] = pointFor(radius, index);
+      const axis = document.createElementNS(svgNS, "line");
+      axis.setAttribute("x1", String(cx));
+      axis.setAttribute("y1", String(cy));
+      axis.setAttribute("x2", x.toFixed(2));
+      axis.setAttribute("y2", y.toFixed(2));
+      axis.setAttribute("class", "profile-radar-axis");
+      svg.append(axis);
+
+      const [labelX, labelY] = pointFor(radius + 20, index);
+      const label = document.createElementNS(svgNS, "text");
+      label.setAttribute("x", labelX.toFixed(2));
+      label.setAttribute("y", labelY.toFixed(2));
+      label.setAttribute("class", "profile-radar-label");
+      label.setAttribute("text-anchor", labelX < cx - 4 ? "end" : labelX > cx + 4 ? "start" : "middle");
+      label.setAttribute("dominant-baseline", labelY < cy - 4 ? "auto" : labelY > cy + 4 ? "hanging" : "middle");
+      label.textContent = PROFILE_RADAR_LABELS[item.key] || item.short_label || item.label || item.key;
+      svg.append(label);
+    });
+
+    const valuePolygon = document.createElementNS(svgNS, "polygon");
+    valuePolygon.setAttribute("points", dimensions.map((item, index) => pointFor((radius * profileScore(item.score)) / 100, index).map((value) => value.toFixed(2)).join(",")).join(" "));
+    valuePolygon.setAttribute("class", "profile-radar-value");
+    svg.append(valuePolygon);
+
+    dimensions.forEach((item, index) => {
+      const [x, y] = pointFor((radius * profileScore(item.score)) / 100, index);
+      const dot = document.createElementNS(svgNS, "circle");
+      dot.setAttribute("cx", x.toFixed(2));
+      dot.setAttribute("cy", y.toFixed(2));
+      dot.setAttribute("r", "3.5");
+      dot.setAttribute("class", "profile-radar-dot");
+      const dotTitle = document.createElementNS(svgNS, "title");
+      dotTitle.textContent = `${item.label || item.key}：${profileScore(item.score).toFixed(0)} 分`;
+      dot.append(dotTitle);
+      svg.append(dot);
+    });
+    wrapper.append(svg);
+    return wrapper;
+  }
+
+  function renderProfileDimensionBars(presentation) {
+    const dimensions = document.createElement("div");
+    dimensions.className = "profile-dimensions profile-dimension-bars";
+    (presentation?.dimensions || []).forEach((item) => {
+      const row = document.createElement("div");
+      const heading = document.createElement("div");
+      const label = document.createElement("span");
+      label.textContent = item.label || PROFILE_DIMENSION_LABELS[item.key] || item.key;
+      const value = document.createElement("strong");
+      value.textContent = `${profileScore(item.score).toFixed(0)} 分`;
+      heading.append(label, value);
+      const track = document.createElement("div");
+      track.className = "profile-dimension-track";
+      const bar = document.createElement("span");
+      bar.style.width = `${profileScore(item.score)}%`;
+      track.append(bar);
+      row.append(heading, track);
+      dimensions.append(row);
+    });
+    return dimensions;
+  }
+
   function renderProfileSummary(summary, options = {}) {
     const panel = byId("profile-summary-content");
     if (!panel) return;
     clear(panel);
     const snapshot = summary?.questionnaire_snapshot || null;
-    const behavior = summary?.behavior_profile || null;
     const effective = summary?.effective_profile || snapshot?.profile || null;
+    const presentation = summary?.presentation || null;
     const status = byId("questionnaire-confirmation-status");
     if (!snapshot) {
       const empty = document.createElement("div");
@@ -2108,60 +2243,126 @@
       status.textContent = options.preview ? "预览未保存" : `已确认 · 第 ${snapshot.snapshot_version} 版`;
       status.className = options.preview ? "status-chip warning" : "status-chip ready";
     }
+    if (!presentation) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "画像展示规则尚未返回，请刷新偏好结果。";
+      panel.append(empty);
+      return;
+    }
+
+    const identity = document.createElement("section");
+    identity.className = "profile-result-identity";
+    const identityCopy = document.createElement("div");
+    const identityEyebrow = document.createElement("span");
+    identityEyebrow.className = "eyebrow clay";
+    identityEyebrow.textContent = "量化投资画像";
+    const identityTitle = document.createElement("h4");
+    identityTitle.textContent = presentation.archetype;
+    const identityNote = document.createElement("p");
+    identityNote.textContent = `${presentation.suitability_label} · 风险分 ${profileScore(presentation.risk_score).toFixed(0)} 分`;
+    identityCopy.append(identityEyebrow, identityTitle, identityNote);
+    const tags = document.createElement("div");
+    tags.className = "profile-result-tags";
+    (presentation.tags || []).forEach((tagValue) => {
+      const tag = document.createElement("span");
+      tag.className = "profile-result-tag";
+      tag.textContent = tagValue;
+      tags.append(tag);
+    });
+    identity.append(identityCopy, tags);
+    panel.append(identity);
+
     const cards = document.createElement("div");
     cards.className = "profile-summary-cards";
     cards.append(
-      profileMetricCard("问卷测评", `${snapshot.suitability_level} · ${profileLevelText(snapshot.profile)}`, "基于 19 题测评结果"),
-      profileMetricCard(
-        "交易记录参考",
-        behavior?.evidence_status === "CALCULATED" ? `${behavior.suitability_level} · ${Number(behavior.behavior_risk_score).toFixed(0)} 分` : "待补充记录",
-        behavior?.evidence_status === "CALCULATED" ? "结合实际交易与持仓" : "暂无历史交易数据",
-      ),
-      profileMetricCard("当前有效评级", profileLevelText(effective), behavior?.evidence_status === "CALCULATED" ? "结合问卷与实际交易取更审慎评级" : "按测评结果执行"),
+      profileMetricCard("适当性等级", presentation.suitability_label, "基于 19 题问卷"),
+      profileMetricCard("画像风险分", `${profileScore(presentation.risk_score).toFixed(0)} 分`, "八维画像中的风险承受维度"),
+      profileMetricCard("当前有效评级", profileLevelText(effective), "用于后续风险约束"),
     );
     panel.append(cards);
 
-    const dimensions = document.createElement("div");
-    dimensions.className = "profile-dimensions";
-    snapshot.dimensions.forEach((item) => {
+    const visual = profileResultSection("八维画像", "8 个维度均按 0–100 分展示；分数只来自本次已确认问卷。");
+    const visualLayout = document.createElement("div");
+    visualLayout.className = "profile-radar-layout";
+    visualLayout.append(renderProfileRadar(presentation), renderProfileDimensionBars(presentation));
+    visual.body.append(visualLayout);
+    panel.append(visual.section);
+
+    const resultPanels = document.createElement("div");
+    resultPanels.className = "profile-result-panels";
+
+    const facts = profileResultSection("关键档案", "用于解释画像和服务策略的问卷答案。");
+    const factGrid = document.createElement("div");
+    factGrid.className = "profile-key-facts";
+    (presentation.key_profile || []).forEach((fact) => {
+      const card = document.createElement("div");
+      card.className = "profile-key-fact";
+      const label = document.createElement("span");
+      label.textContent = fact.label;
+      const value = document.createElement("strong");
+      value.textContent = fact.value;
+      card.append(label, value);
+      factGrid.append(card);
+    });
+    facts.body.append(factGrid);
+    resultPanels.append(facts.section);
+
+    const strategy = profileResultSection("服务策略", "根据画像结果安排分析顺序和解释方式。");
+    const strategyList = document.createElement("ul");
+    strategyList.className = "profile-strategy-list";
+    (presentation.service_strategy || []).forEach((item) => {
+      const row = document.createElement("li");
+      row.textContent = item;
+      strategyList.append(row);
+    });
+    strategy.body.append(strategyList);
+    resultPanels.append(strategy.section);
+
+    const allocation = profileResultSection("资产配置参考", "当前仅展示画像级参考比例，不生成交易指令。");
+    const allocationList = document.createElement("div");
+    allocationList.className = "profile-allocation-list";
+    const allocationColors = { cash: "var(--slate)", bonds: "var(--sage)", equity: "var(--clay)" };
+    (presentation.asset_allocation || []).forEach((item) => {
       const row = document.createElement("div");
+      row.className = "profile-allocation-row";
       const heading = document.createElement("div");
       const label = document.createElement("span");
-      label.textContent = PROFILE_DIMENSION_LABELS[item.key] || item.key;
+      label.textContent = item.label;
       const value = document.createElement("strong");
-      value.textContent = `${Number(item.score).toFixed(0)} 分`;
+      value.textContent = `${profileScore(item.target_pct).toFixed(0)}%`;
       heading.append(label, value);
       const track = document.createElement("div");
-      track.className = "profile-dimension-track";
+      track.className = "profile-allocation-track";
       const bar = document.createElement("span");
-      bar.style.width = `${Math.max(0, Math.min(100, Number(item.score)))}%`;
+      bar.style.width = `${profileScore(item.target_pct)}%`;
+      bar.style.background = allocationColors[item.key] || "var(--clay)";
       track.append(bar);
       row.append(heading, track);
-      dimensions.append(row);
+      allocationList.append(row);
     });
-    panel.append(dimensions);
+    const equityRange = document.createElement("p");
+    equityRange.className = "profile-allocation-range";
+    equityRange.textContent = `权益参考区间：${presentation.equity_range.minimum_pct}%–${presentation.equity_range.maximum_pct}%`;
+    const riskNotice = document.createElement("p");
+    riskNotice.className = "profile-risk-notice";
+    riskNotice.textContent = presentation.risk_notice;
+    allocation.body.append(allocationList, equityRange, riskNotice);
+    resultPanels.append(allocation.section);
+    panel.append(resultPanels);
 
-    const gaps = summary?.data_gaps || [];
-    if (gaps.length) {
-      const callout = document.createElement("div");
-      callout.className = "profile-data-gaps";
-      const title = document.createElement("strong");
-      title.textContent = "还缺哪些数据";
-      const list = document.createElement("ul");
-      gaps.forEach((gap) => {
-        const item = document.createElement("li");
-        item.textContent = gap;
-        list.append(item);
-      });
-      callout.append(title, list);
-      panel.append(callout);
+    if (options.preview) {
+      const previewNote = document.createElement("div");
+      previewNote.className = "profile-preview-note";
+      previewNote.textContent = "当前为问卷预览，确认后才会保存并用于风险约束。";
+      panel.append(previewNote);
     }
     const policy = summary?.display_policy;
     if (policy) {
       const level = setDisplayPolicyControl(policy);
       const policyNote = document.createElement("p");
       policyNote.className = "profile-policy-note";
-      policyNote.textContent = `当前回答详细度：${level.label}。${level.hint}；风险提示和数据缺失始终展开。`;
+      policyNote.textContent = `当前回答详细度：${level.label}。${level.hint}；风险提示始终展开。`;
       panel.append(policyNote);
     }
   }
@@ -2227,7 +2428,7 @@
       if (!response.ok) throw await apiError(response);
       const result = await response.json();
       state.questionnairePreview = result.snapshot;
-      renderProfileSummary({ questionnaire_snapshot: result.snapshot, effective_profile: result.snapshot.profile, data_gaps: ["当前结果仅为预览，确认后才会保存并用于风险约束。"], display_policy: state.displayPolicy }, { preview: true });
+      renderProfileSummary({ questionnaire_snapshot: result.snapshot, presentation: result.presentation, effective_profile: result.snapshot.profile, display_policy: state.displayPolicy }, { preview: true });
     } catch (error) {
       setQuestionnaireError(error.message || "问卷预览失败。");
     }
@@ -2280,8 +2481,8 @@
     [
       ["风险等级", profile.suitability_level],
       ["参考风险分", profile.effective_risk_score],
-      ["近 90 日换手", profile.metrics?.turnover_90d_pct == null ? "暂无数据" : `${profile.metrics.turnover_90d_pct}%`],
-      ["历史最大回撤", profile.metrics?.max_drawdown_pct == null ? "暂无数据" : `${profile.metrics.max_drawdown_pct}%`],
+      ["近 90 日换手", profile.metrics?.turnover_90d_pct == null ? "未采集（不影响问卷画像）" : `${profile.metrics.turnover_90d_pct}%`],
+      ["历史最大回撤", profile.metrics?.max_drawdown_pct == null ? "未采集（不影响问卷画像）" : `${profile.metrics.max_drawdown_pct}%`],
     ].forEach(([label, value]) => {
       const card = document.createElement("div");
       card.className = "behavior-profile-metric";
@@ -2293,7 +2494,7 @@
       grid.append(card);
     });
     const note = document.createElement("p");
-    note.textContent = "这些信息用于让分析更符合你的投资目标。";
+    note.textContent = "行为证据为可选参考，不作为问卷画像展示的前置条件。";
     panel.append(grid, note);
     const calculated = profile.evidence_status === "CALCULATED";
     status.className = calculated ? "cf-verdict cf-verdict-pass" : "cf-verdict cf-verdict-warning";
@@ -10690,9 +10891,266 @@
 
   let portfolioSummarySequence = 0;
   let displayedPortfolioSummary = null;
+  let portfolioReportSequence = 0;
+  let displayedPortfolioReport = null;
+
+  const reportAmount = value => value == null
+    ? "待补充数据"
+    : `¥ ${Number(value).toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  const reportPercent = value => value == null ? "—" : `${Number(value).toFixed(2)}%`;
+  const reportStatusLabel = status => ({
+    PASS: "通过",
+    REVIEW_REQUIRED: "需要复核",
+    BLOCKED: "已阻断",
+    UNAVAILABLE: "待补齐",
+  }[status] || "待生成");
+  const reportStatusClass = status => status === "PASS" ? "pass" : ["REVIEW_REQUIRED", "UNAVAILABLE"].includes(status) ? "review" : "blocked";
+  const reportAssetTypeLabel = type => ({
+    STOCK: "股票",
+    ETF: "ETF",
+    MUTUAL_FUND: "基金",
+    BOND: "债券",
+    CASH: "现金",
+    OTHER: "其他",
+  }[type] || text(type, "其他"));
+
+  function appendReportMetric(parent, label, value, className = "") {
+    const item = document.createElement("div"); item.className = `portfolio-report-metric ${className}`.trim();
+    const name = document.createElement("span"); name.textContent = label;
+    const number = document.createElement("strong"); number.textContent = value;
+    item.append(name, number); parent.append(item);
+  }
+
+  function renderPortfolioReport(report) {
+    const card = byId("portfolio-report-card");
+    if (!card) return;
+    if (!report) { card.hidden = true; return; }
+    card.hidden = false;
+    const status = byId("portfolio-report-status");
+    const reportStatus = report.risk?.status || "UNAVAILABLE";
+    if (status) {
+      status.textContent = reportStatusLabel(reportStatus);
+      status.className = `status-chip ${reportStatusClass(reportStatus)}`;
+    }
+    const meta = byId("portfolio-report-meta");
+    if (meta) meta.textContent = `${report.data_mode} · 计算时点 ${new Date(report.generated_at).toLocaleString("zh-CN")} · 报告编号 ${report.report_id}`;
+    const headline = byId("portfolio-report-headline");
+    if (headline) {
+      headline.className = `portfolio-report-headline ${reportStatusClass(reportStatus)}`;
+      headline.textContent = report.headline;
+    }
+    const observations = byId("portfolio-report-observations");
+    if (observations) {
+      clear(observations);
+      const title = document.createElement("h4"); title.textContent = "报告摘要";
+      const list = document.createElement("ul");
+      (report.observations || []).forEach(item => { const li = document.createElement("li"); li.textContent = item; list.append(li); });
+      observations.append(title, list);
+    }
+    const structure = byId("portfolio-report-asset-structure");
+    if (structure) {
+      clear(structure);
+      const table = document.createElement("table"); table.className = "portfolio-report-table";
+      const head = document.createElement("tr"); ["类别", "市值", "占比", "数量"].forEach(label => { const th = document.createElement("th"); th.textContent = label; head.append(th); });
+      table.append(head);
+      (report.asset_structure || []).filter(group => Number(group.market_value_cny) > 0).forEach(group => {
+        const row = document.createElement("tr");
+        [group.label, reportAmount(group.market_value_cny), reportPercent(group.weight_pct), `${group.position_count} 项`].forEach(value => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
+        table.append(row);
+      });
+      structure.append(table);
+    }
+    const risk = byId("portfolio-report-risk-summary");
+    if (risk) {
+      clear(risk);
+      const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
+      appendReportMetric(metrics, "风险状态", reportStatusLabel(reportStatus));
+      appendReportMetric(metrics, "行业 HHI", report.risk?.sector_hhi == null ? "未计算" : String(report.risk.sector_hhi));
+      appendReportMetric(metrics, "最高行业", report.risk?.top_sector_name ? `${report.risk.top_sector_name} ${reportPercent(report.risk.top_sector_weight_pct)}` : "未计算");
+      appendReportMetric(metrics, "现金比例", report.risk?.cash_weight_pct == null ? "未计算" : reportPercent(report.risk.cash_weight_pct));
+      risk.append(metrics);
+      if (report.profile) {
+        const profileLine = document.createElement("p"); profileLine.className = "portfolio-report-risk-line";
+        const verdict = report.profile.equity_verdict === "PASS" ? "在参考区间内" : report.profile.equity_verdict === "UNDERBOUND" ? "低于参考下限" : "高于参考上限";
+        profileLine.textContent = `画像 ${report.profile.suitability_level} · 权益类占比 ${reportPercent(report.profile.equity_weight_pct)} · 参考区间 ${reportPercent(report.profile.equity_minimum_pct)}–${reportPercent(report.profile.equity_maximum_pct)}（${verdict}）`;
+        risk.append(profileLine);
+      } else {
+        const profileLine = document.createElement("p"); profileLine.className = "portfolio-report-risk-line";
+        profileLine.textContent = "未绑定已确认风险画像，暂不执行画像区间对照。";
+        risk.append(profileLine);
+      }
+      if (report.risk?.issues?.length) {
+        const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
+        report.risk.issues.forEach(item => { const li = document.createElement("li"); li.textContent = text(item); issues.append(li); });
+        risk.append(issues);
+      }
+      if (report.risk?.sectors?.length) {
+        const table = document.createElement("table"); table.className = "portfolio-report-table portfolio-report-sector-table";
+        const head = document.createElement("tr"); ["行业", "当前占比", "设置范围", "状态"].forEach(label => { const th = document.createElement("th"); th.textContent = label; head.append(th); });
+        table.append(head);
+        report.risk.sectors.forEach(sector => {
+          const row = document.createElement("tr");
+          const cap = `${sector.limit_operator === "MIN" ? "≥" : "≤"} ${reportPercent(sector.limit_pct)}`;
+          [sector.name, reportPercent(sector.weight_pct), cap, reportStatusLabel(sector.verdict === "PASS" ? "PASS" : "REVIEW_REQUIRED")].forEach(value => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
+          table.append(row);
+        });
+        risk.append(table);
+      }
+    }
+    const concentration = byId("portfolio-report-concentration-summary");
+    if (concentration) {
+      clear(concentration);
+      const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
+      appendReportMetric(metrics, "集中度状态", report.concentration?.status === "REVIEW_REQUIRED" ? "需要复核" : report.concentration?.status === "CALCULATED" ? "已计算" : "待补齐");
+      appendReportMetric(metrics, "最高持仓", report.concentration?.top_asset_name || "未计算");
+      appendReportMetric(metrics, "最高持仓占比", reportPercent(report.concentration?.top_asset_weight_pct));
+      appendReportMetric(metrics, "资产 HHI", report.concentration?.asset_hhi == null ? "未计算" : String(report.concentration.asset_hhi));
+      appendReportMetric(metrics, "浮亏标的数", `${report.pnl_summary?.loss_position_count ?? 0} 项`);
+      appendReportMetric(metrics, "浮亏市值占比", reportPercent(report.pnl_summary?.loss_weight_pct));
+      concentration.append(metrics);
+      const note = document.createElement("p"); note.className = "portfolio-report-risk-line";
+      note.textContent = report.pnl_summary?.note || "浮亏统计暂不可用。";
+      concentration.append(note);
+      if (report.concentration?.issues?.length) {
+        const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
+        report.concentration.issues.forEach(item => { const li = document.createElement("li"); li.textContent = item; issues.append(li); });
+        concentration.append(issues);
+      }
+    }
+    const protection = byId("portfolio-report-protection-summary");
+    if (protection) {
+      clear(protection);
+      const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
+      appendReportMetric(metrics, "防御性资产", reportAmount(report.base_protection?.defensive_market_value_cny));
+      appendReportMetric(metrics, "防御性资产占比", reportPercent(report.base_protection?.defensive_weight_pct));
+      appendReportMetric(metrics, "画像防御参考", report.base_protection?.profile_reference_pct == null ? "未绑定画像" : reportPercent(report.base_protection.profile_reference_pct));
+      appendReportMetric(metrics, "参考状态", report.base_protection?.reference_verdict === "BELOW_REFERENCE" ? "低于参考" : report.base_protection?.reference_verdict === "PASS" ? "达到参考" : "仅展示事实");
+      protection.append(metrics);
+      const components = document.createElement("p"); components.className = "portfolio-report-risk-line";
+      components.textContent = `${(report.base_protection?.components || []).join("、")}。${report.base_protection?.note || ""}`;
+      protection.append(components);
+      const guide = document.createElement("ul"); guide.className = "portfolio-report-issues";
+      (report.configuration_reference || []).forEach(item => { const li = document.createElement("li"); li.textContent = item; guide.append(li); });
+      if (guide.childElementCount) protection.append(guide);
+    }
+    const disclosure = byId("portfolio-report-disclosure");
+    if (disclosure) disclosure.textContent = (report.disclosures || []).join(" ");
+  }
+
+  async function refreshPortfolioReport(expectedOwner = state.ownerId, expectedMode = state.dataMode) {
+    const sequence = ++portfolioReportSequence;
+    displayedPortfolioReport = null;
+    renderPortfolioReport(null);
+    const response = await fetch("/api/v1/advisor/portfolio/report", {headers: {"X-Owner-ID": expectedOwner}});
+    if (response.status === 404) {
+      if (sequence === portfolioReportSequence && expectedOwner === state.ownerId && expectedMode === state.dataMode) renderPortfolioReport(null);
+      return null;
+    }
+    if (!response.ok) throw await apiError(response);
+    const report = await response.json();
+    if (sequence !== portfolioReportSequence || expectedOwner !== state.ownerId || expectedMode !== state.dataMode || expectedMode !== report.data_mode) return null;
+    displayedPortfolioReport = report;
+    renderPortfolioReport(report);
+    return report;
+  }
+
+  function renderPortfolioDiagnosis(position) {
+    const title = byId("portfolio-diagnosis-title");
+    const code = byId("portfolio-diagnosis-code");
+    const content = byId("portfolio-diagnosis-content");
+    if (!title || !code || !content || !position) return;
+    title.textContent = position.asset_name || position.name || position.asset_id || "标的诊断";
+    code.textContent = `${position.asset_id || "—"} · ${reportAssetTypeLabel(position.asset_type)} · ${position.sector || "行业未分类"}`;
+    clear(content);
+    const status = document.createElement("div"); status.className = `portfolio-diagnosis-status ${position.diagnosis_status === "PASS" ? "pass" : "review"}`;
+    status.textContent = position.diagnosis_status === "PASS" ? "当前快照未发现单项数据问题" : "当前快照需要复核";
+    const facts = document.createElement("div"); facts.className = "portfolio-diagnosis-facts";
+    [
+      ["持仓数量", position.quantity == null ? "—" : String(position.quantity)],
+      ["成本价", position.cost_price_cny == null ? "待补充数据" : reportAmount(position.cost_price_cny)],
+      ["当前价格", position.current_price_cny == null ? "待补充数据" : reportAmount(position.current_price_cny)],
+      ["持仓市值", reportAmount(position.market_value_cny)],
+      ["持仓占比", reportPercent(position.weight_pct)],
+      ["累计盈亏", reportAmount(position.pnl_cny)],
+      ["累计收益率", reportPercent(position.pnl_pct)],
+    ].forEach(([label, value]) => appendReportMetric(facts, label, value));
+    const heading = document.createElement("h3"); heading.textContent = "诊断说明";
+    const list = document.createElement("ul"); list.className = "portfolio-diagnosis-list";
+    (position.diagnosis || ["当前持仓仅展示已确认快照事实。"]).forEach(item => { const li = document.createElement("li"); li.textContent = item; list.append(li); });
+    const note = document.createElement("p"); note.className = "portfolio-diagnosis-note";
+    note.textContent = "诊断只针对本次正式报告快照，不调用个股研究智能体，也不构成买卖指令。";
+    content.append(status, facts, heading, list, note);
+  }
+
+  function openPortfolioDiagnosis(assetId) {
+    const position = displayedPortfolioReport?.positions?.find(item => item.asset_id === assetId)
+      || (() => {
+        const row = displayedPortfolioSummary?.positions?.find(item => item.asset_id === assetId);
+        if (!row) return null;
+        return {
+          position_id: row.asset_id,
+          asset_id: row.asset_id,
+          asset_name: row.name || row.asset_id,
+          asset_type: row.asset_class === "FUND_ETF" ? "ETF" : "STOCK",
+          sector: row.sector || null,
+          quantity: row.quantity,
+          cost_price_cny: row.cost_price,
+          current_price_cny: row.price,
+          market_value_cny: row.market_value_cny,
+          pnl_cny: row.pnl_cny,
+          pnl_pct: row.cost_price && Number(row.cost_price) > 0 ? (Number(row.price) / Number(row.cost_price) - 1) * 100 : null,
+          weight_pct: row.weight_pct,
+          diagnosis_status: "REVIEW_REQUIRED",
+          diagnosis: ["正式报告尚未加载，当前仅展示持仓摘要；请稍后重试。"],
+        };
+      })();
+    const drawer = byId("portfolio-diagnosis-drawer");
+    if (!position || !drawer) return;
+    renderPortfolioDiagnosis(position);
+    drawer.showModal();
+  }
+
+  function escapeReportHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function buildPortfolioReportHtml(report) {
+    const cell = value => `<td>${escapeReportHtml(value)}</td>`;
+    const assetRows = (report.asset_structure || []).filter(group => Number(group.market_value_cny) > 0)
+      .map(group => `<tr>${cell(group.label)}${cell(reportAmount(group.market_value_cny))}${cell(reportPercent(group.weight_pct))}${cell(`${group.position_count} 项`)}</tr>`).join("");
+    const positionRows = (report.positions || [])
+      .map(position => `<tr>${cell(position.asset_name)}${cell(position.asset_id)}${cell(position.quantity)}${cell(position.cost_price_cny == null ? "待补充数据" : reportAmount(position.cost_price_cny))}${cell(reportAmount(position.current_price_cny))}${cell(reportAmount(position.market_value_cny))}${cell(reportAmount(position.pnl_cny))}${cell(reportPercent(position.weight_pct))}</tr>`).join("");
+    const riskRows = (report.risk?.sectors || [])
+      .map(sector => `<tr>${cell(sector.name)}${cell(reportPercent(sector.weight_pct))}${cell(`${sector.limit_operator === "MIN" ? "≥" : "≤"} ${reportPercent(sector.limit_pct)}`)}${cell(reportStatusLabel(sector.verdict === "PASS" ? "PASS" : "REVIEW_REQUIRED"))}</tr>`).join("");
+    const observations = (report.observations || []).map(item => `<li>${escapeReportHtml(item)}</li>`).join("");
+    const disclosures = (report.disclosures || []).map(item => `<li>${escapeReportHtml(item)}</li>`).join("");
+    const concentration = report.concentration || {};
+    const pnlSummary = report.pnl_summary || {};
+    const protection = report.base_protection || {};
+    const configurationReference = (report.configuration_reference || []).map(item => `<li>${escapeReportHtml(item)}</li>`).join("");
+    const profileLine = report.profile
+      ? `画像 ${escapeReportHtml(report.profile.suitability_level)} · 权益类占比 ${escapeReportHtml(reportPercent(report.profile.equity_weight_pct))} · 参考区间 ${escapeReportHtml(reportPercent(report.profile.equity_minimum_pct))}–${escapeReportHtml(reportPercent(report.profile.equity_maximum_pct))}`
+      : "未绑定已确认风险画像，暂不执行画像区间对照。";
+    return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>Prism 持仓正式报告</title><style>body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#202124;max-width:1100px;margin:32px auto;padding:0 24px;line-height:1.6}h1{margin-bottom:4px}h2{margin-top:28px;border-bottom:1px solid #ddd;padding-bottom:6px}small,.meta{color:#687078}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f6f7f8}.headline{padding:12px;border-left:4px solid #bd5700;background:#fff7ed;font-weight:700}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kpi{padding:12px;background:#f6f7f8}.kpi strong{display:block;font-size:18px}.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.fact{padding:12px;background:#f6f7f8}.fact strong{display:block;font-size:16px}@media(max-width:700px){.kpis,.facts{grid-template-columns:repeat(2,1fr)}}ul{padding-left:22px}</style></head><body><h1>Prism 持仓正式报告</h1><p class="meta">${escapeReportHtml(report.data_mode)} · 计算时点 ${escapeReportHtml(new Date(report.generated_at).toLocaleString("zh-CN"))} · 报告编号 ${escapeReportHtml(report.report_id)}</p><p class="headline">${escapeReportHtml(report.headline)}</p><div class="kpis"><div class="kpi">持仓市值<strong>${escapeReportHtml(reportAmount(report.holdings_value_cny))}</strong><small>现金 ${escapeReportHtml(reportAmount(report.cash_cny))}</small></div><div class="kpi">当日盈亏<strong>${escapeReportHtml(reportAmount(report.daily_pnl_cny))}</strong></div><div class="kpi">累计盈亏<strong>${escapeReportHtml(reportAmount(report.cumulative_pnl_cny))}</strong><small>${escapeReportHtml(reportPercent(report.cumulative_pnl_pct))}</small></div><div class="kpi">持仓数量<strong>${escapeReportHtml(report.position_count)}</strong></div></div><h2>报告摘要</h2><ul>${observations}</ul><h2>资产结构</h2><table><thead><tr><th>类别</th><th>市值</th><th>占比</th><th>数量</th></tr></thead><tbody>${assetRows}</tbody></table><h2>集中度与浮亏</h2><div class="facts"><div class="fact">集中度状态<strong>${escapeReportHtml(concentration.status || "待补齐")}</strong></div><div class="fact">最高持仓<strong>${escapeReportHtml(concentration.top_asset_name || "未计算")}</strong></div><div class="fact">最高持仓占比<strong>${escapeReportHtml(reportPercent(concentration.top_asset_weight_pct))}</strong></div><div class="fact">资产 HHI<strong>${escapeReportHtml(concentration.asset_hhi == null ? "未计算" : concentration.asset_hhi)}</strong></div><div class="fact">浮亏标的数<strong>${escapeReportHtml(`${pnlSummary.loss_position_count ?? 0} 项`)}</strong></div><div class="fact">浮亏市值占比<strong>${escapeReportHtml(reportPercent(pnlSummary.loss_weight_pct))}</strong></div></div><p>${escapeReportHtml(pnlSummary.note || "浮亏统计暂不可用。")}</p><h2>底仓保护与配置参考</h2><div class="facts"><div class="fact">防御性资产<strong>${escapeReportHtml(reportAmount(protection.defensive_market_value_cny))}</strong></div><div class="fact">防御性资产占比<strong>${escapeReportHtml(reportPercent(protection.defensive_weight_pct))}</strong></div><div class="fact">画像防御参考<strong>${escapeReportHtml(protection.profile_reference_pct == null ? "未绑定画像" : reportPercent(protection.profile_reference_pct))}</strong></div><div class="fact">参考状态<strong>${escapeReportHtml(protection.reference_verdict || "仅展示事实")}</strong></div></div><p>${escapeReportHtml(protection.note || "防御性资产统计暂不可用。")} ${(protection.components || []).map(escapeReportHtml).join("、")}</p><ul>${configurationReference}</ul><h2>风险对照</h2><p>${profileLine}</p><p>风险状态：${escapeReportHtml(reportStatusLabel(report.risk?.status))} · HHI：${escapeReportHtml(report.risk?.sector_hhi == null ? "未计算" : report.risk.sector_hhi)} · 最高行业：${escapeReportHtml(report.risk?.top_sector_name || "未计算")}</p><table><thead><tr><th>行业</th><th>当前占比</th><th>设置范围</th><th>状态</th></tr></thead><tbody>${riskRows}</tbody></table><h2>持仓明细</h2><table><thead><tr><th>标的</th><th>代码</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>累计盈亏</th><th>持仓占比</th></tr></thead><tbody>${positionRows}</tbody></table><h2>使用说明</h2><ul>${disclosures}</ul></body></html>`;
+  }
+
+  function downloadPortfolioReport(report) {
+    const blob = new Blob([buildPortfolioReportHtml(report)], {type: "text/html;charset=utf-8"});
+    const url = URL.createObjectURL(blob), anchor = document.createElement("a");
+    anchor.href = url; anchor.download = "Prism-持仓正式报告.html"; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   async function refreshPortfolioSummary() {
     if (!state.ownerId) return;
     displayedPortfolioSummary = null;
+    displayedPortfolioReport = null;
+    renderPortfolioReport(null);
     const sequence = ++portfolioSummarySequence;
     const owner = state.ownerId;
     const mode = state.dataMode;
@@ -10705,12 +11163,14 @@
     const amount = value => value == null ? "待补充数据" : `¥ ${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     byId("overview-portfolio-aum").textContent = amount(summary.holdings_value_cny);
     byId("overview-portfolio-cash").textContent = `现金 ${amount(summary.cash_cny)}`;
-    byId("overview-pnl-val").textContent = amount(summary.pnl_cny);
-    byId("overview-pnl-val").className = summary.pnl_cny == null ? "mono" : `mono ${Number(summary.pnl_cny) >= 0 ? "market-up" : "market-down"}`;
-    byId("overview-pnl-pct").textContent = summary.pnl_pct == null ? "补全成本后计算累计盈亏" : `${summary.pnl_pct}%`;
-    byId("overview-benchmark-label").textContent = "当日盈亏";
-    byId("overview-benchmark-val").textContent = amount(summary.daily_pnl_cny);
-    byId("overview-benchmark-sub").textContent = summary.daily_pnl_cny == null ? "需取得可核验昨收价" : "基于昨收与当前持仓计算";
+    byId("overview-pnl-val").textContent = amount(summary.daily_pnl_cny);
+    byId("overview-pnl-val").className = summary.daily_pnl_cny == null ? "mono" : `mono ${Number(summary.daily_pnl_cny) >= 0 ? "market-up" : "market-down"}`;
+    byId("overview-pnl-pct").textContent = summary.daily_pnl_cny == null ? "需取得可核验昨收价" : "基于昨收与当前持仓计算";
+    byId("overview-benchmark-val").textContent = amount(summary.pnl_cny);
+    byId("overview-benchmark-val").className = summary.pnl_cny == null ? "mono" : `mono ${Number(summary.pnl_cny) >= 0 ? "market-up" : "market-down"}`;
+    byId("overview-benchmark-sub").textContent = summary.pnl_pct == null ? "补全成本后计算累计收益率" : `累计收益率 ${summary.pnl_pct}%`;
+    byId("overview-position-count").textContent = `${summary.position_count}`;
+    byId("overview-position-sub").textContent = summary.position_count ? "已确认证券" : "等待持仓";
     byId("portfolio-empty").hidden = summary.position_count > 0;
     byId("portfolio-data-label").textContent = !summary.position_count ? "未导入" : mode === "MOCK" ? "演示数据" : "已确认持仓";
     byId("portfolio-summary-note").textContent = `${summary.position_count} 项持仓 · 当前记录价格；仅供参考，不构成投资建议。`;
@@ -10723,9 +11183,9 @@
         tr.append(td);
       });
       const actions = document.createElement("td");
-      const research = document.createElement("button"); research.type = "button"; research.textContent = "分析";
-      research.className = "copilot-action-btn secondary";
-      research.addEventListener("click", () => { window.location.hash = "copilot"; byId("copilot-natural-input").value = `个股分析：${row.asset_id}`; byId("copilot-natural-input").focus(); });
+      const diagnose = document.createElement("button"); diagnose.type = "button"; diagnose.textContent = "查看诊断";
+      diagnose.className = "copilot-action-btn secondary";
+      diagnose.addEventListener("click", () => openPortfolioDiagnosis(row.asset_id));
       const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "删除";
       remove.className = "copilot-action-btn secondary";
       remove.addEventListener("click", async () => {
@@ -10739,8 +11199,13 @@
           await replacePortfolioRows(draft.positions.filter(p => p.asset_id !== row.asset_id), draft.cash_cny);
         } catch (error) { setError(error.message); remove.disabled = false; }
       });
-      actions.append(research, remove); tr.append(actions); body.append(tr);
+      actions.append(diagnose, remove); tr.append(actions); body.append(tr);
     });
+    try {
+      await refreshPortfolioReport(owner, mode);
+    } catch (error) {
+      if (owner === state.ownerId && mode === state.dataMode) setError(`持仓已读取，但正式报告生成失败：${error.message}`);
+    }
   }
 
   async function replacePortfolioRows(positions, cash) {
@@ -10842,14 +11307,24 @@
     } catch (error) { errorBox.textContent = error.message; }
     finally { button.disabled = false; }
   });
-  byId("portfolio-export")?.addEventListener("click", () => {
-    const summary = displayedPortfolioSummary;
-    if (!summary?.position_count) { setError("请先导入持仓"); return; }
-    const cells = value => `"${String(value ?? "").replace(/^[=+@-]/, "'$&").replaceAll('"', '""')}"`;
-    const rows = [["数据模式", summary.data_mode], ["证券", "代码", "数量", "成本价", "现价", "市值", "累计盈亏", "占比%"], ...summary.positions.map(p => [p.name, p.asset_id, p.quantity, p.cost_price, p.price, p.market_value_cny, p.pnl_cny, p.weight_pct]), ["仅供参考，不构成投资建议"]];
-    const blob = new Blob(["\uFEFF" + rows.map(row => row.map(cells).join(",")).join("\r\n")], {type: "text/csv;charset=utf-8"});
-    const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = "Prism-持仓报告.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  byId("portfolio-export")?.addEventListener("click", async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const report = displayedPortfolioReport || await refreshPortfolioReport();
+      if (!report?.position_count) throw new Error("请先导入持仓");
+      downloadPortfolioReport(report);
+    } catch (error) { setError(error.message); }
+    finally { button.disabled = false; }
   });
+  byId("portfolio-report-refresh")?.addEventListener("click", async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try { await refreshPortfolioReport(); }
+    catch (error) { setError(error.message); }
+    finally { button.disabled = false; }
+  });
+  byId("close-portfolio-diagnosis")?.addEventListener("click", () => byId("portfolio-diagnosis-drawer")?.close());
   byId("test-user-model")?.addEventListener("click", async event => {
     const status = byId("llm-config-status"); status.style.display = "block"; status.textContent = "正在测试…";
     event.currentTarget.disabled = true;

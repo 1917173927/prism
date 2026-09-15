@@ -19,6 +19,7 @@ from app.store.contracts import (
 from app.store.context import ContextMemoryRecord
 from app.profile import BehaviorEvent, BehaviorProfile, DisplayPolicy, QuestionnaireSnapshot
 from app.portfolio import PortfolioImportBundle, PortfolioOcrConfirmation
+from app.portfolio.report import PortfolioReport
 
 
 class StoreError(RuntimeError):
@@ -70,6 +71,14 @@ class DecisionEventStore(Protocol):
     def clear_current_portfolio(self, owner_id: str, data_mode: str) -> None: ...
 
     def get_current_portfolio(self, owner_id: str, data_mode: str) -> dict[str, Any] | None: ...
+
+    def save_portfolio_report(
+        self, report: PortfolioReport
+    ) -> tuple[PortfolioReport, bool]: ...
+
+    def get_portfolio_report(
+        self, owner_id: str, data_mode: str, report_id: str
+    ) -> PortfolioReport | None: ...
 
     def save(self, event: DecisionEvent) -> tuple[DecisionEvent, bool]: ...
 
@@ -411,6 +420,70 @@ class SQLiteDecisionEventStore:
             return data
         except (ValueError, TypeError, KeyError) as exc:
             raise StoreCorruptError("stored portfolio failed validation") from exc
+
+    def save_portfolio_report(
+        self, report: PortfolioReport
+    ) -> tuple[PortfolioReport, bool]:
+        normalized = PortfolioReport.model_validate(report.model_dump(mode="python"))
+        owner_id = _validate_owner(normalized.owner_id)
+        if normalized.data_mode not in {"LIVE", "MOCK"}:
+            raise StoreError("invalid portfolio report data mode")
+        payload = _canonical_contract_json(normalized)
+        digest = sha256(payload.encode("utf-8")).hexdigest()
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json, content_hash FROM portfolio_reports "
+                "WHERE owner_id=? AND data_mode=? AND report_id=?",
+                (owner_id, normalized.data_mode, normalized.report_id),
+            ).fetchone()
+            if row is not None:
+                if row["content_hash"] != digest:
+                    raise StoreConflictError("portfolio report identity already has different content")
+                try:
+                    existing = PortfolioReport.model_validate(json.loads(row["payload_json"]))
+                except (ValueError, TypeError, KeyError) as exc:
+                    raise StoreCorruptError("stored portfolio report failed validation") from exc
+                return existing, False
+            self._connection.execute(
+                "INSERT INTO portfolio_reports "
+                "(owner_id, data_mode, report_id, payload_json, content_hash, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    owner_id,
+                    normalized.data_mode,
+                    normalized.report_id,
+                    payload,
+                    digest,
+                    normalized.generated_at.isoformat(),
+                ),
+            )
+        return normalized, True
+
+    def get_portfolio_report(
+        self, owner_id: str, data_mode: str, report_id: str
+    ) -> PortfolioReport | None:
+        owner_id = _validate_owner(owner_id)
+        if data_mode not in {"LIVE", "MOCK"}:
+            raise StoreError("invalid portfolio report data mode")
+        if not isinstance(report_id, str) or not report_id.strip():
+            raise StoreError("portfolio report ID is required")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT payload_json, content_hash FROM portfolio_reports "
+                "WHERE owner_id=? AND data_mode=? AND report_id=?",
+                (owner_id, data_mode, report_id.strip()),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            if sha256(row["payload_json"].encode("utf-8")).hexdigest() != row["content_hash"]:
+                raise ValueError("hash mismatch")
+            report = PortfolioReport.model_validate(json.loads(row["payload_json"]))
+            if report.owner_id != owner_id or report.data_mode != data_mode or report.report_id != report_id.strip():
+                raise ValueError("portfolio report identity mismatch")
+            return report
+        except (ValueError, TypeError, KeyError) as exc:
+            raise StoreCorruptError("stored portfolio report failed validation") from exc
 
     def get_user_preferences(self, owner_id: str) -> dict[str, Any] | None:
         owner_id = _validate_owner(owner_id)

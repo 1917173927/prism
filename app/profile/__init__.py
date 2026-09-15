@@ -61,6 +61,14 @@ from app.profile.questionnaire import (
     score_answers,
     validate_answers,
 )
+from app.profile.presentation import (
+    PRESENTATION_RULESET_VERSION,
+    ProfileAssetAllocation,
+    ProfileKeyFact,
+    ProfilePresentation,
+    ProfilePresentationDimension,
+    build_profile_presentation,
+)
 
 __all__ = [
     "ConflictResolution",
@@ -116,4 +124,10 @@ __all__ = [
     "build_questionnaire_snapshot",
     "score_answers",
     "validate_answers",
+    "PRESENTATION_RULESET_VERSION",
+    "ProfileAssetAllocation",
+    "ProfileKeyFact",
+    "ProfilePresentation",
+    "ProfilePresentationDimension",
+    "build_profile_presentation",
 ]

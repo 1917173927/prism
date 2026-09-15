@@ -54,6 +54,7 @@ from app.profile import (
     DisplayPolicy,
     QuestionnaireAnswer,
     QuestionnaireSnapshot,
+    ProfilePresentation,
 )
 from app.service import (
     AdvisorIntentRequest,
@@ -563,12 +564,14 @@ class QuestionnaireConfirmationRequest(ContractModel):
 class QuestionnairePreviewResponse(ContractModel):
     schema_version: Literal["questionnaire-preview-response.v1"] = "questionnaire-preview-response.v1"
     snapshot: QuestionnaireSnapshot
+    presentation: ProfilePresentation | None = None
     persisted: Literal[False] = False
 
 
 class QuestionnaireConfirmationResponse(ContractModel):
     schema_version: Literal["questionnaire-confirmation-response.v1"] = "questionnaire-confirmation-response.v1"
     snapshot: QuestionnaireSnapshot
+    presentation: ProfilePresentation | None = None
     created: bool
 
 
@@ -576,6 +579,7 @@ class ProfileSummaryResponse(ContractModel):
     schema_version: Literal["profile-summary-response.v1"] = "profile-summary-response.v1"
     owner_id: NonEmptyStr
     questionnaire_snapshot: QuestionnaireSnapshot | None = None
+    presentation: ProfilePresentation | None = None
     behavior_profile: BehaviorProfile | None = None
     effective_profile: RiskProfile | None = None
     display_policy: DisplayPolicy

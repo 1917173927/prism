@@ -22,6 +22,10 @@ def test_first_visit_is_guarded_by_the_formal_questionnaire() -> None:
     assert 'questionnaireGate: "PENDING"' in APP
 
 
+def test_profile_summary_precedes_questionnaire_in_dom_order() -> None:
+    assert INDEX.index('class="profile-summary-section"') < INDEX.index('id="questionnaire-form"')
+
+
 def test_home_is_agent_first_and_keeps_secondary_profile_context_quiet() -> None:
     copilot_start = INDEX.index('<section class="copilot-section" id="copilot"')
     copilot_end = INDEX.index('id="portfolio-modal"', copilot_start)
@@ -64,3 +68,36 @@ def test_navigation_keeps_old_hashes_and_profile_is_owner_scoped() -> None:
     assert 'questionnaire-template' in APP
     assert 'profile/summary' in APP
     assert 'X-Owner-ID' in APP
+
+
+def test_profile_result_renders_radar_strategy_and_allocation_without_trade_gate() -> None:
+    result_start = APP.index("function renderProfileSummary(")
+    result_end = APP.index("async function loadQuestionnaireTemplate(", result_start)
+    result = APP[result_start:result_end]
+    assert "renderProfileRadar(presentation)" in result
+    assert "presentation.tags" in result
+    assert "presentation.service_strategy" in result
+    assert "presentation.asset_allocation" in result
+    assert "交易记录参考" not in result
+    assert "还缺哪些数据" not in result
+
+
+def test_holdings_page_has_kpis_diagnosis_and_formal_report_export() -> None:
+    assert 'id="overview-position-count"' in INDEX
+    assert 'id="portfolio-report-card"' in INDEX
+    assert 'id="portfolio-diagnosis-drawer"' in INDEX
+    assert 'id="portfolio-report-concentration-summary"' in INDEX
+    assert 'id="portfolio-report-protection-summary"' in INDEX
+    for token in (
+        "当日盈亏",
+        "累计盈亏",
+        "持仓数量",
+        "/api/v1/advisor/portfolio/report",
+        "openPortfolioDiagnosis",
+        "buildPortfolioReportHtml",
+        "Prism-持仓正式报告.html",
+        "查看诊断",
+        "集中度与浮亏",
+        "底仓保护与配置参考",
+    ):
+        assert token in APP or token in INDEX

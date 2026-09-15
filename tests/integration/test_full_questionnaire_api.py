@@ -56,8 +56,12 @@ def test_questionnaire_preview_confirm_summary_and_owner_isolation() -> None:
 
         summary = client.get("/api/v1/advisor/profile/summary", headers=headers)
         assert summary.status_code == 200
-        assert summary.json()["questionnaire_snapshot"]["snapshot_id"] == snapshot["snapshot_id"]
-        assert "尚未完成 19 题风险问卷" not in summary.json()["data_gaps"]
+        summary_body = summary.json()
+        assert summary_body["questionnaire_snapshot"]["snapshot_id"] == snapshot["snapshot_id"]
+        assert summary_body["data_gaps"] == []
+        assert summary_body["next_actions"] == []
+        assert summary_body["presentation"]["suitability_level"] == snapshot["suitability_level"]
+        assert "交易记录" not in "".join(summary_body["data_gaps"])
 
         other = client.get("/api/v1/advisor/profile/summary", headers={"X-Owner-ID": "other-questionnaire-owner"})
         assert other.status_code == 200
