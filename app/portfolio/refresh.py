@@ -56,12 +56,15 @@ class LivePortfolioProviderAdapter:
         stock_quote_available: bool = False,
         fund_lookthrough_available: bool = False,
         wencai_available: bool = False,
+        industry_provider=None,
     ) -> None:
         self._finance_provider = finance_provider
         self._wencai_provider = wencai_provider
         self._stock_quote_available = stock_quote_available
         self._fund_lookthrough_available = fund_lookthrough_available
         self._wencai_available = wencai_available
+        self._industry_provider = industry_provider
+        self.industry_metadata: dict[str, dict] = {}
         self.wencai_failure_codes: set[str] = set()
         self.wencai_metadata_succeeded = False
         self._prefetched_quotes: dict[str, dict[str, Any] | None] = {}
@@ -179,6 +182,11 @@ class LivePortfolioProviderAdapter:
         stage: str,
     ) -> tuple[str | None, str | None, str | None, tuple[ProviderIssue, ...], bool]:
         """Fetch and decode one real industry row without binding another asset."""
+        if self._industry_provider is not None:
+            metadata = await self._industry_provider.get_industry(asset_id)
+            if metadata:
+                self.industry_metadata[asset_id] = metadata
+                return metadata["sector"], metadata.get("name"), metadata["source"], (), False
         if not self._wencai_available or self._wencai_provider is None:
             return None, None, None, (), False
         enrichment_request = ProviderRequest(

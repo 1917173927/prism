@@ -72,7 +72,7 @@ def test_structured_query_preserves_non_success_status(monkeypatch, status):
         async def execute(self, request):
             return SimpleNamespace(
                 status=ProviderStatus(status), records=[], missing_fields=("ROE",) if status == "PARTIAL" else (),
-                issues=[SimpleNamespace(code=ProviderIssueCode.AUTH_FAILED)] if status == "FAILED" else [],
+                issues=[SimpleNamespace(code=ProviderIssueCode.AUTH_FAILED, safe_message="Credential rejected")] if status == "FAILED" else [],
                 retrieved_at=SimpleNamespace(isoformat=lambda: "2026-09-15T00:00:00Z"))
     agent = CopilotAgent(skillhub_provider=Provider())
     result = asyncio.run(agent._execute_tool("query_financial_data", {"query": "ROE", "category": "company"}, {}, None, DataMode.LIVE))
@@ -110,7 +110,7 @@ def test_locked_live_health_uses_deterministic_service_and_rejects_mock():
     assert "|\n\n核查时间" in answer
     result["health"]["sectors"][0]["sector_key"] = "UNCLASSIFIED"
     incomplete_answer = agent._synthesize_grounded_response("体检", {}, [{"tool": "run_portfolio_health_check", "result": result}], context)
-    assert "行业数据待确认" in incomplete_answer
+    assert "行业数据暂缺" in incomplete_answer
     context["data_mode"] = "MOCK"
     assert asyncio.run(agent._execute_tool("run_portfolio_health_check", {}, {}, context, DataMode.LIVE))["status"] == "BLOCKED"
 

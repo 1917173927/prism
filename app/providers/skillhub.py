@@ -359,10 +359,14 @@ class WencaiSkillHubProvider(FinancialProvider):
                     )
 
                 if resp.status_code in (401, 403):
+                    # The upstream sends a plain-text daily-quota notice with
+                    # HTTP 401 and application/json. Do not mislabel it as a bad key.
+                    exhausted = "今天的次数已用完" in resp.text or "今日额度已用完" in resp.text
                     issue_code = (
-                        ProviderIssueCode.AUTH_FAILED
-                        if resp.status_code == 401
-                        else ProviderIssueCode.PERMISSION_DENIED
+                        ProviderIssueCode.QUOTA_EXHAUSTED if exhausted else (
+                            ProviderIssueCode.AUTH_FAILED if resp.status_code == 401
+                            else ProviderIssueCode.PERMISSION_DENIED
+                        )
                     )
                     return ProviderResult(
                         request_id=request.request_id,
@@ -377,7 +381,8 @@ class WencaiSkillHubProvider(FinancialProvider):
                             ProviderIssue(
                                 code=issue_code,
                                 stage="execute",
-                                safe_message=f"Official SkillHub authentication error HTTP {resp.status_code}.",
+                                safe_message=("问财当日查询额度已耗尽。请在 https://www.iwencai.com/skillhub 查看剩余额度，等待额度重置或按需升级权益；无需重新填写 Key。"
+                                              if exhausted else f"Official SkillHub authentication error HTTP {resp.status_code}."),
                                 retriable=False,
                             ),
                         ),

@@ -222,6 +222,7 @@ from app.llm import CopilotAgent, CopilotMessage
 from app.llm.client import AsyncLLMClient, LLMConfig
 from app.security import ProtectedSecretStore, SecretProtectionError
 from app.runtime.paths import default_private_data_dir
+from app.providers.industry import EastmoneyIndustryProvider
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
@@ -318,12 +319,6 @@ class CopilotConfirmPortfolioOcrApiRequest(CopilotValidatePortfolioOcrApiRequest
 
 class ReplacePortfolioApiRequest(CopilotValidatePortfolioOcrApiRequest):
     data_mode: Literal["MOCK", "LIVE"] | None = None
-
-
-class ConfirmPortfolioSectorsApiRequest(BaseModel):
-    owner_id: str = Field(min_length=1)
-    data_mode: Literal["MOCK", "LIVE"]
-    sectors: dict[str, Literal["Technology", "Industrials", "Consumer", "Healthcare", "Finance", "Cyclical"]] = Field(min_length=1)
 
 
 class CopilotConfigApiRequest(BaseModel):
@@ -473,6 +468,7 @@ def create_app(
     market_provider: MarketDataProvider | None = None,
     wencai_provider: WencaiSkillHubProvider | None = None,
     live_finance_provider: FuyaoFinanceProvider | None = None,
+    industry_provider: EastmoneyIndustryProvider | None = None,
     yahoo_finance_provider: YahooFinanceProvider | None = None,
     etnet_provider: EtNetProvider | None = None,
     # Backward-compatible injection point for existing iFinD provider tests.
@@ -657,6 +653,9 @@ def create_app(
             contract_verified=wencai_setting_state.contract_verified,
         )
     active_live_finance = live_finance_provider or FuyaoFinanceProvider()
+    active_industry = industry_provider or (
+        EastmoneyIndustryProvider() if live_finance_provider is None and wencai_provider is None else None
+    )
     active_yahoo_finance = yahoo_finance_provider or ifind_quant_provider or YahooFinanceProvider()
     active_etnet = etnet_provider or EtNetProvider()
     live_probe_lock = asyncio.Lock()
@@ -2630,20 +2629,17 @@ def create_app(
             )
         try:
             saved = active_store.get_current_portfolio(owner_id, mode.value)
-            confirmed_sectors = {
+            verified_sectors = {
                 row["asset_id"]: row.get("sector") for row in (saved or {}).get("positions", [])
-                if "user-confirmed sector" in str(row.get("price_source") or "")
+                if row.get("sector_source") == "Eastmoney public stock industry"
             }
             positions = []
             for item in req.positions:
                 row = dict(item)
-                row.pop("_sector_confirmed", None)
-                if row.get("sector") and confirmed_sectors.get(row.get("asset_id")) == row["sector"]:
-                    row["_sector_confirmed"] = True
-                    source = str(row.get("price_source") or "user-confirmed portfolio")
-                    if "user-confirmed sector" not in source:
-                        source += " + user-confirmed sector"
-                    row["price_source"] = source
+                row.pop("_sector_verified", None)
+                if row.get("sector") and verified_sectors.get(row.get("asset_id")) == row["sector"]:
+                    row["_sector_verified"] = True
+                    row["sector_source"] = "Eastmoney public stock industry"
                 positions.append(row)
             calculated = recalculate_portfolio_values(
                 positions, req.cash_cny, req.owner_id,
@@ -2676,41 +2672,6 @@ def create_app(
         mode = get_runtime_mode_controller().mode.value
         result = portfolio_summary(active_store.get_current_portfolio(owner_id, mode))
         return {**result, "data_mode": mode, "owner_id": owner_id}
-
-    @api.patch("/api/v1/advisor/portfolio/sectors")
-    def confirm_portfolio_sectors(req: ConfirmPortfolioSectorsApiRequest, owner_id: str = Depends(owner_dependency)):
-        from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
-        from app.portfolio.contracts import AssetType
-        if req.owner_id != owner_id:
-            raise StoreOwnerError("portfolio owner does not match owner scope")
-        mode = get_runtime_mode_controller().mode
-        if req.data_mode != mode.value:
-            return _error_response(409, "DATA_MODE_CHANGED", "数据模式已变化，请刷新持仓")
-        saved = active_store.get_current_portfolio(owner_id, mode.value)
-        if not saved or not saved.get("portfolio"):
-            return _error_response(404, "PORTFOLIO_EMPTY", "请先确认持仓")
-        bundle = PortfolioImportBundle.model_validate(saved["portfolio"])
-        stock_ids = {p.asset_id for p in bundle.position_snapshot.positions if p.asset_type == AssetType.STOCK}
-        if not set(req.sectors).issubset(stock_ids):
-            return _error_response(422, "INVALID_SECTOR_ASSET", "仅可确认当前持有股票的行业")
-        positions = []
-        for item in saved["positions"]:
-            row = dict(item)
-            source = str(row.get("price_source") or "user-confirmed portfolio")
-            if row["asset_id"] in req.sectors:
-                row["sector"] = req.sectors[row["asset_id"]]
-                if "user-confirmed sector" not in source:
-                    source += " + user-confirmed sector"
-            row["_sector_confirmed"] = "user-confirmed sector" in source
-            row["price_source"] = source
-            positions.append(row)
-        calculated = recalculate_portfolio_values(
-            positions, Decimal(str(saved["cash_cny"])), owner_id,
-            allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
-        )
-        active_store.save_current_portfolio(owner_id, mode.value, calculated)
-        trusted_live_portfolios.pop(owner_id, None)
-        return JSONResponse(content=calculated)
 
     @api.get(
         "/api/v1/advisor/portfolio/report",
@@ -2893,16 +2854,7 @@ def create_app(
                 "LIVE 持仓存在未核验价格；请重新识别并取得真实报价后再确认",
             )
         try:
-            confirmed_positions = []
-            for item in req.positions:
-                payload = item.model_dump(mode="json")
-                sector = str(payload.get("sector") or "").strip()
-                if sector and sector.casefold() not in {"unknown", "unclassified"}:
-                    payload["_sector_confirmed"] = True
-                    source = str(payload.get("price_source") or "user-confirmed OCR import")
-                    if "user-confirmed sector" not in source.casefold():
-                        payload["price_source"] = f"{source} + user-confirmed sector"
-                confirmed_positions.append(payload)
+            confirmed_positions = [item.model_dump(mode="json") for item in req.positions]
             calculated = recalculate_portfolio_values(
                 confirmed_positions, req.cash_cny, owner_id,
                 allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
@@ -3282,6 +3234,7 @@ def create_app(
                 active_live_finance,
                 wencai_provider=active_wencai_provider,
                 stock_quote_available=stock_quote_available,
+                industry_provider=active_industry,
                 fund_lookthrough_available=fund_lookthrough_available,
                 wencai_available=bool(
                     controller.is_wencai_ready
@@ -3289,6 +3242,27 @@ def create_app(
                 ),
             )
             response = await refresh_portfolio_live(request, provider)
+            # Persist only independently fetched industry metadata for current
+            # holdings. Prices and quantities remain the saved user's snapshot.
+            saved = active_store.get_current_portfolio(owner_id, "LIVE")
+            metadata = provider.industry_metadata
+            if saved and saved.get("portfolio") and metadata:
+                changed = False
+                for row in saved["positions"]:
+                    item = metadata.get(row["asset_id"])
+                    if item and (row.get("sector") != item["sector"] or row.get("sector_source") != item["source"]):
+                        row.update(sector=item["sector"], sector_source=item["source"],
+                                   industry=item["industry"], sector_retrieved_at=item["retrieved_at"])
+                        changed = True
+                if changed:
+                    bundle = PortfolioImportBundle.model_validate(saved["portfolio"])
+                    snapshot = bundle.position_snapshot.model_copy(update={"positions": tuple(
+                        position.model_copy(update={"sector": metadata[position.asset_id]["sector"]})
+                        if position.asset_id in metadata else position
+                        for position in bundle.position_snapshot.positions
+                    )})
+                    saved["portfolio"] = bundle.model_copy(update={"position_snapshot": snapshot}).model_dump(mode="json")
+                    active_store.save_current_portfolio(owner_id, "LIVE", saved)
             if provider.wencai_failure_codes:
                 error_code = sorted(provider.wencai_failure_codes)[0]
                 await controller.record_portfolio_metadata_result(

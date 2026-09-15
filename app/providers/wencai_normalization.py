@@ -230,8 +230,8 @@ def canonical_sector_from_wencai(value: object) -> str | None:
     labels = " ".join(str(item) for item in value) if isinstance(value, (list, tuple)) else str(value or "")
     mappings = (
         (("半导体", "电子", "计算机", "通信", "软件", "互联网"), "Technology"),
-        (("电力设备", "电池", "机械", "汽车", "军工", "制造"), "Industrials"),
-        (("食品", "饮料", "白酒", "消费", "医药", "生物", "医疗", "家用电器", "家电"), "Consumer"),
+        (("电力设备", "电气设备", "电池", "机械", "汽车", "军工", "制造"), "Industrials"),
+        (("食品", "饮料", "白酒", "消费", "医药", "制药", "生物", "医疗", "家用电器", "家电"), "Consumer"),
         (("银行", "保险", "金融", "煤炭", "石油", "有色", "钢铁", "化工", "公用", "房地产"), "Finance"),
     )
     for keywords, canonical in mappings:

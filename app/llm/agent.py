@@ -549,7 +549,7 @@ class CopilotAgent:
                         "query": args["query"], "category": args["category"],
                         "items": rows, "missing_fields": list(res.missing_fields),
                         "error_code": res.issues[0].code.value if res.issues else None,
-                        "message": "问财数据请求失败，请检查数据服务凭据与权限。" if res.status.value == "FAILED" else None,
+                        "message": (res.issues[0].safe_message if res.issues else "问财数据请求失败。") if res.status.value == "FAILED" else None,
                         "retrieved_at": res.retrieved_at.isoformat(),
                         "execution_context": {"data_mode": "LIVE", "provider": "wencai_skillhub_provider", "is_synthetic": False},
                     }
@@ -814,7 +814,7 @@ class CopilotAgent:
                     f"行业 HHI：{health['sector_hhi']}；阈值：{health['hhi_limit']}；裁决：{health['hhi_verdict']}。",
                 ])
                 if any(row["sector_key"] == "UNCLASSIFIED" for row in health["sectors"]):
-                    lines.append("行业数据待确认：未分类资产单独归集；当前行业占比和 HHI 不能代表已核实的行业分布。请在持仓明细中确认行业后重新分析。")
+                    lines.append("行业数据暂缺：未分类资产单独归集；当前行业占比和 HHI 不能代表已核实的行业分布。系统会自动获取行业，请刷新组合分析后重试。")
                 lines.extend(["", "|行业|实际占比 %|约束 %|裁决|", "|---|---:|---|---|"])
                 for sector in health["sectors"]:
                     operator = "≥" if sector["limit_operator"] == "MIN" else "≤"

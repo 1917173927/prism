@@ -8016,7 +8016,7 @@
     const missingSectors = rows.filter(row => row.missing_fields?.some(field => ["sector", "holding_sector"].includes(field)));
     if (missingSectors.length) {
       const prefix = refresh?.portfolio ? "真实报价已更新；" : "";
-      return `${prefix}以下持仓行业未确认：${missingSectors.map(row => row.asset_id).join("、")}。请补充持仓行业后重新生成方案。`;
+      return `${prefix}以下持仓的自动行业数据暂不可用：${missingSectors.map(row => row.asset_id).join("、")}。自动行业查询暂未返回完整结果，请稍后重试。`;
     }
     const missingPrices = rows.filter(row => row.status !== "SKIPPED" && (!row.price_cny || !row.observed_at));
     return missingPrices.length
@@ -8689,7 +8689,7 @@
       icon.className = "decision-verdict-icon";
       icon.append(createSvgIcon(requiresReview ? "icon-alert" : "icon-shield-check", "prism-icon prism-icon-lg"));
       const h3 = document.createElement("h3");
-      h3.textContent = incompleteIndustries ? "真实报价已更新，行业信息待确认" : hasBreaches
+      h3.textContent = incompleteIndustries ? "真实报价已更新，行业数据暂缺" : hasBreaches
         ? "发现需要关注的组合风险"
         : requiresReview
           ? "部分数据需要补充"
@@ -8724,7 +8724,7 @@
       cContent.className = "callout-content";
       const cTitle = document.createElement("div");
       cTitle.className = "callout-title";
-      cTitle.textContent = incompleteIndustries ? "部分体检结果 · 行业待补全" : hasBreaches
+      cTitle.textContent = incompleteIndustries ? "部分体检结果 · 自动行业数据暂缺" : hasBreaches
         ? "部分持仓比例超出你的设置"
         : requiresReview
           ? "部分指标缺少完整数据"
@@ -8741,7 +8741,7 @@
       cContent.append(cTitle, cP);
       if (incompleteIndustries) {
         cP.textContent = `${portfolioRefreshProblem()} 未分类资产被单独归集，当前行业占比和 HHI 不能视为已核实的行业分布；市值与现金指标仍可计算。`;
-        cContent.append(buildCopilotDrilldownRow([{href: "#overview", text: "查看持仓并确认行业"}]));
+        cContent.append(buildCopilotDrilldownRow([{href: "#overview", text: "查看自动分析状态"}]));
       }
       callout.append(cIcon, cContent);
 
@@ -9405,12 +9405,12 @@
       const errCard = document.createElement("div");
       errCard.className = "copilot-empty-output";
       const h4 = document.createElement("h4");
-      h4.textContent = state.portfolioRefreshRun?.status === "REVIEW_REQUIRED" ? "方案待补充持仓信息" : "方案生成失败";
+      h4.textContent = state.portfolioRefreshRun?.status === "REVIEW_REQUIRED" ? "方案等待数据恢复" : "方案生成失败";
       const p = document.createElement("p");
       p.textContent = err.message || "未能生成调仓方案";
       errCard.append(h4, p);
       if (state.portfolioRefreshRun?.status === "REVIEW_REQUIRED") {
-        errCard.append(buildCopilotDrilldownRow([{href: "#overview", text: "查看持仓并确认行业"}]));
+        errCard.append(buildCopilotDrilldownRow([{href: "#overview", text: "查看自动分析状态"}]));
       }
       output.append(errCard);
     }
@@ -11285,37 +11285,6 @@
         } catch (error) { setError(error.message); remove.disabled = false; }
       });
       actions.append(diagnose, remove); tr.append(actions); body.append(tr);
-      if (!["ETF", "MUTUAL_FUND", "FUND", "CASH"].includes(row.asset_class)) {
-        const industry = document.createElement("select");
-        industry.setAttribute("aria-label", `${row.asset_id} 行业`);
-        [["", "选择行业"], ["Technology", "科技半导体"], ["Industrials", "先进制造"], ["Consumer", "消费"], ["Healthcare", "医药"], ["Finance", "金融"], ["Cyclical", "周期"]].forEach(([value, label]) => {
-          const option = document.createElement("option"); option.value = value; option.textContent = label; industry.append(option);
-        });
-        industry.value = row.sector || "";
-        const confirm = document.createElement("button"); confirm.type = "button";
-        confirm.className = "copilot-action-btn secondary"; confirm.textContent = "确认行业";
-        confirm.setAttribute("aria-label", `确认 ${row.asset_id} 行业`);
-        confirm.addEventListener("click", async () => {
-          if (!industry.value) { setError("请先选择已核对的持仓行业。"); return; }
-          confirm.disabled = true;
-          try {
-            if (owner !== state.ownerId || mode !== state.dataMode) throw new Error("账户或模式已变化，请刷新持仓");
-            const response = await fetch("/api/v1/advisor/portfolio/sectors", {
-              method: "PATCH", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
-              body: JSON.stringify({owner_id: owner, data_mode: mode, sectors: {[row.asset_id]: industry.value}}),
-            });
-            if (!response.ok) throw await apiError(response);
-            const data = await response.json();
-            if (owner !== state.ownerId || mode !== state.dataMode) return;
-            microStore.transact(store => { invalidateDerivedState(store); store.ocrPortfolioDraft = data; store.portfolio = data.portfolio; });
-            setError("");
-            await refreshPortfolioSummary();
-            await refreshPortfolioHealth();
-          } catch (error) { setError(error.message); }
-          finally { confirm.disabled = false; }
-        });
-        actions.append(industry, confirm);
-      }
     });
     try {
       await refreshPortfolioReport(owner, mode);

@@ -631,3 +631,32 @@ def test_partial_real_quote_report_is_not_trusted_for_optimization():
         })
     assert result.status_code == 409
     assert result.json()["error_code"] == "LIVE_PORTFOLIO_REFRESH_REQUIRED"
+
+
+def test_automatic_industry_completes_refresh_and_persists_only_metadata():
+    from app.store import SQLiteDecisionEventStore
+    class Industry:
+        async def get_industry(self, asset_id):
+            return {"sector": "Industrials", "industry": "Battery", "source": "Eastmoney public stock industry", "retrieved_at": "2026-09-15T00:00:00Z"}
+    controller = reset_runtime_mode_controller(mode=DataMode.LIVE)
+    asyncio.run(controller.apply_fuyao_probe({"stock_quote": True, "fund_lookthrough": False}))
+    store = SQLiteDecisionEventStore(":memory:")
+    client = TestClient(create_app(store, live_finance_provider=_LiveFuyaoFinanceProvider(), industry_provider=Industry()))
+    headers = {"X-Owner-ID": "refresh-owner"}
+    original = client.post("/api/v1/copilot/validate-portfolio-ocr", headers=headers, json={
+        "owner_id": "refresh-owner", "cash_cny": 1000, "positions": [{"asset_id": "300750.SZ", "quantity": 100, "price": 200, "observed_at": "2026-09-15T00:00:00Z"}],
+    }).json()
+    response = client.post("/api/v1/advisor/portfolio/refresh", headers=headers,
+        json=_request(PortfolioImportBundle.model_validate(original["portfolio"])))
+    assert response.status_code == 200
+    assert response.json()["status"] == "COMPLETE"
+    assert response.json()["portfolio"]["position_snapshot"]["positions"][0]["sector"] == "Industrials"
+    saved = store.get_current_portfolio("refresh-owner", "LIVE")
+    row = saved["positions"][0]
+    assert row["sector"] == "Industrials" and row["sector_source"] == "Eastmoney public stock industry"
+    assert row["price"] == 200 and row["quantity"] == 100
+    again = client.put("/api/v1/advisor/portfolio/current", headers=headers, json={
+        "owner_id": "refresh-owner", "data_mode": "LIVE", "cash_cny": 1000, "positions": saved["positions"]})
+    assert again.status_code == 200 and again.json()["positions"][0]["sector"] == "Industrials"
+    assert client.patch("/api/v1/advisor/portfolio/sectors", headers=headers, json={}).status_code == 404
+    store.close()
