@@ -217,7 +217,7 @@ def test_prism_ui_v2_default_copy_is_user_centered() -> None:
     for copy in (
         "分析你的投资组合",
         "投资研究会话",
-        "结合当前持仓与投资偏好进行分析",
+        "结合你的持仓、投资偏好与可用市场数据回答。",
         "投资偏好",
         "分析资料",
         "组合概览",

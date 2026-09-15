@@ -227,3 +227,9 @@ The remaining legal, quota and competition-document inputs block production redi
 ## Next useful action
 
 当前按 [剩余缺口执行清单](docs/plans/2026-09-08-gap-closure.md) 推进和验收。历史 472 项测试不再代表当前基线；2026-09-08 全量 638 项通过，含临时 PostgreSQL 17.11 的 9 项真实数据库测试。P3 已完成固定 DAG 编辑和结构化会话前提锁定，其余双视图与通用幻觉检查仍未勾选。
+
+## 2026-09-15 对话与报告复验
+
+- [x] 使用语义分流处理一般对话与金融数据请求，并验证未核验金融内容仍被阻止。
+- [x] 排除 8000 旧子进程干扰，完成真实页面四轮对话、个人中心切换、正式报告重复生成验收。
+- [x] 最终版本全量回归 827 passed / 9 skipped；当前证据替代此前版本不一致的测试声明。

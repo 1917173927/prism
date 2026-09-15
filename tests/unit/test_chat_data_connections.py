@@ -125,3 +125,57 @@ def test_quote_answer_does_not_list_unavailable_financial_fields():
         "最新股价", {}, [{"tool": "query_stock_quote", "result": result}], None)
     assert "1272.75" in answer
     assert "ROE **未提供" not in answer
+
+
+@pytest.mark.parametrize("question", [
+    "你好，你是谁，你能干什么", "嗨，简单介绍下自己吧", "给我写一段欢迎词",
+    "请换一种说法解释刚才的概念", "你支持哪些分析功能？",
+])
+def test_semantic_routing_allows_general_conversation(monkeypatch, question):
+    import json
+    import httpx
+    from app.llm.client import AsyncLLMClient, LLMConfig
+    requests = []
+    def respond(request):
+        payload = json.loads(request.content)
+        requests.append(payload)
+        if len(requests) == 1:
+            assert payload["tool_choice"]["function"]["name"] == "route_conversation"
+            assert payload["thinking"] == {"type": "disabled"}
+            delta = {"tool_calls": [{"index": 0, "function": {
+                "name": "route_conversation", "arguments": '{"requires_tools":false}'}}]}
+        else:
+            assert "tools" not in payload
+            delta = {"content": "我是 Prism，可以介绍功能并解释概念。"}
+        return httpx.Response(200, text="data: " + json.dumps({"choices": [{"delta": delta}]}) + "\n\ndata: [DONE]\n")
+    original = httpx.AsyncClient
+    monkeypatch.setattr("app.llm.client.httpx.AsyncClient",
+                        lambda **kw: original(transport=httpx.MockTransport(respond), **kw))
+    async def run():
+        agent = CopilotAgent(llm_client=AsyncLLMClient(LLMConfig(api_key="test")))
+        return [event async for event in agent.stream_chat(question)]
+    events = asyncio.run(run())
+    assert len(requests) == 2
+    assert any(e["type"] == "token" for e in events)
+    assert not any(e["type"] == "error" for e in events)
+
+
+@pytest.mark.parametrize("route", [True, "true", None])
+def test_financial_or_invalid_route_never_exposes_ungrounded_price(monkeypatch, route):
+    from app.llm.client import AsyncLLMClient, LLMConfig
+    calls = []
+    async def stream(self, messages, tools=None, *, tool_choice="auto"):
+        calls.append(tool_choice)
+        if len(calls) == 1:
+            yield {"type": "tool_call", "name": "route_conversation", "arguments": {"requires_tools": route}}
+        else:
+            assert tool_choice == "required"
+            yield {"type": "content", "delta": "股价999元"}
+    monkeypatch.setattr(AsyncLLMClient, "stream_chat", stream)
+    async def run():
+        agent = CopilotAgent(llm_client=AsyncLLMClient(LLMConfig(api_key="test")))
+        return [e async for e in agent.stream_chat("你好，查一下宁德时代现在的股价")]
+    events = asyncio.run(run())
+    assert not any(e["type"] == "token" for e in events)
+    assert any(e["type"] == "error" for e in events)
+    assert len(calls) == (2 if route is True else 1)

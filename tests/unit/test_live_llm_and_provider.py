@@ -286,8 +286,7 @@ def test_agent_rejects_content_only_answer_for_financial_query() -> None:
 
     events = asyncio.run(_run())
     assert not any(event["type"] == "token" for event in events)
-    assert not any(event.get("message") == "该问题需要真实金融工具结果，模型未完成工具调用。" for event in events)
-    assert any(event.get("type") == "token" for event in events)
+    assert any(event.get("type") == "error" for event in events)
 
     async def _run_named_security():
         agent = CopilotAgent(llm_client=ContentOnlyClient())

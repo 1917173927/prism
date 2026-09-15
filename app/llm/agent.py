@@ -126,8 +126,22 @@ class CopilotAgent:
         has_error = False
         pending_content: list[str] = []
 
-        # Execute LLM streaming
-        async for chunk in active_client.stream_chat(messages, tools=COPILOT_TOOLS):
+        requires_tools = self._requires_grounded_tool(user_message)
+        if isinstance(active_client, AsyncLLMClient) and active_client.is_configured:
+            try:
+                requires_tools = await active_client.requires_financial_tools(messages)
+            except ValueError as exc:
+                yield {"type": "error", "message": str(exc)}
+                yield {"type": "done", "timestamp": datetime.now(UTC).isoformat()}
+                return
+            stream = active_client.stream_chat(
+                messages, tools=COPILOT_TOOLS if requires_tools else None,
+                tool_choice="required" if requires_tools else "auto",
+            )
+        else:
+            stream = active_client.stream_chat(messages, tools=COPILOT_TOOLS)
+
+        async for chunk in stream:
             chunk_type = chunk.get("type")
 
             if chunk_type == "reasoning":
@@ -186,17 +200,14 @@ class CopilotAgent:
                 yield {"type": "token", "delta": char_token}
                 await asyncio.sleep(0.01)
         elif pending_content:
-            # Providers may stream useful text before a tool call is
-            # truncated. A partial tool stream must never discard the answer
-            # for an otherwise valid conversation. Grounded tool results are
-            # still preferred whenever they were completed above.
-            if self._requires_grounded_tool(user_message) and not executed_tools:
-                yield {"type": "grounding_degraded", "title": "实时数据工具未完成，已展示模型返回内容"}
+            if requires_tools:
+                has_error = True
+                yield {"type": "error", "message": "数据查询未完成，暂不能提供有依据的分析，请重试。"}
             else:
                 yield {"type": "research_skipped", "title": "当前问题无需外部金融数据"}
-            has_usable_output = True
-            for delta in pending_content:
-                yield {"type": "token", "delta": delta}
+                has_usable_output = True
+                for delta in pending_content:
+                    yield {"type": "token", "delta": delta}
 
         if not has_usable_output and not has_error:
             yield {"type": "error", "message": "模型未返回可用正文或完整工具调用。"}

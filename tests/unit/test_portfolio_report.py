@@ -133,3 +133,22 @@ def test_metadata_and_cost_changes_create_distinct_immutable_reports():
         assert store.get_portfolio_report("report-owner", "MOCK", first.report_id) == first
     finally:
         store.close()
+
+
+def test_report_save_conflict_is_not_a_false_success(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.api.main import create_app
+    from app.runtime.mode import reset_runtime_mode_controller, DataMode
+    from app.store import StoreConflictError
+    reset_runtime_mode_controller(mode=DataMode.MOCK)
+    store = SQLiteDecisionEventStore(":memory:")
+    store.save_current_portfolio("report-owner", "MOCK", _portfolio_data())
+    def conflict(report):
+        raise StoreConflictError("different content")
+    monkeypatch.setattr(store, "save_portfolio_report", conflict)
+    with TestClient(create_app(store=store)) as client:
+        response = client.get("/api/v1/advisor/portfolio/report", headers={"X-Owner-ID": "report-owner"})
+        assert response.status_code == 409
+        assert response.json()["error_code"] == "PORTFOLIO_REPORT_CONFLICT"
+        assert "报告存储内容冲突" in response.json()["message"]
+    store.close()

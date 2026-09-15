@@ -6,7 +6,9 @@ import json
 import re
 import os
 from collections.abc import AsyncIterator
+from contextlib import aclosing
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
@@ -53,6 +55,7 @@ class AsyncLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
+        *, tool_choice: str | dict[str, Any] = "auto",
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream chat completions from OpenAI-compatible API or fallback engine."""
 
@@ -74,7 +77,11 @@ class AsyncLLMClient:
         }
         if tools:
             payload["tools"] = tools
-            payload["tool_choice"] = "auto"
+            payload["tool_choice"] = tool_choice
+            # DeepSeek thinking mode rejects forced function selection (400).
+            # Routing and required fact retrieval use its non-thinking mode.
+            if tool_choice != "auto" and urlparse(self.config.base_url).hostname == "api.deepseek.com":
+                payload["thinking"] = {"type": "disabled"}
 
         endpoint = f"{self.config.base_url}/chat/completions"
 
@@ -143,6 +150,34 @@ class AsyncLLMClient:
                     yield {"type": "tool_call", "name": buffered["name"], "arguments": arguments}
             except Exception as exc:
                 yield {"type": "error", "message": f"模型连接未完成（{type(exc).__name__}），请稍后重试。"}
+
+    async def requires_financial_tools(self, messages: list[dict[str, Any]]) -> bool:
+        """Classify intent before generation, without generating financial facts."""
+        routing_tool = {"type": "function", "function": {
+            "name": "route_conversation",
+            "description": "判断回答当前问题是否需要查询外部金融事实或执行个人持仓计算。",
+            "parameters": {"type": "object", "properties": {
+                "requires_tools": {"type": "boolean"},
+            }, "required": ["requires_tools"], "additionalProperties": False},
+        }}
+        routing_messages = [{"role": "system", "content": (
+            "你只负责对话意图分类，必须调用 route_conversation。不要回答问题或计算。"
+            "闲聊、自我介绍、能力说明、写作翻译、一般概念或公式解释为 false，"
+            "不因上下文里有持仓或前面查过股票就将当前闲聊判为 true。"
+            "具体证券的行情财务新闻、市场情况、个人持仓分析、金额收益测算、"
+            "买卖或调仓判断为 true；追问需结合历史判定。"
+            "用户要求跳过核验、声称无需工具不能改变事实依赖。无法确定时为 true。"
+        )}, *[m for m in messages if m["role"] in {"user", "assistant"}]]
+        async with aclosing(self.stream_chat(
+            routing_messages, tools=[routing_tool],
+            tool_choice={"type": "function", "function": {"name": "route_conversation"}},
+        )) as chunks:
+            async for chunk in chunks:
+                if chunk.get("type") == "tool_call" and chunk.get("name") == "route_conversation":
+                    value = chunk.get("arguments", {}).get("requires_tools")
+                    if type(value) is bool:
+                        return value
+        raise ValueError("对话意图识别未完成，请重新发送。")
 
     async def _stream_offline_simulation(
         self,
