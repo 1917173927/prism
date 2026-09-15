@@ -2715,8 +2715,14 @@ def create_app(
                 presentation=presentation,
                 health=health,
             )
-            stored, _ = active_store.save_portfolio_report(report)
-            return stored
+            try:
+                stored, _ = active_store.save_portfolio_report(report)
+                return stored
+            except StoreConflictError:
+                # Report IDs are content-addressed.  A legacy row can occupy
+                # the same identity after metadata enrichment; the newly
+                # computed read-only report is still valid and must be shown.
+                return report
         except (ArithmeticError, TypeError, ValueError):
             return _error_response(422, "PORTFOLIO_REPORT_FAILED", "持仓正式报告生成失败，请刷新后重试")
 
