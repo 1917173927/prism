@@ -1113,19 +1113,122 @@ Windows 本地密钥使用 DPAPI 保护。`ProtectedSecretStore` 将密文条目
 
 ### 11.1 单元测试
 
+单元测试围绕契约、确定性计算、状态转换和安全边界组织，测试对象直接调用领域函数或服务，使用固定时间、固定输入和固定提供方结果。测试文件与实现模块保持对应关系，便于定位数值、状态和引用闭合问题。
+
+| 测试范围 | 代表文件 | 核心验证 |
+| --- | --- | --- |
+| 画像与风险评分 | `test_profile_scoring.py`、`test_full_questionnaire.py`、`test_behavior_profile.py` | 问卷覆盖、维度权重、等级边界、行为证据门槛和有效风险画像 |
+| 组合与确定性计算 | `test_portfolio_contracts.py`、`test_portfolio_exposure.py`、`test_risk_concentration.py`、`test_risk_budget.py`、`test_allocation_envelope.py` | 用户归属、穿透守恒、集中度、预算、配置边界和缺失状态 |
+| 情景、再平衡与解释 | `test_scenario_simulation.py`、`test_portfolio_rebalancing.py`、`test_advanced_explainability.py` | 基线复用、压力差分、整手数量、费用、现金流和解释字段 |
+| 研究与智能体 | `test_bounded_orchestration.py`、`test_fixture_research_executor.py`、`test_research_cross_validation.py`、`test_evidence_finding_bridge.py`、`test_specialist_matrix.py` | 有向无环任务、超时取消、来源验证、事实桥接、失败传播和节点依赖 |
+| 闸门与建议 | `test_decision_gates.py`、`test_recommendation_composer.py`、`test_evidence_contract.py` | 三态闸门、披露、建议资格、回执生成和契约重验证 |
+| 提供方与运行时 | `test_provider_contract.py`、`test_provider_fingerprint.py`、`test_provider_resilience.py`、`test_runtime_mode_and_providers.py` | 四态结果、语义指纹、缓存降级、凭据就绪和数据模式切换 |
+| 存储与安全 | `test_store.py`、`test_context_memory.py`、`test_protected_secret_store.py`、`test_runtime_paths.py` | owner 隔离、内容哈希、迁移、恢复、密钥保护和工作树路径解析 |
+
+金融数值测试使用 `Decimal` 与固定断言精度，边界用例覆盖零组合、缺失成分、未来观察时间、非基准币种、超限、空结果、失败结果和取消请求。测试同时检查异常路径的资源释放与安全错误码。
+
 ### 11.2 契约测试
+
+契约测试验证模块之间的结构化接口，以及序列化后重新构造对象时的不变量。`tests/fixtures/` 保存画像、组合、提供方四态、研究验证、证据桥接、风险预算、配置边界、闸门和决策回执的版本化样例。
+
+| 契约 | 验证内容 | 失败处理 |
+| --- | --- | --- |
+| 提供方请求与结果 | 请求指纹、必需字段、记录身份、四态组合和 `PARTIAL` 缺失字段 | 转换为 `FAILED / INVALID_RESPONSE` |
+| 研究运行 | 计划拓扑、owner、节点请求标识、依赖和终态 | 拒绝篡改的计划或运行状态 |
+| 证据与事实 | 证据质量、来源链、观察时间、验证状态和桥接条件 | 保留可审计问题并进入复核或阻断 |
+| 闸门与建议 | 画像、研究、风险、配置、候选和披露之间的引用闭合 | 不生成建议或回执 |
+| 存储事件 | 事件标识、状态、回执标识、内容哈希和 owner | 返回冲突或损坏记录错误 |
+| 安全载荷 | 额外字段、敏感字段、原始凭据和异常正文过滤 | 拒绝输入或只返回安全问题码 |
+
+契约测试还使用 `model_copy(update=...)` 等绕过常规构造的载荷重新验证对象，确保服务边界依据序列化内容裁决状态。请求、结果、运行状态和决策事件均校验带时区时间与稳定标识。
 
 ### 11.3 集成测试
 
+`tests/integration/` 主要通过 FastAPI `TestClient` 调用应用工厂，并使用隔离的 SQLite 存储验证接口组合；进程内负载工具另行使用 HTTPX `ASGITransport`。测试覆盖完整问卷、画像提案与冲突确认、组合上传与报告、研究工作台、专业研究、行情分析、情景模拟、优化、再平衡、上下文记忆、决策历史、访问认证和运行模式。
+
+重点集成场景如下：
+
+| 场景 | 代表测试 | 验证链路 |
+| --- | --- | --- |
+| 投顾主流程 | `test_phase14_advisor_api.py`、`test_phase15_query_workbench.py` | 模板、问卷、组合、研究、闸门、建议与事件回执 |
+| 研究与证据 | `test_phase10_research_evidence_pipeline.py`、`test_phase16_specialist_matrix.py`、`test_phase17_research_workbench.py` | 四轨道执行、交叉验证、状态展示和证据追踪 |
+| 组合能力 | `test_phase24_research_scenarios.py`、`test_phase28_portfolio_optimization.py`、`test_phase35_portfolio_rebalancing.py`、`test_rebalancing_closed_loop.py` | 压力情景、目标结构、行动计划、交易后风险复核和持久化 |
+| 认证与隔离 | `test_local_access.py`、`test_owner_scoped_ocr_api.py`、`test_session_truth.py` | 登录会话、owner 绑定、锁定前提和文件解析确认 |
+| 存储与恢复 | `test_portfolio_persistence.py`、`test_database_backup.py`、`test_postgres_store.py` | SQLite 跨重启、备份恢复、PostgreSQL 迁移和跨连接比较交换 |
+| 外部能力 | `test_fixture_provider.py`、`test_live_fixture_refusal.py`、`test_prd_personalization_api.py` | 固定提供方、真实模式拒绝演示数据、画像与组合接口 |
+
+PostgreSQL 集成测试只在显式设置 `PRISM_TEST_POSTGRES_DSN` 时运行。测试为每次运行创建随机专用模式，结束后删除；未提供 DSN 时明确跳过，不使用 SQLite 或模拟实现替代 PostgreSQL 验证。组合优化的接口路径由 `test_phase28_portfolio_optimization.py` 覆盖，交易后风险复核由 `test_rebalancing_closed_loop.py` 覆盖；`test_phase35_portfolio_rebalancing.py` 主要验证接口流程、行动计划和归属校验。需要真实外部凭据的测试通过隔离配置或固定提供方完成，避免测试修改本机私有运行数据。
+
 ### 11.4 浏览器端到端测试（E2E）
+
+浏览器测试覆盖静态资源加载、首次使用、问卷入口、画像确认、投顾首页、桌面与窄屏布局、账户上下文和控制台错误。`tests/browser/test_agent_home.mjs` 使用 Puppeteer 打开实际服务，完成 19 道问卷确认，检查页面导航、主区域比例、移动端单列布局和浏览器控制台错误，并保存页面截图。该脚本默认访问 `http://127.0.0.1:8017`，可由 `PRISM_TEST_BASE_URL` 覆盖；脚本当前将 Chrome 可执行文件路径固定为 macOS 路径，Windows 下不能按默认配置直接运行。
+
+`tests/browser/test_model_settings_state.mjs` 在 Node.js 虚拟机中加载实际 `app.js` 片段，检查密钥设置草稿在异步读取期间不被覆盖、保存请求发送用户输入、连接测试结果、安全保存提示和失败保留输入。该测试验证前端状态函数，浏览器端到端行为由实际浏览器测试验证。
+
+`tools/advanced_evidence_ui_smoke.cjs` 使用 Playwright 和路由拦截构造旧缓存、备用提供方等展示状态；`tools/scenario_simulation_smoke.cjs` 使用 Playwright 直接调用本地场景接口，检查场景目录、状态、差分和外部请求。两个脚本默认访问 `http://127.0.0.1:8777/`，可由 `PRISM_UI_BASE_URL` 覆盖；服务端数据契约仍由后端测试独立验证。
+
+应用启动脚本 `start.bat` 默认监听 `http://127.0.0.1:8000`。浏览器测试地址与应用启动地址分离，运行浏览器测试时应按脚本地址启动对应服务。
 
 ### 11.5 确定性回放
 
+固定回放由 `tools/evaluate_mvp.py` 实现，输入来自 `eval_cases/*.json` 与 `app/fixtures/advisor/`。每个案例包含版本、画像输入、组合变体、提供方变体、预期状态、预期动作和回执要求；执行器使用固定模板、固定提供方文件和确定性服务，计算结果的规范化语义指纹。
+
+命令行支持选择案例和 `--repeat 1..100` 重复次数：
+
+```powershell
+.venv\Scripts\python.exe -m tools.evaluate_mvp --json --repeat 3
+```
+
+输出为 `mvp-evaluation-report.v1`，包含案例结果、实际状态、动作、回执布尔值、证据数量、事实数量、发现数量、推荐数量、单案例延迟、状态计数、错误计数和评估指标。重复运行通过每个案例的语义指纹集合检查回放一致性，评估器不访问网络、不调用模型，也不写入用户决策事件。
+
 ### 11.6 评测案例
+
+当前固定评测集包含 9 个案例，覆盖正常建议、风险约束、数据质量、证据冲突、所有权与时间契约：
+
+| 案例 | 输入变化 | 预期状态 | 预期动作或错误 | 覆盖内容 |
+| --- | --- | --- | --- | --- |
+| `balanced-hold` | 均衡型与模板组合 | `PASS` | `HOLD`，生成回执 | 完整证据与正常建议 |
+| `conservative-reduce` | 保守型风险预算 | `PASS` | `REDUCE`，生成回执 | 风险等级改变配置边界 |
+| `growth-hold` | 成长型与模板组合 | `PASS` | `HOLD`，生成回执 | 多风险等级回放 |
+| `technology-concentration-blocked` | 科技行业集中 | `BLOCKED` | 无建议、无回执 | 行业与科技行业超限 |
+| `missing-lookthrough-blocked` | 缺少基金成分快照 | `BLOCKED` | 无建议、无回执 | 穿透缺失与守恒约束 |
+| `provider-partial-review` | 提供方返回部分字段 | `REVIEW_REQUIRED` | 无建议、无回执 | 部分数据与证据质量 |
+| `provider-conflict-error` | 两来源财务字段冲突 | `ERROR` | 查询错误 | 交叉验证冲突 |
+| `owner-mismatch-rejected` | 请求 owner 与画像 owner 不同 | `REJECTED` | `OWNER_SCOPE` | 所有权边界 |
+| `naive-time-rejected` | 时间字段不带时区 | `REJECTED` | `INVALID_INPUT` | 时间契约 |
+
+评估指标包括案例通过率、画像一致率、风险识别覆盖率、合规阻断覆盖率、证据覆盖率、语义回放一致率，以及案例延迟 P50 和 P95。指标用于固定输入回归质量，结果不替代市场预测精度、投资收益或外部服务性能测量。
 
 ### 11.7 本地负载测试
 
+本地负载工具按测试目标分为四类：
+
+| 工具 | 传输与范围 | 默认或测试规模 | 输出与校验 |
+| --- | --- | --- | --- |
+| `tools/load_test.py` | HTTPX `ASGITransport`，进程内应用 | 并发 100；模板、研究、投顾三种场景 | P50、P95、P99、状态码、错误码、owner 闭合和存储行数 |
+| `tools/context_memory_load_test.py` | HTTPX `ASGITransport`，SQLite 文件 | 100 个 owner 并发写入、读取并重开数据库 | 写读状态、延迟、owner 错配、重开后的记录数 |
+| `tools/provider_resilience_load_test.py` | 固定提供方与缓存策略 | 100 次新鲜缓存和 100 次旧缓存回退 | 提供方调用次数、缓存命中、旧缓存状态、失败数和请求标识唯一性 |
+| `tools/http_load_test.py` | 真实 TCP/HTTP，只读请求 | 并发 100、请求 100 | HTTP 状态、成功率、延迟分位数和传输错误 |
+
+`tools/load_test.py` 将默认并发上限设为 1000、每个用户请求数上限设为 1000，并检查每个逻辑操作的 owner 与返回载荷一致。真实 HTTP 工具支持账户环境变量、连接池和无凭据 URL 校验；`tools/load_test.py` 与评测器对返回载荷执行敏感字段检查，其他固定负载工具只输出受控汇总字段。
+
+进程内负载结果用于回归和隔离检查，真实 HTTP 结果用于本机服务链路观测。工具输出保留传输类型、测试规模和边界说明，真实 HTTP 工具固定输出 `sla_verified=false`，P95 数值不作为长期可用性或外部提供方服务等级证明。
+
 ### 11.8 质量场景与验证证据
+
+质量场景采用“输入、处理、输出、证据”四列闭合记录：
+
+| 质量场景 | 处理路径 | 期望输出 | 验证证据 |
+| --- | --- | --- | --- |
+| 完整问卷、组合和研究 | 画像、暴露、集中度、预算、双闸门、组合器 | `PASS`、建议和回执 | 固定评测、投顾集成测试、决策事件契约 |
+| 部分或陈旧数据 | 提供方状态、证据归一化和研究状态传播 | `REVIEW_REQUIRED` 或 `STALE`，保留来源和复核说明 | 提供方回归、研究流水线、浏览器证据烟测 |
+| 组合集中或穿透缺失 | 暴露守恒、集中度和预算闸门 | `BLOCKED` 或配置约束状态，不生成建议 | 组合计算单元测试、固定评测 |
+| 来源冲突 | 交叉验证、证据桥接和事实升级 | 冲突状态、问题码和安全回执 | 研究验证与桥接样例 |
+| owner 或版本变化 | 服务端重新读取当前事实并比较指纹 | `403`、`409` 或重新确认要求 | 认证、会话前提和存储集成测试 |
+| 超时、取消或外部异常 | 运行时预算、取消传播和降级策略 | 终态失败、备用来源、旧缓存或阻断 | 编排、提供方恢复和负载烟测 |
+| 固定输入重复运行 | 规范化输出与语义指纹 | 指纹集合一致 | `evaluate_mvp --repeat` 与评估测试 |
+
+每次验证应同时记录代码版本、输入案例、数据模式、提供方送达模式、时间、状态计数和错误码。报告只引用实际运行输出和源码契约；样例数据、内存应用和本机网络观测分别标注其验证范围。
 
 ## 12. 架构决策、系统边界与未来工作
 
