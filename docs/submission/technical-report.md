@@ -1234,12 +1234,133 @@ PostgreSQL 集成测试只在显式设置 `PRISM_TEST_POSTGRES_DSN` 时运行。
 
 ### 12.1 关键架构决策
 
+项目的架构决策以 `docs/adr/0001-modular-monolith.md`、现有实现和测试结果为依据。当前代码已经形成以下稳定决策：
+
+| 决策 | 当前实现 | 采用原因 | 主要依据 | 直接影响 |
+| --- | --- | --- | --- | --- |
+| 模块化单体 | `app/api`、`app/service`、领域包、`app/providers` 和 `app/store` 在同一进程协作 | 复用领域契约，降低服务发现和分布式事务成本 | `docs/adr/0001-modular-monolith.md`、`app/api/main.py` | 通过模块导入边界、契约测试和依赖注入维持解耦 |
+| 结构化研究有向无环图 | `ResearchPlan`、`ResearchRunState`、依赖门控和有界执行器 | 并行执行、超时传播、回放和故障定位需要显式状态 | `app/orchestration/`、`app/service/specialist_matrix.py` | 专业节点通过结构化对象交换结果 |
+| 证据优先 | `Evidence → Fact → Finding → Recommendation`，来源链和验证状态贯穿回执 | 金融结论需要来源、期间、观察时间和质量状态 | `app/contracts/evidence.py`、`app/research/` | 未闭合的证据进入复核或阻断 |
+| 确定性金融计算 | 画像评分、暴露、穿透、集中度、风险预算、优化、情景和再平衡由 Python 服务计算 | 金融算术、守恒和阈值需要可复现输出 | `app/profile/`、`app/portfolio/`、`app/risk/`、`app/optimization/`、`app/scenarios/`、`app/rebalancing/`、`app/service/` | 语言模型不承担数值裁决 |
+| 提供方四态协议 | `SUCCESS`、`PARTIAL`、`EMPTY`、`FAILED` 与来源、请求指纹、错误码绑定 | 空结果、失败和部分数据具有不同业务含义 | `app/providers/contracts.py`、`docs/archive/provider-protocol.md` | 失败保持失败，旧缓存和备用来源显式标记 |
+| 双闸门与组合器重验 | 风险闸门、合规闸门和建议组合器分别校验输入与引用 | 建议资格需要独立风险和文本合规条件 | `app/gates/`、`app/recommendation/` | 任一闭合条件失败时不生成建议或回执 |
+| owner 归属与内容哈希 | 认证模式下由本地账户绑定 `owner_id`；无认证开发模式使用请求中的 `X-Owner-ID` 作为对象隔离键，该字段不承担身份认证职责 | 支持隔离、幂等、漂移检测和审计追踪 | `app/api/access.py`、`app/store/`、`app/gates/fingerprint.py` | 认证模式下客户端不能伪造服务端身份或内容标识 |
+| 固定数据与真实数据分层 | `MOCK` 读取固定数据，`LIVE` 依据真实能力探测和契约验证开启 | 演示可重复，真实数据状态可核验 | `app/runtime/mode.py`、`app/providers/runtime.py` | 运行模式、提供方状态和证据质量分别展示 |
+| 任务优先的静态工作台 | 原生 HTML、JavaScript、CSS 组织页面，复杂工作流使用 AntV X6 | 保持本地启动路径和现有 UI 回归，提供渐进式技术详情 | `app/api/static/`、`package.json` | 构建产物随应用发布，页面与 API 同源 |
+
+这些决策共同构成从用户输入到建议回执的依赖方向：接口接收结构化请求，画像和组合形成计算前提，研究节点产生证据与发现，确定性模块计算风险与配置，双闸门裁决建议资格，组合器生成建议和回执，存储层保存可回放事件。
+
 ### 12.2 系统边界与运行条件
+
+Prism 的运行边界由数据模式、用户归属、提供方能力、计算输入和副作用类型共同确定：
+
+| 边界维度 | 系统提供的能力 | 运行条件 | 状态表达 |
+| --- | --- | --- | --- |
+| 数据模式 | `MOCK` 固定数据、`LIVE` 真实提供方能力与操作级就绪状态 | `LIVE` 需要问财凭据与契约验证，或扶摇对应能力真实探测通过 | `/api/v1/runtime/data-mode` 与能力矩阵 |
+| 投资者输入 | 19 道风险问卷、结构化画像提案、行为画像、持仓导入、图片 OCR 和基金成分快照 | 输入需通过 owner、版本、时间、字段和一致性校验 | 快照、草稿、确认状态和问题码 |
+| 研究服务 | 宏观、行业、个股、基金、可转债轨道，研究流水线和证据链 | 固定服务用于回放；实时研究接口按能力探测、提供方配置和正式数据规则处理，当前覆盖情况见 12.3 | 节点、运行、验证和证据状态 |
+| 组合分析 | 暴露、穿透、集中度、风险预算、配置边界、目标结构、情景、再平衡 | 组合快照、报价、行业、现金和成分数据满足相应契约 | `READY`、`REVIEW_REQUIRED`、`BLOCKED` |
+| 对话与模型 | 语义分流、工具调用、自然语言画像提案、流式回复和有限规则降级 | 远程模型由用户或服务端配置，金融事实通过结构化工具获得 | 模型配置、工具结果和流式事件 |
+| 持久化 | SQLite 默认存储、可选 PostgreSQL、决策事件、记忆、账户、审计和备份 | 本地目录、数据库连接、迁移和权限可用 | 内容哈希、版本、迁移记录和错误码 |
+| 外部副作用 | 再平衡金额、数量、费用、现金和交易后风险测算 | 计算输入有效，用户可以查看行动计划 | `ADVISORY_ONLY`，不调用交易接口 |
+| 网络与部署 | 本地回环服务、同源静态页面、真实 HTTP 只读观测 | 启动脚本、运行依赖、凭据和上游配额可用 | 健康状态、探测结果和提供方状态 |
+
+当前本地交付以 `127.0.0.1:8000` 为默认访问地址，默认应用入口使用 `data/private` 保存数据库。Windows 默认启用 `ProtectedSecretStore` 保存受保护凭据；macOS 和 Linux 的默认入口需要显式配置密钥保护存储，未配置时相关配置按进程级状态处理。问财、扶摇、雅虎财经、港股资讯网和同花顺量化接口按照各自配置与协议提供数据；外部配额、数据留存、展示或再分发授权由部署方单独确认。券商账户同步与真实交易执行不进入当前接口调用链。
 
 ### 12.3 已知技术问题
 
+当前技术问题来自 `TODO.md`、`LOG.md`、运行时状态和代码审查记录：
+
+| 问题 | 当前状态 | 影响范围 | 处理依据 |
+| --- | --- | --- | --- |
+| 问财部分技能额度 | `hithink-market-query` 曾返回 `401`，运行态记录 `QUOTA_EXHAUSTED`；其他能力按单项状态继续运行 | 财务、行业或组合刷新等依赖该技能的字段 | 额度恢复或权益调整后重新执行九项能力探测和财务复验 |
+| 实时研究服务覆盖 | 投顾、研究矩阵、个股、基金、可转债完整研究、预设情景和固定工作流仍使用固定服务路径 | `LIVE` 研究请求按正式数据规则拒绝固定演示结果 | 逐项接入真实服务并提供双来源、权限和回放证据 |
+| 个股与基金扩展指标 | 个股历史估值分位、完整个股适当性与基金底层行业分类仍待完善 | 相关卡片保留实际缺失字段和复核状态 | 补充有授权来源的历史指标和基金成分分类 |
+| 海外市场权限 | 同花顺量化接口独立登录账户与港美股权限仍需核实，板块轮动覆盖需要补充数据 | 海外指数、因子和行业观察按可用来源展示 | 完成权限核验、覆盖范围测试和来源授权确认 |
+| 真实模型质量 | 自然语言画像提取、语义检索和对话质量依赖实际模型配置；有限规则路径已提供 | 影响语言理解、摘要和排序体验，不改变确定性风险裁决 | 使用目标模型、固定问题集和人工复核评估 |
+| 外部授权与长期服务质量 | 上游配额、留存、展示/再分发授权和长期可用性证据需要单独形成 | 影响实时数据运营和公开部署 | 由部署环境补充授权、监控、压测和服务等级证据 |
+
+这些问题均有明确状态码、缺失字段或待验收项承载；数据缺失沿提供方、研究、证据和建议链路传播，界面显示对应复核信息。
+
 ### 12.4 技术债务
+
+| 技术债务 | 当前表现 | 后续维护要求 |
+| --- | --- | --- |
+| 接口注册集中 | 大量路由和依赖组装集中在 `app/api/main.py` | 按领域拆分路由模块，保持现有路径、响应模型和 owner 校验 |
+| 提供方接口并存 | `FinancialProvider` 统一结构化调用与行情、行业、因子专用方法同时存在 | 逐步补齐适配器转换层，保留专用数据能力的字段校验 |
+| 缓存为进程内结构 | 提供方缓存使用有界进程内最近最少使用结构 | 多进程部署时设计共享缓存、权限隔离、失效和指标采集 |
+| PostgreSQL 写入策略保守 | 适配器复用存储契约，单连接串行写并使用数据库咨询锁 | 需要更高并发时补充连接池、事务观测和故障恢复压测 |
+| 本地认证与审计 | 本地账户、会话和访问审计已实现，审计记录保存在业务存储中 | 公网部署增加身份提供方、安全网关、限流和独立防篡改审计 |
+| 生成资源需同步构建 | 工作流和 Markdown 构建结果随静态资源发布 | 修改源脚本时同时更新构建结果、许可文件和 Node.js 语法检查 |
+| 历史文档持续演进 | `README.md`、`TODO.md`、`LOG.md` 和归档文档记录不同阶段的验收状态 | 更新能力时区分历史记录、当前实现和外部待验收证据 |
+| 运行模式为进程级状态 | 数据模式和提供方就绪状态由运行时控制器维护 | 多实例部署时引入共享状态或明确实例级操作路由 |
 
 ### 12.5 后续工作
 
+后续工作按依赖关系安排，验收继续采用代码实现、本地验证和外部验证分层记录：
+
+| 优先级 | 工作项 | 当前基础 | 验收输出 |
+| --- | --- | --- | --- |
+| 高 | 复验问财额度、财务字段和展示授权 | 已有九项技能清单、服务端凭据和结果归一化 | 探测报告、授权记录、字段映射回归和真实查询记录 |
+| 高 | 补齐实时研究矩阵与投顾主流程 | 已有研究契约、固定运行器、证据桥接和双闸门 | 各轨道真实来源、双来源验证、运行时状态和浏览器回归 |
+| 高 | 完善个股估值、适当性和基金底层行业数据 | 已有扶摇财务字段、基金穿透和确定性规则 | 历史数据协议、计算回归、缺失与冲突案例 |
+| 中 | 完成海外市场权限与板块覆盖 | 已有 iFinD、雅虎财经和港股资讯网适配器 | 权限验证、市场覆盖清单、前序观测校验和来源授权 |
+| 中 | 加强生产部署能力 | 已有本地认证、SQLite 备份、PostgreSQL 后端和健康接口 | 身份网关、独立审计、共享缓存、监控、备份恢复和故障演练 |
+| 中 | 提升模型评测与语义记忆质量 | 已有固定问题路由、自然语言画像和来源检索 | 目标模型评测集、人工标注、提示注入测试和检索相关性报告 |
+| 中 | 扩展组合分析 | 已有确定性优化、压力分析和调仓闭环 | 协方差、流动性压力、历史回放、组合约束和性能评测 |
+| 低 | 建立交易执行与账户同步的独立接口 | 当前有组合导入和 `ADVISORY_ONLY` 行动计划 | 授权账户、只读同步、撤销授权、沙盒订单和交易后对账 |
+
+新增能力继续遵循三项硬约束：金融算术进入确定性服务，外部数据保留来源和真实性状态，建议生成经过独立风险与合规闸门。实现与验收记录进入 `TODO.md`、`LOG.md` 和对应归档技术说明。
+
 ### 12.6 术语表、代码与接口索引
+
+#### 术语表
+
+| 术语 | 定义 | 主要代码或契约 | 关联状态 |
+| --- | --- | --- | --- |
+| `Provider` | 提供结构化金融数据、研究输入或行情的适配器 | `app/providers/` | `SUCCESS`、`PARTIAL`、`EMPTY`、`FAILED` |
+| `Evidence` | 带来源、期间、观察时间、来源链和质量状态的底层证据 | `app/contracts/evidence.py` | `VERIFIED`、`PARTIAL`、`STALE` |
+| `Fact` | 由满足验证条件的证据支持的结构化事实 | `app/contracts/evidence.py` | `VERIFIED`、`UNRESOLVED` |
+| `Finding` | 对事实进行确定性规则分析后形成的发现 | `app/contracts/evidence.py` | 严重度与方法说明 |
+| `RiskProfile` | 用于风险预算、适当性约束和配置边界的投资者画像 | `app/profile/contracts.py` | 画像版本、风险等级、确认状态 |
+| `PortfolioImportBundle` | 持仓快照与可选基金成分快照组成的组合输入 | `app/portfolio/contracts.py` | `COMPLETE`、`PARTIAL`、`EMPTY`、`FAILED` |
+| `ResearchPlan` / `ResearchRunState` | 研究任务图及其运行时状态 | `app/orchestration/contracts.py` | 节点状态、依赖和运行终态 |
+| `DecisionGateResult` | 风险闸门与合规闸门聚合后的建议资格结果 | `app/gates/contracts.py` | `PASS`、`REVIEW_REQUIRED`、`BLOCKED` |
+| `DecisionReceipt` | 绑定画像、组合、研究、风险、闸门、建议和哈希的确定性决策回执 | `app/recommendation/receipt.py` | 通过后生成 |
+| `DataMode` | 进程运行数据模式 | `app/runtime/mode.py` | `MOCK`、`LIVE` |
+| `ProviderServingMode` | 结构化提供方结果的送达路径 | `app/providers/contracts.py` | `DIRECT`、`CACHE_FRESH`、`FALLBACK_PROVIDER`、`CACHE_STALE_FALLBACK` |
+| `owner_id` | 认证模式下由本地账户绑定的数据隔离标识；无认证开发模式下为请求提供的对象隔离键，不承担身份认证职责 | `app/api/access.py`、`app/store/` | 请求、存储、报告和事件一致 |
+
+#### 代码索引
+
+| 路径 | 职责 | 关键接口或对象 |
+| --- | --- | --- |
+| `app/api/main.py` | 应用工厂、路由、依赖组装和错误映射 | `create_app`、各 `/api/v1/*` 接口 |
+| `app/api/contracts.py` | API 请求与响应模型 | 问卷、组合、研究、认证和运行时契约 |
+| `app/profile/` | 问卷、画像、行为评分和展示 | `score_questionnaire`、`RiskProfile` |
+| `app/portfolio/`、`app/risk/`、`app/allocation/` | 组合输入、暴露、集中度、预算和边界 | `calculate_exposure`、`assess_risk_budget`、`build_allocation_envelope` |
+| `app/orchestration/`、`app/research/` | 有界研究运行、验证和证据桥接 | `execute_research_run`、流水线与桥接服务 |
+| `app/gates/`、`app/recommendation/` | 风险、合规、建议与回执 | `evaluate_decision_gates`、`compose_recommendations` |
+| `app/providers/` | 问财、扶摇、行情、行业、海外数据和缓存降级 | `WencaiSkillHubProvider`、`FinancialProvider` |
+| `app/store/`、`app/security/` | SQLite/PostgreSQL 存储、迁移、审计和密钥保护 | `DecisionEventStore`、`ProtectedSecretStore` |
+| `app/runtime/` | 数据模式、能力就绪和本地数据路径 | `RuntimeModeController`、`default_private_data_dir` |
+| `app/api/static/` | 工作台页面、图表、工作流编辑器和静态资源 | `index.html`、`app.js`、`workflow-editor.js` |
+
+#### 接口索引
+
+| 接口 | 用途 | 主要返回 |
+| --- | --- | --- |
+| `GET /api/health` | 进程健康检查 | 服务状态与数据模式 |
+| `GET/POST /api/v1/auth/*` | 本地账户上下文、登录、注册、退出和密码修改 | 会话与账户状态 |
+| `GET/PUT /api/v1/runtime/data-mode` | 读取或切换运行数据模式 | 模式、版本、能力和错误码 |
+| `GET/POST /api/v1/advisor/profile/*` | 问卷模板、预览、确认与画像摘要 | 问卷快照与 `RiskProfile` |
+| `GET/PUT /api/v1/advisor/portfolio/current` | 读取或保存当前组合 | 组合快照与报告 |
+| `POST /api/v1/advisor/queries` | 执行结构化投顾查询 | 研究、证据、建议、闸门和回执 |
+| `POST /api/v1/copilot/chat` | 投顾对话和服务端事件流 | 上下文、工具进度、回复和错误事件 |
+| `GET /api/v1/advisor/research-matrix-template`、`POST /api/v1/advisor/research-runs` 等 | 研究矩阵及个股、基金、可转债轨道 | 节点状态、验证和证据链 |
+| `GET /api/v1/advisor/portfolio-optimization-template`、`POST /api/v1/advisor/portfolio-optimization-runs` | 目标结构与约束计算 | 目标权重、差异和约束 |
+| `GET /api/v1/advisor/rebalancing-template`、`POST /api/v1/advisor/rebalancing-runs` | 再平衡金额、整手、费用和交易后复核 | 行动计划、现金和风险状态 |
+| `GET/POST /api/v1/decision-events*` | 决策事件列表、详情和幂等写入 | 事件摘要、详情和内容哈希 |
+| `GET/PUT/POST /api/v1/runtime/wencai-settings*` | 问财配置、保存和九项技能测试 | 技能状态与安全错误码 |
+
+代码索引列出当前实现的主要入口，接口索引保留稳定路径；新增接口应同步更新 `app/api/contracts.py`、测试和本报告。
