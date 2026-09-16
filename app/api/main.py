@@ -233,11 +233,13 @@ from app.providers.wencai_normalization import (
     decode_stock_metrics,
     decode_stock_quote_fields,
 )
+from app.providers.security_codes import invalid_explicit_convertible_bond_code
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
     LiveProviderUnavailableError,
     ModeRevisionConflictError,
+    PROVIDER_WIDE_WENCAI_FAILURE_CODES,
     get_runtime_mode_controller,
 )
 from typing import Any, Literal
@@ -700,6 +702,35 @@ def create_app(
     active_etnet = etnet_provider or EtNetProvider()
     live_probe_lock = asyncio.Lock()
 
+    async def probe_wencai_contract() -> tuple[bool, tuple[dict[str, Any], ...]]:
+        """Verify all installed SkillHub routes and persist only a full pass."""
+        nonlocal wencai_setting_state
+        results = await active_wencai_provider.probe_installed_skills()
+        passed = all(
+            row["status"] in {"SUCCESS", "PARTIAL"}
+            and row.get("record_count", 0) > 0
+            and row.get("item_count", 0) > 0
+            for row in results
+        )
+        error_code = next((row["error_code"] for row in results if row["error_code"]), None)
+        if passed and wencai_setting_state is not None:
+            wencai_setting_state = wencai_setting_state.model_copy(
+                update={"contract_verified": True}
+            )
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.set(
+                        "provider:wencai", wencai_setting_state.model_dump_json()
+                    )
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="问财验证状态保存失败") from exc
+        await get_runtime_mode_controller().apply_wencai_probe(
+            available=passed,
+            error_code=error_code,
+            auto_activate=passed,
+        )
+        return passed, results
+
     async def resolve_ocr_security_identities(result: dict) -> None:
         """Fill missing OCR codes only when the live directory gives one exact match."""
         resolver = getattr(active_live_finance, "resolve_security_identity", None)
@@ -1076,7 +1107,20 @@ def create_app(
     def get_runtime_capability_gaps(owner_id: str = Depends(owner_dependency)):
         del owner_id
         controller = get_runtime_mode_controller()
+        live = controller.capabilities["LIVE"]
         definitions = (
+            ("market_analysis", "大盘分析", live["market_data"] or live["stock_quote"],
+             ["可验证指数行情或问财市场数据"], "固定指数返回行情、历史序列、来源和观察时间"),
+            ("industry_analysis", "行业配置", live["industry_data"] and live["portfolio_refresh"],
+             ["问财行业元数据", "已验证持仓报价"], "真实持仓可完成行业穿透、HHI 与画像上限对照"),
+            ("stock_analysis", "个股分析", live["company_data"] or live["stock_quote"],
+             ["问财公司数据或扶摇股票行情"], "代码精确匹配后返回行情及分章节研究边界"),
+            ("fund_analysis", "ETF 基金筛选", live["fund_data"] or live["fund_lookthrough"],
+             ["问财基金数据或扶摇披露持仓"], "基金代码或筛选条件返回真实记录、来源和披露日期"),
+            ("convertible_bond_analysis", "可转债投资", live["convertible_bond_data"],
+             ["问财可转债筛选与条款数据"], "价格、转股条款、评级及流动性字段返回真实记录"),
+            ("portfolio_optimization", "资产重组优化", live["portfolio_optimization"],
+             ["已验证持仓报价", "问财行业元数据", "已确认风险画像"], "真实持仓刷新后执行确定性上限重分配"),
             ("security_identity", "证券身份识别", controller.is_wencai_ready,
              ["完整交易所证券目录、历史简称与市场代码"], "查询名称后返回唯一代码、市场和可追溯来源"),
             ("stock_research", "股票研究", not service_uses_fixture(active_stock),
@@ -1586,12 +1630,17 @@ def create_app(
     @api.get("/api/v1/runtime/data-mode")
     async def get_runtime_data_mode():
         controller = get_runtime_mode_controller()
-        if controller.needs_initial_probe and active_live_finance.is_configured:
+        if (
+            (controller.needs_initial_probe and active_live_finance.is_configured)
+            or (controller.needs_wencai_probe and active_wencai_provider.is_configured)
+        ):
             async with live_probe_lock:
                 if controller.needs_initial_probe:
                     capabilities = await active_live_finance.probe_capabilities()
                     await controller.apply_fuyao_probe(capabilities, auto_activate=True,
                                                        errors=getattr(active_live_finance, "last_probe_errors", None))
+                if controller.needs_wencai_probe:
+                    await probe_wencai_contract()
         return JSONResponse(content={"status": "SUCCESS", "data": controller.get_status()})
 
     @api.put("/api/v1/runtime/data-mode")
@@ -2378,8 +2427,10 @@ def create_app(
     # -------------------------------------------------------------------------
     # Copilot Direction 2: Live LLM Chat, Tool Calling & Portfolio Parser Routes
     # -------------------------------------------------------------------------
-    async def persist_wencai_failure(_: str) -> None:
+    async def persist_wencai_failure(error_code: str) -> None:
         nonlocal wencai_setting_state
+        if error_code not in PROVIDER_WIDE_WENCAI_FAILURE_CODES:
+            return
         if wencai_setting_state is None or not wencai_setting_state.contract_verified:
             return
         wencai_setting_state = wencai_setting_state.model_copy(
@@ -3131,34 +3182,10 @@ def create_app(
 
     @api.post("/api/v1/runtime/wencai-settings/test")
     async def test_wencai_settings():
-        nonlocal wencai_setting_state
         if not active_wencai_provider.is_configured:
             return _error_response(409, "WENCAI_NOT_CONFIGURED", "请先保存问财 API Key")
-        results = await active_wencai_provider.probe_installed_skills()
-        passed = all(
-            row["status"] in {"SUCCESS", "PARTIAL"}
-            and row.get("record_count", 0) > 0
-            and row.get("item_count", 0) > 0
-            for row in results
-        )
-        error_code = next((row["error_code"] for row in results if row["error_code"]), None)
-        if passed and wencai_setting_state is not None:
-            wencai_setting_state = wencai_setting_state.model_copy(
-                update={"contract_verified": True}
-            )
-            if active_secret_store is not None:
-                try:
-                    active_secret_store.set(
-                        "provider:wencai", wencai_setting_state.model_dump_json()
-                    )
-                except (SecretProtectionError, ValueError) as exc:
-                    raise HTTPException(status_code=503, detail="问财验证状态保存失败") from exc
-        controller = get_runtime_mode_controller()
-        await controller.apply_wencai_probe(
-            available=passed,
-            error_code=error_code,
-            auto_activate=passed,
-        )
+        async with live_probe_lock:
+            passed, results = await probe_wencai_contract()
         body = {"status": "PASS" if passed else "FAILED", "skills": results}
         return JSONResponse(status_code=200 if passed else 502, content=body)
 
@@ -3387,7 +3414,7 @@ def create_app(
     ) -> JSONResponse:
         """Expose the verified provider contract for read-only research tools."""
         controller = get_runtime_mode_controller()
-        if controller.mode != DataMode.LIVE or not controller.is_wencai_ready:
+        if controller.mode != DataMode.LIVE or not active_wencai_provider.is_configured:
             return JSONResponse(
                 status_code=409,
                 content={
@@ -3397,6 +3424,21 @@ def create_app(
                     "missing_fields": ["WENCAI_RESEARCH_AND_REFRESH"],
                 },
             )
+        if request.operation == ProviderOperation.CONVERTIBLE_BOND_DATA:
+            invalid_code = invalid_explicit_convertible_bond_code(request.subject)
+            if invalid_code is not None:
+                return JSONResponse(status_code=422, content={
+                    "schema_version": "api-error.v1",
+                    "status": "REJECTED",
+                    "error_code": "INVALID_CONVERTIBLE_BOND_CODE",
+                    "message": (
+                        f"[{invalid_code}] 不是有效的沪深可转债代码；"
+                        "可输入 110/111/113/118/123/127/128 开头的六位代码，"
+                        "或输入不含代码的明确筛选条件。"
+                    ),
+                    "actual_source": None,
+                    "missing_fields": ["valid_convertible_bond_code_or_screen_condition"],
+                })
         provider_request = ProviderRequest(
             request_id=request.request_id,
             operation=request.operation,
@@ -3410,6 +3452,8 @@ def create_app(
             error_code = result.issues[0].code.value if result.issues else "PROVIDER_FAILED"
             await controller.record_wencai_failure(error_code)
             await persist_wencai_failure(error_code)
+        else:
+            await controller.record_wencai_success()
         status_code = 200 if result.status in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL, ProviderStatus.EMPTY} else 502
         return JSONResponse(status_code=status_code, content=result.model_dump(mode="json"))
 

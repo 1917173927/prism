@@ -391,7 +391,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
 
     for geometry in (
         "grid-template-columns: 220px minmax(0, 1fr)",
-        "grid-template-columns: minmax(0, 1fr) 286px",
+        "grid-template-columns: minmax(0, 1fr) 310px",
         "min-height: 260px",
         "border-radius: var(--radius-lg)",
         "box-shadow: none",
@@ -501,6 +501,37 @@ def test_stock_shortcut_requires_a_subject_and_routes_codes_to_real_research() -
     assert "/api/v1/copilot/stock-analysis?symbol=" in script
 
 
+def test_six_analysis_shortcuts_use_explicit_live_or_deterministic_chains() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    feature_block = script.split("const AGENT_FEATURES", 1)[1].split(
+        'byId("welcome-start")', 1
+    )[0]
+
+    assert 'await runConfiguredAgentFeature(featureId, values)' in feature_block
+    assert 'await handleNaturalQuerySubmit()' not in feature_block
+    assert '"FUND_DATA",' in feature_block
+    assert '基金代码 基金简称 单位净值 管理费率 托管费率' in feature_block
+    assert '披露持仓 行业分布' not in feature_block
+    assert 'function normalizeFeatureRows(title, rows)' in feature_block
+    assert '筛选表已按基金代码合并' in feature_block
+    assert 'runLiveProviderFeature("CONVERTIBLE_BOND_DATA"' in feature_block
+    assert 'placeholder: "例如 113056 或 价格低于 130 元"' in feature_block
+    assert 'INVALID_CONVERTIBLE_BOND_CODE' not in feature_block
+    assert 'fallbackSubject.trim()' in feature_block
+    assert '不是有效的沪深可转债代码' in feature_block
+    assert '这不是连接失败' in feature_block
+    assert 'await runCopilotStockResearch(values.target, Number(values.lookback || 5))' in feature_block
+    assert 'const health = await refreshPortfolioHealth()' in feature_block
+    assert 'const result = await runPortfolioOptimization()' in feature_block
+    assert 'await assessMarket()' in feature_block
+    assert 'alternateCapabilities: ["stock_quote"]' in feature_block
+    assert 'alternateCapabilities: ["fund_lookthrough"]' in feature_block
+    assert 'candidates.some(capability => capabilities[capability] === true)' in feature_block
+    assert 'state.wencaiConfigured === true && state.wencaiLastErrorCode !== "AUTH_FAILED"' in feature_block
+    assert '|| configuredProviderReady' in feature_block
+    assert 'await fetchRuntimeDataMode();' in feature_block
+
+
 def test_user_facing_asset_research_localizes_statuses_and_machine_identifiers() -> None:
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     research_start = script.index("function renderResearchMatrix")
@@ -595,3 +626,58 @@ def test_portfolio_report_navigation_status_and_boundaries_are_restructured() ->
     assert "最大回撤容忍度仅作为投资者画像边界" in risk_renderer
     assert 'renderPortfolioAnalysisStatus(error.message' in script
     assert 'setError(`持仓已保存' not in script
+
+
+def test_feature_tools_yield_space_after_chat_starts_and_remain_reopenable() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    assert 'id="agent-feature-toggle"' in markup
+    assert 'aria-controls="agent-feature-popover"' in markup
+    assert 'id="agent-feature-popover"' in markup
+    assert 'function setAgentFeatureToolsCompact(compact, options = {})' in script
+    assert 'setAgentFeatureToolsCompact(true);\n    const chatOwner' in script
+    assert 'setAgentFeatureToolsCompact(false);' in script
+    assert 'event.key !== "Escape"' in script
+    assert '.agent-feature-tools.is-compact.is-open .agent-feature-popover' in styles
+    assert 'position: absolute;' in styles
+    assert 'max-height: min(72vh, 680px);' in styles
+
+
+def test_feature_tools_share_the_conversation_column_beside_the_profile_rail() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    grid = markup.index('class="agent-home-grid" id="agent-home-grid"')
+    workbench = markup.index('class="agent-workbench-column"', grid)
+    feature_tools = markup.index('id="agent-feature-tools"', workbench)
+    conversation = markup.index('id="agent-conversation"', feature_tools)
+    profile_rail = markup.index('id="agent-profile-rail"', conversation)
+    assert grid < workbench < feature_tools < conversation < profile_rail
+    assert '</section>\n            </div>\n\n            <aside class="agent-profile-rail"' in markup
+    assert 'grid-template-columns: minmax(0, 1fr) 310px;' in styles
+    assert '.agent-workbench-column > .agent-feature-tools { width: 100%; margin-bottom: 0; }' in styles
+    assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation' in styles
+    assert 'min-height: 260px;' in styles
+    assert 'max-height: 520px;' in styles
+    assert 'overscroll-behavior: contain;' in styles
+    assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages' in styles
+
+
+def test_live_provider_results_use_compact_emphasized_card_layout() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    assert 'provider-feature-card' in script
+    assert 'provider-feature-metrics' in script
+    assert 'provider-feature-table-wrap' in script
+    assert 'provider-status-chip' in script
+    assert 'function providerColumns(title, rows)' in script
+    assert 'maximumFractionDigits: 6' in script
+    assert 'max-height: 360px;' in styles
+    assert 'position: sticky;' in styles
+    assert 'text-overflow: ellipsis;' in styles
+    assert 'max-height: 520px;' in styles
+    assert 'scrollbar-gutter: stable;' in styles
+    assert '.agent-conversation .copilot-output-container { display: block; max-height: 520px;' in styles

@@ -8,11 +8,11 @@
     <title>Prism · 决策工作台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-portfolio-analysis-refactor">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-chat-peer-layout">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260916-portfolio-analysis-refactor" defer></script>
+    <script src="/static/app.js?v=20260916-chat-feature-popover" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -275,15 +275,24 @@
             </div>
           </div>
 
-          <section class="agent-feature-tools" aria-labelledby="agent-feature-tools-title">
+          <div class="agent-home-grid" id="agent-home-grid">
+            <div class="agent-workbench-column">
+          <section class="agent-feature-tools" id="agent-feature-tools" aria-labelledby="agent-feature-tools-title">
             <header class="agent-feature-tools-head">
               <div>
                 <h3 id="agent-feature-tools-title">六项分析工具</h3>
                 <p>先确认分析范围与所需数据，再开始真实数据查询。功能入口不会在点击时自动执行。</p>
               </div>
-              <span class="agent-feature-mode">LIVE 数据 · 结构化入口</span>
+              <div class="agent-feature-head-actions">
+                <span class="agent-feature-mode">LIVE 数据 · 结构化入口</span>
+                <button class="agent-feature-toggle" id="agent-feature-toggle" type="button" aria-expanded="true" aria-controls="agent-feature-popover">
+                  <span id="agent-feature-toggle-label">收起</span>
+                  <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
+                </button>
+              </div>
             </header>
-            <div class="agent-feature-grid" role="list">
+            <div class="agent-feature-popover" id="agent-feature-popover">
+              <div class="agent-feature-grid" role="list">
               <button class="agent-feature-card" type="button" data-feature-id="market" data-chat-prefix="大盘分析" aria-expanded="false" aria-controls="agent-feature-config">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-activity"/></svg></span>
                 <span class="agent-feature-copy"><strong>大盘分析</strong><span>趋势、估值与市场风险</span><small>市场范围 · 观察周期 · 关注维度</small></span>
@@ -314,8 +323,8 @@
                 <span class="agent-feature-copy"><strong>资产重组优化</strong><span>集中度、风险预算与调整测算</span><small>已确认持仓 · 画像约束 · 优化目标</small></span>
                 <span class="agent-feature-status" data-feature-status="optimization">NEED_INPUT</span>
               </button>
-            </div>
-            <form class="agent-feature-config" id="agent-feature-config" hidden>
+              </div>
+              <form class="agent-feature-config" id="agent-feature-config" hidden>
               <header>
                 <div><span class="eyebrow">已选择</span><h4 id="agent-feature-config-title">配置分析</h4></div>
                 <button id="agent-feature-config-close" type="button" aria-label="关闭功能配置">关闭</button>
@@ -327,10 +336,10 @@
                 <span>生成的问题会同步到下方输入框，可继续补充要求。</span>
                 <button class="btn btn-primary" id="agent-feature-start" type="submit">开始分析 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button>
               </div>
-            </form>
+              </form>
+            </div>
           </section>
 
-          <div class="agent-home-grid" id="agent-home-grid">
             <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
               <div class="copilot-chat-stream-panel" id="copilot-chat-panel">
                 <header class="chat-panel-header conversation-head">
@@ -372,6 +381,7 @@
 
               <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
             </section>
+            </div>
 
             <aside class="agent-profile-rail" id="agent-profile-rail" aria-label="账户与偏好">
               <section class="agent-profile-summary">

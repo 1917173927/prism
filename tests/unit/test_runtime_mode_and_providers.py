@@ -147,6 +147,24 @@ class TestRuntimeModeController:
 
         asyncio.run(_run())
 
+    def test_request_scoped_wencai_failure_does_not_revoke_all_tools(self):
+        async def _run():
+            os.environ["WENCAI_SKILLHUB_API_KEY"] = "test_official_key"
+            os.environ["WENCAI_SKILLHUB_CONTRACT_VERIFIED"] = "true"
+            controller = RuntimeModeController(initial_mode=DataMode.LIVE)
+
+            await controller.record_wencai_failure("INVALID_RESPONSE")
+
+            status = controller.get_status()
+            assert status["wencai_ready"] is True
+            assert status["contract_verified"] is True
+            assert status["wencai_capability_status"]["last_error_code"] == "INVALID_RESPONSE"
+            assert status["capabilities"]["LIVE"]["market_data"] is True
+            assert status["capabilities"]["LIVE"]["fund_data"] is True
+            assert status["capabilities"]["LIVE"]["convertible_bond_data"] is True
+
+        asyncio.run(_run())
+
     def test_switch_mode_revision_conflict(self):
         async def _run():
             controller = RuntimeModeController(initial_mode=DataMode.MOCK)
