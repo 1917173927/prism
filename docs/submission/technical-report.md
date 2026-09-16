@@ -893,13 +893,106 @@ flowchart LR
 
 ### 9.1 同花顺问财与 SkillHub
 
+项目将同花顺问财技能清单随代码维护在 `app/providers/iwencai_skills.json`，并由 `WencaiSkillHubProvider` 加载。清单版本为 `prism-iwencai-skills.v1`，包含 9 个技能的名称、技能标识、版本、接口路径、操作类型和安装包摘要。适配器按 `ProviderOperation` 和查询频道选择技能，不依赖当前用户目录中的命令行工具。
+
+| 能力 | 技能标识 | 操作类型 | 接口路径 |
+| --- | --- | --- | --- |
+| 公告、新闻 | `announcement-search`、`news-search` | `SEARCH_NEWS`，由 `channel` 区分 | `/v1/comprehensive/search` |
+| 研报 | `report-search` | `SEARCH_REPORTS` | `/v1/comprehensive/search` |
+| 行情、财务、行业、宏观 | `hithink-market-query`、`hithink-finance-query`、`hithink-industry-query`、`hithink-macro-query` | 对应结构化操作 | `/v1/query2data` |
+| 基金 | `hithink-fund-query` | `FUND_DATA` | `/v1/query2data` |
+| 可转债 | `hithink-cb-selector` | `CONVERTIBLE_BOND_DATA` | `/v1/query2data` |
+
+适配器支持构造参数和服务端环境变量配置。凭据可从 `WENCAI_SKILLHUB_API_KEY` 或 `IWENCAI_API_KEY` 读取，接口地址可从对应环境变量读取，默认地址来自技能清单。真实请求使用服务端 `Bearer` 鉴权，并携带请求标识、技能标识、技能版本、插件占位信息和随机追踪标识；浏览器响应不包含凭据。
+
+结构化查询以 `subject` 和参数构造请求体，综合搜索根据频道选择公告、新闻或研报技能。响应必须为对象且 `status_code=0`；数据字段归入 `ProviderRecord`，并保留查询内容、来源、获取时间、摘要、结果项和字段列表。适配器将响应映射为 `SUCCESS`、`PARTIAL`、`EMPTY` 或 `FAILED`：有记录且满足必需字段时为 `SUCCESS`，有记录但缺少必需字段时为 `PARTIAL`，明确无记录时为 `EMPTY`，鉴权、额度、限流、接口或解析错误时为 `FAILED`。
+
+运行时提供 `GET /api/v1/runtime/wencai-settings`、`PUT /api/v1/runtime/wencai-settings` 和 `POST /api/v1/runtime/wencai-settings/test`。配置测试对清单中的 9 个技能执行最小请求，并将可用性与契约验证状态交给运行模式控制器。测试结果按技能保留状态、记录数、结果项数量和安全错误码。
+
+`LIVE` 模式只有在问财凭据已配置、契约验证通过且问财能力当前可用，或扶摇对应能力已通过真实探测后才允许开启。仅配置密钥不会直接将运行模式切换为 `LIVE`；已验证的能力按能力项分别记录，单项失败不会被标记为可用。
+
+项目同时保留 `LiveWencaiProvider` 适配器，用于兼容既有调用和无凭据场景的结构化降级返回；默认应用工厂注册的是 `WencaiSkillHubProvider`。无凭据时，官方适配器返回带 `AUTH_FAILED` 的 `FAILED` 结果，兼容适配器返回带凭据未配置说明的 `PARTIAL` 结果。两条路径都不将降级记录标记为真实远程成功，也不在提供方内部执行暴露、集中度或风险计算。
+
 ### 9.2 行情及其他数据提供方
+
+项目将实时行情、财务资料、行业分类、海外指数和宏观因子分别封装在独立适配器中，统一保留标的身份、观察时间、来源和错误类别。
+
+| 提供方 | 代码位置 | 数据能力 | 数据处理 |
+| --- | --- | --- | --- |
+| 扶摇金融数据服务 | `app/providers/fuyao.py` | A 股报价、批量报价、指数快照与日线、披露财务指标、基金穿透和行业观察 | 服务端凭据；校验业务码、标的身份、时间戳、数值和高低价关系 |
+| 腾讯、新浪公开行情 | `app/providers/live_market.py` | A 股报价、指数快照和指数日线 | 解析公开响应，校验返回标的、价格、观察时间和日线边界 |
+| 静态行情及基金数据 | `StaticMarketProvider` | 预置演示股票报价和基金成分 | 记录 `is_synthetic=true`，用于可重复的离线运行 |
+| 东方财富行业资料 | `app/providers/industry.py` | 根据完整证券代码获取行业分类 | 校验 `SECUCODE`，转换为标准行业标识；检索时间不等于行情时间 |
+| 雅虎财经 | `app/providers/yahoo_finance.py` | 海外指数日线和宏观因子序列 | 解析日线、检查标的身份与高低价关系，标记非合成数据 |
+| 港股资讯网 | `app/providers/etnet.py` | 香港主要指数公开图表日线和快照 | 解析页面内嵌数据，校验指数标识、日期、日线和成交量 |
+| 同花顺量化接口 | `app/providers/ifind_quant.py` | 海外指数历史和美国十年期国债、布伦特、黄金等因子 | 使用服务端刷新令牌换取访问令牌，校验时间序列标的和数值 |
+
+`CompositeMarketProvider` 在股票报价路径中按腾讯、新浪顺序调用，单个来源时限为 1.5 秒，总时限为 2 秒；股票报价路径支持来源冷却和 `FallbackStaticProvider` 静态回退。指数快照和指数日线只尝试两个公开来源，不使用静态回退，失败时分别返回空值或空列表。
+
+扶摇适配器将 A 股证券代码规范为 6 位代码和交易所后缀，使用服务端 `HITHINK_FINANCE_API_KEY`，对接口返回的业务错误码单独映射。东方财富行业资料在进程内缓存 1800 秒，缓存内容仅作为行业元数据。雅虎财经和港股资讯网属于公开网页接口，适配器将数据按原始来源和观察日期返回，调用方继续处理延迟、限流和页面变化。同花顺量化接口使用服务端环境变量 `IFIND_QUANT_REFRESH_TOKEN` 获取刷新令牌并换取访问令牌；美国十年期国债、布伦特和黄金因子分别使用 `IFIND_US10Y_EDB_ID`、`IFIND_BRENT_CODE` 和 `IFIND_COMEX_GOLD_CODE` 配置指标或代码，访问令牌在进程内缓存 30 分钟。
 
 ### 9.3 数据提供方协议
 
+使用 `ProviderRequest` 和 `ProviderResult` 的结构化调用遵循 `FinancialProvider` 协议，统一通过 `execute(request: ProviderRequest) -> ProviderResult` 执行。行情、行业和因子适配器还保留专用方法接口，例如 `get_quote`、`get_index_history`、`get_industry` 和 `get_factor_history`；这些接口由调用方单独处理超时、错误和结果归一化。请求对象包含以下字段：
+
+| 对象 | 关键字段 | 不变量 |
+| --- | --- | --- |
+| `ProviderRequest` | `request_id`、`operation`、`subject`、`as_of`、`required_fields`、`parameters`、`timeout_ms` | 时间带时区；必需字段不重复；参数使用深层不可变 `FrozenDict`，递归拒绝敏感键 |
+| `ProviderRecord` | `source`、`record_id`、`fields`、`units`、`period`、`observed_at`、`lineage_id` | 字段非空；观测时间带时区；单位为字符串 |
+| `ProviderIssue` | 错误码、阶段、安全说明、可重试标识、重试时间、诊断 | 诊断结构不含敏感键 |
+| `ProviderResult` | 请求标识、请求指纹、提供方、四态状态、获取时间、记录、缺失字段、问题、送达模式 | 状态与记录、缺失字段、问题、缓存年龄相互一致 |
+
+`compute_request_fingerprint` 对协议版本、操作、主体、截止时间 `as_of`、排序后的必需字段和规范化参数进行规范化，再计算小写 SHA-256 摘要。`request_id` 和 `timeout_ms` 不参与语义指纹，因此调用关联标识变化不会改变同一语义查询的指纹；标的、指标、截止时间或参数变化会产生新的指纹。
+
+四态结果遵循以下契约：
+
+| 状态 | 记录要求 | 缺失字段和问题 | 证据处理 |
+| --- | --- | --- | --- |
+| `SUCCESS` | 至少一条记录，所有必需字段存在且有值 | 不允许缺失字段和问题 | 归一化为 `VERIFIED` 证据 |
+| `PARTIAL` | 至少一条记录 | 至少有真实缺失字段或问题，缺失字段必须来自请求 | 归一化为带质量说明的 `PARTIAL` 证据 |
+| `EMPTY` | 记录为空 | 不允许错误问题，必须有范围说明 | 不生成证据 |
+| `FAILED` | 记录为空 | 至少有一个结构化问题 | 不生成证据，不写入零值 |
+
+对遵循 `FinancialProvider` 协议的调用，`validate_result_for_request` 在结果返回后核对请求标识、请求指纹和记录字段；对 `PARTIAL` 进一步检查声明缺失字段是否确实缺失。请求或结果违反契约时，运行时将其转换为安全的 `FAILED / INVALID_RESPONSE` 结果。
+
 ### 9.4 数据状态与真实性标识
 
+对进入 `ProviderResult` 和 `normalize_result_to_evidence` 的调用，数据状态分为内容状态、送达模式和证据质量三个层次。`ProviderResult.status` 描述返回内容，`ProviderServingMode` 描述返回路径，归一化后的 `EvidenceQualityStatus` 描述证据是否可以参与事实闭合。
+
+| 送达模式 | 形成条件 | `cache_age_ms` | 证据质量 |
+| --- | --- | ---: | --- |
+| `DIRECT` | 请求提供方直接返回 | 不设置 | 按四态归一化规则处理 |
+| `CACHE_FRESH` | 同一提供方和语义指纹命中新鲜缓存 | 必须设置 | 按原始四态处理 |
+| `FALLBACK_PROVIDER` | 主提供方失败后，备用提供方返回结果 | 不设置 | 保留备用提供方、来源和血缘 |
+| `CACHE_STALE_FALLBACK` | 主、备用均不可用，命中宽限期内的旧缓存 | 必须设置 | 归一化为 `STALE`，不能形成 `VERIFIED` 闭合 |
+
+送达模式与四态状态相互独立。主提供方返回 `EMPTY` 时保留“查询范围内无记录”的语义，不由备用来源或缓存改写；失败路径可以通过备用提供方或旧缓存返回，但来源和年龄信息会保留。静态行情、静态基金和兼容适配器会在记录字段中保留合成、未配置或降级说明。`is_synthetic` 等字段用于结果解释；证据质量仍由四态结果和送达模式按照归一化规则确定。直接返回字典的专用适配器不会自动获得 `ProviderServingMode` 和 `EvidenceQualityStatus`；调用方需要将其转换到统一协议或按专用接口规则处理。
+
+归一化规则由 `normalize_result_to_evidence` 固定：`SUCCESS` 生成验证证据，`PARTIAL` 生成部分证据，`CACHE_STALE_FALLBACK` 将证据质量设为 `STALE`，`EMPTY` 和 `FAILED` 返回空证据集合。证据标识使用提供方、来源、记录身份、字段、期间和请求指纹构造；记录必须提供 `record_id` 或 `lineage_id`，不能使用数组下标代替稳定身份。
+
 ### 9.5 故障处理与可控降级
+
+对遵循 `FinancialProvider` 协议的调用，`execute_with_budget` 提供统一的请求级超时、异常映射和安全诊断边界。默认请求超时预算为 3000 毫秒；超时映射为 `FAILED / TIMEOUT` 并标记可重试，显式取消映射为 `FAILED / CANCELLED`，未知异常映射为 `FAILED / INTERNAL_ERROR`。扶摇、公开行情、行业和因子专用适配器使用各自的方法接口及超时、错误处理规则。异常诊断经过脱敏，只保留安全错误类别和必要的非敏感参数。
+
+需要缓存和备用来源时，调用方显式传入 `ProviderExecutionPolicy`：
+
+```python
+cache = InMemoryProviderCache(ttl_ms=30_000, stale_grace_ms=120_000)
+policy = ProviderExecutionPolicy(cache=cache, fallback=secondary_provider)
+result = await execute_with_budget(primary_provider, request, policy=policy)
+```
+
+降级顺序由策略固定为：新鲜缓存、主提供方、一次备用提供方、旧缓存、失败结果。主提供方明确返回 `EMPTY` 时立即返回 `EMPTY`，不调用备用提供方，也不写入缓存，以保留查询范围内无记录的语义。缓存键由提供方名称和请求语义指纹组成；用户画像、组合、账户、持仓、偏好和上下文记忆等私人语义请求绕过公共缓存。缓存只保存经过请求契约验证的 `SUCCESS` 或 `PARTIAL` 结果，`EMPTY` 和 `FAILED` 不写入；缓存为线程安全的有界进程内最近最少使用结构，不跨进程持久化。
+
+主、备用调用共享原始请求的总超时预算，剩余预算不足时不启动备用调用。主或备用结果会重新绑定当前 `request_id`，保持原请求指纹、记录、获取时间和血缘；旧缓存额外记录缓存年龄，并在证据归一化时进入 `STALE`。`execute_research_run` 可以将同一策略传递给并行研究节点，节点结果保留提供方身份、送达模式、缓存年龄和安全问题。
+
+| 故障类型 | 结果状态 | 保留内容 | 下游动作 |
+| --- | --- | --- | --- |
+| 主提供方调用阶段失败 | 主调用阶段为 `FAILED` | 错误类别、可重试标识和安全诊断 | 按策略继续尝试备用提供方、旧缓存或最终失败结果 |
+| 主提供方明确无记录 | `EMPTY` | 查询范围说明 | 保留空结果，不伪造数值 |
+| 备用提供方成功 | 原始四态 | 备用提供方和来源标识 | 继续归一化并保留数据血缘 |
+| 命中旧缓存 | `SUCCESS` 或 `PARTIAL` 与 `CACHE_STALE_FALLBACK` | 缓存年龄和旧记录 | 生成 `STALE` 证据，进入复核 |
+| 所有路径失败 | `FAILED` | 主路径问题及安全类别 | 研究节点和证据流水线进入复核或阻断 |
 
 ## 10. 工程实现与部署
 
