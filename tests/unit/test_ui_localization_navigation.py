@@ -85,7 +85,7 @@ def test_authenticated_ui_removes_mock_chat_and_marks_unready_tools() -> None:
     assert 'formalUnavailable ? "工具数据 · 未就绪"' in script
     assert "正式账户不允许切换至 Mock 数据" in script
     assert 'connectionStatus: "NONE"' in script
-    assert 'llmConfig.connectionStatus = settings.is_configured ? "SAVED" : "NONE"' in script
+    assert 'llmConfig.connectionStatus = settings.connection_verified ? "CONNECTED" : settings.is_configured ? "SAVED" : "NONE"' in script
     assert 'llmConfig.connectionStatus = "CONNECTED"' in script
     assert 'llmConfig.connectionStatus = "FAILED"' in script
     assert "已保存" in script

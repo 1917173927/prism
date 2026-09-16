@@ -60,6 +60,9 @@ def test_local_demo_login_issues_an_http_only_session(client):
 def test_privileges_origin_and_audit_isolation(client):
     client.auth = ("alice", "local-test-password")
     assert client.put("/api/v1/runtime/data-mode", json={"mode":"MOCK"}).status_code == 403
+    assert client.put("/api/v1/user/model-settings", json={"api_key":"member-key"}).status_code == 403
+    assert client.post("/api/v1/user/model-settings/test").status_code == 403
+    assert client.delete("/api/v1/user/model-settings").status_code == 403
     assert client.post("/api/v1/portfolio/import", headers={"Origin":"https://other.invalid"}, json={}).status_code == 403
     assert client.post("/api/v1/copilot/chat", headers={"Sec-Fetch-Site":"cross-site"}, json={}).status_code == 403
     rows = client.get("/api/v1/access-audit").json()["items"]
@@ -71,6 +74,7 @@ def test_privileges_origin_and_audit_isolation(client):
     assert client.get("/api/v1/auth/context").json()["admin"] is True
     # Invalid input reaches validation for admins instead of the member-only gate.
     assert client.put("/api/v1/runtime/data-mode", json={}).status_code == 422
+    assert client.put("/api/v1/user/model-settings", json={"model":""}).status_code == 422
 
 
 def test_invalid_accounts_fail_closed(tmp_path):

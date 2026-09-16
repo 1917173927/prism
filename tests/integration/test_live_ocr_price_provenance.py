@@ -46,6 +46,71 @@ class FakeLiveFinance:
         }
 
 
+class FakeNameResolvingLiveFinance(FakeLiveFinance):
+    async def resolve_security_identity(self, name: str):
+        assert name == "江苏新能"
+        return {
+            "asset_id": "603693.SH",
+            "name": "江苏新能",
+            "market": "SH",
+            "source": "test exact-name ticker directory",
+        }
+
+
+class FakeNameOnlyOcrParser:
+    def parse_image_bytes(self, content: bytes):
+        assert content == b"bounded-image"
+        return {
+            "status": "SUCCESS",
+            "positions": [{
+                "asset_id": "",
+                "name": "江苏新能",
+                "asset_class": "EQUITY",
+                "sector": "Unclassified",
+                "quantity": 100,
+                "available_quantity": 0,
+                "cost_price": 17.91,
+                "price": 17.95,
+                "market_value_cny": 1795,
+                "confidence": 0.99,
+                "confidence_pct": 99,
+                "needs_review": True,
+                "review_reasons": ["SECURITY_IDENTITY_REQUIRED"],
+                "field_sources": {"identity": "unresolved broker display name"},
+            }],
+            "cash_cny": 0,
+            "parsed_count": 1,
+            "has_low_confidence_items": True,
+        }
+
+
+def test_ocr_resolves_name_only_holding_through_exact_live_directory(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.llm.ocr_portfolio_parser.OCRPortfolioParser.get_instance",
+        lambda: FakeNameOnlyOcrParser(),
+    )
+    reset_runtime_mode_controller(DataMode.LIVE)
+    store = SQLiteDecisionEventStore(":memory:")
+    client = TestClient(create_app(
+        store, live_finance_provider=FakeNameResolvingLiveFinance()
+    ))
+
+    parsed = client.post(
+        "/api/v1/advisor/portfolio/ocr",
+        headers={"X-Owner-ID": "name-only-owner"},
+        files={"file": ("holding.png", b"bounded-image", "image/png")},
+    )
+
+    assert parsed.status_code == 200, parsed.text
+    position = parsed.json()["positions"][0]
+    assert position["asset_id"] == "603693.SH"
+    assert position["identity_candidates"][0]["source"] == "test exact-name ticker directory"
+    assert "SECURITY_IDENTITY_REQUIRED" not in position["review_reasons"]
+    assert position["field_sources"]["identity"] == "test exact-name ticker directory"
+    store.close()
+    reset_runtime_mode_controller(DataMode.MOCK)
+
+
 def test_live_ocr_replaces_static_fallback_with_real_quote_before_confirmation(monkeypatch) -> None:
     monkeypatch.setattr(
         "app.llm.ocr_portfolio_parser.OCRPortfolioParser.get_instance",

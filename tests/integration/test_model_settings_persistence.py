@@ -34,7 +34,7 @@ def _accounts_file(path):
             "owner_id": OWNER,
             "salt": salt,
             "password_hash": password_digest(PASSWORD, salt),
-            "admin": False,
+            "admin": True,
         }]), encoding="utf-8")
     return path
 
@@ -53,7 +53,7 @@ def _client(secret_store, accounts_path):
     )), store
 
 
-def test_user_model_setting_survives_app_restart_without_key_disclosure(tmp_path) -> None:
+def test_global_model_setting_survives_app_restart_without_key_disclosure(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     accounts = tmp_path / "accounts.json"
     first, first_db = _client(protected, accounts)
@@ -67,9 +67,10 @@ def test_user_model_setting_survives_app_restart_without_key_disclosure(tmp_path
     assert response.status_code == 200
     assert response.json() == {
         "is_configured": True,
-        "scope": "USER",
+        "scope": "GLOBAL",
         "model": "deepseek-chat",
         "base_url": "https://api.deepseek.com/v1",
+        "connection_verified": False,
         "persistence": "OS_PROTECTED",
     }
     assert "persistent-secret-value" not in response.text
@@ -79,7 +80,7 @@ def test_user_model_setting_survives_app_restart_without_key_disclosure(tmp_path
     restored = restarted.get("/api/v1/user/model-settings", headers=headers)
     assert restored.status_code == 200
     assert restored.json()["is_configured"] is True
-    assert restored.json()["scope"] == "USER"
+    assert restored.json()["scope"] == "GLOBAL"
     assert "persistent-secret-value" not in restored.text
     restarted_db.close()
 
@@ -102,11 +103,11 @@ def test_empty_key_preserves_setting_until_explicit_delete(tmp_path) -> None:
 
     assert saved.status_code == 200
     assert saved.json()["is_configured"] is True
-    assert json.loads(protected.get(f"llm:{OWNER}"))["api_key"] == "delete-me"
+    assert json.loads(protected.get("llm:global"))["api_key"] == "delete-me"
     deleted = client.delete("/api/v1/user/model-settings", headers=headers)
     assert deleted.status_code == 200
     assert deleted.json()["scope"] == "SERVER"
-    assert protected.get(f"llm:{OWNER}") is None
+    assert protected.get("llm:global") is None
     db.close()
 
 
@@ -121,9 +122,9 @@ def test_rotation_and_delete_invalidate_another_app_instance(tmp_path) -> None:
     base = {"base_url": "https://api.deepseek.com/v1", "model": "deepseek-chat"}
 
     first.put("/api/v1/user/model-settings", headers=headers, json={**base, "api_key": "first-key"})
-    assert second.get("/api/v1/user/model-settings", headers=headers).json()["scope"] == "USER"
+    assert second.get("/api/v1/user/model-settings", headers=headers).json()["scope"] == "GLOBAL"
     second.put("/api/v1/user/model-settings", headers=headers, json={**base, "api_key": "rotated-key"})
-    assert "rotated-key" in first_store.get(f"llm:{OWNER}")
+    assert "rotated-key" in first_store.get("llm:global")
 
     second.delete("/api/v1/user/model-settings", headers=headers)
     refreshed = first.get("/api/v1/user/model-settings", headers=headers).json()
@@ -141,12 +142,12 @@ def test_empty_key_cannot_reuse_another_providers_credential(tmp_path):
         response = client.put("/api/v1/user/model-settings", headers=_headers(), json={
             "api_key": "", "base_url": "https://api.openai.com/v1", "model": "other-model"})
         assert response.status_code == 422
-        assert json.loads(protected.get(f"llm:{OWNER}"))["api_key"] == "deepseek-secret"
+        assert json.loads(protected.get("llm:global"))["api_key"] == "deepseek-secret"
     finally:
         db.close()
 
 
-def test_unauthenticated_local_mode_persists_one_machine_scoped_secret(tmp_path) -> None:
+def test_unauthenticated_local_mode_uses_global_machine_scoped_secret(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     store = SQLiteDecisionEventStore(":memory:")
     client = TestClient(create_app(store, secret_store=protected))
@@ -161,7 +162,7 @@ def test_unauthenticated_local_mode_persists_one_machine_scoped_secret(tmp_path)
     assert saved.status_code == 200
     assert saved.json()["persistence"] == "OS_PROTECTED"
     assert protected.path.exists()
-    assert protected.get("llm:local:workbench") is not None
+    assert protected.get("llm:global") is not None
     assert "process-only-key" not in protected.path.read_text(encoding="utf-8")
 
     restarted_store = SQLiteDecisionEventStore(":memory:")
@@ -172,13 +173,47 @@ def test_unauthenticated_local_mode_persists_one_machine_scoped_secret(tmp_path)
     )
     assert restored.status_code == 200
     assert restored.json()["is_configured"] is True
-    assert restored.json()["scope"] == "LOCAL_MACHINE"
+    assert restored.json()["scope"] == "GLOBAL"
     assert "process-only-key" not in restored.text
     restarted_store.close()
     store.close()
 
 
-def test_local_machine_slot_does_not_collide_with_authenticated_owner(tmp_path) -> None:
+def test_fuyao_global_setting_is_loaded_for_every_owner_and_probed(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    protected.set("provider:fuyao", json.dumps({
+        "api_key": "shared-fuyao-secret",
+        "base_url": "https://fuyao.aicubes.cn",
+    }))
+    store = SQLiteDecisionEventStore(":memory:")
+    reset_runtime_mode_controller(mode=DataMode.LIVE)
+
+    try:
+        with patch(
+            "app.providers.fuyao.FuyaoFinanceProvider.probe_capabilities",
+            new_callable=AsyncMock,
+            return_value={"stock_quote": True, "fund_lookthrough": True},
+        ) as probe:
+            client = TestClient(create_app(store, secret_store=protected))
+            response = client.get(
+                "/api/v1/runtime/data-mode",
+                headers={"X-Owner-ID": "any-local-owner"},
+            )
+
+        assert response.status_code == 200
+        body = response.json()["data"]
+        assert body["live_configured"] is True
+        assert body["capabilities"]["LIVE"]["stock_quote"] is True
+        assert body["capabilities"]["LIVE"]["fund_lookthrough"] is True
+        probe.assert_awaited_once()
+        assert "shared-fuyao-secret" not in response.text
+        assert "shared-fuyao-secret" not in protected.path.read_text(encoding="utf-8")
+    finally:
+        reset_runtime_mode_controller(mode=DataMode.MOCK)
+        store.close()
+
+
+def test_global_machine_slot_is_available_to_authenticated_owner(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     anonymous_store = SQLiteDecisionEventStore(":memory:")
     anonymous = TestClient(create_app(anonymous_store, secret_store=protected))
@@ -209,7 +244,8 @@ def test_local_machine_slot_does_not_collide_with_authenticated_owner(tmp_path) 
         "Authorization": f"Basic {encoded}",
     })
     assert response.status_code == 200
-    assert response.json()["is_configured"] is False
+    assert response.json()["is_configured"] is True
+    assert response.json()["scope"] == "GLOBAL"
     assert "local-machine-secret" not in response.text
     authenticated_store.close()
     anonymous_store.close()
@@ -346,4 +382,40 @@ def test_model_connection_test_reports_safe_provider_error():
     assert response.status_code == 502
     assert "HTTP 401" in response.json()["message"]
     assert "invalid-test-secret" not in response.text
+    assert client.get("/api/v1/user/model-settings", headers=headers).json()["connection_verified"] is False
     store.close()
+
+
+def test_successful_model_connection_status_is_shared_and_persisted(tmp_path):
+    async def accepted(self, messages, tools=None):
+        yield {"type": "content", "delta": "OK"}
+
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    first_store = SQLiteDecisionEventStore(":memory:")
+    first = TestClient(create_app(first_store, secret_store=protected))
+    assert first.put("/api/v1/user/model-settings", headers={"X-Owner-ID": "owner-a"}, json={
+        "api_key": "valid-test-secret",
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+    }).status_code == 200
+
+    with patch("app.api.main.AsyncLLMClient.stream_chat", accepted):
+        tested = first.post(
+            "/api/v1/user/model-settings/test", headers={"X-Owner-ID": "owner-a"}
+        )
+    assert tested.status_code == 200
+    assert first.get(
+        "/api/v1/user/model-settings", headers={"X-Owner-ID": "owner-b"}
+    ).json()["connection_verified"] is True
+    assert json.loads(protected.get("llm:global"))["connection_verified"] is True
+    first_store.close()
+
+    restarted_store = SQLiteDecisionEventStore(":memory:")
+    restarted = TestClient(create_app(restarted_store, secret_store=protected))
+    restored = restarted.get(
+        "/api/v1/user/model-settings", headers={"X-Owner-ID": "owner-c"}
+    ).json()
+    assert restored["scope"] == "GLOBAL"
+    assert restored["connection_verified"] is True
+    assert "valid-test-secret" not in json.dumps(restored)
+    restarted_store.close()

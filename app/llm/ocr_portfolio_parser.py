@@ -87,8 +87,9 @@ def _parse_two_line_broker_layout(
     positions: list[dict[str, Any]] = []
     zero_positions: list[dict[str, Any]] = []
     for row_index, primary in primary_rows:
-        name = "".join(cell["text"] for cell in primary
-            if "市值" in column(cell) and re.search(r"[\u4e00-\u9fff]", cell["text"])).strip()
+        name_cells = [cell for cell in primary
+            if "市值" in column(cell) and re.search(r"[\u4e00-\u9fff]", cell["text"])]
+        name = "".join(cell["text"] for cell in name_cells).strip()
         primary_y = sum(cell["yc"] for cell in primary) / len(primary)
         secondary: list[dict[str, Any]] = []
         if row_index + 1 < len(rows):
@@ -119,6 +120,17 @@ def _parse_two_line_broker_layout(
         price = prices[0][0]
         market_value = market_values[0][0] if market_values else quantity * price
         confidence = round(min(cell["score"] for cell in primary + secondary), 3)
+        field_confidence_pct = {
+            "asset_id": round(min(cell["score"] for cell in name_cells) * 100, 1),
+            "name": round(min(cell["score"] for cell in name_cells) * 100, 1),
+            "quantity": round(quantities[0][1]["score"] * 100, 1),
+            "cost_price": round(costs[0][1]["score"] * 100, 1),
+            "price": round(prices[0][1]["score"] * 100, 1),
+        }
+        if available:
+            field_confidence_pct["available_quantity"] = round(available[0][1]["score"] * 100, 1)
+        if market_values:
+            field_confidence_pct["market_value_cny"] = round(market_values[0][1]["score"] * 100, 1)
         reasons = []
         if identity is None:
             reasons.append("SECURITY_IDENTITY_REQUIRED")
@@ -151,6 +163,7 @@ def _parse_two_line_broker_layout(
                 "price": "broker screenshot OCR",
                 "market_value_cny": "broker screenshot OCR" if market_values else "quantity × price",
             },
+            "field_confidence_pct": field_confidence_pct,
             "zero_position": quantity == 0,
         }
         if not any("当日" in h["text"] for h in headers):
@@ -257,6 +270,7 @@ def validate_portfolio_values(positions: list[dict[str, Any]], cash_cny: float,
 def recalculate_portfolio_values(
     positions: list[dict[str, Any]], cash_cny: Decimal, owner_id: str,
     *, allow_synthetic_lookthrough: bool = True,
+    validate_reported_market_value: bool = False,
 ) -> dict[str, Any]:
     """Recalculate edited OCR rows and build one owner-scoped portfolio contract."""
     observed_at = datetime.now(UTC)
@@ -283,6 +297,27 @@ def recalculate_portfolio_values(
         ):
             raise ValueError("quantity must be a positive integer and price must be positive")
         market_value = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        reported_value = row.get("market_value_cny")
+        if validate_reported_market_value and reported_value is not None:
+            reported_market_value = Decimal(str(reported_value))
+            market_value_tolerance = max(Decimal("0.01"), market_value * Decimal("0.005"))
+            if (
+                not reported_market_value.is_finite()
+                or reported_market_value <= 0
+                or abs(reported_market_value - market_value) > market_value_tolerance
+            ):
+                raise ValueError("market_value_cny must match quantity multiplied by price")
+        available_quantity = row.get("available_quantity")
+        if available_quantity is not None:
+            available = Decimal(str(available_quantity))
+            if (
+                not available.is_finite()
+                or available < 0
+                or available != available.to_integral_value()
+                or available > quantity
+            ):
+                raise ValueError("available_quantity must be an integer between zero and quantity")
+            row["available_quantity"] = int(available)
         position_observed_at = observed_at
         if row.get("observed_at"):
             try:
@@ -727,6 +762,10 @@ class OCRPortfolioParser:
                 "market_value_cny": round(float(market_val), 2),
                 "confidence": item_confidence,
                 "confidence_pct": round(item_confidence * 100, 1),
+                "field_confidence_pct": {
+                    field: round(item_confidence * 100, 1)
+                    for field in ("asset_id", "name", "quantity", "cost_price", "price", "market_value_cny")
+                },
                 "needs_review": is_low_conf,
                 "original_code": original_code,
                 "review_reasons": reasons,

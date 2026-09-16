@@ -54,11 +54,16 @@ def _require_timezone(value: datetime, field_name: str) -> None:
 def _is_technology_sector(sector: str | None) -> bool:
     if sector is None:
         return False
-    return sector.strip().casefold() in {
+    normalized = sector.strip().casefold()
+    if normalized in {
         "technology",
         "information technology",
         "tech",
-    }
+    }:
+        return True
+    return any(keyword in normalized for keyword in (
+        "半导体", "电子", "计算机", "通信", "软件", "互联网",
+    ))
 
 
 def _percentage_of(value: Decimal, total: Decimal) -> Decimal:

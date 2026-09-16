@@ -17,7 +17,8 @@ def test_industry_is_exactly_matched_and_cached():
     provider = EastmoneyIndustryProvider(httpx.MockTransport(handle))
     async def run():
         first = await provider.get_industry("600276.SH")
-        assert first["sector"] == "Consumer"
+        assert first["sector"] == "医药生物-化学制药-化学制剂"
+        assert first["policy_sector"] == "Consumer"
         assert first["source"] == "Eastmoney public stock industry"
         assert "retrieved_at" in first and "observed_at" not in first
         assert await provider.get_industry("600276.SH") == first

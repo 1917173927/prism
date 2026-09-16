@@ -7,6 +7,7 @@ from app.providers.wencai_normalization import (
     canonical_sector_from_wencai,
     decode_stock_identity,
     decode_stock_metrics,
+    source_industry_label,
 )
 
 
@@ -78,3 +79,9 @@ def test_stock_decoder_does_not_bind_an_unrelated_wencai_row() -> None:
 
 def test_canonical_sector_covers_common_household_appliance_industry() -> None:
     assert canonical_sector_from_wencai("家用电器") == "Consumer"
+
+
+def test_source_industry_keeps_provider_label_separate_from_policy_bucket() -> None:
+    assert source_industry_label(["电力设备", "电池", "锂电池"]) == "电力设备"
+    assert source_industry_label("农林牧渔") == "农林牧渔"
+    assert canonical_sector_from_wencai("电力设备") == "Industrials"

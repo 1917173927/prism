@@ -3,11 +3,18 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.api.main import create_app
 from app.llm.agent import CopilotAgent
 from app.llm.prompts import COPILOT_TOOLS
-from app.providers.contracts import ProviderOperation
-from app.runtime.mode import DataMode
+from app.providers.contracts import ProviderOperation, ProviderStatus
+from app.providers.fuyao import FuyaoProviderError
+from app.runtime.mode import DataMode, reset_runtime_mode_controller
+
+
+async def _record_async(target, value):
+    target.append(value)
 
 
 @pytest.mark.parametrize("question", [
@@ -60,6 +67,124 @@ def test_structured_query_preserves_provider_fields(monkeypatch):
     assert result["items"][0]["净资产收益率[2025]"] == 25.1
     answer = agent._synthesize_grounded_response("ROE", {}, [{"tool": "query_financial_data", "result": result}], None)
     assert "25.1" in answer and "净资产收益率[2025]" in answer
+
+
+def test_stock_quote_uses_global_wencai_when_fuyao_is_unconfigured(monkeypatch):
+    failures = []
+    controller = SimpleNamespace(
+        mode=DataMode.LIVE,
+        record_fuyao_capability_failure=lambda capability, code: _record_async(
+            failures, (capability, code)
+        ),
+    )
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: controller)
+
+    class FuyaoUnavailable:
+        async def get_quote(self, _symbol):
+            raise FuyaoProviderError("NOT_CONFIGURED", "missing")
+
+        get_stock_research = get_quote
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, request):
+            assert request.operation == ProviderOperation.COMPANY_DATA
+            assert request.subject.startswith("300750.SZ ")
+            return SimpleNamespace(
+                status=ProviderStatus.SUCCESS,
+                records=[SimpleNamespace(fields={"items": [{
+                    "股票代码": "300750.SZ", "股票简称": "宁德时代",
+                    "最新价": 337.11, "所属同花顺行业": "电力设备",
+                    "净资产收益率(ROE)": "18.5%",
+                }]})],
+                retrieved_at=SimpleNamespace(isoformat=lambda: "2026-09-16T00:00:00Z"),
+            )
+
+    agent = CopilotAgent(
+        live_finance_provider=FuyaoUnavailable(), skillhub_provider=Wencai()
+    )
+    result = asyncio.run(agent._execute_tool(
+        "query_stock_quote", {"symbol": "300750"}, {}, None, DataMode.LIVE
+    ))
+
+    assert result["status"] == "SUCCESS"
+    assert result["execution_context"]["provider"] == "wencai_skillhub_provider"
+    assert result["data"]["symbol"] == "300750.SZ"
+    assert result["data"]["name"] == "宁德时代"
+    assert result["data"]["price_cny"] == 337.11
+    assert failures == [("stock_quote", "NOT_CONFIGURED")]
+
+
+def test_stock_research_endpoint_uses_wencai_when_fuyao_is_unconfigured():
+    reset_runtime_mode_controller(DataMode.LIVE)
+
+    class FuyaoUnavailable:
+        async def get_quote(self, _symbol):
+            raise FuyaoProviderError("NOT_CONFIGURED", "missing")
+
+        get_stock_research = get_quote
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, request):
+            assert request.operation == ProviderOperation.COMPANY_DATA
+            assert request.subject.startswith("300750.SZ ")
+            return SimpleNamespace(
+                status=ProviderStatus.SUCCESS,
+                records=[SimpleNamespace(fields={"items": [{
+                    "股票代码": "300750.SZ",
+                    "股票简称": "宁德时代",
+                    "最新价": 337.11,
+                    "所属同花顺行业": "电力设备",
+                    "市盈率(TTM)": 25.1,
+                    "净资产收益率(ROE)": "18.5%",
+                }]})],
+                issues=(),
+                retrieved_at=SimpleNamespace(
+                    isoformat=lambda: "2026-09-16T00:00:00+00:00"
+                ),
+            )
+
+    with TestClient(create_app(
+        live_finance_provider=FuyaoUnavailable(),
+        wencai_provider=Wencai(),
+    )) as client:
+        response = client.get(
+            "/api/v1/copilot/live-quote",
+            params={"symbol": "300750", "include_financials": "true"},
+        )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["execution_context"]["provider"] == "wencai_skillhub_provider"
+    assert body["execution_context"]["provider_serving_mode"] == "LIVE_FALLBACK"
+    assert body["data"]["symbol"] == "300750.SZ"
+    assert body["data"]["name"] == "宁德时代"
+    assert body["data"]["price_cny"] == 337.11
+    assert body["data"]["industry"] == "电力设备"
+
+
+def test_generic_industry_wording_is_blocked_before_wencai_stock_screen(monkeypatch):
+    controller = SimpleNamespace(mode=DataMode.LIVE)
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: controller)
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, _request):
+            raise AssertionError("generic industry request must not reach provider")
+
+    result = asyncio.run(CopilotAgent(skillhub_provider=Wencai())._execute_tool(
+        "query_financial_data",
+        {"query": "行业配置 概念 定义 方法", "category": "industry"},
+        {}, None, DataMode.LIVE,
+    ))
+
+    assert result["status"] == "BLOCKED"
+    assert result["error_code"] == "INDUSTRY_QUERY_UNDERSPECIFIED"
+    assert "误执行为选股查询" in result["message"]
 
 
 @pytest.mark.parametrize("status", ["FAILED", "EMPTY", "PARTIAL"])

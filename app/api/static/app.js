@@ -146,6 +146,7 @@
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
+  let authenticatedAdmin = false;
   let accountAccessEnabled = false;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
   async function refreshSessionTruth() {
@@ -259,6 +260,8 @@
   }
 
   function invalidateDerivedState(store) {
+    globalThis.prismStockQuickAbortController?.abort();
+    globalThis.prismStockDeepAbortController?.abort();
     store.contextRevision += 1;
     DERIVED_SEQUENCE_KEYS.forEach((sequenceKey) => { store[sequenceKey] += 1; });
     DERIVED_RUN_KEYS.forEach((runKey) => { store[runKey] = null; });
@@ -326,11 +329,11 @@
     const decisionOutput = byId("copilot-decision-output");
     if (decisionOutput) clear(decisionOutput);
     renderPortfolioReadiness();
-    updateVisualCompanion();
   }
   microStore.subscribe((store) => {
     document.documentElement.setAttribute("data-prism-owner", store.ownerId || "none");
     document.documentElement.setAttribute("data-prism-mode", store.dataMode || "MOCK");
+    updateAgentFeatureAvailability();
   });
   const byId = (id) => document.getElementById(id);
 
@@ -1463,7 +1466,6 @@
       section.append(holdings);
       panel.append(section);
     });
-    updateVisualCompanion();
   }
 
   function renderContextMemory(records = state.contextMemoryRecords) {
@@ -2416,7 +2418,6 @@
     renderProfileSummary(summary);
     renderQuestionnaire();
     renderPortfolioReadiness();
-    updateVisualCompanion();
     applyQuestionnaireGate(summary);
     return summary;
   }
@@ -4360,7 +4361,6 @@
     });
     invalidation.append(list);
     panel.append(invalidation);
-    updateVisualCompanion();
   }
 
   function clearPortfolioOptimizationRun(status = "待运行", className = "") {
@@ -4550,7 +4550,6 @@
     });
     invalidation.append(list);
     panel.append(invalidation);
-    updateVisualCompanion();
   }
 
   function clearScenarioSimulationRun(status = "待运行", className = "") {
@@ -4580,8 +4579,19 @@
     try {
       const payload = await response.json();
       const message = payload && typeof payload.message === "string" ? payload.message : "";
-      const error = new Error(message && /[\u3400-\u9fff]/.test(message) ? message : "接口请求失败");
-      error.errorCode = payload?.error_code || null;
+      const errorCode = payload?.error_code || null;
+      const localizedByCode = {
+        INVALID_INPUT: "确认数据格式不符合接口要求，请重新识别并核对各字段",
+        OCR_VALUE_VALIDATION_FAILED: "持仓数据校验失败，请检查证券代码、持股、可用数量、价格、市值和报价时间",
+        OCR_OBSERVED_AT_REQUIRED: "请补充报价时间后再确认",
+        LIVE_OCR_PRICE_REQUIRED: "正式持仓缺少可核验价格，暂时不能确认",
+        CONFLICT: "该截图的确认内容已发生变化，请重新识别后再确认",
+      };
+      const safeMessage = message && /[\u3400-\u9fff]/.test(message)
+        ? message
+        : localizedByCode[errorCode] || `请求失败${errorCode ? `（${errorCode}）` : ""}`;
+      const error = new Error(safeMessage);
+      error.errorCode = errorCode;
       error.httpStatus = response.status;
       return error;
     } catch (_) {
@@ -6011,6 +6021,7 @@
 
   function updateRuntimeDataModeUI() {
     updateVisibleSourceStatus();
+    updateAgentFeatureAvailability();
     const btn = byId("global-data-mode-toggle");
     const label = byId("global-data-mode-label");
     if (!btn || !label) return;
@@ -6268,6 +6279,10 @@
         if (selected) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
       });
+      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isWorkspacePanel ? requestedNode : null;
+      const pageHeading = pageContainer?.querySelector(":scope > .page-heading, :scope > .overview-header-bar, :scope > .panel-head, :scope > .panel-header, :scope > header");
+      if (pageHeading) pageHeading.insertAdjacentElement("afterend", pageTabs);
+      else if (pageContainer) pageContainer.prepend(pageTabs);
     }
 
     if (domain === "system") {
@@ -7025,379 +7040,6 @@
     }
   }
 
-  // ===================================================
-  // ✨ 视觉伴侣 (Visual Companion) 侧栏 HUD 引擎
-  // ===================================================
-
-  function openVisualCompanion() {
-    const drawer = byId("visual-companion-drawer");
-    const backdrop = byId("companion-backdrop");
-    if (drawer) {
-      drawer.classList.add("open");
-      drawer.setAttribute("aria-hidden", "false");
-    }
-    if (backdrop) {
-      backdrop.classList.add("active");
-      backdrop.setAttribute("aria-hidden", "false");
-    }
-    updateVisualCompanion();
-  }
-
-  function closeVisualCompanion() {
-    const drawer = byId("visual-companion-drawer");
-    const backdrop = byId("companion-backdrop");
-    if (drawer) {
-      drawer.classList.remove("open");
-      drawer.setAttribute("aria-hidden", "true");
-    }
-    if (backdrop) {
-      backdrop.classList.remove("active");
-      backdrop.setAttribute("aria-hidden", "true");
-    }
-  }
-
-  function toggleVisualCompanion() {
-    const drawer = byId("visual-companion-drawer");
-    if (drawer && drawer.classList.contains("open")) {
-      closeVisualCompanion();
-    } else {
-      openVisualCompanion();
-    }
-  }
-
-  function updateVisualCompanion() {
-    renderCompanionAllocation();
-    renderCompanionRisk();
-    renderCompanionLineage();
-    renderCompanionScenario();
-    renderCompanionInsights();
-  }
-
-  function renderCompanionAllocation() {
-    const chartContainer = byId("companion-allocation-chart");
-    const legendContainer = byId("companion-allocation-legend");
-    if (!chartContainer || !legendContainer) return;
-    clear(chartContainer);
-    clear(legendContainer);
-
-    let items = [];
-    let allocationLabel = "等待数据";
-    if (state.portfolioOptimizationRun?.targets?.length) {
-      allocationLabel = "目标结构";
-      items = state.portfolioOptimizationRun.targets.map(t => ({
-        label: t.asset_name || t.target_id || "资产",
-        weight: parseFloat(t.target_weight_pct) || 0,
-      }));
-    } else if (state.portfolioHealthRun && Array.isArray(state.portfolioHealthRun.sectors)) {
-      allocationLabel = "行业分布";
-      items = state.portfolioHealthRun.sectors.map((sector) => ({
-        label: sector.name,
-        weight: sector.pct,
-      }));
-    } else if (displayedPortfolioSummary?.owner_id === state.ownerId && displayedPortfolioSummary?.data_mode === state.dataMode) {
-      items = displayedPortfolioSummary.allocation || [];
-      allocationLabel = "持仓与现金";
-    }
-    byId("companion-allocation-badge").textContent = allocationLabel;
-
-    if (!items.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty-state";
-      empty.textContent = "确认持仓或生成目标结构后查看资产分布。";
-      chartContainer.append(empty);
-      return;
-    }
-
-    const colors = ["#d97757", "#4e6842", "#3b5368", "#875f1b", "#9c3826", "#4a7c85", "#7e6c90"];
-    const size = 180;
-    const center = size / 2;
-    const radius = 65;
-    const strokeWidth = 24;
-    const circumference = 2 * Math.PI * radius;
-
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-    svg.setAttribute("class", "companion-chart-svg");
-
-    let currentOffset = 0;
-    items.forEach((item, idx) => {
-      const pct = Math.max(0, Math.min(100, item.weight));
-      const strokeDasharray = `${(pct / 100) * circumference} ${circumference}`;
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", center);
-      circle.setAttribute("cy", center);
-      circle.setAttribute("r", radius);
-      circle.setAttribute("fill", "transparent");
-      circle.setAttribute("stroke", colors[idx % colors.length]);
-      circle.setAttribute("stroke-width", strokeWidth);
-      circle.setAttribute("stroke-dasharray", strokeDasharray);
-      circle.setAttribute("stroke-dashoffset", -currentOffset);
-      circle.setAttribute("transform", `rotate(-90 ${center} ${center})`);
-      circle.setAttribute("class", "allocation-slice");
-      
-      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = `${item.label}: ${pct.toFixed(2)}%`;
-      circle.append(title);
-      svg.append(circle);
-
-      currentOffset += (pct / 100) * circumference;
-
-      // 图例项
-      const leg = document.createElement("span");
-      leg.className = "legend-item";
-      const dot = document.createElement("span");
-      dot.className = "legend-dot";
-      dot.style.background = colors[idx % colors.length];
-      leg.append(dot, document.createTextNode(`${item.label} (${pct.toFixed(1)}%)`));
-      legendContainer.append(leg);
-    });
-
-    // 中心文字
-    const textGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    const textVal = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    textVal.setAttribute("x", center);
-    textVal.setAttribute("y", center - 2);
-    textVal.setAttribute("text-anchor", "middle");
-    textVal.setAttribute("font-size", "16");
-    textVal.setAttribute("font-weight", "700");
-    textVal.setAttribute("fill", "var(--ink)");
-    textVal.setAttribute("font-family", "var(--mono)");
-    textVal.textContent = "100%";
-
-    const textLbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    textLbl.setAttribute("x", center);
-    textLbl.setAttribute("y", center + 14);
-    textLbl.setAttribute("text-anchor", "middle");
-    textLbl.setAttribute("font-size", "9.5");
-    textLbl.setAttribute("fill", "var(--muted)");
-    textLbl.setAttribute("font-family", "var(--sans)");
-    textLbl.textContent = allocationLabel;
-
-    textGroup.append(textVal, textLbl);
-    svg.append(textGroup);
-    chartContainer.append(svg);
-  }
-
-  function renderCompanionRisk() {
-    const gaugeContainer = byId("companion-risk-gauge");
-    const exposureContainer = byId("companion-exposure-bars");
-    const badge = byId("companion-risk-badge");
-    if (!gaugeContainer || !exposureContainer) return;
-    clear(gaugeContainer);
-    clear(exposureContainer);
-
-    const profile = state.profile?.profile;
-    if (!profile) {
-      if (badge) badge.textContent = "未确认画像";
-      exposureContainer.textContent = "请先完成风险问卷；确认持仓并体检后展示实际暴露。";
-      return;
-    }
-    const lossScore = state.profile.questionnaire?.loss_tolerance_score || 1;
-    const maxDrawdown = profile.max_drawdown_tolerance_pct;
-
-    if (badge) {
-      badge.textContent = displayLabel(profile.risk_level);
-      badge.className = `status-chip ${lossScore <= 1 ? "pass" : lossScore >= 4 ? "blocked" : "review"}`;
-    }
-
-    // Semi-circle gauge SVG
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 200 115");
-    svg.setAttribute("class", "companion-chart-svg");
-
-    // Track arc
-    const track = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    track.setAttribute("d", "M 20 100 A 80 80 0 0 1 180 100");
-    track.setAttribute("fill", "none");
-    track.setAttribute("stroke", "var(--outline)");
-    track.setAttribute("stroke-width", "16");
-    track.setAttribute("stroke-linecap", "round");
-    svg.append(track);
-
-    // Colored progress arc based on score (1..5)
-    const angle = ((lossScore - 1) / 4) * Math.PI; // 0 to PI
-    const color = lossScore <= 1 ? "var(--sage)" : lossScore >= 4 ? "var(--clay)" : "var(--yellow)";
-    
-    // Needle
-    const needleAngle = Math.PI - angle; // radians from left
-    const needleLen = 65;
-    const nx = 100 - needleLen * Math.cos(needleAngle);
-    const ny = 100 - needleLen * Math.sin(needleAngle);
-
-    const needle = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    needle.setAttribute("x1", "100");
-    needle.setAttribute("y1", "100");
-    needle.setAttribute("x2", nx.toFixed(1));
-    needle.setAttribute("y2", ny.toFixed(1));
-    needle.setAttribute("stroke", color);
-    needle.setAttribute("stroke-width", "3.5");
-    needle.setAttribute("stroke-linecap", "round");
-    svg.append(needle);
-
-    const needlePin = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    needlePin.setAttribute("cx", "100");
-    needlePin.setAttribute("cy", "100");
-    needlePin.setAttribute("r", "5.5");
-    needlePin.setAttribute("fill", "var(--ink)");
-    svg.append(needlePin);
-
-    // Label
-    const scoreText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    scoreText.setAttribute("x", "100");
-    scoreText.setAttribute("y", "82");
-    scoreText.setAttribute("text-anchor", "middle");
-    scoreText.setAttribute("font-size", "14");
-    scoreText.setAttribute("font-weight", "700");
-    scoreText.setAttribute("fill", color);
-    scoreText.setAttribute("font-family", "var(--mono)");
-    scoreText.textContent = `承受力等级 ${lossScore}/5`;
-    svg.append(scoreText);
-
-    gaugeContainer.append(svg);
-
-    // Exposure bars
-    const expDiv = document.createElement("div");
-    expDiv.style.display = "grid";
-    expDiv.style.gap = "8px";
-    expDiv.style.width = "100%";
-    expDiv.style.fontSize = "11.5px";
-
-    const health = state.portfolioHealthRun;
-    const techExp = { name: "科技行业暴露", value: health ? `${health.technology_weight_pct}% (上限 ${health.technology_limit_pct}%)` : "待体检" };
-    const ddExp = { name: "最大回撤容忍阈值", value: `${maxDrawdown}%` };
-
-    [techExp, ddExp].forEach(exp => {
-      const row = document.createElement("div");
-      row.style.display = "flex";
-      row.style.justifyContent = "space-between";
-      row.style.color = "var(--ink-secondary)";
-      const labelSpan = document.createElement("span");
-      labelSpan.textContent = exp.name;
-      const valStrong = document.createElement("strong");
-      valStrong.style.fontFamily = "var(--mono)";
-      valStrong.style.color = "var(--ink)";
-      valStrong.textContent = exp.value;
-      row.append(labelSpan, valStrong);
-      expDiv.append(row);
-    });
-
-    exposureContainer.append(expDiv);
-  }
-
-  function renderCompanionLineage() {
-    const nodeProfile = byId("node-profile");
-    const nodeIntent = byId("node-intent");
-    const nodeResearch = byId("node-research");
-    const nodeGate = byId("node-gate");
-    const nodeReceipt = byId("node-receipt");
-
-    if (nodeProfile) {
-      const ok = !!state.profile?.profile;
-      nodeProfile.classList.toggle("verified", ok);
-      const st = nodeProfile.querySelector(".lineage-node-status");
-      if (st) st.textContent = ok ? "✓" : "1";
-    }
-
-    if (nodeIntent) {
-      const ok = !!state.advisorPlan;
-      nodeIntent.classList.toggle("verified", ok);
-      const st = nodeIntent.querySelector(".lineage-node-status");
-      if (st) st.textContent = ok ? "✓" : "2";
-    }
-
-    if (nodeResearch) {
-      const ok = !!state.researchRun || !!state.stockResearchRun || !!state.fundResearchRun || !!state.convertibleBondResearchRun;
-      nodeResearch.classList.toggle("verified", ok);
-      const st = nodeResearch.querySelector(".lineage-node-status");
-      if (st) st.textContent = ok ? "✓" : "3";
-    }
-
-    if (nodeGate) {
-      const ok = !!state.selectedDecisionEvent || (state.events && state.events.length > 0);
-      nodeGate.classList.toggle("verified", ok);
-      const st = nodeGate.querySelector(".lineage-node-status");
-      if (st) st.textContent = ok ? "✓" : "4";
-    }
-
-    if (nodeReceipt) {
-      const ok = !!state.selectedDecisionEvent;
-      nodeReceipt.classList.toggle("verified", ok);
-      const st = nodeReceipt.querySelector(".lineage-node-status");
-      if (st) st.textContent = ok ? "✓" : "5";
-    }
-  }
-
-  function renderCompanionScenario() {
-    const diffContainer = byId("companion-scenario-diff");
-    if (!diffContainer) return;
-    clear(diffContainer);
-
-    if (!state.scenarioSimulationRun || !state.scenarioSimulationRun.diff) {
-      const empty = document.createElement("div");
-      empty.className = "empty-state";
-      empty.textContent = "运行情景模拟后查看资产调整建议。";
-      diffContainer.append(empty);
-      return;
-    }
-
-    const diff = state.scenarioSimulationRun.diff;
-    const wrapper = document.createElement("div");
-    wrapper.style.display = "grid";
-    wrapper.style.gap = "8px";
-    wrapper.style.width = "100%";
-
-    if (Array.isArray(diff.asset_deltas) && diff.asset_deltas.length) {
-      diff.asset_deltas.slice(0, 4).forEach(d => {
-        const row = document.createElement("div");
-        row.style.display = "flex";
-        row.style.justifyContent = "space-between";
-        row.style.alignItems = "center";
-        row.style.fontSize = "12px";
-        const val = parseFloat(d.delta_pct) || 0;
-        const colorClass = val > 0 ? "positive-delta" : val < 0 ? "negative-delta" : "";
-        const nameSpan = document.createElement("span");
-        nameSpan.textContent = d.asset_id || d.name || "资产";
-        const valSpan = document.createElement("span");
-        if (colorClass) valSpan.className = colorClass;
-        valSpan.style.fontFamily = "var(--mono)";
-        valSpan.textContent = `${val >= 0 ? "+" : ""}${val.toFixed(2)}%`;
-        row.append(nameSpan, valSpan);
-        wrapper.append(row);
-      });
-    }
-
-    diffContainer.append(wrapper);
-  }
-
-  function renderCompanionInsights() {
-    const list = byId("companion-insights-list");
-    if (!list) return;
-    clear(list);
-
-    const insights = [
-      { prefix: "数据来源", body: "各项指标基于最新披露与市场行情测算。" },
-      { prefix: "实时联动", body: "调整投资偏好或持仓后，图表将即时联动更新。" },
-    ];
-
-    if (state.selectedDecisionEvent) {
-      const ev = state.selectedDecisionEvent;
-      insights.push({ prefix: "本次结果已保存", body: `当前结果状态：${statusLabel(ev.status)}，之后可以在历史建议中回看。` });
-    }
-
-    if (state.portfolioOptimizationRun?.targets?.length) {
-      insights.push({ prefix: "目标结构已生成", body: "方案已按你的资产和行业上限整理，可继续查看调整顺序。" });
-    }
-
-    insights.forEach(item => {
-      const li = document.createElement("li");
-      li.className = "companion-insight-item";
-      const strong = document.createElement("strong");
-      strong.textContent = item.prefix + "：";
-      li.append(strong, document.createTextNode(item.body));
-      list.append(li);
-    });
-  }
-
   // =========================================================================
   // Copilot 任务中心与预设画像体系 (Optimization Direction 1 & 2)
   // =========================================================================
@@ -7731,11 +7373,9 @@
         if (state.selectedPersona !== personaId) return;
         if (state.profile && state.portfolio) await refreshPortfolioHealth();
         renderPortfolioReadiness();
-        updateVisualCompanion();
         await refreshSessionTruth();
       })
-      .catch((error) => setError(error.message || "持仓体检初始化失败"));
-    updateVisualCompanion();
+      .catch((error) => renderPortfolioAnalysisStatus(error.message || "持仓体检初始化失败"));
   }
 
   function renderQuickTags(tags) {
@@ -7857,6 +7497,21 @@
     UNCLASSIFIED: "#94a3b8",
   });
 
+  const SOURCE_INDUSTRY_COLORS = Object.freeze([
+    "#2563eb", "#059669", "#d97706", "#7c3aed", "#db2777",
+    "#0891b2", "#65a30d", "#c2410c", "#4f46e5", "#0f766e",
+  ]);
+
+  function sectorColor(sectorKey, name) {
+    if (SECTOR_COLORS[sectorKey]) return SECTOR_COLORS[sectorKey];
+    const source = String(name || sectorKey || "行业");
+    let hash = 0;
+    for (let index = 0; index < source.length; index += 1) {
+      hash = ((hash * 31) + source.charCodeAt(index)) >>> 0;
+    }
+    return SOURCE_INDUSTRY_COLORS[hash % SOURCE_INDUSTRY_COLORS.length];
+  }
+
   function portfolioHealthView(data) {
     return {
       ...data,
@@ -7865,7 +7520,7 @@
         name: row.name,
         pct: Number(row.weight_pct),
         cap: Number(row.limit_pct),
-        color: SECTOR_COLORS[row.sector_key] || SECTOR_COLORS.UNCLASSIFIED,
+        color: sectorColor(row.sector_key, row.name),
         topHoldings: (row.top_holdings || []).join("、") || "无可用穿透标的",
         limitOperator: row.limit_operator,
         differencePctPoints: Number(row.difference_pct_points),
@@ -8017,7 +7672,6 @@
     if (evidence) evidence.textContent = `${health.evidence_count}项穿透贡献 · Python 验算`;
     renderHeroDonutChart(state.selectedPersona);
     renderOverviewWorkspace(state.selectedPersona);
-    updateVisualCompanion();
     return health;
   }
 
@@ -8032,6 +7686,83 @@
     return missingPrices.length
       ? `以下持仓的真实报价或报价时间暂不可用：${missingPrices.map(row => row.asset_id).join("、")}。请稍后重试。`
       : "真实持仓数据尚未完整刷新，请检查持仓信息与数据服务状态后重试。";
+  }
+
+  function portfolioMissingAnalysisData(refresh = state.portfolioRefreshRun) {
+    const rows = Array.isArray(refresh?.positions) ? refresh.positions : [];
+    const affected = rows.filter(row => Array.isArray(row.missing_fields) && row.missing_fields.length);
+    const sectorIncomplete = affected.some(row => row.missing_fields.some(field => ["sector", "holding_sector"].includes(field)))
+      || (state.portfolioHealthRun?.sectors || []).some(sector => sector.sectorKey === "UNCLASSIFIED" && Number(sector.pct) > 0);
+    return {affected, sectorIncomplete};
+  }
+
+  function renderPortfolioAnalysisStatus(errorMessage = "") {
+    const panel = byId("portfolio-analysis-status");
+    const title = byId("portfolio-analysis-status-title");
+    const message = byId("portfolio-analysis-status-message");
+    const extended = byId("portfolio-extended-analysis");
+    if (!panel || !title || !message || !extended) return;
+    const {affected, sectorIncomplete} = portfolioMissingAnalysisData();
+    if (!state.portfolio) {
+      panel.hidden = true;
+      extended.hidden = true;
+      return;
+    }
+    let detail = "";
+    if (errorMessage) {
+      title.textContent = "持仓已保存，组合体检未完成";
+      detail = `${errorMessage} 已确认的市值、现金与资产结构仍可查看；行业分布、行业限额和行业 HHI 暂不可用。`;
+    } else if (!state.profile?.profile) {
+      title.textContent = "持仓已保存，风险画像尚未确认";
+      detail = "请先完成风险问卷。已确认的市值、现金与资产结构仍可查看；画像阈值和组合体检暂不可用。";
+    } else if (sectorIncomplete) {
+      const unclassifiedCodes = state.portfolio?.position_snapshot?.positions
+        ?.filter(position => !position.sector || String(position.sector).toUpperCase() === "UNCLASSIFIED")
+        .map(position => position.asset_id) || [];
+      const codes = [...new Set([...affected.map(row => row.asset_id), ...unclassifiedCodes].filter(Boolean))];
+      const fields = [...new Set(affected.flatMap(row => row.missing_fields || []))].map(field => ({
+        sector: "行业",
+        holding_sector: "基金底层行业",
+        price_cny: "最新价格",
+        observed_at: "报价时间",
+      }[field] || field));
+      title.textContent = "持仓已保存，行业与集中度分析待补齐";
+      detail = `${codes.length ? `缺失标的：${codes.join("、")}；` : ""}${fields.length ? `缺失字段：${fields.join("、")}；` : "缺失字段：行业；"}影响范围：行业分布、行业限额和行业 HHI。补齐行业数据后可重新分析；未分类资产不作为真实行业结论。`;
+    } else if (!state.portfolioHealthRun) {
+      title.textContent = "持仓已保存，扩展分析尚未生成";
+      detail = "已确认的市值、现金与资产结构仍可查看。重新分析后生成行业分布与集中度扩展结果。";
+    }
+    const unavailable = Boolean(detail);
+    panel.hidden = !unavailable;
+    extended.hidden = unavailable;
+    message.textContent = detail;
+  }
+
+  let portfolioAnalysisSequence = 0;
+  async function runPortfolioAnalysis() {
+    const sequence = ++portfolioAnalysisSequence;
+    const owner = state.ownerId;
+    const mode = state.dataMode;
+    const buttons = [byId("btn-run-full-overview-check"), byId("portfolio-analysis-retry")].filter(Boolean);
+    buttons.forEach(button => { button.disabled = true; button.setAttribute("aria-busy", "true"); });
+    try {
+      const health = await refreshPortfolioHealth();
+      if (sequence !== portfolioAnalysisSequence || owner !== state.ownerId || mode !== state.dataMode) return;
+      if (!health) {
+        renderPortfolioAnalysisStatus();
+        return;
+      }
+      await refreshPortfolioSummary();
+      if (sequence !== portfolioAnalysisSequence || owner !== state.ownerId || mode !== state.dataMode) return;
+      setError("");
+      renderPortfolioAnalysisStatus();
+    } catch (error) {
+      if (sequence === portfolioAnalysisSequence && owner === state.ownerId && mode === state.dataMode) {
+        renderPortfolioAnalysisStatus(error.message || "组合体检服务暂不可用，请稍后重试。");
+      }
+    } finally {
+      if (sequence === portfolioAnalysisSequence) buttons.forEach(button => { button.disabled = false; button.removeAttribute("aria-busy"); });
+    }
   }
 
   function renderPortfolioRefreshStatus(refresh) {
@@ -8633,9 +8364,11 @@
     clear(metricsBody);
 
     const health = state.portfolioHealthRun;
+    renderPortfolioAnalysisStatus();
     if (!health) {
-      tableBody.textContent = "确认风险设置与持仓并更新分析后，可查看穿透行业分布。";
-      metricsBody.textContent = "添加风险设置与持仓后，可查看组合指标。";
+      return;
+    }
+    if (portfolioMissingAnalysisData().sectorIncomplete) {
       return;
     }
     const sectors = health.sectors;
@@ -8683,7 +8416,7 @@
       const sectors = health.sectors;
       const hasBreaches = health.has_breaches;
       const requiresReview = health.status !== "PASS";
-      const technologySector = sectors.find((sector) => sector.sectorKey === "TECHNOLOGY");
+      const technologyOverbound = Number(health.technology_weight_pct) > Number(health.technology_limit_pct);
       const incompleteIndustries = sectors.some(sector => sector.sectorKey === "UNCLASSIFIED" && sector.pct > 0);
 
       clear(output);
@@ -8759,7 +8492,7 @@
       const metricsRow = document.createElement("div");
       metricsRow.className = "decision-metrics-row";
       metricsRow.append(
-        buildCopilotMetricBox("当前科技占比", `${health.technology_weight_pct}%`, technologySector?.verdictCode === "OVERBOUND", technologySector?.verdictCode === "PASS", "包含基金底层持仓。"),
+        buildCopilotMetricBox("当前科技占比", `${health.technology_weight_pct}%`, technologyOverbound, !technologyOverbound, "包含基金底层持仓。"),
         buildCopilotMetricBox("科技行业上限", `${health.technology_limit_pct}%`, false, false, "来自你的风险设置。"),
         buildCopilotMetricBox("组合 HHI", `${health.sector_hhi}`, health.hhi_verdict === "OVERBOUND", health.hhi_verdict === "PASS", "用于衡量行业集中度。")
       );
@@ -8838,8 +8571,12 @@
 
   async function runCopilotStockResearch() {
     const symbolOverride = typeof arguments[0] === "string" ? arguments[0] : "";
+    const lookbackYears = Number.isInteger(arguments[1]) ? Math.min(5, Math.max(3, arguments[1])) : 5;
     const output = byId("copilot-decision-output");
     if (!output) return;
+    globalThis.prismStockQuickAbortController?.abort();
+    globalThis.prismStockDeepAbortController?.abort();
+    globalThis.prismStockQuickAbortController = new AbortController();
     clear(output);
     const token = beginContextRequest("copilotResearchSequence");
 
@@ -8860,9 +8597,10 @@
     const A_SHARE_PREFIXES = /^(600|601|603|605|688|689|000|001|002|003|300|301|82|83|87|88|92|510|512|513|515|588|159|110|113|123|127|128)/;
     const isSixDigits = /^\d{6}$/.test(cleanCode);
     const hasValidPrefix = A_SHARE_PREFIXES.test(cleanCode);
+    const isSecurityName = /^[\u3400-\u9fffA-Za-z·]{2,30}$/.test(stockSymbol.trim());
 
     // Hard Gate 1: Syntax & Exchange Prefix Validation (e.g. 114514 rejection)
-    if (!isSixDigits || !hasValidPrefix) {
+    if ((!isSixDigits || !hasValidPrefix) && !isSecurityName) {
       const card = document.createElement("div");
       card.className = "copilot-decision-card";
 
@@ -8946,7 +8684,7 @@
 
     try {
       const endpoint = isFund ? "live-fund?fund_code=" : "live-quote?symbol=";
-      let resp = await fetch(`/api/v1/copilot/${endpoint}${encodeURIComponent(stockSymbol)}${isFund ? "" : "&include_financials=true"}`);
+      let resp = await fetch(`/api/v1/copilot/${endpoint}${encodeURIComponent(stockSymbol)}${isFund ? "" : "&include_financials=true"}`, {signal: globalThis.prismStockQuickAbortController.signal});
       if (!isContextRequestCurrent(token)) return;
       let autoDependencyCompleted = false;
 
@@ -8966,10 +8704,10 @@
         clear(output);
         output.append(buildCopilotLoadingCard("icon-activity", `正在查询 ${cleanCode} 行情数据…`, "检测到标的代码尚未建档，正在同步行情与财报数据…"));
         try {
-          const autoResp = await fetch(`/api/v1/copilot/auto-index-security?symbol=${encodeURIComponent(cleanCode)}`, { method: "POST" });
+          const autoResp = await fetch(`/api/v1/copilot/auto-index-security?symbol=${encodeURIComponent(cleanCode)}`, { method: "POST", signal: globalThis.prismStockQuickAbortController.signal });
           if (!isContextRequestCurrent(token)) return;
           if (autoResp.ok) {
-            const retryResp = await fetch(`/api/v1/copilot/live-quote?symbol=${encodeURIComponent(cleanCode)}`);
+            const retryResp = await fetch(`/api/v1/copilot/live-quote?symbol=${encodeURIComponent(cleanCode)}`, {signal: globalThis.prismStockQuickAbortController.signal});
             if (!isContextRequestCurrent(token)) return;
             if (retryResp.ok) {
               resp = retryResp;
@@ -9088,8 +8826,30 @@
       if (!quote) throw new Error("未获取到标的底稿数据");
 
       clear(output);
-      output.append(buildCopilotStockCard(res));
+      const card = buildCopilotStockCard(res);
+      output.append(card);
+      globalThis.prismStockQuickAbortController = null;
+      globalThis.prismStockDeepAbortController = new AbortController();
+      const deepTarget = typeof card.querySelector === "function" ? card.querySelector("[data-stock-deep-report]") : null;
+      if (!deepTarget) return;
+      try {
+        const deepResponse = await fetch(
+          `/api/v1/copilot/stock-analysis?symbol=${encodeURIComponent(quote.symbol || cleanCode)}&lookback_years=${lookbackYears}`,
+          {headers: {"X-Owner-ID": state.ownerId}, signal: globalThis.prismStockDeepAbortController.signal},
+        );
+        if (!isContextRequestCurrent(token)) return;
+        if (!deepResponse.ok) throw await apiError(deepResponse);
+        const deepResult = await deepResponse.json();
+        if (!isContextRequestCurrent(token)) return;
+        if (typeof renderCopilotStockDeepReport === "function") renderCopilotStockDeepReport(deepTarget, deepResult);
+      } catch (deepError) {
+        if (deepError.name === "AbortError" || !isContextRequestCurrent(token)) return;
+        if (typeof renderCopilotStockDeepFailure === "function") renderCopilotStockDeepFailure(deepTarget, deepError.message || "深度研判暂不可用");
+      } finally {
+        if (isContextRequestCurrent(token)) globalThis.prismStockDeepAbortController = null;
+      }
     } catch (err) {
+      if (err.name === "AbortError") return;
       if (!isContextRequestCurrent(token)) return;
       if (token.dataMode === "LIVE") await fetchRuntimeDataMode();
       if (!isContextRequestCurrent(token)) return;
@@ -9102,6 +8862,8 @@
       p.textContent = err.message || "未能完成标的研判";
       errCard.append(h4, p);
       output.append(errCard);
+    } finally {
+      if (isContextRequestCurrent(token)) globalThis.prismStockQuickAbortController = null;
     }
   }
 
@@ -9134,7 +8896,7 @@
     period.textContent = `行情时间：${quote.observed_at || "未提供"}；财务报告期：${quote.financial_report_period || "未提供"}；披露日期：${quote.financial_report_date?.slice(0, 10) || "未提供"}。ROE 为报告期值，不自动年化。`;
     body.append(period);
     const limits = document.createElement("p");
-    limits.textContent = "现有指标用于比较估值与财务表现；历史估值分位暂未接入，个人配置适当性需结合风险画像和组合约束判断。仅供研究参考，不构成交易建议。";
+    limits.textContent = "快速阶段仅展示当前行情与最新报告期指标；下方深度章节会继续补齐历史表现、五年财务、估值分位、动态证据和当前账户适配。仅供研究参考，不构成交易建议。";
     body.append(limits);
     for (const issue of quote.financial_issues || []) {
       const message = document.createElement("p"); message.textContent = `财务数据：${issue.message}（${issue.code}）`; body.append(message);
@@ -9144,8 +8906,201 @@
     const evidence = document.createElement("p");
     evidence.textContent = `${quote.source || result.source || "未提供"}；${quote.financial_source || "财务来源未提供"}。估值快照最新有效时间：${quote.valuation_observed_at || "未提供"}，不表示各项指标同时更新。`;
     source.append(summary, evidence); body.append(source);
+    const deep = document.createElement("section");
+    deep.className = "stock-deep-report";
+    deep.setAttribute("data-stock-deep-report", "");
+    deep.setAttribute("aria-live", "polite");
+    const deepHead = document.createElement("div"); deepHead.className = "stock-deep-loading";
+    deepHead.append(createSvgIcon("icon-activity", "prism-icon"), document.createTextNode(" 正在并行补齐五年财务、估值、动态证据和账户适配…"));
+    deep.append(deepHead);
+    body.append(deep);
     card.append(banner, body);
     return card;
+  }
+
+  function renderCopilotStockDeepFailure(target, message) {
+    if (!target) return;
+    target.replaceChildren();
+    const callout = document.createElement("div"); callout.className = "doc-callout doc-callout-warning stock-deep-failure";
+    const title = document.createElement("strong"); title.textContent = "快速行情可用，深度研判未完成";
+    const detail = document.createElement("p"); detail.textContent = message;
+    callout.append(title, detail); target.append(callout);
+  }
+
+  function stockAnalysisStatusChip(status) {
+    const chip = document.createElement("span");
+    chip.className = `stock-section-status ${String(status || "UNAVAILABLE").toLowerCase()}`;
+    chip.textContent = status || "UNAVAILABLE";
+    return chip;
+  }
+
+  function formatAnalysisNumber(value, unit = "", digits = 2) {
+    if (!hasFinancialNumber(value)) return "未取得";
+    return `${Number(value).toLocaleString("zh-CN", {minimumFractionDigits: digits, maximumFractionDigits: digits})}${unit}`;
+  }
+
+  function buildStockMiniChart(title, rows, key, unit) {
+    const card = document.createElement("article"); card.className = "stock-mini-chart";
+    const heading = document.createElement("h5"); heading.textContent = title;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 320 126"); svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", `${title}近年趋势`);
+    const values = rows.map(row => hasFinancialNumber(row[key]) ? Number(row[key]) : null);
+    const finite = values.filter(value => Number.isFinite(value));
+    const maxAbs = Math.max(1, ...finite.map(value => Math.abs(value)));
+    const baseline = 68;
+    rows.forEach((row, index) => {
+      const value = values[index];
+      const x = 12 + index * (296 / Math.max(rows.length, 1));
+      const width = Math.max(16, 220 / Math.max(rows.length, 1));
+      if (value !== null) {
+        const height = Math.max(2, Math.abs(value) / maxAbs * 48);
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", String(x)); rect.setAttribute("width", String(width));
+        rect.setAttribute("y", String(value >= 0 ? baseline - height : baseline));
+        rect.setAttribute("height", String(height)); rect.setAttribute("rx", "2");
+        rect.setAttribute("class", value >= 0 ? "positive" : "negative");
+        const valueText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        valueText.setAttribute("x", String(x + width / 2)); valueText.setAttribute("y", value >= 0 ? "14" : "104");
+        valueText.setAttribute("text-anchor", "middle");
+        const formatted = unit ? Number(value).toLocaleString("zh-CN", {maximumFractionDigits: 1}) : new Intl.NumberFormat("zh-CN", {notation: "compact", maximumFractionDigits: 1}).format(value);
+        valueText.textContent = `${formatted}${unit}`;
+        svg.append(rect, valueText);
+      }
+      const yearText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      yearText.setAttribute("x", String(x + width / 2)); yearText.setAttribute("y", "122");
+      yearText.setAttribute("text-anchor", "middle"); yearText.textContent = String(row.year || "—"); svg.append(yearText);
+    });
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", "6"); line.setAttribute("x2", "314"); line.setAttribute("y1", String(baseline)); line.setAttribute("y2", String(baseline)); line.setAttribute("class", "baseline");
+    svg.prepend(line); card.append(heading, svg); return card;
+  }
+
+  function buildStockSection(title, section) {
+    const card = document.createElement("section"); card.className = "stock-analysis-section";
+    const header = document.createElement("header");
+    const heading = document.createElement("h4"); heading.textContent = title;
+    header.append(heading, stockAnalysisStatusChip(section?.status));
+    card.append(header); return card;
+  }
+
+  function appendStockSectionBoundary(card, section) {
+    const missing = section?.missing_fields || [];
+    const issues = section?.issues || [];
+    if (!missing.length && !issues.length) return;
+    const details = document.createElement("details"); details.className = "stock-section-boundary";
+    const summary = document.createElement("summary"); summary.textContent = `数据边界 · ${missing.length} 个缺失项 / ${issues.length} 个问题`;
+    const list = document.createElement("ul");
+    missing.forEach(field => { const item = document.createElement("li"); item.textContent = `缺失字段：${field}`; list.append(item); });
+    issues.forEach(issue => { const item = document.createElement("li"); item.textContent = `${issue.code}：${issue.message}`; list.append(item); });
+    details.append(summary, list); card.append(details);
+  }
+
+  function renderCopilotStockDeepReport(target, result) {
+    if (!target) return;
+    target.replaceChildren();
+    const head = document.createElement("header"); head.className = "stock-deep-head";
+    const titleWrap = document.createElement("div");
+    const eyebrow = document.createElement("span"); eyebrow.className = "eyebrow"; eyebrow.textContent = "深度研判";
+    const title = document.createElement("h3"); title.textContent = `${result.security?.name || "标的"} · 完整研究报告`;
+    titleWrap.append(eyebrow, title);
+    const status = stockAnalysisStatusChip(result.status);
+    head.append(titleWrap, status); target.append(head);
+
+    const observations = document.createElement("section"); observations.className = "stock-observations";
+    [["支撑因素", "supporting_facts"], ["风险因素", "risk_facts"], ["待跟踪事项", "watch_items"]].forEach(([label, key]) => {
+      const column = document.createElement("article"); const heading = document.createElement("h4"); heading.textContent = label;
+      const list = document.createElement("ul");
+      const facts = result.observations?.[key] || [];
+      (facts.length ? facts : [{text: "当前没有足够的已验证事实。", evidence: "数据边界"}]).forEach(fact => {
+        const item = document.createElement("li"); item.textContent = `${fact.text} [${fact.evidence}]`; list.append(item);
+      });
+      column.append(heading, list); observations.append(column);
+    });
+    target.append(observations);
+
+    const performance = result.sections?.performance || {data: {}};
+    const performanceCard = buildStockSection("行情表现", performance);
+    const performanceMetrics = document.createElement("dl"); performanceMetrics.className = "stock-latest-metrics";
+    [["最新价", formatAnalysisNumber(performance.data?.latest_price_cny, " 元")], ["最新涨跌幅", formatAnalysisNumber(performance.data?.latest_change_pct, "%")], ["总市值", formatAnalysisNumber(performance.data?.market_cap_cny, " 元")], ["复权口径", performance.data?.adjustment || "未提供"]].forEach(([label, value]) => {
+      const wrap = document.createElement("div"); const dt = document.createElement("dt"); dt.textContent = label; const dd = document.createElement("dd"); dd.textContent = value; wrap.append(dt, dd); performanceMetrics.append(wrap);
+    });
+    const bars = document.createElement("div"); bars.className = "stock-performance-bars";
+    const performanceRows = [[20, performance.data?.return_20d_pct], [60, performance.data?.return_60d_pct], [120, performance.data?.return_120d_pct], [250, performance.data?.return_250d_pct]];
+    const maxAbs = Math.max(1, ...performanceRows.filter(row => hasFinancialNumber(row[1])).map(row => Math.abs(Number(row[1]))));
+    performanceRows.forEach(([days, value]) => {
+      const row = document.createElement("div"); const label = document.createElement("span"); label.textContent = `${days} 日`;
+      const track = document.createElement("span"); track.className = "stock-performance-track";
+      const fill = document.createElement("span"); fill.className = `stock-performance-fill ${Number(value) < 0 ? "negative" : "positive"}`;
+      fill.style.width = hasFinancialNumber(value) ? `${Math.max(2, Math.abs(Number(value)) / maxAbs * 100)}%` : "0";
+      track.append(fill); const shown = document.createElement("strong"); shown.textContent = formatAnalysisNumber(value, "%");
+      row.append(label, track, shown); bars.append(row);
+    });
+    const performanceNote = document.createElement("p"); performanceNote.className = "research-boundary"; performanceNote.textContent = `收益口径：${performance.data?.adjustment || "未提供"}；观察时间：${performance.observed_at || "未提供"}。`;
+    performanceCard.append(performanceMetrics, bars, performanceNote); appendStockSectionBoundary(performanceCard, performance); target.append(performanceCard);
+
+    const fundamentals = result.sections?.fundamentals || {data: {}};
+    const fundamentalsCard = buildStockSection("财务趋势与盈利质量", fundamentals);
+    const annual = fundamentals.data?.annual || [];
+    const chartGrid = document.createElement("div"); chartGrid.className = "stock-mini-chart-grid";
+    chartGrid.append(
+      buildStockMiniChart("营业收入", annual, "revenue_cny", ""),
+      buildStockMiniChart("归母净利润", annual, "net_profit_cny", ""),
+      buildStockMiniChart("经营现金流", annual, "operating_cash_flow_cny", ""),
+    );
+    fundamentalsCard.append(chartGrid);
+    const latestMetrics = document.createElement("dl"); latestMetrics.className = "stock-latest-metrics";
+    const latest = fundamentals.data?.latest || {};
+    [["报告期", latest.report_period, ""], ["ROE", latest.roe_pct, "%"], ["毛利率", latest.gross_margin_pct, "%"], ["资产负债率", latest.debt_ratio_pct, "%"], ["净利率", latest.net_margin_pct, "%"], ["现金转换率", latest.cash_conversion_pct, "%"], ["营收同比", latest.revenue_yoy_pct, "%"], ["利润同比", latest.net_profit_yoy_pct, "%"]].forEach(([label, value, unit]) => {
+      const wrap = document.createElement("div"); const dt = document.createElement("dt"); dt.textContent = label; const dd = document.createElement("dd"); dd.textContent = unit ? formatAnalysisNumber(value, unit) : (value || "未取得"); wrap.append(dt, dd); latestMetrics.append(wrap);
+    });
+    fundamentalsCard.append(latestMetrics); appendStockSectionBoundary(fundamentalsCard, fundamentals); target.append(fundamentalsCard);
+
+    const valuation = result.sections?.valuation || {data: {}};
+    const valuationCard = buildStockSection("估值定位", valuation);
+    const valuationGrid = document.createElement("div"); valuationGrid.className = "stock-valuation-grid";
+    [["PE（TTM）", valuation.data?.pe_ttm, valuation.data?.pe_historical_percentile_pct, valuation.data?.industry_pe_ttm_mean], ["PB", valuation.data?.pb, valuation.data?.pb_historical_percentile_pct, valuation.data?.industry_pb_mean]].forEach(([label, current, percentile, industry]) => {
+      const row = document.createElement("article"); const rowHead = document.createElement("div");
+      const name = document.createElement("strong"); name.textContent = label; const currentValue = document.createElement("span"); currentValue.textContent = `${formatAnalysisNumber(current, " 倍")} · 行业均值 ${formatAnalysisNumber(industry, " 倍")}`; rowHead.append(name, currentValue);
+      const track = document.createElement("div"); track.className = "stock-percentile-track"; const marker = document.createElement("span"); marker.style.left = `${Math.max(0, Math.min(100, Number(percentile || 0)))}%`; track.append(marker);
+      const caption = document.createElement("small"); caption.textContent = hasFinancialNumber(percentile) ? `历史分位 ${formatAnalysisNumber(percentile, "%")}（信源未注明窗口）` : "历史分位未取得";
+      row.append(rowHead, track, caption); valuationGrid.append(row);
+    });
+    valuationCard.append(valuationGrid); appendStockSectionBoundary(valuationCard, valuation); target.append(valuationCard);
+
+    const evidence = result.sections?.evidence || {data: {}};
+    const evidenceCard = buildStockSection("动态证据", evidence);
+    const evidenceGrid = document.createElement("div"); evidenceGrid.className = "stock-evidence-grid";
+    [["最新公告", "announcements"], ["最新新闻", "news"], ["最新研报", "reports"]].forEach(([label, key]) => {
+      const column = document.createElement("article"); const heading = document.createElement("h5"); heading.textContent = label; const list = document.createElement("ul");
+      const items = evidence.data?.[key] || [];
+      if (!items.length) { const item = document.createElement("li"); item.textContent = "该信源本次未返回结果"; list.append(item); }
+      items.forEach(item => {
+        const row = document.createElement("li");
+        const titleNode = item.url ? document.createElement("a") : document.createElement("span"); titleNode.textContent = item.title;
+        if (item.url) { titleNode.href = item.url; titleNode.target = "_blank"; titleNode.rel = "noopener noreferrer"; }
+        const meta = document.createElement("small"); meta.textContent = `${item.date || "日期未提供"} · ${item.source || "来源未提供"} · ${item.evidence_id}`;
+        row.append(titleNode, meta); list.append(row);
+      });
+      column.append(heading, list); evidenceGrid.append(column);
+    });
+    evidenceCard.append(evidenceGrid); appendStockSectionBoundary(evidenceCard, evidence); target.append(evidenceCard);
+
+    const fit = result.sections?.portfolio_fit || {data: {}};
+    const fitCard = buildStockSection("当前账户组合适配", fit);
+    const fitGrid = document.createElement("dl"); fitGrid.className = "stock-latest-metrics";
+    [["是否持有", fit.data?.held ? "是" : "否"], ["持仓数量", formatAnalysisNumber(fit.data?.quantity, "", 2)], ["成本价", formatAnalysisNumber(fit.data?.cost_price_cny, " 元")], ["当前价", formatAnalysisNumber(fit.data?.current_price_cny, " 元")], ["持仓市值", formatAnalysisNumber(fit.data?.market_value_cny, " 元")], ["未实现盈亏", formatAnalysisNumber(fit.data?.unrealized_pnl_cny, " 元")], ["盈亏比例", formatAnalysisNumber(fit.data?.unrealized_pnl_pct, "%")], ["总资产占比", formatAnalysisNumber(fit.data?.weight_pct, "%")], ["单一标的上限", formatAnalysisNumber(fit.data?.single_asset_limit_pct, "%")], ["行业上限", formatAnalysisNumber(fit.data?.industry_limit_pct, "%")]].forEach(([label, value]) => {
+      const wrap = document.createElement("div"); const dt = document.createElement("dt"); dt.textContent = label; const dd = document.createElement("dd"); dd.textContent = value; wrap.append(dt, dd); fitGrid.append(wrap);
+    });
+    fitCard.append(fitGrid); appendStockSectionBoundary(fitCard, fit); target.append(fitCard);
+
+    const boundary = document.createElement("details"); boundary.className = "stock-report-boundary";
+    const boundarySummary = document.createElement("summary"); boundarySummary.textContent = `数据边界 · ${result.missing_fields?.length || 0} 个缺失字段 · 生成于 ${result.generated_at || "未提供"}`;
+    const boundaryList = document.createElement("ul");
+    (result.missing_fields || []).forEach(field => { const item = document.createElement("li"); item.textContent = field; boundaryList.append(item); });
+    (result.issues || []).forEach(issue => { const item = document.createElement("li"); item.textContent = `${issue.code}：${issue.message}`; boundaryList.append(item); });
+    if (!boundaryList.childElementCount) { const item = document.createElement("li"); item.textContent = "本次结构化章节未报告缺失字段。"; boundaryList.append(item); }
+    boundary.append(boundarySummary, boundaryList); target.append(boundary);
   }
 
   function buildCopilotFundCard(result) {
@@ -10046,6 +10001,18 @@
       input?.focus();
       return;
     }
+    if (/^个股分析[：:]\s*$/.test(q)) {
+      setError("请输入需要分析的 6 位证券代码或证券名称");
+      input?.focus();
+      return;
+    }
+    setError("");
+    const directStock = q.match(/^个股分析[：:]\s*(\d{6}(?:\.(?:SH|SZ|BJ))?)\s*$/i);
+    if (directStock) {
+      if (input) input.value = "";
+      runCopilotStockResearch(directStock[1]);
+      return;
+    }
     handleStreamingChat(q);
   }
 
@@ -10073,10 +10040,11 @@
   }
 
   function setLLMFormBusy(busy) {
+    const readOnly = accountAccessEnabled && !authenticatedAdmin;
     ["llm-provider-select", "llm-api-key-input", "llm-base-url-input", "llm-model-input",
       "btn-save-llm-config", "btn-clear-llm-config"].forEach(id => {
       const element = byId(id);
-      if (element) element.disabled = busy;
+      if (element) element.disabled = busy || readOnly;
     });
   }
 
@@ -10147,7 +10115,7 @@
     if (owner !== state.ownerId || sequence !== modelSettingsSequence) return;
     llmConfig.apiKey = "";
     llmConfig.configured = settings.is_configured;
-    llmConfig.connectionStatus = settings.is_configured ? "SAVED" : "NONE";
+    llmConfig.connectionStatus = settings.connection_verified ? "CONNECTED" : settings.is_configured ? "SAVED" : "NONE";
     llmConfig.baseUrl = settings.base_url;
     llmConfig.model = settings.model;
     llmConfig.provider = settings.base_url.includes("dashscope.aliyuncs.com") ? "qwen"
@@ -10157,7 +10125,11 @@
     const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
     const status = byId("llm-config-status");
     status.style.display = "block";
-    status.textContent = settings.is_configured ? `已保存 · ${settings.model} · ${persistence}。密钥不回显，留空保存会保留现有密钥。` : `填写个人 API Key 或由服务端提供默认配置 · ${persistence}。`;
+    const accessHint = accountAccessEnabled && !authenticatedAdmin
+      ? "该配置由管理员统一维护，当前账户只读使用。"
+      : "密钥不回显，留空保存会保留现有密钥。";
+    status.textContent = settings.is_configured ? `全局共享 · ${settings.model} · ${persistence}。${accessHint}` : `尚未配置全局模型服务 · ${persistence}。${accessHint}`;
+    setLLMFormBusy(false);
     return settings;
   }
 
@@ -10265,17 +10237,12 @@
     const pTag = byId("copilot-hero-portfolio-tag");
     if (pTag) pTag.textContent = `已确认持仓 (${validated.positions.length} 项)`;
     if (state.profile?.profile) {
-      try {
-        await refreshPortfolioHealth();
-      } catch (error) {
-        setError(`持仓已保存；体检未完成：${error.message}`);
-      }
+      await runPortfolioAnalysis();
     }
     else renderPortfolioReadiness();
     const validatedSourceTitle = state.dataMode === "LIVE" ? "已确认 · 实时数据" : "已确认 · 当前会话只读";
     if (typeof renderPortfolio === "function") renderPortfolio(validated.portfolio, validatedSourceTitle);
     renderOverviewWorkspace(state.selectedPersona);
-    updateVisualCompanion();
     return validated;
   }
 
@@ -10301,7 +10268,6 @@
     if (typeof renderPortfolio === "function" && saved.data.portfolio) renderPortfolio(saved.data.portfolio, savedSourceTitle);
     renderPortfolioReadiness();
     renderOverviewWorkspace(state.selectedPersona);
-    updateVisualCompanion();
   }
 
   async function handleParsePortfolioSubmit() {
@@ -10372,7 +10338,7 @@
       const h4 = document.createElement("h4");
       h4.textContent = "正在运行轻量级 RapidOCR 引擎解析持仓截图…";
       const p = document.createElement("p");
-      p.textContent = "正在提取表格单元格、计算置信度并核验资产代码…";
+      p.textContent = "正在提取表格单元格、核验资产代码并标记建议复核的字段…";
       loadingCard.append(spinSpan, h4, p);
       container.append(loadingCard);
     }
@@ -10434,6 +10400,48 @@
     const card = document.createElement("div");
     card.className = "ocr-result-card";
 
+    function toLocalDateTimeInputValue(value) {
+      const date = value ? new Date(value) : new Date();
+      if (Number.isNaN(date.getTime())) return toLocalDateTimeInputValue();
+      return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+    const defaultObservedAt = toLocalDateTimeInputValue();
+
+    const fieldLabels = {
+      asset_id: "代码", name: "名称", quantity: "持股", available_quantity: "可用",
+      cost_price: "成本价", price: "当前市价", market_value_cny: "持仓市值", observed_at: "报价时间",
+    };
+    const reasonFields = {
+      SECURITY_IDENTITY_REQUIRED: ["asset_id", "name"],
+      SECURITY_CODE_CORRECTED: ["asset_id"],
+      UNKNOWN_SECURITY: ["asset_id", "name"],
+      FRACTIONAL_SHARES: ["quantity"],
+      MISSING_REPORTED_MARKET_VALUE: ["market_value_cny"],
+      // 报价时间按录入当天补全，不再作为 OCR 低置信度字段。
+      MISSING_OBSERVED_AT: [],
+      MISSING_OBSERVED_FIELDS: ["cost_price", "price", "market_value_cny"],
+      INVALID_QUANTITY_OR_PRICE: ["quantity", "price"],
+      MARKET_VALUE_MISMATCH: ["market_value_cny"],
+      TOTAL_ASSET_MISMATCH: ["market_value_cny"],
+      ODD_LOT_REVIEW: ["quantity"],
+    };
+    const confidenceThresholdPct = Number(data.confidence_threshold ?? 0.85) * 100;
+    function flaggedFields(position) {
+      const fields = new Set();
+      const confidenceByField = position.field_confidence_pct || {};
+      Object.entries(confidenceByField).forEach(([field, confidence]) => {
+        if (Number.isFinite(Number(confidence)) && Number(confidence) < confidenceThresholdPct) fields.add(field);
+      });
+      (position.review_reasons || []).forEach(reason => {
+        Object.entries(reasonFields).forEach(([code, mappedFields]) => {
+          if (String(reason).startsWith(code)) mappedFields.forEach(field => fields.add(field));
+        });
+      });
+      return fields;
+    }
+    const warningRows = data.positions.map(position => ({ position, fields: flaggedFields(position) }));
+    const warningFieldCount = warningRows.reduce((count, row) => count + row.fields.size, 0);
+
     // Summary bar
     const sumBar = document.createElement("div");
     sumBar.className = "ocr-summary-bar";
@@ -10444,11 +10452,11 @@
       : `账户总资产 ¥${Number(data.account_total_value_cny ?? data.total_value_cny).toLocaleString()}`;
     sumLeft.textContent = `识别出 ${data.positions.length} 笔当前持仓 · ${cashLabel} · ${totalLabel}`;
     const sumRight = document.createElement("span");
-    sumRight.className = data.has_low_confidence_items ? "cf-verdict cf-verdict-warning" : "cf-verdict cf-verdict-pass";
-    if (data.has_low_confidence_items) {
-      sumRight.append(createSvgIcon("icon-alert", "prism-icon"), document.createTextNode(" REVIEW 需人工核对"));
+    sumRight.className = warningFieldCount ? "cf-verdict cf-verdict-warning" : "cf-verdict cf-verdict-pass";
+    if (warningFieldCount) {
+      sumRight.append(createSvgIcon("icon-alert", "prism-icon"), document.createTextNode(` ${warningFieldCount} 个字段建议核对`));
     } else {
-      sumRight.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" PASS 85%置信度达标"));
+      sumRight.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" 识别完成 · 请逐项确认"));
     }
     sumBar.append(sumLeft, sumRight);
 
@@ -10460,7 +10468,7 @@
 
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
-    ["代码", "名称", "持股/可用", "成本价", "当前市价", "持仓市值", "报价时间", "置信度", "审核裁决"].forEach(h => {
+    ["代码", "名称", "持股", "可用", "成本价", "当前市价", "持仓市值", "报价时间"].forEach(h => {
       const th = document.createElement("th");
       th.textContent = h;
       headerRow.append(th);
@@ -10473,137 +10481,154 @@
 
     data.positions.forEach((pos) => {
       const tr = document.createElement("tr");
-      if (pos.needs_review) {
+      const warnings = flaggedFields(pos);
+      if (warnings.size) {
         tr.className = "ocr-low-confidence";
       }
-
-      const tdCode = document.createElement("td");
-      const codeInput = document.createElement("input");
-      codeInput.className = "ocr-edit-input";
-      codeInput.value = pos.asset_id || pos.identity_candidates?.[0]?.asset_id || "";
-      codeInput.placeholder = "600000.SH";
-      tdCode.append(codeInput);
-
-      const tdName = document.createElement("td");
-      tdName.textContent = pos.name;
-
-      const tdQty = document.createElement("td");
-      const qtyInput = document.createElement("input");
-      qtyInput.type = "number";
-      qtyInput.className = "ocr-edit-input";
-      qtyInput.value = pos.quantity;
-      const availableText = document.createElement("small");
-      availableText.textContent = pos.available_quantity == null ? "可用未识别" : `可用 ${pos.available_quantity}`;
-      tdQty.append(qtyInput, availableText);
-
-      const tdCost = document.createElement("td");
-      const costInput = document.createElement("input");
-      costInput.type = "number"; costInput.step = "0.001"; costInput.className = "ocr-edit-input";
-      costInput.value = pos.cost_price ?? "";
-      tdCost.append(costInput);
-
-      const tdPrice = document.createElement("td");
-      const priceInput = document.createElement("input");
-      priceInput.type = "number"; priceInput.step = "0.001"; priceInput.className = "ocr-edit-input";
-      priceInput.value = pos.price ?? "";
-      tdPrice.append(priceInput);
-
-      const tdVal = document.createElement("td");
-      tdVal.textContent = `¥${pos.market_value_cny.toLocaleString()}`;
-
-      const tdObserved = document.createElement("td");
-      const observedInput = document.createElement("input");
-      observedInput.type = "datetime-local"; observedInput.className = "ocr-edit-input";
-      observedInput.value = pos.observed_at ? String(pos.observed_at).slice(0, 16) : "";
-      tdObserved.append(observedInput);
-
-      const tdConf = document.createElement("td");
-      if (pos.needs_review) {
-        tdConf.className = "cell-warning";
-      }
-      tdConf.textContent = `${pos.confidence_pct}%`;
-
-      const tdVerdict = document.createElement("td");
-      const vTag = document.createElement("span");
-      if (pos.needs_review) {
-        vTag.className = "cf-verdict cf-verdict-warning";
-        vTag.textContent = pos.confidence_level === "REVIEW_REQUIRED" ? "REVIEW_REQUIRED" : "待核对";
-        if (Array.isArray(pos.review_reasons) && pos.review_reasons.length) {
-          vTag.title = pos.review_reasons.join("；");
+      const inputs = {};
+      const specs = [
+        { field: "asset_id", label: "代码", type: "text", value: pos.asset_id || pos.identity_candidates?.[0]?.asset_id || "", placeholder: "600000.SH" },
+        { field: "name", label: "名称", type: "text", value: pos.name || "", placeholder: "证券名称" },
+        { field: "quantity", label: "持股", type: "number", value: pos.quantity ?? "", min: "1", step: "1" },
+        { field: "available_quantity", label: "可用", type: "number", value: pos.available_quantity ?? "", min: "0", step: "1", placeholder: "未识别" },
+        { field: "cost_price", label: "成本价", type: "number", value: pos.cost_price ?? "", min: "0", step: "0.001", placeholder: "未显示" },
+        { field: "price", label: "当前市价", type: "number", value: pos.price ?? "", min: "0.001", step: "0.001" },
+        { field: "market_value_cny", label: "持仓市值", type: "number", value: pos.market_value_cny ?? "", min: "0.01", step: "0.01" },
+        { field: "observed_at", label: "报价时间", type: "datetime-local", value: pos.observed_at ? toLocalDateTimeInputValue(pos.observed_at) : defaultObservedAt, defaulted: !pos.observed_at },
+      ];
+      specs.forEach(spec => {
+        const td = document.createElement("td");
+        td.dataset.label = spec.label;
+        const input = document.createElement("input");
+        input.type = spec.type;
+        input.className = "ocr-edit-input";
+        input.value = spec.value;
+        input.setAttribute("aria-label", `${pos.name || "持仓"}${spec.label}`);
+        if (spec.placeholder) input.placeholder = spec.placeholder;
+        if (spec.min) input.min = spec.min;
+        if (spec.step) input.step = spec.step;
+        if (spec.defaulted) {
+          input.dataset.defaulted = "true";
+          input.addEventListener("input", () => { input.dataset.userEdited = "true"; });
         }
-      } else {
-        vTag.className = "cf-verdict cf-verdict-pass";
-        vTag.textContent = pos.confidence_level === "HIGH" ? "HIGH" : "通过";
-      }
-      tdVerdict.append(vTag);
-
-      tr.append(tdCode, tdName, tdQty, tdCost, tdPrice, tdVal, tdObserved, tdConf, tdVerdict);
+        td.append(input);
+        if (warnings.has(spec.field)) {
+          td.classList.add("cell-warning");
+          const confidence = Number(pos.field_confidence_pct?.[spec.field]);
+          const hint = document.createElement("small");
+          hint.className = "ocr-field-confidence";
+          hint.textContent = Number.isFinite(confidence)
+            ? `识别 ${confidence.toFixed(1)}% · 建议核对`
+            : "识别结果建议核对";
+          td.append(hint);
+        }
+        inputs[spec.field] = input;
+        tr.append(td);
+      });
       tbody.append(tr);
-
-      inputControls.push({ pos, codeInput, qtyInput, costInput, priceInput, observedInput });
+      inputControls.push({ pos, inputs });
     });
     table.append(tbody);
     tableWrapper.append(table);
 
     // Callout Guidance
     const callout = document.createElement("div");
-    callout.className = data.has_low_confidence_items ? "doc-callout doc-callout-warning" : "doc-callout doc-callout-tip";
+    callout.className = warningFieldCount ? "doc-callout doc-callout-warning" : "doc-callout doc-callout-tip";
     const cIcon = document.createElement("div");
     cIcon.className = "callout-icon";
-    cIcon.append(createSvgIcon(data.has_low_confidence_items ? "icon-alert" : "icon-check", "prism-icon"));
+    cIcon.append(createSvgIcon(warningFieldCount ? "icon-alert" : "icon-check", "prism-icon"));
     const cContent = document.createElement("div");
     cContent.className = "callout-content";
     const cTitle = document.createElement("div");
     cTitle.className = "callout-title";
-    cTitle.textContent = data.has_low_confidence_items
-      ? "置信度核验提示：部分单元格低于 85.0% 阈值"
-      : "RapidOCR 本地核验完成：全量置信度 ≥ 85.0%";
+    cTitle.textContent = warningFieldCount
+      ? "识别提示：黄色字段可能有误"
+      : "识别提示：未发现明显异常字段";
     const cP = document.createElement("p");
-    cP.textContent = data.has_low_confidence_items
-      ? "黄色标记项置信度偏低，请核对并可直接在上方表格输入框修正持股数量，确认无误后点击下方按钮导入。"
-      : "文字识别已完成，请核对证券代码、数量与价格，确认无误后点击下方按钮导入。";
+    const warningSummary = warningRows
+      .filter(row => row.fields.size)
+      .map(row => `${row.position.name || row.position.asset_id || "未命名持仓"}：${[...row.fields].map(field => fieldLabels[field]).filter(Boolean).join("、")}`)
+      .join("；");
+    cP.textContent = warningFieldCount
+      ? `${warningSummary}。置信度仅用于定位可能有误的字段，不限制编辑或确认；所有字段均可直接修改。`
+      : "置信度仅作为识别质量提示，不参与编辑权限判断。请逐项核对后确认导入。";
     cContent.append(cTitle, cP);
     callout.append(cIcon, cContent);
 
     // Confirm action
+    const confirmStatus = document.createElement("p");
+    confirmStatus.className = "ocr-confirm-status";
+    confirmStatus.hidden = true;
+    confirmStatus.setAttribute("role", "alert");
     const actions = document.createElement("div");
-    actions.className = "modal-actions";
+    actions.className = "modal-actions ocr-confirm-actions";
     const confirmBtn = document.createElement("button");
     confirmBtn.className = "copilot-action-btn primary";
     confirmBtn.type = "button";
     confirmBtn.append(createSvgIcon("icon-check", "prism-icon"), document.createTextNode(" 确认持仓并开始体检"));
     confirmBtn.addEventListener("click", async () => {
+      if (confirmBtn.disabled) return;
       confirmBtn.disabled = true;
+      confirmBtn.setAttribute("aria-busy", "true");
+      confirmStatus.hidden = true;
+      confirmStatus.textContent = "";
       try {
-        const editedPositions = inputControls.map(({ pos, codeInput, qtyInput, costInput, priceInput, observedInput }) => {
-          const val = Number(qtyInput.value);
-          if (!Number.isInteger(val) || val <= 0) throw new Error("持仓数量必须为正整数");
-          const assetId = codeInput.value.trim().toUpperCase();
+        const editedPositions = inputControls.map(({ pos, inputs }) => {
+          const quantity = Number(inputs.quantity.value);
+          if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("持仓数量必须为正整数");
+          const availableRaw = inputs.available_quantity.value.trim();
+          const availableQuantity = availableRaw === "" ? null : Number(availableRaw);
+          if (availableQuantity !== null && (!Number.isInteger(availableQuantity) || availableQuantity < 0 || availableQuantity > quantity)) {
+            throw new Error("可用数量必须为 0 至持仓数量之间的整数");
+          }
+          const assetId = inputs.asset_id.value.trim().toUpperCase();
           if (!/^\d{6}\.(SH|SZ|BJ)$/.test(assetId)) throw new Error("请核对并填写完整证券代码，例如 600251.SH");
-          const cost = Number(costInput.value), price = Number(priceInput.value);
-          if (!(cost > 0) || !(price > 0)) throw new Error("成本价与当前市价必须为正数");
-          if (!observedInput.value) throw new Error("请补充截图对应的报价时间");
-          const reasons = (pos.review_reasons || []).filter(reason => !["MISSING_OBSERVED_AT", "SECURITY_IDENTITY_REQUIRED"].includes(reason));
-          return { ...pos, asset_id: assetId, quantity: val, cost_price: cost, price,
-            observed_at: new Date(observedInput.value).toISOString(),
+          const name = inputs.name.value.trim();
+          if (!name) throw new Error("证券名称不能为空");
+          const costRaw = inputs.cost_price.value.trim();
+          const cost = costRaw === "" ? null : Number(costRaw);
+          const price = Number(inputs.price.value);
+          const marketValue = Number(inputs.market_value_cny.value);
+          if (cost !== null && !(cost > 0)) throw new Error("成本价留空或填写正数");
+          if (!(price > 0) || !(marketValue > 0)) throw new Error("当前市价与持仓市值必须为正数");
+          const calculatedMarketValue = quantity * price;
+          const tolerance = Math.max(0.01, calculatedMarketValue * 0.005);
+          if (Math.abs(marketValue - calculatedMarketValue) > tolerance) {
+            throw new Error("持仓市值与持仓数量 × 当前市价不一致，请核对这三个字段");
+          }
+          if (!inputs.observed_at.value) throw new Error("请补充截图对应的报价时间");
+          const correctedReasons = new Set(Object.keys(reasonFields));
+          const reasons = (pos.review_reasons || []).filter(reason => ![...correctedReasons].some(code => String(reason).startsWith(code)));
+          const fieldSources = { ...(pos.field_sources || {}) };
+          Object.keys(fieldLabels).forEach(field => { fieldSources[field] = "user-confirmed broker screenshot"; });
+          if (inputs.observed_at.dataset.defaulted === "true" && inputs.observed_at.dataset.userEdited !== "true") {
+            fieldSources.observed_at = "system default: browser local current time";
+          }
+          // 仅提交 ConfirmedOcrPosition 契约允许的字段；OCR 草稿可能包含展示或上游扩展字段。
+          return { asset_id: assetId, name,
+            asset_class: pos.asset_class || "EQUITY", sector: pos.sector || "Unclassified",
+            quantity, available_quantity: availableQuantity,
+            cost_price: cost, price, market_value_cny: marketValue,
+            calculated_market_value_cny: Number(calculatedMarketValue.toFixed(2)),
+            observed_at: new Date(inputs.observed_at.value).toISOString(),
             price_source: pos.price_source || "user-confirmed broker screenshot",
+            field_sources: fieldSources,
             review_reasons: reasons, needs_review: reasons.length > 0 };
         });
         const validated = await validateAndActivatePortfolio(data, editedPositions);
         if (!validated) return;
         closePortfolioModal();
-        await runCopilotHealthCheck();
       } catch (error) {
+        confirmStatus.textContent = error.message || "持仓校验失败";
+        confirmStatus.hidden = false;
+      } finally {
         confirmBtn.disabled = false;
-        const errorNote = document.createElement("p");
-        errorNote.className = "research-boundary";
-        errorNote.textContent = error.message || "持仓校验失败";
-        actions.append(errorNote);
+        confirmBtn.removeAttribute("aria-busy");
       }
     });
     actions.append(confirmBtn);
 
-    card.append(sumBar, tableWrapper, callout, actions);
+    card.append(sumBar, tableWrapper, callout, confirmStatus, actions);
     if (Array.isArray(data.zero_positions) && data.zero_positions.length) {
       const excluded = document.createElement("p");
       excluded.className = "research-boundary";
@@ -10934,6 +10959,178 @@
     item.append(name, number); parent.append(item);
   }
 
+  const PORTFOLIO_ASSET_COLORS = Object.freeze({
+    stock: "#d97706",
+    cash: "#2f855a",
+    etf: "#2563eb",
+    convertible: "#7c3aed",
+    bond: "#0891b2",
+    other: "#6b7280",
+  });
+
+  function renderPortfolioAssetStructure(container, assetStructure) {
+    clear(container);
+    const groups = (assetStructure || []).filter(group => Number(group.market_value_cny) > 0);
+    if (!groups.length) {
+      const empty = document.createElement("p");
+      empty.className = "portfolio-report-risk-line";
+      empty.textContent = "当前报告没有可展示的资产结构。";
+      container.append(empty);
+      return;
+    }
+    const wrapper = document.createElement("div");
+    wrapper.className = "portfolio-asset-structure";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 220 220");
+    svg.setAttribute("class", "portfolio-asset-pie");
+    svg.setAttribute("role", "img");
+    const descriptions = groups.map(group => `${group.label} ${reportAmount(group.market_value_cny)}，占比 ${reportPercent(group.weight_pct)}，${group.position_count} 项`);
+    svg.setAttribute("aria-label", `资产结构饼图：${descriptions.join("；")}`);
+    const totalWeight = groups.reduce((sum, group) => sum + Number(group.weight_pct), 0) || 100;
+    const center = 110;
+    const radius = 92;
+    let angle = -Math.PI / 2;
+    groups.forEach((group, index) => {
+      const color = PORTFOLIO_ASSET_COLORS[group.group_key] || PORTFOLIO_ASSET_COLORS.other;
+      const fraction = Number(group.weight_pct) / totalWeight;
+      const sectorLabel = descriptions[index];
+      let sector;
+      if (groups.length === 1) {
+        sector = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        sector.setAttribute("cx", center);
+        sector.setAttribute("cy", center);
+        sector.setAttribute("r", radius);
+      } else {
+        const endAngle = angle + fraction * Math.PI * 2;
+        const startX = center + radius * Math.cos(angle);
+        const startY = center + radius * Math.sin(angle);
+        const endX = center + radius * Math.cos(endAngle);
+        const endY = center + radius * Math.sin(endAngle);
+        sector = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        sector.setAttribute("d", `M ${center} ${center} L ${startX.toFixed(3)} ${startY.toFixed(3)} A ${radius} ${radius} 0 ${fraction > 0.5 ? 1 : 0} 1 ${endX.toFixed(3)} ${endY.toFixed(3)} Z`);
+        angle = endAngle;
+      }
+      sector.setAttribute("fill", color);
+      sector.setAttribute("class", "portfolio-asset-pie-sector");
+      sector.setAttribute("role", "img");
+      sector.setAttribute("aria-label", sectorLabel);
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = sectorLabel;
+      sector.append(title);
+      svg.append(sector);
+    });
+    const legend = document.createElement("ul");
+    legend.className = "portfolio-asset-legend";
+    groups.forEach(group => {
+      const item = document.createElement("li");
+      const dot = document.createElement("span");
+      dot.className = "portfolio-asset-legend-dot";
+      dot.style.backgroundColor = PORTFOLIO_ASSET_COLORS[group.group_key] || PORTFOLIO_ASSET_COLORS.other;
+      const label = document.createElement("strong");
+      label.textContent = group.label;
+      const facts = document.createElement("span");
+      facts.textContent = `${reportAmount(group.market_value_cny)} · ${reportPercent(group.weight_pct)} · ${group.position_count} 项`;
+      item.append(dot, label, facts);
+      legend.append(item);
+    });
+    wrapper.append(svg, legend);
+    container.append(wrapper);
+  }
+
+  function appendRiskBoundaryRow(body, {label, current, threshold, status, basis}) {
+    const row = document.createElement("tr");
+    [label, current, threshold].forEach(value => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.append(cell);
+    });
+    const statusCell = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = `status-chip ${reportStatusClass(status)}`;
+    badge.textContent = status;
+    statusCell.append(badge);
+    const basisCell = document.createElement("td");
+    basisCell.textContent = basis;
+    row.append(statusCell, basisCell);
+    body.append(row);
+  }
+
+  function renderPortfolioRiskBoundaries(container, report) {
+    clear(container);
+    const tableWrap = document.createElement("div");
+    tableWrap.className = "portfolio-risk-boundary-wrap";
+    const table = document.createElement("table");
+    table.className = "portfolio-report-table portfolio-risk-boundary-table";
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    ["约束", "当前值", "画像阈值", "状态", "计算口径"].forEach(label => {
+      const cell = document.createElement("th");
+      cell.textContent = label;
+      headRow.append(cell);
+    });
+    head.append(headRow);
+    const body = document.createElement("tbody");
+    const topPosition = (report.positions || []).find(position => position.asset_name === report.concentration?.top_asset_name)
+      || (report.positions || [])[0];
+    const topTotalWeight = topPosition && Number(report.total_value_cny) > 0
+      ? Number(topPosition.market_value_cny) / Number(report.total_value_cny) * 100
+      : null;
+    appendRiskBoundaryRow(body, {
+      label: "单一标的集中度",
+      current: report.concentration?.top_asset_weight_pct == null
+        ? "—"
+        : `${reportPercent(report.concentration.top_asset_weight_pct)}（证券持仓）${topTotalWeight == null ? "" : ` / ${reportPercent(topTotalWeight)}（总资产裁决）`}`,
+      threshold: report.concentration?.single_asset_limit_pct == null ? "未绑定画像" : `≤ ${reportPercent(report.concentration.single_asset_limit_pct)}`,
+      status: report.concentration?.single_asset_verdict || "UNAVAILABLE",
+      basis: "展示按证券持仓；上限裁决按组合总资产",
+    });
+    const equityWeight = report.profile?.equity_weight_pct
+      ?? (report.asset_structure || []).filter(group => ["stock", "etf"].includes(group.group_key)).reduce((sum, group) => sum + Number(group.weight_pct), 0);
+    appendRiskBoundaryRow(body, {
+      label: "权益类占比",
+      current: reportPercent(equityWeight),
+      threshold: report.profile ? `${reportPercent(report.profile.equity_minimum_pct)}–${reportPercent(report.profile.equity_maximum_pct)}` : "未绑定画像",
+      status: report.profile?.equity_verdict || "UNAVAILABLE",
+      basis: "组合总资产口径（股票 + ETF）",
+    });
+    const industryRows = (report.risk?.sectors || []).filter(sector => sector.sector_key !== "CASH");
+    if (industryRows.length) {
+      industryRows.forEach(sector => {
+        const unclassified = sector.sector_key === "UNCLASSIFIED";
+        appendRiskBoundaryRow(body, {
+          label: unclassified ? "未分类资产（非行业结论）" : sector.name,
+          current: reportPercent(sector.weight_pct),
+          threshold: `${sector.limit_operator === "MIN" ? "≥" : "≤"} ${reportPercent(sector.limit_pct)}`,
+          status: unclassified && Number(sector.weight_pct) > 0 ? "REVIEW_REQUIRED" : sector.verdict,
+          basis: unclassified ? "组合总资产口径；待补齐行业字段" : "组合总资产口径",
+        });
+      });
+    } else {
+      appendRiskBoundaryRow(body, {
+        label: "行业及未分类资产",
+        current: "—",
+        threshold: "—",
+        status: "UNAVAILABLE",
+        basis: "行业字段或组合体检未完成",
+      });
+    }
+    const cashSector = (report.risk?.sectors || []).find(sector => sector.sector_key === "CASH");
+    const cashStructure = (report.asset_structure || []).find(group => group.group_key === "cash");
+    appendRiskBoundaryRow(body, {
+      label: "现金比例",
+      current: reportPercent(report.risk?.cash_weight_pct ?? cashStructure?.weight_pct),
+      threshold: report.risk?.cash_minimum_pct == null ? "体检未完成" : `≥ ${reportPercent(report.risk.cash_minimum_pct)}`,
+      status: cashSector?.verdict === "OVERBOUND" ? "UNDERBOUND" : cashSector?.verdict || "UNAVAILABLE",
+      basis: "组合总资产口径",
+    });
+    table.append(head, body);
+    tableWrap.append(table);
+    const note = document.createElement("p");
+    note.className = "portfolio-report-risk-line";
+    note.textContent = "最大回撤容忍度仅作为投资者画像边界；本报告未测算组合最大回撤，不将其展示为组合实测值。";
+    container.append(tableWrap, note);
+  }
+
   function renderPortfolioReport(report) {
     const card = byId("portfolio-report-card");
     if (!card) return;
@@ -10961,53 +11158,14 @@
       observations.append(title, list);
     }
     const structure = byId("portfolio-report-asset-structure");
-    if (structure) {
-      clear(structure);
-      const table = document.createElement("table"); table.className = "portfolio-report-table";
-      const head = document.createElement("tr"); ["类别", "市值", "占比", "数量"].forEach(label => { const th = document.createElement("th"); th.textContent = label; head.append(th); });
-      table.append(head);
-      (report.asset_structure || []).filter(group => Number(group.market_value_cny) > 0).forEach(group => {
-        const row = document.createElement("tr");
-        [group.label, reportAmount(group.market_value_cny), reportPercent(group.weight_pct), `${group.position_count} 项`].forEach(value => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
-        table.append(row);
-      });
-      structure.append(table);
-    }
+    if (structure) renderPortfolioAssetStructure(structure, report.asset_structure);
     const risk = byId("portfolio-report-risk-summary");
     if (risk) {
-      clear(risk);
-      const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
-      appendReportMetric(metrics, "风险状态", reportStatusLabel(reportStatus));
-      appendReportMetric(metrics, "行业 HHI", report.risk?.sector_hhi == null ? "未计算" : String(report.risk.sector_hhi));
-      appendReportMetric(metrics, "最高行业", report.risk?.top_sector_name ? `${report.risk.top_sector_name} ${reportPercent(report.risk.top_sector_weight_pct)}` : "未计算");
-      appendReportMetric(metrics, "现金比例", report.risk?.cash_weight_pct == null ? "未计算" : reportPercent(report.risk.cash_weight_pct));
-      risk.append(metrics);
-      if (report.profile) {
-        const profileLine = document.createElement("p"); profileLine.className = "portfolio-report-risk-line";
-        const verdict = report.profile.equity_verdict === "PASS" ? "在参考区间内" : report.profile.equity_verdict === "UNDERBOUND" ? "低于参考下限" : "高于参考上限";
-        profileLine.textContent = `画像 ${report.profile.suitability_level} · 权益类占比 ${reportPercent(report.profile.equity_weight_pct)} · 参考区间 ${reportPercent(report.profile.equity_minimum_pct)}–${reportPercent(report.profile.equity_maximum_pct)}（${verdict}）`;
-        risk.append(profileLine);
-      } else {
-        const profileLine = document.createElement("p"); profileLine.className = "portfolio-report-risk-line";
-        profileLine.textContent = "未绑定已确认风险画像，暂不执行画像区间对照。";
-        risk.append(profileLine);
-      }
-      if (report.risk?.issues?.length) {
+      renderPortfolioRiskBoundaries(risk, report);
+      if (report.risk?.issues?.length && !portfolioMissingAnalysisData().sectorIncomplete) {
         const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
         report.risk.issues.forEach(item => { const li = document.createElement("li"); li.textContent = text(item); issues.append(li); });
         risk.append(issues);
-      }
-      if (report.risk?.sectors?.length) {
-        const table = document.createElement("table"); table.className = "portfolio-report-table portfolio-report-sector-table";
-        const head = document.createElement("tr"); ["行业", "当前占比", "设置范围", "状态"].forEach(label => { const th = document.createElement("th"); th.textContent = label; head.append(th); });
-        table.append(head);
-        report.risk.sectors.forEach(sector => {
-          const row = document.createElement("tr");
-          const cap = `${sector.limit_operator === "MIN" ? "≥" : "≤"} ${reportPercent(sector.limit_pct)}`;
-          [sector.name, reportPercent(sector.weight_pct), cap, reportStatusLabel(sector.verdict === "PASS" ? "PASS" : "REVIEW_REQUIRED")].forEach(value => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
-          table.append(row);
-        });
-        risk.append(table);
       }
     }
     const concentration = byId("portfolio-report-concentration-summary");
@@ -11179,7 +11337,6 @@
     const summary = await response.json();
     if (sequence !== portfolioSummarySequence || owner !== state.ownerId || mode !== state.dataMode || mode !== summary.data_mode) return;
     displayedPortfolioSummary = summary;
-    renderCompanionAllocation();
     const amount = value => value == null ? "待补充数据" : `¥ ${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     byId("overview-portfolio-aum").textContent = amount(summary.holdings_value_cny);
     byId("overview-portfolio-cash").textContent = `现金 ${amount(summary.cash_cny)}`;
@@ -11224,7 +11381,7 @@
     try {
       await refreshPortfolioReport(owner, mode);
     } catch (error) {
-      if (owner === state.ownerId && mode === state.dataMode) setError(`持仓已读取，但正式报告生成失败：${error.message}`);
+      if (owner === state.ownerId && mode === state.dataMode) renderPortfolioAnalysisStatus(`正式报告生成失败：${error.message}`);
     }
   }
 
@@ -11238,10 +11395,9 @@
     const data = await response.json();
     if (owner !== state.ownerId || mode !== state.dataMode) return;
     microStore.transact(store => { invalidateDerivedState(store); store.ocrPortfolioDraft = data; store.portfolio = data.portfolio; });
-    renderPortfolioReadiness(); renderOverviewWorkspace(state.selectedPersona); updateVisualCompanion();
+    renderPortfolioReadiness(); renderOverviewWorkspace(state.selectedPersona);
     if (state.profile?.profile && data.portfolio) {
-      try { await refreshPortfolioHealth(); }
-      catch (error) { setError(`持仓已保存，分析暂未更新：${error.message}`); }
+      await runPortfolioAnalysis();
     }
   }
 
@@ -11271,14 +11427,177 @@
   }));
   document.querySelectorAll("[data-market-range]").forEach(button => button.addEventListener("click", () => marketRange(button.dataset.marketRange)));
   byId("market-fit-chart")?.addEventListener("click", () => renderedMarketChart?.timeScale().fitContent());
-  document.querySelectorAll("[data-chat-prefix]").forEach(button => button.addEventListener("click", () => {
+  const AGENT_FEATURES = Object.freeze({
+    market: {
+      title: "大盘分析",
+      help: "选择市场、观察周期和关注维度。开始后通过真实市场数据链路分析。",
+      capability: "market_data",
+      fields: [
+        {name: "market", label: "市场范围", type: "select", options: [["A 股", "A 股"], ["港股", "港股"], ["美股", "美股"]]},
+        {name: "period", label: "观察周期", type: "select", options: [["近 3 个月", "近 3 个月"], ["近 6 个月", "近 6 个月"], ["近 1 年", "近 1 年"]]},
+        {name: "focus", label: "关注维度", type: "select", options: [["趋势、估值与市场风险", "趋势、估值与市场风险"], ["趋势与成交结构", "趋势与成交结构"], ["估值与宏观因素", "估值与宏观因素"]]},
+      ],
+      prompt: values => `大盘分析：请分析${values.market}${values.period}的${values.focus}，逐项标注真实来源、观察时间和缺失字段。`,
+    },
+    industry: {
+      title: "行业配置",
+      help: "基于当前账户已确认持仓和画像边界检查行业暴露，不执行无约束选股。",
+      capability: "company_data", requiresPortfolio: true, requiresProfile: true,
+      fields: [{name: "goal", label: "分析目标", type: "select", options: [["行业暴露与画像上限", "行业暴露与画像上限"], ["集中度与未分类资产", "集中度与未分类资产"], ["行业风险边界", "行业风险边界"]]}],
+      prompt: values => `行业配置：请基于我已确认的持仓和风险画像，分析${values.goal}；缺少行业数据时列出证券代码和补齐条件，不要推荐无关股票。`,
+    },
+    stock: {
+      title: "个股分析",
+      help: "先返回快速行情，再异步补齐五年财务、估值、动态证据和当前账户适配。",
+      capability: "company_data", requiresTarget: true,
+      fields: [
+        {name: "target", label: "证券代码或名称", type: "text", placeholder: "例如 600251.SH"},
+        {name: "lookback", label: "财务趋势窗口", type: "select", options: [["5", "5 个完整年度"], ["4", "4 个完整年度"], ["3", "3 个完整年度"]]},
+      ],
+      prompt: values => `个股分析：${values.target}；先展示快速行情，再补齐近 ${values.lookback} 个完整年度的财务趋势、估值定位、公告新闻研报与当前账户适配。`,
+    },
+    fund: {
+      title: "ETF 基金筛选",
+      help: "输入基金代码查看披露数据，或输入明确筛选条件。",
+      capability: "fund_data", alternateCapability: "fund_lookthrough", requiresTarget: true, requiresProfile: true,
+      fields: [{name: "target", label: "基金代码或筛选条件", type: "text", placeholder: "例如 510300 或 低费率宽基 ETF"}],
+      prompt: values => `ETF 基金筛选：${values.target}；请结合当前风险画像，核验净值、费率、披露持仓与行业穿透，并标注披露日期。`,
+    },
+    convertible: {
+      title: "可转债投资",
+      help: "输入转债代码或完整筛选条件；缺少条款、评级或流动性数据时不会生成结论。",
+      capability: "convertible_bond_data", requiresTarget: true, requiresProfile: true,
+      fields: [{name: "target", label: "转债代码或筛选条件", type: "text", placeholder: "例如 113xxx 或 价格低于 130 元"}],
+      prompt: values => `可转债投资：${values.target}；请核验价格、转股条款、评级、现金流和流动性，并结合当前风险画像列出边界。`,
+    },
+    optimization: {
+      title: "资产重组优化",
+      help: "在现有持仓和画像硬约束内进行确定性测算，不直接修改持仓。",
+      capability: "portfolio_optimization", requiresPortfolio: true, requiresProfile: true,
+      fields: [{name: "goal", label: "优化目标", type: "select", options: [["降低集中度", "降低集中度"], ["控制回撤边界", "控制回撤边界"], ["提高现金缓冲", "提高现金缓冲"]]}],
+      prompt: values => `资产重组优化：请基于已确认持仓和风险画像，以${values.goal}为目标进行确定性测算；列出约束、差额和不可用数据，不直接执行交易。`,
+    },
+  });
+  let activeAgentFeature = null;
+
+  function currentFeatureStock() {
+    return state.portfolio?.position_snapshot?.positions?.find(position => position.asset_type === "STOCK")?.asset_id || "";
+  }
+
+  function featureAvailability(id) {
+    const definition = AGENT_FEATURES[id];
+    const capabilities = state.capabilities?.LIVE || {};
+    const capabilityReady = state.dataMode === "LIVE" && !!(
+      capabilities[definition.capability]
+      || (definition.alternateCapability && capabilities[definition.alternateCapability])
+    );
+    const missing = [];
+    if (!capabilityReady) missing.push(`真实数据能力 ${definition.capability} 未就绪`);
+    if (definition.requiresPortfolio && !state.portfolio) missing.push("尚未确认当前账户持仓");
+    if (definition.requiresProfile && !state.profile?.profile) missing.push("尚未确认风险画像");
+    const targetAvailable = id === "stock" ? !!currentFeatureStock() : false;
+    const status = !capabilityReady ? "UNAVAILABLE"
+      : missing.length ? "NEED_INPUT"
+      : definition.requiresTarget && !targetAvailable ? "NEED_INPUT"
+      : "READY";
+    return {status, missing};
+  }
+
+  function updateAgentFeatureAvailability() {
+    document.querySelectorAll("[data-feature-id]").forEach(button => {
+      const availability = featureAvailability(button.dataset.featureId);
+      button.dataset.featureAvailability = availability.status;
+      const status = button.querySelector("[data-feature-status]");
+      if (status) {
+        status.textContent = availability.status;
+        status.dataset.status = availability.status;
+      }
+    });
+    if (activeAgentFeature) renderAgentFeatureRequirements(activeAgentFeature);
+  }
+
+  function featureValues() {
+    const values = {};
+    byId("agent-feature-fields")?.querySelectorAll("[name]").forEach(field => { values[field.name] = field.value.trim(); });
+    return values;
+  }
+
+  function syncAgentFeaturePrompt() {
+    if (!activeAgentFeature) return;
+    const definition = AGENT_FEATURES[activeAgentFeature];
     const input = byId("copilot-natural-input");
-    const prefixes = [...document.querySelectorAll("[data-chat-prefix]")].map(item => `${item.dataset.chatPrefix}：`);
-    const old = prefixes.find(prefix => input.value.startsWith(prefix));
-    input.value = `${button.dataset.chatPrefix}：${old ? input.value.slice(old.length) : input.value}`;
-    document.querySelectorAll("[data-chat-prefix]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
-    input.focus(); input.setSelectionRange(input.value.length, input.value.length);
-  }));
+    if (input) input.value = definition.prompt(featureValues());
+    renderAgentFeatureRequirements(activeAgentFeature);
+  }
+
+  function renderAgentFeatureRequirements(id) {
+    const definition = AGENT_FEATURES[id];
+    const values = featureValues();
+    const availability = featureAvailability(id);
+    const missing = [...availability.missing];
+    if (definition.requiresTarget && !values.target) missing.push("请输入明确代码、名称或筛选条件");
+    const box = byId("agent-feature-requirements");
+    const start = byId("agent-feature-start");
+    if (!box || !start) return;
+    box.classList.toggle("is-unavailable", availability.status === "UNAVAILABLE");
+    box.textContent = missing.length ? `开始前需补齐：${missing.join("；")}。` : "输入已完整；开始后仅使用当前账户与可追溯 LIVE 数据。";
+    start.disabled = missing.length > 0;
+  }
+
+  function openAgentFeatureConfig(id) {
+    const definition = AGENT_FEATURES[id];
+    if (!definition) return;
+    activeAgentFeature = id;
+    document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", String(button.dataset.featureId === id)));
+    byId("agent-feature-config-title").textContent = definition.title;
+    byId("agent-feature-config-help").textContent = definition.help;
+    const fields = byId("agent-feature-fields");
+    fields.replaceChildren();
+    definition.fields.forEach(spec => {
+      const label = document.createElement("label");
+      label.append(document.createTextNode(spec.label));
+      let control;
+      if (spec.type === "select") {
+        control = document.createElement("select");
+        spec.options.forEach(([value, text]) => {
+          const option = document.createElement("option"); option.value = value; option.textContent = text; control.append(option);
+        });
+      } else {
+        control = document.createElement("input"); control.type = "text"; control.placeholder = spec.placeholder || "";
+      }
+      control.name = spec.name;
+      if (id === "stock" && spec.name === "target") control.value = currentFeatureStock();
+      control.addEventListener("input", syncAgentFeaturePrompt);
+      control.addEventListener("change", syncAgentFeaturePrompt);
+      label.append(control); fields.append(label);
+    });
+    const form = byId("agent-feature-config");
+    form.hidden = false;
+    syncAgentFeaturePrompt();
+    fields.querySelector("input, select")?.focus();
+  }
+
+  function closeAgentFeatureConfig() {
+    activeAgentFeature = null;
+    byId("agent-feature-config").hidden = true;
+    document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", "false"));
+  }
+
+  document.querySelectorAll("[data-feature-id]").forEach(button => button.addEventListener("click", () => openAgentFeatureConfig(button.dataset.featureId)));
+  byId("agent-feature-config-close")?.addEventListener("click", closeAgentFeatureConfig);
+  byId("agent-feature-config")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!activeAgentFeature) return;
+    const definition = AGENT_FEATURES[activeAgentFeature];
+    const values = featureValues();
+    syncAgentFeaturePrompt();
+    if (byId("agent-feature-start").disabled) return;
+    if (activeAgentFeature === "stock") {
+      await runCopilotStockResearch(values.target, Number(values.lookback || 5));
+      return;
+    }
+    await handleNaturalQuerySubmit();
+  });
   const dismissWelcome = () => {
     workspaceStorage.setItem(ownerStorageKey("prism_welcome_dismissed"), "1");
     const url = new URL(window.location.href); url.searchParams.delete("onboarding");
@@ -11602,6 +11921,8 @@
     }
     activeChatController?.abort();
     marketAbortController?.abort();
+    globalThis.prismStockQuickAbortController?.abort();
+    globalThis.prismStockDeepAbortController?.abort();
     transientStorage.clear();
     window.location.replace("/login");
   });
@@ -11610,6 +11931,8 @@
     if (response.ok) {
       activeChatController?.abort();
       marketAbortController?.abort();
+      globalThis.prismStockQuickAbortController?.abort();
+      globalThis.prismStockDeepAbortController?.abort();
       transientStorage.clear();
       window.location.replace("/login");
     }
@@ -11619,12 +11942,9 @@
   // 组合全景与行业环形图交互按钮事件绑定
   const overviewCheckBtn = byId("btn-run-full-overview-check");
   if (overviewCheckBtn) {
-    overviewCheckBtn.addEventListener("click", () => {
-      runCopilotHealthCheck();
-      window.location.hash = "copilot";
-      byId("copilot-decision-output")?.scrollIntoView({ behavior: "smooth" });
-    });
+    overviewCheckBtn.addEventListener("click", runPortfolioAnalysis);
   }
+  byId("portfolio-analysis-retry")?.addEventListener("click", runPortfolioAnalysis);
 
   const donutAnalyzeBtn = byId("btn-donut-analyze-sector");
   if (donutAnalyzeBtn) {
@@ -11634,27 +11954,13 @@
     });
   }
 
-  // 视觉伴侣 (Visual Companion) 唤起与关闭事件绑定
-  const openCompBtn = byId("open-companion-btn");
-  if (openCompBtn) openCompBtn.addEventListener("click", openVisualCompanion);
-  const floatCompBtn = byId("floating-companion-btn");
-  if (floatCompBtn) floatCompBtn.addEventListener("click", toggleVisualCompanion);
-  const closeCompBtn = byId("close-companion-btn");
-  if (closeCompBtn) closeCompBtn.addEventListener("click", closeVisualCompanion);
-  const backdrop = byId("companion-backdrop");
-  if (backdrop) backdrop.addEventListener("click", closeVisualCompanion);
-
-  // 快捷键支持：Esc 关闭所有弹窗和伴侣，Alt+V 切换伴侣
+  // 快捷键支持：Esc 关闭当前弹窗。
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      closeVisualCompanion();
       closePortfolioModal();
       closeLLMConfigModal();
       closeProfileModal();
       closeDataModeConfirmModal();
-    } else if (e.altKey && (e.key === "v" || e.key === "V")) {
-      e.preventDefault();
-      toggleVisualCompanion();
     }
   });
 
@@ -11662,7 +11968,6 @@
     if (event.key === "Enter") {
       loadEvents();
       loadRecommendationHistory();
-      updateVisualCompanion();
     }
   });
   [
@@ -11689,7 +11994,6 @@
       state.profile = null;
       renderConfirmedProfile(null);
       setProfileContextStatus("需重新确认", "review");
-      updateVisualCompanion();
     });
   });
 
@@ -11699,6 +12003,7 @@
     const context = await response.json();
     accountAccessEnabled = context.enabled === true;
     authenticatedOwner = context.enabled ? context.owner_id : null;
+    authenticatedAdmin = context.admin === true;
     if (context.enabled && !authenticatedOwner) throw new Error("账户身份无效");
     if (authenticatedOwner) {
       const mockOption = byId("chat-runtime-mode")?.querySelector('option[value="MOCK"]');
@@ -11729,7 +12034,6 @@
     switchPersona("custom-user");
     loadCopilotChatHistory();
     loadModelSettings().catch(error => setError(error.message));
-    updateVisualCompanion();
     initPortfolioModalTabs();
   }
   byId("confirm-session-truth").addEventListener("click", confirmSessionTruth);
