@@ -85,7 +85,7 @@ flowchart LR
 | 用户上下文 | 风险问卷、投资者画像、画像提案与确认、投资组合导入和上下文确认 | `app/profile/`、`app/portfolio/`、`app/api/main.py` |
 | 研究协作 | 研究任务计划、研究节点矩阵、有限拓扑执行、研究场景和专业研究卡 | `app/orchestration/`、`app/research/`、`app/stock/`、`app/fund/`、`app/convertible_bond/` |
 | 证据链路 | 证据、事实、发现、建议、交叉验证、决策回执和决策事件之间的关联 | `app/contracts/`、`app/gates/`、`app/recommendation/`、`app/store/` |
-| 组合计算 | 组合暴露、基金与 ETF 穿透、集中度、风险预算、配置边界、组合优化、情景模拟和再平衡 | `app/portfolio/`、`app/risk/`、`app/allocation/`、`app/optimization/`、`app/scenarios/`、`app/rebalancing/` |
+| 组合计算 | 组合暴露、基金与 ETF 穿透、集中度、风险预算、配置边界、组合优化、情景模拟和再平衡 | `app/portfolio/`、`app/risk/`、`app/allocation/`、`app/optimization/`、`app/scenarios/`、`app/rebalancing/`、`app/service/` |
 | 风险与合规 | 适当性检查、风险闸门、合规闸门、建议资格判定和结果审计 | `app/gates/`、`app/recommendation/`、`app/explainability/`、`app/history/` |
 | 数据与接口 | 数据提供方适配、缓存与回退、数据状态、HTTP/SSE 接口和静态工作台 | `app/providers/`、`app/api/`、`app/api/static/` |
 | 工程验证 | 契约校验、领域单元测试、接口集成测试、浏览器验证、确定性回放和本地负载测试 | `tests/`、`tools/`、`README.md` |
@@ -1026,10 +1026,10 @@ Prism 采用 Python 后端、静态前端和可替换数据提供方组成的模
 | 投资者画像与组合 | `/api/v1/advisor/profile/*`、`/api/v1/advisor/portfolio/*` | 问卷、画像确认、组合导入、持仓报告 | 快照、画像、组合暴露与健康度 |
 | 市场与专业研究 | `/api/v1/market/*`、`/api/v1/research/*` | 行情、指数、个股、基金和可转债研究 | 来源记录、研究节点、验证结果 |
 | 组合决策 | `/api/v1/advisor/portfolio/optimization`、`/api/v1/advisor/portfolio/rebalancing`、`/api/v1/advisor/scenarios/*` | 目标结构、压力分析、再平衡计算 | 确定性计算结果、约束、执行摘要 |
-| 投顾对话 | `/api/v1/advisor/query`、`/api/v1/copilot/chat` | 意图识别、任务编排、研究执行和流式回执 | 研究计划、证据链、建议组合或复核状态 |
+| 投顾对话 | `/api/v1/advisor/queries`、`/api/v1/copilot/chat` | 意图识别、任务编排、研究执行和流式回执 | 研究计划、证据链、建议组合或复核状态 |
 | 记忆与审计 | `/api/v1/advisor/context-memory*`、`/api/v1/decision-events*`、`/api/v1/access-audit` | 显式记忆、决策事件、访问记录 | 用户归属记录、内容哈希、审计摘要 |
 
-服务调用链按“请求契约—领域服务—确定性计算—闸门—回执”的顺序组织。金融加减乘除、基金穿透、集中度、风险预算、情景和再平衡由 `app/portfolio/`、`app/risk/`、`app/allocation/`、`app/optimization/`、`app/scenarios/` 与 `app/rebalancing/` 中的服务完成；语言模型服务接收经过筛选的上下文，负责意图、槽位和自然语言表达，不能替代这些计算服务。
+服务调用链按“请求契约—领域服务—确定性计算—闸门—回执”的顺序组织。金融加减乘除、基金穿透、集中度、风险预算、情景和再平衡由 `app/portfolio/`、`app/risk/`、`app/allocation/`、`app/optimization/`、`app/scenarios/`、`app/rebalancing/` 和 `app/service/` 中的服务完成；语言模型服务接收经过筛选的上下文，负责意图、槽位和自然语言表达，不能替代这些计算服务。
 
 研究执行路径中的外部数据调用经过 `FinancialProvider` 协议、请求指纹、超时预算和结果验证；行情与持仓刷新接口由各自提供方适配器执行独立的超时和结果校验。`create_app` 将固定研究服务作为可重复运行的默认注入项，并通过运行模式和正式账户检查阻止固定演示数据进入正式数据路径；配置真实提供方后，由运行时就绪探测决定相应能力状态。
 
