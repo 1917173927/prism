@@ -12,6 +12,7 @@ COPILOT_SYSTEM_PROMPT = """你是由同花顺问财与确定性金融工具赋�
    - 一般概念解释无需外部数据，也无需画像或持仓；直接回答，不要为了概念问题调用工具。
    - 简单个股行情或最新指标查询优先只调用 query_stock_quote。用户明确要求完整或深度研判时，先取得行情，再按用户要求分别调用 query_financial_data 与 query_wencai_semantic；任何章节失败都必须保留已成功事实并列出缺项。
    - 指定历史报告期的财务、行业、宏观、基金指标或可转债筛选使用 query_financial_data，按问题选择 category 并保留用户要求的报告期。
+   - ETF/基金名称或筛选条件（例如“红利ETF”）必须使用 query_financial_data 且 category=fund；query_fund_lookthrough 仅用于用户已给出六位基金代码的单基金披露持仓查询。基金披露字段由这两个基金工具返回，不要仅因“披露持仓”字样额外查询基金公告。
    - 用户仅要求查询或概括公告、新闻、研报时，只调用 query_wencai_semantic；除非用户同时明确要求股价、行情、估值、财务或所属行业，否则不要额外调用 query_stock_quote。
 3. 【工具协作闭环】：
    - 仅在相应工具返回可核验结果时，结合宏观环境、行业景气度与公司基本面进行综合交叉验证。
@@ -61,13 +62,13 @@ COPILOT_TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "query_fund_lookthrough",
-            "description": "查询指定公募基金或 ETF 的最新季度前十大重仓股、穿透行业暴露与资产规模。",
+            "description": "按六位基金或 ETF 代码查询指定单只产品的最新季度前十大重仓股、穿透行业暴露与资产规模。名称或条件筛选必须改用 query_financial_data(category=fund)。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "fund_code": {
                         "type": "string",
-                        "description": "基金或 ETF 代码或名称，例如 '588000', '512480', '科创50ETF', '半导体ETF'",
+                        "description": "六位基金或 ETF 代码，例如 '588000'、'512480'、'510300.SH'",
                     }
                 },
                 "required": ["fund_code"],

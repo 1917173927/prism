@@ -33,6 +33,7 @@ from app.providers.wencai_normalization import (
     decode_stock_metrics,
     decode_stock_quote_fields,
 )
+from app.providers.security_codes import invalid_explicit_convertible_bond_code
 from app.providers.fuyao import (
     CAPABILITY_FAILURE_CODES,
     FuyaoFinanceProvider,
@@ -567,9 +568,61 @@ class CopilotAgent:
                     },
                 }
             if name == "query_fund_lookthrough":
+                fund_reference = str(args["fund_code"]).strip()
+                explicit_code = re.fullmatch(
+                    r"\d{6}(?:\.(?:SH|SZ|BJ))?", fund_reference, flags=re.IGNORECASE
+                )
+                if explicit_code is None:
+                    if not self.skillhub_provider.is_configured:
+                        return {
+                            "status": "FAILED",
+                            "error_code": "AUTH_FAILED",
+                            "message": "基金名称筛选需要问财 SkillHub，但当前尚未配置凭据。",
+                            "execution_context": {
+                                "data_mode": "LIVE",
+                                "provider": "wencai_skillhub_provider",
+                                "provider_serving_mode": "UNAVAILABLE",
+                                "is_synthetic": False,
+                            },
+                        }
+                    query = (
+                        f"{fund_reference} 基金代码 基金简称 单位净值 管理费率 托管费率 "
+                        "最高申购费率 最高赎回费率 跟踪误差"
+                    )
+                    result = await self.skillhub_provider.execute(ProviderRequest(
+                        request_id=f"live-copilot-fund-screen-{int(datetime.now(UTC).timestamp())}",
+                        operation=ProviderOperation.FUND_DATA,
+                        subject=query,
+                        parameters={"limit": 5},
+                    ))
+                    fields = dict(result.records[0].fields) if result.records else {}
+                    raw_items = fields.get("items")
+                    rows = (
+                        [dict(row) for row in raw_items if isinstance(row, dict)][:5]
+                        if isinstance(raw_items, (list, tuple)) else []
+                    )
+                    return {
+                        "status": result.status.value,
+                        "query": query,
+                        "category": "fund",
+                        "items": rows,
+                        "missing_fields": list(result.missing_fields),
+                        "error_code": result.issues[0].code.value if result.issues else None,
+                        "message": (
+                            result.issues[0].safe_message
+                            if result.status.value == "FAILED" and result.issues else None
+                        ),
+                        "retrieved_at": result.retrieved_at.isoformat(),
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "wencai_skillhub_provider",
+                            "provider_serving_mode": "LIVE_NAME_SCREEN",
+                            "is_synthetic": False,
+                        },
+                    }
                 try:
                     data = await self.live_finance_provider.get_fund_lookthrough(
-                        str(args["fund_code"])
+                        fund_reference
                     )
                 except FuyaoProviderError as exc:
                     if exc.code in CAPABILITY_FAILURE_CODES:
@@ -649,6 +702,23 @@ class CopilotAgent:
                             "is_synthetic": False,
                         },
                     }
+                if name == "query_financial_data" and args["category"] == "convertible_bond":
+                    invalid_code = invalid_explicit_convertible_bond_code(args["query"])
+                    if invalid_code is not None:
+                        return {
+                            "status": "REJECTED",
+                            "error_code": "INVALID_CONVERTIBLE_BOND_CODE",
+                            "message": (
+                                f"[{invalid_code}] 不是有效的沪深可转债代码；"
+                                "请输入 110/111/113/118/123/127/128 开头的六位代码，"
+                                "或输入不含代码的明确筛选条件。"
+                            ),
+                            "execution_context": {
+                                "data_mode": "LIVE",
+                                "provider": "tool_contract_gate",
+                                "is_synthetic": False,
+                            },
+                        }
                 res = await self.skillhub_provider.execute(req)
                 if res.status.value == "FAILED" and name == "query_wencai_semantic":
                     error_code = res.issues[0].code.value if res.issues else "PROVIDER_FAILED"
@@ -906,8 +976,21 @@ class CopilotAgent:
 
         elif fund_tool:
             fund_result = fund_tool["result"]
-            if fund_result.get("status") != "SUCCESS":
+            if fund_result.get("status") not in {"SUCCESS", "PARTIAL", "EMPTY"}:
                 return fund_result.get("message", "基金穿透底稿不可用。")
+            if "data" not in fund_result:
+                lines.append("### ETF / 基金筛选")
+                lines.append(f"查询：{fund_result.get('query', user_message)}；状态：{fund_result.get('status')}。")
+                rows = fund_result.get("items") or []
+                if not rows:
+                    lines.append("未取得匹配基金，不以模型常识补造标的。")
+                for index, row in enumerate(rows, 1):
+                    lines.append(f"\n记录 {index}：")
+                    for key, value in row.items():
+                        rendered = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list, tuple)) else str(value) if value is not None else "未提供"
+                        lines.append(f"- {key}：{rendered}")
+                lines.append(f"来源：问财 SkillHub；检索时间：{fund_result.get('retrieved_at', '未提供')}。筛选结果不等同于单基金持仓穿透。")
+                return "\n".join(lines)
             fund = fund_result["data"]
             lines.append(f"### 基金披露持仓：{fund['fund_name']} ({fund['fund_code']})")
             lines.append(f"本次数据模式：{mode_label}。基金持仓为定期披露，不代表实时持仓；披露期：{field(fund, 'holding_disclosure_as_of')}。")

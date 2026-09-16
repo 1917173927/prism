@@ -133,6 +133,7 @@
     liveConfigured: false,
     wencaiReady: false,
     wencaiConfigured: false,
+    wencaiLastErrorCode: null,
     liveReadinessIssues: [],
     capabilities: null,
     rebalancingRun: null,
@@ -5981,6 +5982,7 @@
             store.liveConfigured = payload.data.live_configured === true;
             store.wencaiReady = payload.data.wencai_ready === true;
             store.wencaiConfigured = payload.data.wencai_configured === true;
+            store.wencaiLastErrorCode = payload.data.wencai_capability_status?.last_error_code || null;
             store.liveReadinessIssues = payload.data.live_readiness_issues || [];
             store.capabilities = payload.data.capabilities || null;
           });
@@ -7403,6 +7405,7 @@
   }
 
   function handleCopilotIntent(intent, target) {
+    setAgentFeatureToolsCompact(true);
     if (intent === "CHECK_PORTFOLIO") {
       runCopilotHealthCheck();
     } else if (intent === "RESEARCH_STOCK") {
@@ -9452,6 +9455,7 @@
   }
 
   function startConversationProfileUpdate() {
+    setAgentFeatureToolsCompact(true);
     state.conversationProfileDraft = {};
     state.conversationProfileStep = 0;
     renderConversationProfileQuestion();
@@ -9601,6 +9605,7 @@
 
       if (chatPanel) chatPanel.style.display = "block";
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
     } catch (e) {}
   }
 
@@ -9625,6 +9630,7 @@
     if (output) clear(output);
     const panel = byId("copilot-chat-panel");
     if (panel) panel.style.display = "block";
+    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(false);
   }
 
   function buildPipelineStepItem(num, label, status) {
@@ -9669,6 +9675,7 @@
     const input = byId("copilot-natural-input");
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
+    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
     const chatOwner = state.ownerId;
     let chatTruth = null;
     try {
@@ -10007,6 +10014,7 @@
       return;
     }
     setError("");
+    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
     const directStock = q.match(/^个股分析[：:]\s*(\d{6}(?:\.(?:SH|SZ|BJ))?)\s*$/i);
     if (directStock) {
       if (input) input.value = "";
@@ -11431,7 +11439,8 @@
     market: {
       title: "大盘分析",
       help: "选择市场、观察周期和关注维度。开始后通过真实市场数据链路分析。",
-      capability: "market_data",
+      providers: ["fuyao", "wencai"],
+      capability: "market_data", alternateCapabilities: ["stock_quote"],
       fields: [
         {name: "market", label: "市场范围", type: "select", options: [["A 股", "A 股"], ["港股", "港股"], ["美股", "美股"]]},
         {name: "period", label: "观察周期", type: "select", options: [["近 3 个月", "近 3 个月"], ["近 6 个月", "近 6 个月"], ["近 1 年", "近 1 年"]]},
@@ -11442,14 +11451,16 @@
     industry: {
       title: "行业配置",
       help: "基于当前账户已确认持仓和画像边界检查行业暴露，不执行无约束选股。",
-      capability: "company_data", requiresPortfolio: true, requiresProfile: true,
+      providers: ["fuyao", "wencai"],
+      capability: "industry_data", requiresPortfolio: true, requiresProfile: true,
       fields: [{name: "goal", label: "分析目标", type: "select", options: [["行业暴露与画像上限", "行业暴露与画像上限"], ["集中度与未分类资产", "集中度与未分类资产"], ["行业风险边界", "行业风险边界"]]}],
       prompt: values => `行业配置：请基于我已确认的持仓和风险画像，分析${values.goal}；缺少行业数据时列出证券代码和补齐条件，不要推荐无关股票。`,
     },
     stock: {
       title: "个股分析",
       help: "先返回快速行情，再异步补齐五年财务、估值、动态证据和当前账户适配。",
-      capability: "company_data", requiresTarget: true,
+      providers: ["fuyao", "wencai"],
+      capability: "company_data", alternateCapabilities: ["stock_quote"], requiresTarget: true,
       fields: [
         {name: "target", label: "证券代码或名称", type: "text", placeholder: "例如 600251.SH"},
         {name: "lookback", label: "财务趋势窗口", type: "select", options: [["5", "5 个完整年度"], ["4", "4 个完整年度"], ["3", "3 个完整年度"]]},
@@ -11458,27 +11469,61 @@
     },
     fund: {
       title: "ETF 基金筛选",
-      help: "输入基金代码查看披露数据，或输入明确筛选条件。",
-      capability: "fund_data", alternateCapability: "fund_lookthrough", requiresTarget: true, requiresProfile: true,
+      help: "输入基金名称、代码或条件进行基金层初筛；选定六位代码后再查询持仓与行业穿透。",
+      providers: ["wencai"],
+      capability: "fund_data", alternateCapabilities: ["fund_lookthrough"], requiresTarget: true, requiresProfile: true,
       fields: [{name: "target", label: "基金代码或筛选条件", type: "text", placeholder: "例如 510300 或 低费率宽基 ETF"}],
-      prompt: values => `ETF 基金筛选：${values.target}；请结合当前风险画像，核验净值、费率、披露持仓与行业穿透，并标注披露日期。`,
+      prompt: values => `ETF 基金筛选：${values.target}；请核验基金代码、净值、管理费率、托管费率、申赎费率和跟踪误差。初筛阶段不展开单基金持仓。`,
     },
     convertible: {
       title: "可转债投资",
       help: "输入转债代码或完整筛选条件；缺少条款、评级或流动性数据时不会生成结论。",
+      providers: ["wencai"],
       capability: "convertible_bond_data", requiresTarget: true, requiresProfile: true,
-      fields: [{name: "target", label: "转债代码或筛选条件", type: "text", placeholder: "例如 113xxx 或 价格低于 130 元"}],
+      fields: [{name: "target", label: "转债代码或筛选条件", type: "text", placeholder: "例如 113056 或 价格低于 130 元"}],
       prompt: values => `可转债投资：${values.target}；请核验价格、转股条款、评级、现金流和流动性，并结合当前风险画像列出边界。`,
     },
     optimization: {
       title: "资产重组优化",
       help: "在现有持仓和画像硬约束内进行确定性测算，不直接修改持仓。",
+      providers: ["fuyao", "wencai"],
       capability: "portfolio_optimization", requiresPortfolio: true, requiresProfile: true,
       fields: [{name: "goal", label: "优化目标", type: "select", options: [["降低集中度", "降低集中度"], ["控制回撤边界", "控制回撤边界"], ["提高现金缓冲", "提高现金缓冲"]]}],
       prompt: values => `资产重组优化：请基于已确认持仓和风险画像，以${values.goal}为目标进行确定性测算；列出约束、差额和不可用数据，不直接执行交易。`,
     },
   });
   let activeAgentFeature = null;
+  let agentFeatureToolsCompact = false;
+  let agentFeaturePopoverOpen = false;
+
+  function renderAgentFeatureToolsState() {
+    const tools = byId("agent-feature-tools");
+    const popover = byId("agent-feature-popover");
+    const toggle = byId("agent-feature-toggle");
+    const label = byId("agent-feature-toggle-label");
+    if (!tools || !popover || !toggle || !label) return;
+    const expanded = !agentFeatureToolsCompact || agentFeaturePopoverOpen;
+    tools.classList.toggle("is-compact", agentFeatureToolsCompact);
+    tools.classList.toggle("is-open", agentFeatureToolsCompact && agentFeaturePopoverOpen);
+    popover.setAttribute("aria-hidden", String(!expanded));
+    toggle.setAttribute("aria-expanded", String(expanded));
+    label.textContent = !agentFeatureToolsCompact ? "收起" : agentFeaturePopoverOpen ? "关闭工具" : "展开工具";
+  }
+
+  function setAgentFeatureToolsCompact(compact, options = {}) {
+    agentFeatureToolsCompact = compact;
+    agentFeaturePopoverOpen = compact && options.open === true;
+    if (compact && !agentFeaturePopoverOpen && activeAgentFeature) closeAgentFeatureConfig();
+    renderAgentFeatureToolsState();
+  }
+
+  function toggleAgentFeatureTools() {
+    if (!agentFeatureToolsCompact) {
+      setAgentFeatureToolsCompact(true);
+      return;
+    }
+    setAgentFeatureToolsCompact(true, {open: !agentFeaturePopoverOpen});
+  }
 
   function currentFeatureStock() {
     return state.portfolio?.position_snapshot?.positions?.find(position => position.asset_type === "STOCK")?.asset_id || "";
@@ -11487,12 +11532,18 @@
   function featureAvailability(id) {
     const definition = AGENT_FEATURES[id];
     const capabilities = state.capabilities?.LIVE || {};
-    const capabilityReady = state.dataMode === "LIVE" && !!(
-      capabilities[definition.capability]
-      || (definition.alternateCapability && capabilities[definition.alternateCapability])
+    const candidates = [definition.capability, ...(definition.alternateCapabilities || [])];
+    const configuredProviderReady = (definition.providers || []).some(provider => (
+      provider === "wencai"
+        ? state.wencaiConfigured === true && state.wencaiLastErrorCode !== "AUTH_FAILED"
+        : state.liveConfigured === true
+    ));
+    const capabilityReady = state.dataMode === "LIVE" && (
+      candidates.some(capability => capabilities[capability] === true)
+      || configuredProviderReady
     );
     const missing = [];
-    if (!capabilityReady) missing.push(`真实数据能力 ${definition.capability} 未就绪`);
+    if (!capabilityReady) missing.push(`真实数据能力 ${candidates.join(" / ")} 未就绪`);
     if (definition.requiresPortfolio && !state.portfolio) missing.push("尚未确认当前账户持仓");
     if (definition.requiresProfile && !state.profile?.profile) missing.push("尚未确认风险画像");
     const targetAvailable = id === "stock" ? !!currentFeatureStock() : false;
@@ -11547,6 +11598,7 @@
   function openAgentFeatureConfig(id) {
     const definition = AGENT_FEATURES[id];
     if (!definition) return;
+    if (agentFeatureToolsCompact) setAgentFeatureToolsCompact(true, {open: true});
     activeAgentFeature = id;
     document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", String(button.dataset.featureId === id)));
     byId("agent-feature-config-title").textContent = definition.title;
@@ -11583,20 +11635,327 @@
     document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", "false"));
   }
 
+  function agentFeatureOutput() {
+    const output = byId("copilot-decision-output");
+    if (output) clear(output);
+    return output;
+  }
+
+  function displayFeatureFailure(title, error) {
+    const output = agentFeatureOutput();
+    if (!output) return;
+    const card = document.createElement("div");
+    card.className = "copilot-empty-output";
+    const heading = document.createElement("h4");
+    heading.textContent = `${title}未完成`;
+    const detail = document.createElement("p");
+    detail.textContent = error?.message || "真实数据链路暂时不可用，请稍后重试。";
+    card.append(heading, detail);
+    output.append(card);
+  }
+
+  function providerCellValue(value) {
+    if (value == null || value === "") return "未提供";
+    if (typeof value === "number") {
+      return new Intl.NumberFormat("zh-CN", {maximumFractionDigits: 6}).format(value);
+    }
+    if (["string", "boolean"].includes(typeof value)) return String(value);
+    try {
+      const serialized = JSON.stringify(value);
+      return serialized.length > 180 ? `${serialized.slice(0, 177)}…` : serialized;
+    } catch (_) {
+      return "结构化字段";
+    }
+  }
+
+  function providerColumnLabel(key) {
+    return String(key).replace(/\[[^\]]+\]/g, "").trim() || String(key);
+  }
+
+  function providerColumns(title, rows) {
+    const available = [...new Set(rows.flatMap(row => Object.keys(row).filter(key => {
+      const value = row[key];
+      return value == null || ["string", "number", "boolean"].includes(typeof value);
+    })))];
+    if (title !== "ETF 基金筛选") return available.slice(0, 7);
+    const priorities = [
+      /^(基金|证券)代码$/i, /^(基金简称|基金扩位简称)$/i, /单位净值(?!增长率)/,
+      /管理费率/, /托管费率/, /最高申购费率/, /最高赎回费率/, /跟踪误差/,
+    ];
+    const ordered = [];
+    priorities.forEach(pattern => {
+      const matched = available.find(key => pattern.test(key) && !ordered.includes(key));
+      if (matched) ordered.push(matched);
+    });
+    return [...ordered, ...available.filter(key => !ordered.includes(key))].slice(0, 8);
+  }
+
+  function normalizeFeatureRows(title, rows) {
+    if (title !== "ETF 基金筛选") return {rows, duplicateCount: 0};
+    const seen = new Set();
+    const uniqueRows = [];
+    rows.forEach(row => {
+      const codeKey = Object.keys(row).find(key => /^(基金|证券)代码$/i.test(key.trim()));
+      const code = codeKey ? String(row[codeKey] || "").trim().toUpperCase() : "";
+      if (code && seen.has(code)) return;
+      if (code) seen.add(code);
+      uniqueRows.push(row);
+    });
+    return {rows: uniqueRows, duplicateCount: rows.length - uniqueRows.length};
+  }
+
+  function buildLiveProviderFeatureCard(title, result) {
+    const card = document.createElement("div");
+    card.className = `copilot-decision-card provider-feature-card${title === "ETF 基金筛选" ? " fund-screen-card" : ""}`;
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    const status = document.createElement("span");
+    status.className = `provider-status-chip status-${String(result.status || "unknown").toLowerCase()}`;
+    status.textContent = result.status || "UNKNOWN";
+    const cardHead = document.createElement("div");
+    cardHead.className = "provider-feature-head";
+    const headCopy = document.createElement("div");
+    headCopy.append(heading);
+    const record = result.records?.[0];
+    const fields = record?.fields || {};
+    const rawRows = Array.isArray(fields.items) ? fields.items.filter(item => item && typeof item === "object") : [];
+    const normalized = normalizeFeatureRows(title, rawRows);
+    const rows = normalized.rows;
+    const boundary = document.createElement("p");
+    boundary.className = "research-boundary";
+    boundary.textContent = `${fields.source || record?.source || result.provider || "来源未提供"} · 获取时间 ${fields.retrieved_at || result.retrieved_at || "未提供"}`;
+    headCopy.append(boundary);
+    cardHead.append(headCopy, status);
+    card.append(cardHead);
+    const metrics = document.createElement("div");
+    metrics.className = "provider-feature-metrics";
+    [
+      ["匹配标的", rows.length, "只"],
+      ["上游明细", rawRows.length, "条"],
+      ["数据状态", result.status || "UNKNOWN", ""],
+    ].forEach(([label, value, suffix]) => {
+      const metric = document.createElement("div");
+      const dt = document.createElement("span"); dt.textContent = label;
+      const dd = document.createElement("strong"); dd.textContent = `${value}${suffix}`;
+      metric.append(dt, dd); metrics.append(metric);
+    });
+    card.append(metrics);
+    if (fields.summary) {
+      const summary = document.createElement("p");
+      summary.className = "provider-query-summary";
+      summary.textContent = String(fields.summary);
+      card.append(summary);
+    }
+    if (normalized.duplicateCount) {
+      const note = document.createElement("p");
+      note.className = "research-boundary";
+      note.textContent = `上游返回了 ${normalized.duplicateCount} 条同代码穿透明细；筛选表已按基金代码合并。单基金持仓与行业穿透应在选定代码后单独查询。`;
+      card.append(note);
+    }
+    if (rows.length) {
+      const scalarKeys = providerColumns(title, rows);
+      const columns = scalarKeys.length ? scalarKeys : Object.keys(rows[0]).slice(0, 5);
+      const tableWrap = document.createElement("div");
+      tableWrap.className = "provider-feature-table-wrap";
+      const table = document.createElement("table");
+      table.className = "rebalancing-table provider-feature-table";
+      const thead = document.createElement("thead");
+      const head = document.createElement("tr");
+      columns.forEach(key => {
+        const cell = document.createElement("th");
+        cell.textContent = providerColumnLabel(key);
+        cell.title = key;
+        head.append(cell);
+      });
+      thead.append(head);
+      const tbody = document.createElement("tbody");
+      rows.slice(0, 20).forEach(row => {
+        const tr = document.createElement("tr");
+        columns.forEach(key => {
+          const cell = document.createElement("td");
+          cell.textContent = providerCellValue(row[key]);
+          cell.title = row[key] == null ? "" : String(row[key]);
+          tr.append(cell);
+        });
+        tbody.append(tr);
+      });
+      table.append(thead, tbody);
+      tableWrap.append(table);
+      card.append(tableWrap);
+    } else {
+      const empty = document.createElement("p");
+      empty.textContent = result.status === "EMPTY"
+        ? "问财链路调用成功，但当前代码或筛选条件没有匹配标的；这不是连接失败。请核对交易所代码或放宽筛选条件。"
+        : "本次响应未包含可展示的明细行。";
+      card.append(empty);
+    }
+    const missing = [...(result.missing_fields || []), ...(result.issues || []).map(issue => `${issue.code}：${issue.safe_message}`)];
+    if (missing.length) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = `数据边界 · ${missing.length} 项`;
+      const list = document.createElement("ul");
+      missing.forEach(value => { const item = document.createElement("li"); item.textContent = String(value); list.append(item); });
+      details.append(summary, list); card.append(details);
+    }
+    return card;
+  }
+
+  async function runLiveProviderFeature(operation, subject, title, fallbackSubject = "") {
+    const output = agentFeatureOutput();
+    output?.append(buildCopilotLoadingCard("icon-activity", `${title}正在查询…`, "正在读取问财 SkillHub 真实数据并核对来源。"));
+    const query = async (querySubject, suffix = "primary") => {
+      const response = await fetch("/api/v1/runtime/provider-query", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId},
+        body: JSON.stringify({
+          request_id: `feature-${operation.toLowerCase()}-${suffix}-${Date.now()}`,
+          operation,
+          subject: querySubject,
+          as_of: new Date().toISOString(),
+          parameters: {limit: 20},
+        }),
+      });
+      if (!response.ok) throw await apiError(response);
+      return await response.json();
+    };
+    let result = await query(subject);
+    if (result.status === "EMPTY" && fallbackSubject.trim() && fallbackSubject.trim() !== subject.trim()) {
+      result = await query(fallbackSubject.trim(), "fallback");
+    }
+    if (!["SUCCESS", "PARTIAL", "EMPTY"].includes(result.status)) throw new Error("真实数据源未完成查询。");
+    await fetchRuntimeDataMode();
+    if (output) { clear(output); output.append(buildLiveProviderFeatureCard(title, result)); output.scrollIntoView({behavior: "smooth", block: "start"}); }
+    return result;
+  }
+
+  function buildIndustryFeatureCard(health, goal) {
+    const card = document.createElement("div");
+    card.className = "copilot-decision-card";
+    const heading = document.createElement("h3");
+    heading.textContent = `行业配置 · ${goal}`;
+    const summary = document.createElement("p");
+    summary.className = "research-boundary";
+    summary.textContent = `${health.status} · 行业 HHI ${health.sector_hhi}（参考上限 ${health.hhi_limit}）· ${health.evidence_count} 项穿透贡献`;
+    const table = document.createElement("table");
+    table.className = "rebalancing-table";
+    const head = document.createElement("tr");
+    ["行业", "当前占比", "画像边界", "差额", "状态"].forEach(label => { const cell = document.createElement("th"); cell.textContent = label; head.append(cell); });
+    table.append(head);
+    (health.sectors || []).forEach(sector => {
+      const row = document.createElement("tr");
+      [sector.name, `${sector.pct.toFixed(2)}%`, `${sector.limitOperator === "MIN" ? "≥" : "≤"} ${sector.cap.toFixed(2)}%`, sector.differenceLabel, sector.verdictCode].forEach(value => { const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell); });
+      table.append(row);
+    });
+    card.append(heading, summary, table);
+    return card;
+  }
+
+  function buildOptimizationFeatureCard(result, goal) {
+    const card = document.createElement("div");
+    card.className = "copilot-decision-card";
+    const heading = document.createElement("h3");
+    heading.textContent = `资产重组优化 · ${goal}`;
+    const summary = document.createElement("p");
+    summary.className = "research-boundary";
+    summary.textContent = `${result.status} · ${result.methodology || result.methodology_version || "CAP_AND_REDISTRIBUTE_V1"} · 不执行交易`;
+    const table = document.createElement("table");
+    table.className = "rebalancing-table";
+    const head = document.createElement("tr");
+    ["资产", "当前权重", "目标权重", "调整方向"].forEach(label => { const cell = document.createElement("th"); cell.textContent = label; head.append(cell); });
+    table.append(head);
+    (result.targets || []).forEach(target => {
+      const current = Number(target.current_weight_pct ?? target.current_weight ?? 0);
+      const next = Number(target.target_weight_pct ?? target.target_weight ?? 0);
+      const row = document.createElement("tr");
+      [target.name || target.asset_id, `${current.toFixed(2)}%`, `${next.toFixed(2)}%`, next > current ? "增加" : next < current ? "降低" : "维持"].forEach(value => { const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell); });
+      table.append(row);
+    });
+    card.append(heading, summary, table);
+    return card;
+  }
+
+  async function runConfiguredAgentFeature(id, values) {
+    const definition = AGENT_FEATURES[id];
+    try {
+      if (id === "market") {
+        marketRegion = {"A 股": "CN", "港股": "HK", "美股": "US"}[values.market] || "CN";
+        marketInterval = values.period === "近 1 年" ? "1M" : "1d";
+        if (!marketCatalog.length) await loadMarketCatalog();
+        const first = marketCatalog.find(item => item.market === marketRegion);
+        if (!first) throw new Error(`${values.market}没有已注册的市场指数。`);
+        byId("market-index-input").value = first.index_id;
+        renderMarketIndexCards();
+        await loadMarketQuotes();
+        await assessMarket();
+        window.location.hash = "market";
+        syncNavigation("market");
+        return;
+      }
+      if (id === "industry") {
+        const output = agentFeatureOutput();
+        output?.append(buildCopilotLoadingCard("icon-activity", "行业配置正在计算…", "正在刷新持仓行情、补齐行业元数据并执行确定性穿透。"));
+        const health = await refreshPortfolioHealth();
+        if (!health) throw new Error("持仓或画像上下文不完整。请先确认后重试。");
+        await refreshPortfolioSummary();
+        if (output) { clear(output); output.append(buildIndustryFeatureCard(health, values.goal)); output.scrollIntoView({behavior: "smooth", block: "start"}); }
+        return;
+      }
+      if (id === "stock") {
+        await runCopilotStockResearch(values.target, Number(values.lookback || 5));
+        return;
+      }
+      if (id === "fund") {
+        await runLiveProviderFeature(
+          "FUND_DATA",
+          `${values.target} 基金代码 基金简称 单位净值 管理费率 托管费率 最高申购费率 最高赎回费率 跟踪误差`,
+          definition.title,
+          values.target,
+        );
+        return;
+      }
+      if (id === "convertible") {
+        const target = values.target.trim();
+        const explicitCode = target.match(/^(\d{6})(?:\.(?:SH|SZ))?$/i)?.[1];
+        if (explicitCode && !/^(110|111|113|118|123|127|128)/.test(explicitCode)) {
+          throw new Error(`${explicitCode} 不是有效的沪深可转债代码。请输入 110/111/113/118/123/127/128 开头的六位代码，或输入明确筛选条件。`);
+        }
+        await runLiveProviderFeature("CONVERTIBLE_BOND_DATA", `${target} 转债现价 转股价 转股价值 转股溢价率 债券评级 到期收益率 成交额 赎回回售条款`, definition.title, target);
+        return;
+      }
+      if (id === "optimization") {
+        const output = agentFeatureOutput();
+        output?.append(buildCopilotLoadingCard("icon-activity", "资产重组优化正在计算…", "正在刷新真实持仓并按画像硬约束执行确定性测算。"));
+        const result = await runPortfolioOptimization();
+        if (!result) throw new Error("组合优化未生成目标权重，请检查持仓、画像与真实行情完整性。");
+        if (output) { clear(output); output.append(buildOptimizationFeatureCard(result, values.goal)); output.scrollIntoView({behavior: "smooth", block: "start"}); }
+      }
+    } catch (error) {
+      displayFeatureFailure(definition.title, error);
+    }
+  }
+
   document.querySelectorAll("[data-feature-id]").forEach(button => button.addEventListener("click", () => openAgentFeatureConfig(button.dataset.featureId)));
+  byId("agent-feature-toggle")?.addEventListener("click", toggleAgentFeatureTools);
   byId("agent-feature-config-close")?.addEventListener("click", closeAgentFeatureConfig);
+  document.addEventListener("click", event => {
+    if (!agentFeatureToolsCompact || !agentFeaturePopoverOpen) return;
+    if (!byId("agent-feature-tools")?.contains(event.target)) setAgentFeatureToolsCompact(true);
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !agentFeatureToolsCompact || !agentFeaturePopoverOpen) return;
+    setAgentFeatureToolsCompact(true);
+    byId("agent-feature-toggle")?.focus();
+  });
   byId("agent-feature-config")?.addEventListener("submit", async event => {
     event.preventDefault();
     if (!activeAgentFeature) return;
-    const definition = AGENT_FEATURES[activeAgentFeature];
+    const featureId = activeAgentFeature;
     const values = featureValues();
     syncAgentFeaturePrompt();
     if (byId("agent-feature-start").disabled) return;
-    if (activeAgentFeature === "stock") {
-      await runCopilotStockResearch(values.target, Number(values.lookback || 5));
-      return;
-    }
-    await handleNaturalQuerySubmit();
+    setAgentFeatureToolsCompact(true);
+    await runConfiguredAgentFeature(featureId, values);
   });
   const dismissWelcome = () => {
     workspaceStorage.setItem(ownerStorageKey("prism_welcome_dismissed"), "1");

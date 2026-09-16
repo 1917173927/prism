@@ -116,6 +116,53 @@ def test_stock_quote_uses_global_wencai_when_fuyao_is_unconfigured(monkeypatch):
     assert failures == [("stock_quote", "NOT_CONFIGURED")]
 
 
+def test_fund_name_screen_uses_wencai_instead_of_sending_name_to_fuyao(monkeypatch):
+    controller = SimpleNamespace(mode=DataMode.LIVE)
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: controller)
+    calls = []
+
+    class Fuyao:
+        async def get_fund_lookthrough(self, _fund_code):
+            raise AssertionError("a semantic fund name must not reach Fuyao code validation")
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, request):
+            calls.append(request)
+            return SimpleNamespace(
+                status=ProviderStatus.SUCCESS,
+                records=[SimpleNamespace(fields={"items": [
+                    {"基金代码": "510880.SH", "基金简称": "华泰柏瑞上证红利ETF"},
+                    {"基金代码": "515180.SH", "基金简称": "易方达中证红利ETF"},
+                ]})],
+                issues=(), missing_fields=(),
+                retrieved_at=SimpleNamespace(
+                    isoformat=lambda: "2026-09-17T00:00:00+00:00"
+                ),
+            )
+
+    agent = CopilotAgent(
+        live_finance_provider=Fuyao(), skillhub_provider=Wencai()
+    )
+    result = asyncio.run(agent._execute_tool(
+        "query_fund_lookthrough", {"fund_code": "红利ETF"}, {}, None, DataMode.LIVE
+    ))
+
+    assert result["status"] == "SUCCESS"
+    assert result["execution_context"]["provider_serving_mode"] == "LIVE_NAME_SCREEN"
+    assert [row["基金代码"] for row in result["items"]] == ["510880.SH", "515180.SH"]
+    assert len(calls) == 1
+    assert calls[0].operation == ProviderOperation.FUND_DATA
+    assert "披露持仓" not in calls[0].subject
+    assert "基金代码 基金简称 单位净值" in calls[0].subject
+    answer = agent._synthesize_grounded_response(
+        "筛选红利ETF", {}, [{"tool": "query_fund_lookthrough", "result": result}], None
+    )
+    assert "510880.SH" in answer
+    assert "筛选结果不等同于单基金持仓穿透" in answer
+
+
 def test_stock_research_endpoint_uses_wencai_when_fuyao_is_unconfigured():
     reset_runtime_mode_controller(DataMode.LIVE)
 
@@ -185,6 +232,119 @@ def test_generic_industry_wording_is_blocked_before_wencai_stock_screen(monkeypa
     assert result["status"] == "BLOCKED"
     assert result["error_code"] == "INDUSTRY_QUERY_UNDERSPECIFIED"
     assert "误执行为选股查询" in result["message"]
+
+
+def test_invalid_convertible_code_is_rejected_before_wencai_call(monkeypatch):
+    controller = SimpleNamespace(mode=DataMode.LIVE)
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: controller)
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, _request):
+            raise AssertionError("invalid convertible code must not reach provider")
+
+    result = asyncio.run(CopilotAgent(skillhub_provider=Wencai())._execute_tool(
+        "query_financial_data",
+        {"query": "可转债 114514 最新价格", "category": "convertible_bond"},
+        {}, None, DataMode.LIVE,
+    ))
+
+    assert result["status"] == "REJECTED"
+    assert result["error_code"] == "INVALID_CONVERTIBLE_BOND_CODE"
+    assert result["execution_context"]["provider"] == "tool_contract_gate"
+
+
+@pytest.mark.parametrize("subject", [
+    "可转债 114514 最新价格",
+    "114514 转债现价 转股价 转股价值 转股溢价率",
+])
+def test_direct_provider_endpoint_rejects_invalid_convertible_code(subject):
+    controller = reset_runtime_mode_controller(DataMode.LIVE)
+    asyncio.run(controller.configure_wencai(configured=True, contract_verified=True))
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, _request):
+            raise AssertionError("invalid convertible code must not reach provider")
+
+    with TestClient(create_app(wencai_provider=Wencai())) as client:
+        response = client.post("/api/v1/runtime/provider-query", json={
+            "request_id": "invalid-convertible-code",
+            "operation": "CONVERTIBLE_BOND_DATA",
+            "subject": subject,
+            "parameters": {"limit": 5},
+        })
+
+    assert response.status_code == 422
+    assert response.json()["error_code"] == "INVALID_CONVERTIBLE_BOND_CODE"
+    assert response.json()["actual_source"] is None
+
+
+def test_direct_provider_success_recovers_after_previous_runtime_failure():
+    controller = reset_runtime_mode_controller(DataMode.LIVE)
+    asyncio.run(controller.configure_wencai(configured=True, contract_verified=True))
+    asyncio.run(controller.record_wencai_failure("AUTH_FAILED"))
+    assert controller.is_wencai_ready is False
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, request):
+            return SimpleNamespace(
+                status=ProviderStatus.SUCCESS,
+                issues=(),
+                model_dump=lambda mode: {
+                    "request_id": request.request_id,
+                    "provider": "wencai_skillhub_provider",
+                    "status": "SUCCESS",
+                    "records": [{"fields": {"items": [{"指数代码": "000001.SH"}]}}],
+                    "issues": [],
+                    "missing_fields": [],
+                },
+            )
+
+    with TestClient(create_app(wencai_provider=Wencai())) as client:
+        response = client.post("/api/v1/runtime/provider-query", json={
+            "request_id": "recover-market-route",
+            "operation": "MARKET_DATA",
+            "subject": "上证指数 最新价",
+            "parameters": {"limit": 1},
+        })
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "SUCCESS"
+    assert controller.is_wencai_ready is True
+
+
+@pytest.mark.parametrize("query", [
+    "113056", "可转债 113056 最新价格", "113056 转债现价 转股价",
+    "价格低于130元且转股溢价率低于30%",
+])
+def test_valid_convertible_code_or_screen_reaches_wencai(monkeypatch, query):
+    controller = SimpleNamespace(mode=DataMode.LIVE)
+    monkeypatch.setattr("app.llm.agent.get_runtime_mode_controller", lambda: controller)
+    calls = []
+
+    class Wencai:
+        is_configured = True
+
+        async def execute(self, request):
+            calls.append(request)
+            return SimpleNamespace(
+                status=ProviderStatus.EMPTY, records=(), issues=(), missing_fields=(),
+                retrieved_at=SimpleNamespace(isoformat=lambda: "2026-09-16T00:00:00Z"),
+            )
+
+    result = asyncio.run(CopilotAgent(skillhub_provider=Wencai())._execute_tool(
+        "query_financial_data", {"query": query, "category": "convertible_bond"},
+        {}, None, DataMode.LIVE,
+    ))
+
+    assert result["status"] == "EMPTY"
+    assert len(calls) == 1
+    assert calls[0].operation == ProviderOperation.CONVERTIBLE_BOND_DATA
 
 
 @pytest.mark.parametrize("status", ["FAILED", "EMPTY", "PARTIAL"])

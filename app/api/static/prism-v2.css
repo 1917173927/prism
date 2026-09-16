@@ -308,6 +308,7 @@ body.prism-ui-v2 {
 }
 .prism-ui-v2 .agent-feature-tools-head h3 { margin: 0; color: var(--text-primary); font-size: 16px; }
 .prism-ui-v2 .agent-feature-tools-head p { margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; }
+.prism-ui-v2 .agent-feature-head-actions { display: flex; align-items: center; gap: 8px; }
 .prism-ui-v2 .agent-feature-mode {
   flex: 0 0 auto;
   padding: 5px 8px;
@@ -316,6 +317,69 @@ body.prism-ui-v2 {
   color: var(--success);
   background: var(--success-soft);
   font: 650 10px/1.2 var(--mono);
+}
+.prism-ui-v2 .agent-feature-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  cursor: pointer;
+  font: 600 11px/1.2 var(--sans);
+}
+.prism-ui-v2 .agent-feature-toggle:hover { border-color: var(--brand-border); color: var(--brand-hover); background: var(--brand-soft); transform: none; }
+.prism-ui-v2 .agent-feature-toggle:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; border-color: var(--brand); }
+.prism-ui-v2 .agent-feature-toggle .prism-icon { width: 14px; height: 14px; transform: rotate(180deg); transition: transform .16s ease; }
+.prism-ui-v2 .agent-feature-popover { display: grid; gap: 14px; }
+.prism-ui-v2 .agent-feature-tools.is-compact {
+  position: relative;
+  z-index: 8;
+  display: block;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.prism-ui-v2 .agent-feature-tools.is-compact.is-open { z-index: 20; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head {
+  min-height: 46px;
+  align-items: center;
+  padding: 8px 10px 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head > div:first-child { display: flex; align-items: center; gap: 8px; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head h3 { font-size: 13px; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head h3::after {
+  content: " · 6 个入口";
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head p,
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-mode { display: none; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-toggle .prism-icon { transform: none; }
+.prism-ui-v2 .agent-feature-tools.is-compact.is-open .agent-feature-toggle .prism-icon { transform: rotate(180deg); }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-popover { display: none; }
+.prism-ui-v2 .agent-feature-tools.is-compact.is-open .agent-feature-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: min(72vh, 680px);
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgba(28, 31, 35, .14);
 }
 .prism-ui-v2 .agent-feature-grid {
   display: grid;
@@ -395,11 +459,40 @@ body.prism-ui-v2 {
 
 .prism-ui-v2 .agent-home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 286px;
+  grid-template-columns: minmax(0, 1fr) 310px;
   align-items: start;
   gap: 18px;
   min-width: 0;
 }
+.prism-ui-v2 .agent-workbench-column {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  container: agent-workbench / inline-size;
+}
+.prism-ui-v2 .agent-workbench-column > .agent-feature-tools { width: 100%; margin-bottom: 0; }
+@container agent-workbench (max-width: 760px) {
+  .prism-ui-v2 .agent-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container agent-workbench (max-width: 520px) {
+  .prism-ui-v2 .agent-feature-grid { grid-template-columns: 1fr; }
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation {
+  display: block;
+  min-height: 0;
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-stream-panel {
+  display: block;
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages {
+  min-height: 260px;
+  max-height: 520px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .agent-empty-state { padding-block: 8px; }
 .prism-ui-v2 .agent-conversation {
   display: block;
   min-width: 0;
@@ -630,15 +723,73 @@ body.prism-ui-v2 {
 }
 .prism-ui-v2 .agent-conversation .quick-tag-chip:hover,
 .prism-ui-v2 .agent-conversation .quick-tag-chip:focus-visible { border-color: var(--brand-border); color: var(--brand-hover); background: var(--brand-soft); box-shadow: none; transform: none; }
-.prism-ui-v2 .agent-conversation .copilot-output-container { display: block; margin: 0; padding: 0 14px 14px; border: 0; background: transparent; }
+.prism-ui-v2 .agent-conversation .copilot-output-container { display: block; max-height: 520px; margin: 2px 14px 16px; padding: 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: linear-gradient(180deg, var(--surface-subtle), var(--surface)); }
 .prism-ui-v2 .agent-conversation .copilot-output-container:empty { display: none; }
+.prism-ui-v2 .provider-feature-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(25, 35, 45, .06);
+}
+.prism-ui-v2 .provider-feature-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px 13px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(135deg, var(--surface), var(--brand-soft));
+}
+.prism-ui-v2 .provider-feature-head h3 { margin: 0; font-size: 17px; line-height: 1.35; }
+.prism-ui-v2 .provider-feature-head .research-boundary { margin: 5px 0 0; color: var(--text-muted); font: 10px/1.45 var(--mono); }
+.prism-ui-v2 .provider-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font: 700 9px/1 var(--mono);
+  letter-spacing: .04em;
+}
+.prism-ui-v2 .provider-status-chip.status-success { color: var(--success); border-color: rgba(23, 131, 95, .28); background: var(--success-soft); }
+.prism-ui-v2 .provider-status-chip.status-partial { color: var(--brand-hover); border-color: var(--brand-border); background: var(--brand-soft); }
+.prism-ui-v2 .provider-feature-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.prism-ui-v2 .provider-feature-metrics > div { display: grid; gap: 3px; padding: 12px 14px; border-right: 1px solid var(--border-subtle); }
+.prism-ui-v2 .provider-feature-metrics > div:last-child { border-right: 0; }
+.prism-ui-v2 .provider-feature-metrics span { color: var(--text-muted); font-size: 9px; }
+.prism-ui-v2 .provider-feature-metrics strong { color: var(--text-primary); font: 700 14px/1.25 var(--mono); }
+.prism-ui-v2 .provider-query-summary { margin: 12px 18px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.prism-ui-v2 .provider-feature-card > .research-boundary { margin: 10px 18px; padding: 9px 11px; border-left: 3px solid var(--brand); border-radius: 5px; background: var(--brand-soft); font-size: 10px; }
+.prism-ui-v2 .provider-feature-table-wrap {
+  max-height: 360px;
+  margin: 12px 18px 18px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: var(--surface);
+  scrollbar-width: thin;
+}
+.prism-ui-v2 .provider-feature-table { min-width: 720px; font-size: 11px; }
+.prism-ui-v2 .provider-feature-table thead th { position: sticky; z-index: 2; top: 0; padding: 9px 11px; color: var(--text-secondary); background: #f4f5f3; box-shadow: 0 1px 0 var(--border); }
+.prism-ui-v2 .provider-feature-table td { max-width: 220px; padding: 8px 11px; overflow: hidden; text-overflow: ellipsis; }
+.prism-ui-v2 .provider-feature-table tbody tr:nth-child(even) { background: rgba(245, 246, 244, .62); }
+.prism-ui-v2 .provider-feature-table tbody tr:hover { background: var(--brand-soft); }
 
 .prism-ui-v2 .agent-profile-rail {
   display: grid;
   grid-template-columns: 1fr;
   align-items: start;
   gap: 10px;
-  width: 286px;
+  width: 310px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -1982,6 +2133,7 @@ body.prism-ui-v2 {
   .prism-ui-v2 .agent-feature-fields { grid-template-columns: 1fr; }
   .prism-ui-v2 .agent-feature-tools-head,
   .prism-ui-v2 .agent-feature-actions { align-items: stretch; flex-direction: column; }
+  .prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head { align-items: center; flex-direction: row; }
   .prism-ui-v2 .agent-feature-mode { align-self: flex-start; }
 }
 
@@ -1991,6 +2143,20 @@ body.prism-ui-v2 {
   .prism-ui-v2 .agent-feature-tools { padding: 14px; }
   .prism-ui-v2 .agent-feature-tools-head,
   .prism-ui-v2 .agent-feature-actions { align-items: stretch; flex-direction: column; }
+  .prism-ui-v2 .agent-feature-tools.is-compact { padding: 0; }
+  .prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head { align-items: center; flex-direction: row; }
+  .prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation {
+    min-height: 0;
+  }
+  .prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages {
+    min-height: 210px;
+    max-height: 460px;
+  }
+  .prism-ui-v2 .provider-feature-metrics { grid-template-columns: 1fr; }
+  .prism-ui-v2 .provider-feature-metrics > div { border-right: 0; border-bottom: 1px solid var(--border-subtle); }
+  .prism-ui-v2 .provider-feature-metrics > div:last-child { border-bottom: 0; }
+  .prism-ui-v2 .provider-feature-table-wrap { max-height: 320px; margin-inline: 12px; }
+  .prism-ui-v2 .agent-conversation .copilot-output-container { max-height: 460px; }
   .prism-ui-v2 .agent-feature-mode { align-self: flex-start; }
   .prism-ui-v2 .agent-feature-actions .btn { justify-content: center; }
   .prism-ui-v2 .app-shell { display: block; }
@@ -2145,6 +2311,10 @@ body.prism-ui-v2 {
 @media (max-width: 720px) { .chat-capabilities { gap: 6px; } #chat-send-progress { max-width: 150px; } }
 /* Review pass: readable controls and compact, visible data context. */
 .prism-ui-v2 .agent-profile-rail { width: 310px; gap: 16px; }
+@media (min-width: 821px) and (max-width: 1040px) {
+  .prism-ui-v2 .agent-home-grid { grid-template-columns: minmax(0, 1fr) 250px; }
+  .prism-ui-v2 .agent-profile-rail { width: 250px; }
+}
 .prism-ui-v2 .agent-profile-rail :is(p,dt,dd,summary,.rail-label,.agent-detail-row,.agent-rail-head,.copilot-tag,.copilot-portfolio-badge,.display-policy-hint,.behavior-profile-content,.status-chip,.cf-verdict) { font-size: 14px; line-height: 1.6; }
 .prism-ui-v2 .agent-profile-rail :is(h3,.copilot-persona-badge strong) { font-size: 16px; line-height: 1.5; }
 .prism-ui-v2 .agent-profile-rail :is(.agent-profile-summary,.behavior-profile-card) { padding: 20px; }
