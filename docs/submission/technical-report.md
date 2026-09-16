@@ -998,15 +998,116 @@ result = await execute_with_budget(primary_provider, request, policy=policy)
 
 ### 10.1 技术栈
 
+Prism 采用 Python 后端、静态前端和可替换数据提供方组成的模块化单体结构。依赖、可选能力和构建产物由 `pyproject.toml`、`package.json` 与打包配置统一管理。
+
+| 层次 | 技术或组件 | 主要职责 | 版本约束或配置 | 代码依据 |
+| --- | --- | --- | --- | --- |
+| 后端运行时 | Python | 承载领域服务、确定性计算、提供方适配器和 API | `>=3.11,<3.13` | `pyproject.toml` |
+| 接口层 | FastAPI、Pydantic | HTTP 路由、请求校验、响应契约、异常映射 | FastAPI `>=0.115,<1`；Pydantic `>=2.10,<3` | `app/api/main.py`、`app/api/contracts.py` |
+| 本地服务 | Uvicorn | 启动 ASGI 应用并提供回环地址访问 | `web` 可选依赖 | `start.bat`、`start_mac.sh` |
+| 数据处理 | `Decimal`、异步提供方接口、SHA-256 | 金融数值计算、外部调用、请求与记录指纹 | 金融金额和权重沿契约使用十进制定点数 | `app/*/contracts.py`、`app/providers/` |
+| 图像与文件解析 | Pillow、RapidOCR、`python-multipart` | 持仓图片读取、表单文件接收和结构化解析 | Pillow `>=10.0.0`；RapidOCR `>=1.3.0` | `app/llm/ocr_portfolio_parser.py`、`app/api/main.py` |
+| 持久化 | SQLite、可选 PostgreSQL | 画像、组合、研究决策、审计和会话数据保存 | PostgreSQL 由 `postgres` 可选依赖启用 | `app/store/` |
+| 前端 | 原生 JavaScript、CSS、HTML | 工作台状态、页面渲染、HTTP 请求、流式对话 | 静态资源随应用发布 | `app/api/static/` |
+| 前端构建 | esbuild、AntV X6 | 工作流编辑器和 Markdown 资源构建 | 构建结果提交到静态资源目录；Lightweight Charts 作为静态脚本提供行情图表 | `tools/build_workflow.mjs`、`tools/build_markdown.mjs` |
+| 测试 | pytest、HTTPX | 单元、接口、集成和应用内 HTTP 测试 | `dev` 可选依赖 | `tests/` |
+
+应用包同时包含提供方技能清单、数据库迁移、固定数据、前端脚本、图表库和第三方许可文件。运行服务读取这些包内资源，私有账户数据和供应商凭据位于项目数据目录或受保护存储中。
+
 ### 10.2 后端实现
+
+应用工厂为 `app.api.main:create_app`；桌面和手动启动的 ASGI 入口为 `app.api.main:app`。应用工厂接收数据存储、投资顾问服务、专业研究服务、组合计算服务、行情提供方、问财提供方、行业提供方和密钥存储等依赖；测试使用内存存储和固定实现，桌面入口使用环境变量选择本地数据库与外部能力。服务对象通过构造参数注入，领域模块之间以 Pydantic 契约传递结构化对象。
+
+路由按能力分组，主要接口如下：
+
+| 接口分组 | 示例接口 | 后端职责 | 典型输出 |
+| --- | --- | --- | --- |
+| 账户与运行时 | `/api/v1/auth/*`、`/api/v1/runtime/*` | 登录会话、数据模式、提供方就绪状态 | 账户上下文、能力矩阵、运行版本 |
+| 投资者画像与组合 | `/api/v1/advisor/profile/*`、`/api/v1/advisor/portfolio/*` | 问卷、画像确认、组合导入、持仓报告 | 快照、画像、组合暴露与健康度 |
+| 市场与专业研究 | `/api/v1/market/*`、`/api/v1/research/*` | 行情、指数、个股、基金和可转债研究 | 来源记录、研究节点、验证结果 |
+| 组合决策 | `/api/v1/advisor/portfolio/optimization`、`/api/v1/advisor/portfolio/rebalancing`、`/api/v1/advisor/scenarios/*` | 目标结构、压力分析、再平衡计算 | 确定性计算结果、约束、执行摘要 |
+| 投顾对话 | `/api/v1/advisor/query`、`/api/v1/copilot/chat` | 意图识别、任务编排、研究执行和流式回执 | 研究计划、证据链、建议组合或复核状态 |
+| 记忆与审计 | `/api/v1/advisor/context-memory*`、`/api/v1/decision-events*`、`/api/v1/access-audit` | 显式记忆、决策事件、访问记录 | 用户归属记录、内容哈希、审计摘要 |
+
+服务调用链按“请求契约—领域服务—确定性计算—闸门—回执”的顺序组织。金融加减乘除、基金穿透、集中度、风险预算、情景和再平衡由 `app/portfolio/`、`app/risk/`、`app/allocation/`、`app/optimization/`、`app/scenarios/` 与 `app/rebalancing/` 中的服务完成；语言模型服务接收经过筛选的上下文，负责意图、槽位和自然语言表达，不能替代这些计算服务。
+
+研究执行路径中的外部数据调用经过 `FinancialProvider` 协议、请求指纹、超时预算和结果验证；行情与持仓刷新接口由各自提供方适配器执行独立的超时和结果校验。`create_app` 将固定研究服务作为可重复运行的默认注入项，并通过运行模式和正式账户检查阻止固定演示数据进入正式数据路径；配置真实提供方后，由运行时就绪探测决定相应能力状态。
+
+FastAPI 为请求校验、所有权冲突、存储冲突、损坏记录和各领域服务异常注册 JSON 错误处理器；`HTTPException` 统一映射，未注册通用异常处理器。流式对话使用服务端事件输出上下文、进度、研究结果、回执和结束事件；客户端或服务端中止流式对话时关闭当前生成器并释放流资源，本接口不持久化取消状态。
 
 ### 10.3 前端实现
 
+前端由 `app/api/static/index.html`、`styles.css`、`prism-v2.css`、`app.js`、工作流编辑器和图表脚本组成，由 FastAPI 的 `StaticFiles` 挂载到 `/static`。页面使用哈希路由组织 AI 对话、持仓分析、大盘鉴别、个人中心以及开发者模式下的评测、上下文记忆、研究轨道和投顾查询入口。
+
+`app.js` 建立轻量状态存储，集中管理 owner、风险画像、持仓、研究运行、决策事件、数据模式和会话前提版本。画像、组合或数据模式变化时，存储递增上下文版本并清理依赖该版本的派生结果；请求返回后再次比较 owner 和请求序号，避免旧账户或旧上下文的响应写入当前页面。
+
+前端通过 `fetch` 调用 JSON 接口，通过流式读取处理投顾对话事件；问卷预览、画像确认、持仓上传、研究运行、场景模拟和再平衡通过后端契约请求，证据筛选在前端基于当前内存结果完成。渲染层将服务端字段转换为标签、表格、状态卡片和审计路径，保留 `PASS`、`REVIEW_REQUIRED`、`BLOCKED`、`UNRESOLVED`、`STALE` 等状态。
+
+工作流编辑器使用 AntV X6 处理节点、连线、依赖编辑和布局；Lightweight Charts 负责行情图表。两者的脚本与许可文件随仓库发布，页面运行不从内容分发网络加载脚本；首次启动缺少依赖时，`start.bat` 会调用 `pip install -e ".[web]"`。动态文本使用 DOM 文本节点和结构化元素渲染，页面策略通过内容安全策略限制脚本、样式、图片与连接来源。
+
+修改 `app/api/static/workflow-editor.src.js` 或 `markdown.src.js` 后，分别执行 `npm run build:workflow` 与 `npm run build:markdown` 生成发布脚本；前端语法使用 `node --check app/api/static/app.js` 校验。
+
 ### 10.4 数据持久化
+
+持久化接口由 `DecisionEventStore` 及其上下文扩展组成。应用入口默认将数据写入 `data/private/prism.sqlite3`，可以通过 `PRISM_DB_PATH` 覆盖；调用 `create_app` 时传入 `:memory:` 用于隔离测试，直接注入存储对象用于契约测试。设置 `PRISM_DATABASE_URL` 后选择 `PostgresDecisionEventStore`，连接或迁移失败时直接报告错误。
+
+SQLite 与 PostgreSQL 共用业务存储契约和编号迁移。当前迁移表覆盖以下数据：
+
+| 数据类别 | 表或对象 | 保存内容 | 版本与完整性 |
+| --- | --- | --- | --- |
+| 决策与回执 | `decision_events` | 建议组合、闸门状态、回执和解释轨迹 | 事件标识、内容哈希、状态与回执一致 |
+| 画像与组合 | `questionnaire_snapshots`、`behavior_profiles`、`current_portfolios`、`portfolio_reports` | 问卷快照、行为画像、当前组合和报告 | 用户归属、数据模式、版本和内容哈希 |
+| 上下文与偏好 | `context_memory`、`session_truth`、`user_preferences` | 显式记忆、锁定前提、显示偏好 | 规范化载荷哈希与版本校验 |
+| 工作流与审计 | `workflow_definitions`、`access_audit` | 工作流版本、访问路由和状态码 | owner 范围与观察时间 |
+| 本地账户 | `local_accounts`、`auth_sessions` | 账户摘要、会话哈希、失效时间 | 外键、唯一 owner 和撤销状态 |
+
+决策事件保存结构化结果的规范化载荷和 `content_hash`，通过事件标识实现同一 owner、组合和状态的幂等写入；写入前重新校验推荐结果、闸门状态和合规文本。读取接口提供摘要投影与详情投影，账户密钥、授权头和原始敏感请求不进入决策事件。
+
+SQLite 写入使用进程内 `RLock`、WAL、3 秒忙等待和写事务，并执行读后写比较；PostgreSQL 适配器使用数据库范围咨询锁、5 秒锁等待和 15 秒语句上限保持相同的比较交换语义。数据库迁移按编号顺序执行，PostgreSQL 适配器显式将结构变更与迁移登记放在同一事务中提交。
+
+SQLite 备份工具通过在线备份接口读取已提交数据并执行完整性校验，恢复写入新文件后再切换 `PRISM_DB_PATH`。PostgreSQL 数据使用其原生备份工具维护。代码提供进程内有界的 `InMemoryProviderCache`，由执行策略显式注入；缓存按照第九章的数据提供方协议处理，不写入用户持久化表。
 
 ### 10.5 部署结构与运行环境
 
+桌面部署以本地回环服务为核心。Windows 启动脚本负责创建 Python 虚拟环境、检查 Python 3.11 或 3.12、按需安装依赖并启动 Uvicorn；macOS 启动脚本探测已有 `uvicorn`、`uv` 或虚拟环境后启动服务。默认入口为：
+
+```text
+浏览器
+  │ HTTP / SSE
+  ▼
+Uvicorn（127.0.0.1:8000）
+  │
+  ▼
+FastAPI 应用工厂
+  ├── 领域服务与确定性计算
+  ├── 闸门、证据流水线与建议回执
+  ├── 外部数据提供方适配器
+  └── SQLite 或 PostgreSQL 存储
+```
+
+Windows 使用 `start.bat`，macOS 使用 `start.command` 或 `start_mac.sh`；手动启动命令为：
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+```
+
+应用入口读取 `PRISM_DB_PATH`、`PRISM_DATABASE_URL`、`PRISM_SECRET_STORE_PATH`、`PRISM_AUTH_ACCOUNTS_FILE` 和 `PRISM_DEV_NO_AUTH` 等本地配置；问财、扶摇、模型和海外数据提供方使用各自的服务端配置。默认私有数据目录由 `app/runtime/paths.py` 根据主仓库和工作树关系解析，确保凭据、数据库和确认数据不随代码工作树复制到版本控制。
+
+开发预览通过 `tools/dev_preview.py` 使用独立临时 SQLite 与显式无认证模式，适合演示和页面回放；账户模式使用持久化数据库与本地会话。修改静态资源前端构建产物后，应用仍由 Python 服务直接提供，无需额外前端开发服务器。
+
+部署运行状态可通过 `/api/health`、`/api/v1/runtime/data-mode` 和 `/api/v1/runtime/capability-gaps` 观测。健康接口表示进程和数据模式响应正常，提供方是否可用由对应能力探测、结果状态和证据质量单独表示。
+
 ### 10.6 安全实现与密钥管理
+
+本地账户由 `LocalAccessMiddleware` 统一保护。注册与登录生成服务端 owner，密码使用随机盐和 `scrypt` 摘要保存；会话只保存令牌哈希，浏览器令牌使用 `HttpOnly`、`SameSite=Lax` Cookie，HTTPS 下增加 `Secure` 属性。会话包含 24 小时绝对有效期和 2 小时连续空闲期限，退出登录撤销当前会话，修改密码撤销该 owner 的全部会话。
+
+每个受保护请求由服务端账户绑定 owner，并重写请求中的 `X-Owner-ID`；调用者提供不匹配的 owner 时返回 `403 OWNER_SCOPE`。写请求检查跨站来源，管理接口额外检查管理员角色。受保护请求进入路由处理后记录 owner、方法、路由模板、状态码和时间；认证失败、所有权冲突、来源校验失败和管理员权限失败记录对应审计标识，认证失败时 owner 可为空。访问审计不保存请求正文、密码或授权头。
+
+Windows 本地密钥使用 DPAPI 保护。`ProtectedSecretStore` 将密文条目写入原子替换的 JSON 文件，读改写过程使用旁路锁协调进程；模型密钥按用户或本机工作台作用域保存，问财凭据按提供方作用域保存。已保存配置接口不回显密钥；当前聊天请求会将用户输入的模型配置发送至后端用于模型调用，密钥不写入业务数据库或 Git。非 Windows 运行时，页面录入的个人密钥保留在当前服务进程，服务端环境变量继续提供部署级密钥。
+
+请求契约递归拒绝敏感参数键，提供方问题与异常诊断经过脱敏；提供方请求指纹只基于业务语义字段计算，决策事件和组合记录的内容哈希基于规范化契约载荷计算。`index.html` 的内容安全策略限制脚本、连接、样式和图片来源；静态资源随仓库发布，避免运行时从第三方地址加载脚本。数据模式控制器记录配置、契约验证和探测结果，真实提供方失败时返回明确的失败或降级状态，禁止以静态演示数据伪造实时或已验证事实。
+
+文件上传经过 `python-multipart` 接收后进入图片解析和结构化确认流程；OCR 草稿在用户确认前保持草稿状态，确认时重新校验图片摘要、用户归属和持仓契约。需要进入持久化或个性化分析链路的组合、画像、研究和建议接口使用 Pydantic 输入模型与服务端 owner 校验；纯解析接口执行文件类型、大小和解析结果校验。
 
 ## 11. 测试与评估
 
