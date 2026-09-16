@@ -139,3 +139,42 @@ def test_updated_screenshot_creates_distinct_behavior_snapshot() -> None:
         events = store.list_behavior_events(OWNER)
         assert len(events) == 2
         assert len({event.event_id for event in events}) == 2
+
+
+def test_confirm_accepts_editable_broker_row_with_defaulted_quote_time() -> None:
+    store = SQLiteDecisionEventStore(":memory:")
+    with TestClient(create_app(store=store, clock=lambda: NOW)) as client:
+        response = client.post(
+            "/api/v1/advisor/portfolio/ocr/confirm",
+            headers={"X-Owner-ID": OWNER},
+            json={
+                "owner_id": OWNER,
+                "image_digest": "e" * 64,
+                "cash_cny": 23933.53,
+                "positions": [{
+                    "asset_id": "600251.SH",
+                    "name": "冠农股份",
+                    "asset_class": "EQUITY",
+                    "sector": "Unclassified",
+                    "quantity": 6700,
+                    "available_quantity": 0,
+                    "cost_price": 11.588,
+                    "price": 10.03,
+                    "market_value_cny": 67201,
+                    "calculated_market_value_cny": 67201,
+                    "observed_at": "2026-09-16T18:32:00+08:00",
+                    "price_source": "user-confirmed broker screenshot",
+                    "field_sources": {
+                        "observed_at": "system default: browser local current time",
+                    },
+                    "review_reasons": [],
+                    "needs_review": False,
+                    "confidence_level": "HIGH",
+                }],
+            },
+        )
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["positions"][0]["asset_id"] == "600251.SH"
+        assert result["positions"][0]["available_quantity"] == 0
+        assert result["confirmation_status"] == "CALCULATED"

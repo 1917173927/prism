@@ -9,6 +9,7 @@ import os
 import re
 from time import perf_counter
 from typing import Any
+import unicodedata
 
 import httpx
 
@@ -183,6 +184,67 @@ class FuyaoFinanceProvider(MarketDataProvider):
             raise FuyaoProviderError(
                 "UPSTREAM_TIMEOUT", "扶摇数据接口响应超时。"
             ) from exc
+
+    async def resolve_security_identity(self, name: str) -> dict[str, str] | None:
+        """Resolve one exact A-share display name through the upstream ticker directory.
+
+        Search results are treated as candidates rather than truth: only one unique,
+        structurally valid, exact-name match is accepted.  Fuzzy or ambiguous results
+        remain unresolved for human review.
+        """
+        query = unicodedata.normalize("NFKC", name).strip()
+        if (
+            not query
+            or len(query) > 80
+            or query.isdigit()
+            or re.fullmatch(r"[\w*ST·（）()\- ]+", query) is None
+        ):
+            return None
+
+        def normalized(value: Any) -> str:
+            return re.sub(
+                r"[\s*·（）()\-]",
+                "",
+                unicodedata.normalize("NFKC", str(value or "")).upper(),
+            )
+
+        try:
+            async with self._client() as client:
+                data = await asyncio.wait_for(
+                    self._get(
+                        client,
+                        "/api/meta/tickers/search",
+                        {"q": query, "asset_type": "a-share", "limit": 5},
+                    ),
+                    timeout=self._timeout_seconds,
+                )
+        except TimeoutError as exc:
+            raise FuyaoProviderError(
+                "UPSTREAM_TIMEOUT", "扶摇证券目录接口响应超时。"
+            ) from exc
+
+        items = data.get("item")
+        if not isinstance(items, list):
+            return None
+        matches: dict[str, dict[str, str]] = {}
+        for item in items:
+            if not isinstance(item, dict) or normalized(item.get("name")) != normalized(query):
+                continue
+            symbol = str(item.get("thscode") or "").strip().upper()
+            ticker = str(item.get("ticker") or "").strip()
+            try:
+                validated = self._normalize_thscode(symbol, self.A_SHARE_PREFIXES)
+            except FuyaoProviderError:
+                continue
+            if ticker != validated[:6]:
+                continue
+            matches[validated] = {
+                "asset_id": validated,
+                "name": str(item.get("name") or query).strip(),
+                "market": validated.rsplit(".", 1)[1],
+                "source": "Fuyao A-share ticker directory",
+            }
+        return next(iter(matches.values())) if len(matches) == 1 else None
 
     async def get_quotes(
         self, codes: list[str] | tuple[str, ...]

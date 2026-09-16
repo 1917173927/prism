@@ -53,6 +53,7 @@ class RuntimeModeController:
             "stock_quote": None,
             "fund_lookthrough": None,
         }
+        self._fuyao_configured_override: bool | None = None
         self._fuyao_verification = (
             "NOT_CHECKED" if self._fuyao_configured else "UNCONFIGURED"
         )
@@ -105,6 +106,8 @@ class RuntimeModeController:
 
     @property
     def _fuyao_configured(self) -> bool:
+        if self._fuyao_configured_override is not None:
+            return self._fuyao_configured_override
         return bool(os.getenv("HITHINK_FINANCE_API_KEY", "").strip())
 
     @property
@@ -222,6 +225,13 @@ class RuntimeModeController:
                 self._mode = DataMode.LIVE
                 self._revision += 1
             self._updated_at = checked_at
+
+    def restore_fuyao_configuration(self, *, configured: bool) -> None:
+        """Restore a machine-protected global Fuyao credential at startup."""
+        self._fuyao_configured_override = configured
+        self._fuyao_verification = "NOT_CHECKED" if configured else "UNCONFIGURED"
+        self._initial_probe_pending = configured
+        self._updated_at = datetime.now(UTC)
 
     async def record_fuyao_capability_failure(
         self, capability: str, error_code: str

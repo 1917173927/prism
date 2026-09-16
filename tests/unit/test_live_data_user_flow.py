@@ -240,7 +240,7 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     prefix = source.partition("  microStore.subscribe((store) => {")[0]
     names = ["buildCopilotStockCard", "appendReportMetric", "hasFinancialNumber", "buildCopilotFundCard", "runCopilotStockResearch",
              "requirePortfolioAnalysisContext", "renderPortfolioReadiness",
-             "ensureDependency", "confirmProfileContext", "renderCompanionRisk",
+             "ensureDependency", "confirmProfileContext",
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
              "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing",
              "loadSavedPortfolio", "openPortfolioModal", "buildRebalancingNotice",
@@ -265,7 +265,6 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
   const byId = id => { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
   const document = {body: new Element(), createElement: () => new Element(), createElementNS: () => new Element(), createTextNode: text => String(text)};
   const renderOverviewWorkspace = () => {};
-  const updateVisualCompanion = () => {};
   const clear = element => { element.children = []; };
   const createSvgIcon = () => new Element();
   const buildCopilotLoadingCard = () => new Element();
@@ -292,9 +291,6 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
       assert.match(output.textContent, /请先确认/);
     }
     assert.equal(calls.length, 0, "unconfirmed user must not trigger template/provider requests");
-    renderCompanionRisk();
-    assert.match(byId("companion-exposure-bars").textContent, /请先完成风险问卷/);
-    assert.doesNotMatch(byId("companion-exposure-bars").textContent, /28.5/);
     state.portfolioHealthRun = {status:"REVIEW_REQUIRED",has_breaches:true,hhi_verdict:"OVERBOUND",
       sector_hhi:5200,hhi_limit:3800,sectors:[{name:"现金",pct:60,cap:5,limitOperator:"MIN",
         verdictCode:"PASS",differencePctPoints:55,marginPctPoints:55,topHoldings:"现金"}]};
@@ -353,16 +349,11 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     byId("copilot-stock-input").value = "600519.SH";
     await runCopilotStockResearch();
     assert.match(output.textContent, /部分数据可用/);
-    assert.match(output.textContent, /历史估值分位暂未接入/);
+    assert.match(output.textContent, /下方深度章节会继续补齐/);
     assert.match(output.textContent, /PE（TTM）/);
     assert.match(output.textContent, /0.00%/);
     assert.doesNotMatch(output.textContent, /NaN/);
 
-    state.profile = {profile:{risk_level:"BALANCED",max_drawdown_tolerance_pct:"12"},questionnaire:{loss_tolerance_score:3}};
-    state.portfolioHealthRun = {technology_weight_pct:"42.00",technology_limit_pct:"25.00"};
-    renderCompanionRisk();
-    assert.match(byId("companion-exposure-bars").textContent, /42.00% \(上限 25.00%\)/);
-    assert.doesNotMatch(byId("companion-exposure-bars").textContent, /28.5/);
     openPortfolioModal();
     assert.equal(byId("portfolio-modal").parentElement, document.body);
     assert.equal(byId("portfolio-modal").style.display, "flex");

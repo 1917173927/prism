@@ -225,8 +225,26 @@ def decode_stock_quote_fields(result: ProviderResult, security_code: str) -> dic
     return decoded
 
 
+def source_industry_label(value: object) -> str | None:
+    """Return the provider's primary industry label without replacing it.
+
+    Some official responses expose an industry hierarchy as a list.  The first
+    non-empty value is the provider's primary classification and is the label
+    persisted in the portfolio.  Policy bucketing remains a separate,
+    deterministic calculation and must never overwrite this source field.
+    """
+    values = value if isinstance(value, (list, tuple)) else (value,)
+    for item in values:
+        label = str(item or "").strip()
+        if label and label.casefold() not in {
+            "未知", "未知行业", "其他", "unknown", "unclassified", "n/a", "-",
+        }:
+            return label
+    return None
+
+
 def canonical_sector_from_wencai(value: object) -> str | None:
-    """Map a Wencai industry label into Prism's closed exposure taxonomy."""
+    """Map a source industry into the internal policy taxonomy only."""
     labels = " ".join(str(item) for item in value) if isinstance(value, (list, tuple)) else str(value or "")
     mappings = (
         (("半导体", "电子", "计算机", "通信", "软件", "互联网"), "Technology"),
@@ -246,4 +264,5 @@ __all__ = [
     "decode_stock_metrics",
     "decode_stock_quote_fields",
     "select_wencai_item",
+    "source_industry_label",
 ]

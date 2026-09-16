@@ -285,9 +285,11 @@ def test_live_refresh_combines_fuyao_quote_with_real_wencai_industry():
 
     assert body.status == "COMPLETE"
     assert adapter.wencai_metadata_succeeded is True
+    assert adapter.industry_metadata["300750.SZ"]["sector"] == "电力设备"
+    assert adapter.industry_metadata["300750.SZ"]["industry"] == ("电力设备", "电池", "锂电池")
     refreshed = body.portfolio.position_snapshot.positions[0]
     assert refreshed.market_value == Decimal("33825.00")
-    assert refreshed.sector == "Industrials"
+    assert refreshed.sector == "电力设备"
     assert "Fuyao structured financial data API" in refreshed.source
     assert "wencai_skillhub_provider" in refreshed.source
 

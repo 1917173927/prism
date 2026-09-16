@@ -12,6 +12,7 @@ from app.contracts.evidence import ContractModel, NonEmptyStr
 from app.portfolio.contracts import AssetType, PortfolioImportBundle
 from app.portfolio.exposure import ExposureContribution, calculate_exposure
 from app.profile import RiskProfile
+from app.providers.wencai_normalization import canonical_sector_from_wencai
 from app.risk import assess_risk_budget, calculate_concentration
 
 
@@ -50,7 +51,22 @@ def _canonical_sector(contribution: ExposureContribution) -> str:
         return "CONSUMER_HEALTHCARE"
     if normalized in {"finance", "financials", "cyclical", "financial", "utilities", "utility"}:
         return "FINANCE_CYCLICAL"
+    policy_sector = canonical_sector_from_wencai(contribution.sector)
+    if policy_sector == "Technology":
+        return "TECHNOLOGY"
+    if policy_sector == "Industrials":
+        return "INDUSTRIALS"
+    if policy_sector == "Consumer":
+        return "CONSUMER_HEALTHCARE"
+    if policy_sector == "Finance":
+        return "FINANCE_CYCLICAL"
     return "UNCLASSIFIED"
+
+
+def _is_technology_label(label: str) -> bool:
+    return label.strip().casefold() in {
+        "technology", "information technology", "tech",
+    } or canonical_sector_from_wencai(label) == "Technology"
 
 
 def _sector_values(portfolio: PortfolioImportBundle, calculated_at: datetime) -> tuple[
@@ -69,6 +85,38 @@ def _sector_values(portfolio: PortfolioImportBundle, calculated_at: datetime) ->
         names[key].add(contribution.asset_name)
     top_names = {key: tuple(sorted(items)[:3]) for key, items in names.items()}
     return values, top_names, exposure.status.value, tuple(issue.code.value for issue in exposure.issues)
+
+
+def _source_sector_values(portfolio: PortfolioImportBundle, calculated_at: datetime) -> tuple[
+    dict[str, Decimal], dict[str, tuple[str, ...]], dict[str, str], str, tuple[str, ...]
+]:
+    """Aggregate exact provider industry labels for user-visible reporting."""
+    exposure = calculate_exposure(portfolio, calculated_at=calculated_at)
+    if exposure.report is None:
+        return {}, {}, {}, exposure.status.value, tuple(
+            issue.code.value for issue in exposure.issues
+        )
+    values: dict[str, Decimal] = {"CASH": Decimal("0"), "UNCLASSIFIED": Decimal("0")}
+    names: dict[str, set[str]] = {"CASH": set(), "UNCLASSIFIED": set()}
+    labels = {"CASH": "可用现金", "UNCLASSIFIED": "未分类资产"}
+    for contribution in exposure.report.contributions:
+        if contribution.asset_type == AssetType.CASH:
+            key = "CASH"
+        else:
+            source_label = (contribution.sector or "").strip()
+            key = f"INDUSTRY:{source_label}" if source_label else "UNCLASSIFIED"
+            if source_label:
+                labels[key] = source_label
+        values[key] = values.get(key, Decimal("0")) + contribution.market_value
+        names.setdefault(key, set()).add(contribution.asset_name)
+    top_names = {key: tuple(sorted(items)[:3]) for key, items in names.items()}
+    return (
+        values,
+        top_names,
+        labels,
+        exposure.status.value,
+        tuple(issue.code.value for issue in exposure.issues),
+    )
 
 
 def sector_weights_from_portfolio(
@@ -140,7 +188,7 @@ class PortfolioHealthResponse(ContractModel):
     top_sector_key: NonEmptyStr
     top_sector_name: NonEmptyStr
     top_sector_weight_pct: Decimal = Field(ge=0, le=100)
-    sectors: tuple[SectorHealth, ...] = Field(min_length=5)
+    sectors: tuple[SectorHealth, ...] = Field(min_length=1)
     issues: tuple[NonEmptyStr, ...] = ()
     calculation_steps: tuple[NonEmptyStr, ...] = Field(min_length=1)
 
@@ -152,20 +200,31 @@ def calculate_portfolio_health(request: PortfolioHealthRequest) -> PortfolioHeal
     if exposure.report is None or concentration.report is None:
         raise ValueError("portfolio exposure or concentration is unavailable")
 
-    values, holdings, source_status, exposure_issues = _sector_values(
+    values, holdings, labels, source_status, exposure_issues = _source_sector_values(
         request.portfolio, request.calculated_at
     )
     total = exposure.report.total_market_value
     weights = {key: _q(value / total * Decimal("100")) for key, value in values.items()}
     budget = assessment.budget
     sectors: list[SectorHealth] = []
-    for key in (*SECTOR_ORDER, "UNCLASSIFIED"):
-        if key == "UNCLASSIFIED" and weights[key] == 0:
-            continue
+    industry_keys = sorted(
+        (key for key in values if key.startswith("INDUSTRY:") and values[key] > 0),
+        key=lambda key: (-values[key], labels[key]),
+    )
+    ordered_keys = [
+        *industry_keys,
+        *(["UNCLASSIFIED"] if values.get("UNCLASSIFIED", Decimal("0")) > 0 else []),
+        "CASH",
+    ]
+    technology_weight = Decimal("0")
+    for key in industry_keys:
+        if _is_technology_label(labels[key]):
+            technology_weight += weights[key]
+    for key in ordered_keys:
         is_cash = key == "CASH"
         if is_cash:
             limit = MIN_CASH_WEIGHT_PCT
-        elif key == "TECHNOLOGY":
+        elif key.startswith("INDUSTRY:") and _is_technology_label(labels[key]):
             limit = budget.max_technology_weight_pct
         elif key == "UNCLASSIFIED":
             limit = budget.max_unclassified_weight_pct
@@ -175,7 +234,7 @@ def calculate_portfolio_health(request: PortfolioHealthRequest) -> PortfolioHeal
         overbound = weights[key] < limit if is_cash else weights[key] > limit
         sectors.append(SectorHealth(
             sector_key=key,
-            name=SECTOR_NAMES[key],
+            name=labels[key],
             weight_pct=weights[key],
             limit_pct=limit,
             limit_operator="MIN" if is_cash else "MAX",
@@ -185,7 +244,7 @@ def calculate_portfolio_health(request: PortfolioHealthRequest) -> PortfolioHeal
             top_holdings=holdings[key],
         ))
 
-    sector_hhi = _q(sum((weight * weight for weight in weights.values()), Decimal("0")))
+    sector_hhi = _q(sum((weights[key] * weights[key] for key in ordered_keys), Decimal("0")))
     hhi_overbound = sector_hhi > HHI_LIMIT
     has_breaches = hhi_overbound or any(row.verdict == "OVERBOUND" for row in sectors)
     top = max(sectors, key=lambda row: (row.weight_pct, row.sector_key))
@@ -200,7 +259,7 @@ def calculate_portfolio_health(request: PortfolioHealthRequest) -> PortfolioHeal
         total_market_value_cny=total,
         sector_hhi=sector_hhi,
         hhi_verdict="OVERBOUND" if hhi_overbound else "PASS",
-        technology_weight_pct=weights["TECHNOLOGY"],
+        technology_weight_pct=_q(technology_weight),
         technology_limit_pct=budget.max_technology_weight_pct,
         cash_weight_pct=weights["CASH"],
         has_breaches=has_breaches,
@@ -212,7 +271,7 @@ def calculate_portfolio_health(request: PortfolioHealthRequest) -> PortfolioHeal
         issues=issues,
         calculation_steps=(
             "calculate_exposure(portfolio)",
-            "aggregate canonical sector market values",
+            "aggregate provider industry labels without replacing source classifications",
             "calculate sector HHI from closed weights",
             "apply profile risk-budget and cash hard gates",
         ),
