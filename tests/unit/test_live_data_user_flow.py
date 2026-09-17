@@ -394,3 +394,38 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     result = subprocess.run([node], input=probe, capture_output=True, text=True, encoding="utf-8", timeout=15)
     assert result.returncode == 0, result.stderr
     assert result.stdout == "PASS"
+
+
+def test_frontend_delete_last_position_clears_imported_cash():
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js required for frontend behavior regression")
+    source = (Path(__file__).resolve().parents[2] / "app/api/static/app.js").read_text(encoding="utf-8")
+    match = re.search(r"  async function replacePortfolioRows\([^\n]*\) \{[\s\S]*?\n  \}", source)
+    assert match
+    probe = match.group() + r'''
+  const assert = require("node:assert/strict");
+  const requests = [];
+  const state = {ownerId: "test-owner", dataMode: "LIVE", profile: null};
+  const fetch = async (_url, options) => {
+    const payload = JSON.parse(options.body);
+    requests.push(payload);
+    return {ok: true, json: async () => ({portfolio: payload.positions.length ? {} : null})};
+  };
+  const apiError = async () => new Error("unexpected API error");
+  const invalidateDerivedState = () => {};
+  const microStore = {transact(callback) { callback({}); }};
+  const renderPortfolioReadiness = () => {};
+  const renderOverviewWorkspace = () => {};
+  const runPortfolioAnalysis = async () => {};
+  (async () => {
+    await replacePortfolioRows([], 416.64);
+    assert.equal(requests[0].cash_cny, 0, "deleting the final holding must clear imported cash");
+    await replacePortfolioRows([{asset_id: "600519.SH"}], 416.64);
+    assert.equal(requests[1].cash_cny, 416.64, "cash must remain while securities are still held");
+    process.stdout.write("PASS");
+  })().catch(error => { console.error(error); process.exitCode = 1; });
+'''
+    result = subprocess.run([node], input=probe, capture_output=True, text=True, encoding="utf-8", timeout=15)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "PASS"

@@ -74,6 +74,10 @@
     contextRevision: 0,
     profile: null,
     behaviorProfile: null,
+    tradingStyleProfile: null,
+    tradeImportPreview: null,
+    tradeRecords: [],
+    tradeListCursor: null,
     displayPolicy: null,
     questionnaireGate: "PENDING",
     questionnaireTemplate: null,
@@ -1897,10 +1901,59 @@
     return level;
   }
 
+  function questionnaireRequiredQuestions() {
+    return (state.questionnaireTemplate?.questions || []).filter((question) => question.required !== false);
+  }
+
   function questionnaireAnsweredCount() {
-    return Object.values(state.questionnaireAnswers || {}).filter((answer) => (
-      Number.isInteger(answer?.score) || (answer?.selected_option_ids || []).length > 0
-    )).length;
+    return questionnaireRequiredQuestions().filter((question) => {
+      const answer = state.questionnaireAnswers?.[question.question_id];
+      return Number.isInteger(answer?.score) || (answer?.selected_option_ids || []).length > 0;
+    }).length;
+  }
+
+  function questionnaireDraftKey() {
+    const template = state.questionnaireTemplate;
+    if (!template) return null;
+    return `prism-questionnaire-draft:${state.ownerId}:${template.questionnaire_version}:${template.ruleset_version}`;
+  }
+
+  function saveQuestionnaireDraft() {
+    const key = questionnaireDraftKey();
+    if (!key) return;
+    try {
+      sessionStorage.setItem(key, JSON.stringify({
+        answers: state.questionnaireAnswers || {},
+        section_index: state.questionnaireSectionIndex,
+        saved_at: new Date().toISOString(),
+      }));
+    } catch (_) { /* Session storage may be disabled; the in-memory draft remains usable. */ }
+  }
+
+  function restoreQuestionnaireDraft() {
+    const key = questionnaireDraftKey();
+    if (!key || Object.keys(state.questionnaireAnswers || {}).length) return;
+    try {
+      const draft = JSON.parse(sessionStorage.getItem(key) || "null");
+      if (!draft || !draft.answers || typeof draft.answers !== "object") return;
+      state.questionnaireAnswers = draft.answers;
+      state.questionnaireSectionIndex = Math.max(0, Math.min(
+        Number(draft.section_index) || 0,
+        (state.questionnaireTemplate?.sections?.length || 1) - 1,
+      ));
+    } catch (_) { /* Ignore malformed or unavailable local drafts. */ }
+  }
+
+  function clearQuestionnaireDraft() {
+    const key = questionnaireDraftKey();
+    if (!key) return;
+    try { sessionStorage.removeItem(key); } catch (_) { /* No-op. */ }
+  }
+
+  function invalidateQuestionnairePreview() {
+    if (!state.questionnairePreview) return;
+    state.questionnairePreview = null;
+    if (state.profileSummary) renderProfileSummary(state.profileSummary);
   }
 
   function setQuestionnaireError(message = "") {
@@ -1915,7 +1968,9 @@
   }
 
   function unansweredQuestionIds(questionIds = null) {
-    const ids = questionIds || (state.questionnaireTemplate?.questions || []).map((item) => item.question_id);
+    const questions = state.questionnaireTemplate?.questions || [];
+    const required = new Set(questions.filter((item) => item.required !== false).map((item) => item.question_id));
+    const ids = (questionIds || questions.map((item) => item.question_id)).filter((questionId) => required.has(questionId));
     return ids.filter((questionId) => {
       const answer = state.questionnaireAnswers?.[questionId];
       return !(Number.isInteger(answer?.score) || (answer?.selected_option_ids || []).length > 0);
@@ -1940,8 +1995,10 @@
       answers[question.question_id] = { question_id: question.question_id, selected_option_ids: [optionId] };
     }
     state.questionnaireAnswers = answers;
+    invalidateQuestionnairePreview();
+    saveQuestionnaireDraft();
     setQuestionnaireError("");
-    renderQuestionnaireProgress();
+    renderQuestionnaire();
   }
 
   function saveQuestionnaireScore(question, score) {
@@ -1949,26 +2006,58 @@
       ...(state.questionnaireAnswers || {}),
       [question.question_id]: { question_id: question.question_id, score: Number(score) },
     };
+    invalidateQuestionnairePreview();
+    saveQuestionnaireDraft();
     setQuestionnaireError("");
-    renderQuestionnaireProgress();
+    renderQuestionnaire();
   }
 
   function renderQuestionnaireProgress() {
     const template = state.questionnaireTemplate;
     if (!template) return;
     const answered = questionnaireAnsweredCount();
+    const requiredCount = questionnaireRequiredQuestions().length;
     const progressText = byId("questionnaire-progress-text");
     const progressBar = byId("questionnaire-progress-bar");
     const sectionTitle = byId("questionnaire-section-title");
     const section = currentQuestionnaireSection();
-    if (progressText) progressText.textContent = `${answered} / ${template.questions.length} 题已回答`;
-    if (progressBar) progressBar.style.width = `${answered / template.questions.length * 100}%`;
+    if (progressText) progressText.textContent = `${answered} / ${requiredCount} 道必答题已回答 · Q13 可选`;
+    if (progressBar) progressBar.style.width = `${requiredCount ? answered / requiredCount * 100 : 0}%`;
     if (sectionTitle && section) sectionTitle.textContent = `第 ${state.questionnaireSectionIndex + 1} 步：${section.title}`;
     const status = byId("questionnaire-confirmation-status");
     if (status && !state.profileSummary?.questionnaire_snapshot) {
-      status.textContent = answered === template.questions.length ? "待确认" : `未完成 · 缺 ${template.questions.length - answered} 题`;
-      status.className = answered === template.questions.length ? "status-chip warning" : "status-chip";
+      status.textContent = answered === requiredCount ? "待预览" : `未完成 · 缺 ${requiredCount - answered} 题`;
+      status.className = answered === requiredCount ? "status-chip warning" : "status-chip";
     }
+  }
+
+  function questionnaireAnswerText(question, answer) {
+    if (!answer) return question.required === false ? "未选择，将使用默认推荐" : "未回答";
+    if (Number.isInteger(answer.score)) return `${answer.score} / 5`;
+    const labels = new Map((question.options || []).map((option) => [option.option_id, option.label]));
+    return (answer.selected_option_ids || []).map((optionId) => labels.get(optionId) || optionId).join("、") || "未选择，将使用默认推荐";
+  }
+
+  function renderQuestionnaireReview(panel) {
+    const template = state.questionnaireTemplate;
+    if (!template || state.questionnaireSectionIndex !== template.sections.length - 1 || unansweredQuestionIds().length) return;
+    const review = document.createElement("details");
+    review.className = "questionnaire-review";
+    review.open = true;
+    const summary = document.createElement("summary");
+    summary.textContent = "统一预览本次问卷答案";
+    const list = document.createElement("dl");
+    template.questions.forEach((question) => {
+      const term = document.createElement("dt");
+      term.textContent = `${question.question_id} ${question.prompt}`;
+      const description = document.createElement("dd");
+      description.textContent = questionnaireAnswerText(question, state.questionnaireAnswers?.[question.question_id]);
+      list.append(term, description);
+    });
+    const note = document.createElement("p");
+    note.textContent = "确认答案后生成服务端预览；风险等级和投资者原型不会在此前提前展示。";
+    review.append(summary, list, note);
+    panel.append(review);
   }
 
   function scrollQuestionnaireToTop() {
@@ -1993,6 +2082,7 @@
       if (index === state.questionnaireSectionIndex) button.setAttribute("aria-current", "step");
       button.addEventListener("click", () => {
         state.questionnaireSectionIndex = index;
+        saveQuestionnaireDraft();
         renderQuestionnaire();
         scrollQuestionnaireToTop();
       });
@@ -2013,6 +2103,12 @@
       const legend = document.createElement("legend");
       legend.textContent = `${question.question_id}　${question.prompt}`;
       fieldset.append(legend);
+      if (question.required === false) {
+        const optional = document.createElement("p");
+        optional.className = "questionnaire-optional-note";
+        optional.textContent = "可选；未选择时默认推荐大盘分析、个股分析和组合优化。";
+        fieldset.append(optional);
+      }
       const choices = document.createElement("div");
       choices.className = "questionnaire-options";
       if (question.question_type === "SCORE") {
@@ -2044,7 +2140,6 @@
           input.checked = (state.questionnaireAnswers?.[question.question_id]?.selected_option_ids || []).includes(option.option_id);
           input.addEventListener("change", () => {
             saveQuestionnaireChoice(question, option.option_id, input.checked);
-            if (question.question_type === "MULTI") renderQuestionnaire();
           });
           const span = document.createElement("span");
           span.textContent = option.label;
@@ -2056,10 +2151,17 @@
       panel.append(fieldset);
     });
 
+    renderQuestionnaireReview(panel);
+
     const previous = byId("questionnaire-prev");
     const next = byId("questionnaire-next");
+    const preview = byId("questionnaire-preview");
+    const confirm = byId("questionnaire-confirm");
+    const atLastSection = state.questionnaireSectionIndex === template.sections.length - 1;
     if (previous) previous.disabled = state.questionnaireSectionIndex === 0;
-    if (next) next.hidden = state.questionnaireSectionIndex === template.sections.length - 1;
+    if (next) next.hidden = atLastSection;
+    if (preview) preview.hidden = !atLastSection;
+    if (confirm) confirm.hidden = !atLastSection || !state.questionnairePreview;
     renderQuestionnaireProgress();
   }
 
@@ -2068,7 +2170,10 @@
     if (!template) throw new Error("问卷模板尚未加载。");
     const missing = unansweredQuestionIds();
     if (missing.length) throw new Error(`还有 ${missing.length} 题未回答：${missing.join("、")}`);
-    return template.questions.map((question) => state.questionnaireAnswers[question.question_id]);
+    return template.questions.map((question) => state.questionnaireAnswers[question.question_id] || {
+      question_id: question.question_id,
+      selected_option_ids: [],
+    });
   }
 
   function profileLevelText(profile) {
@@ -2233,6 +2338,67 @@
     return dimensions;
   }
 
+  function profileRuleDetails(summaryText, evidence = [], className = "") {
+    const details = document.createElement("details");
+    details.className = `profile-rule-details ${className}`.trim();
+    const summary = document.createElement("summary");
+    summary.textContent = summaryText;
+    details.append(summary);
+    if (evidence.length) {
+      const list = document.createElement("ul");
+      evidence.forEach((value) => {
+        const item = document.createElement("li");
+        item.textContent = value;
+        list.append(item);
+      });
+      details.append(list);
+    }
+    return details;
+  }
+
+  function renderRecommendedProfileFeatures(presentation) {
+    const section = profileResultSection("推荐功能", "按 Q13 选择顺序保序去重后取前三项；未选择时使用默认推荐。");
+    const labels = {
+      market: ["大盘分析", "查看市场趋势、估值与风险"],
+      industry: ["行业配置", "检查行业暴露与画像边界"],
+      stock: ["个股分析", "查看行情、财务、估值与证据"],
+      fund: ["ETF / 基金筛选", "比较净值、费率、持仓与风险"],
+      bond: ["可转债研究", "查看转股条款、信用与流动性"],
+      optimize: ["组合优化", "复核集中度、风险预算与目标权重"],
+    };
+    const featureIds = {market: "market", industry: "industry", stock: "stock", fund: "fund", bond: "convertible", optimize: "optimization"};
+    const cards = document.createElement("div");
+    cards.className = "profile-feature-cards";
+    (presentation.feats || []).forEach((feat) => {
+      const copy = labels[feat] || [feat, "打开对应功能"];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "profile-feature-card";
+      const title = document.createElement("strong");
+      title.textContent = copy[0];
+      const note = document.createElement("span");
+      note.textContent = copy[1];
+      button.append(title, note);
+      button.addEventListener("click", () => {
+        window.location.hash = "copilot";
+        requestAnimationFrame(() => openAgentFeatureConfig(featureIds[feat]));
+      });
+      cards.append(button);
+    });
+    section.body.append(cards);
+    if (presentation.rule_trace?.feats?.defaulted) {
+      const defaultNote = document.createElement("p");
+      defaultNote.className = "profile-default-recommendation";
+      defaultNote.textContent = "DEFAULT · Q13 未选择场景，当前显示默认推荐。";
+      section.body.append(defaultNote);
+    }
+    const compliance = document.createElement("p");
+    compliance.className = "profile-risk-notice";
+    compliance.textContent = "仅作适当性与服务展示参考，不构成投资建议。";
+    section.body.append(compliance);
+    return section.section;
+  }
+
   function renderProfileSummary(summary, options = {}) {
     const panel = byId("profile-summary-content");
     if (!panel) return;
@@ -2271,17 +2437,31 @@
     identityEyebrow.className = "eyebrow clay";
     identityEyebrow.textContent = "量化投资画像";
     const identityTitle = document.createElement("h4");
-    identityTitle.textContent = presentation.archetype;
+    identityTitle.textContent = presentation.persona || presentation.archetype;
     const identityNote = document.createElement("p");
-    identityNote.textContent = `${presentation.suitability_label} · 风险分 ${profileScore(presentation.risk_score).toFixed(0)} 分`;
+    const fitCopy = presentation.persona_fit == null ? "" : ` · Persona fit ${profileScore(presentation.persona_fit).toFixed(2)}`;
+    identityNote.textContent = `${presentation.suitability_label} · 风险分 ${profileScore(presentation.risk_score).toFixed(0)} 分${fitCopy}`;
     identityCopy.append(identityEyebrow, identityTitle, identityNote);
+    const personaTrace = presentation.rule_trace?.persona;
+    if (personaTrace) {
+      const evidence = [
+        ...(personaTrace.gates || []),
+        `适配度：${profileScore(personaTrace.final_fit).toFixed(2)}`,
+      ];
+      if (Number(personaTrace.conflict_penalty) > 0) evidence.push(`冲突轻惩罚：-${personaTrace.conflict_penalty} · ${personaTrace.conflict_reason}`);
+      identityCopy.append(profileRuleDetails("查看原型依据", evidence, "profile-persona-trace"));
+    }
     const tags = document.createElement("div");
     tags.className = "profile-result-tags";
     (presentation.tags || []).forEach((tagValue) => {
-      const tag = document.createElement("span");
-      tag.className = "profile-result-tag";
-      tag.textContent = tagValue;
-      tags.append(tag);
+      const trace = (presentation.rule_trace?.tags || []).find((item) => item.label === tagValue);
+      if (trace) tags.append(profileRuleDetails(tagValue, trace.evidence || [], "profile-result-tag"));
+      else {
+        const tag = document.createElement("span");
+        tag.className = "profile-result-tag";
+        tag.textContent = tagValue;
+        tags.append(tag);
+      }
     });
     identity.append(identityCopy, tags);
     panel.append(identity);
@@ -2326,10 +2506,16 @@
     strategyList.className = "profile-strategy-list";
     (presentation.service_strategy || []).forEach((item) => {
       const row = document.createElement("li");
-      row.textContent = item;
+      const trace = (presentation.rule_trace?.service_strategy || []).find((entry) => entry.label === item);
+      if (trace) row.append(profileRuleDetails(item, trace.evidence || []));
+      else row.textContent = item;
       strategyList.append(row);
     });
     strategy.body.append(strategyList);
+    const strategyCompliance = document.createElement("p");
+    strategyCompliance.className = "profile-risk-notice";
+    strategyCompliance.textContent = "仅作适当性与服务展示参考，不构成投资建议。";
+    strategy.body.append(strategyCompliance);
     resultPanels.append(strategy.section);
 
     const allocation = profileResultSection("资产配置参考", "当前仅展示画像级参考比例，不生成交易指令。");
@@ -2362,7 +2548,13 @@
     riskNotice.textContent = presentation.risk_notice;
     allocation.body.append(allocationList, equityRange, riskNotice);
     resultPanels.append(allocation.section);
+    if ((presentation.feats || []).length) resultPanels.append(renderRecommendedProfileFeatures(presentation));
     panel.append(resultPanels);
+
+    const compliance = document.createElement("p");
+    compliance.className = "profile-risk-notice profile-compliance-fixed";
+    compliance.textContent = "仅作适当性与服务展示参考，不构成投资建议。";
+    panel.append(compliance);
 
     if (options.preview) {
       const previewNote = document.createElement("div");
@@ -2389,6 +2581,7 @@
     const template = await response.json();
     if (owner !== state.ownerId) return null;
     state.questionnaireTemplate = template;
+    restoreQuestionnaireDraft();
     state.questionnaireSectionIndex = Math.min(state.questionnaireSectionIndex, template.sections.length - 1);
     renderQuestionnaire();
     return template;
@@ -2441,6 +2634,7 @@
       const result = await response.json();
       state.questionnairePreview = result.snapshot;
       renderProfileSummary({ questionnaire_snapshot: result.snapshot, presentation: result.presentation, effective_profile: result.snapshot.profile, display_policy: state.displayPolicy }, { preview: true });
+      renderQuestionnaire();
     } catch (error) {
       setQuestionnaireError(error.message || "问卷预览失败。");
     }
@@ -2450,6 +2644,7 @@
     event?.preventDefault();
     setQuestionnaireError("");
     try {
+      if (!state.questionnairePreview) throw new Error("请先生成并核对问卷预览。");
       const answers = questionnairePayload();
       const response = await fetch("/api/v1/advisor/profile/questionnaire/confirm", {
         method: "POST",
@@ -2465,6 +2660,7 @@
       const result = await response.json();
       state.profile = { questionnaire: result.snapshot.questionnaire, profile: result.snapshot.profile };
       state.questionnairePreview = null;
+      clearQuestionnaireDraft();
       await recomputeBehaviorProfile();
       await loadProfileSummary();
       if (state.portfolio) await refreshPortfolioHealth();
@@ -2491,6 +2687,7 @@
     const grid = document.createElement("div");
     grid.className = "behavior-profile-metrics";
     [
+      ["交易风格", profile.persona || "待形成"],
       ["风险等级", profile.suitability_level],
       ["参考风险分", profile.effective_risk_score],
       ["近 90 日换手", profile.metrics?.turnover_90d_pct == null ? "未采集（不影响问卷画像）" : `${profile.metrics.turnover_90d_pct}%`],
@@ -2598,6 +2795,342 @@
     state.behaviorProfile = result.profile;
     renderBehaviorProfile(result.profile);
     return result;
+  }
+
+  const TRADE_MAPPING_FIELDS = Object.freeze([
+    ["traded_at", "交易时间"],
+    ["security_code", "证券代码"],
+    ["security_name", "证券名称"],
+    ["side", "买卖方向"],
+    ["quantity", "成交数量"],
+    ["price_cny", "成交价格"],
+    ["gross_amount_cny", "成交金额"],
+    ["fee_cny", "手续费"],
+    ["asset_type", "资产类型"],
+    ["currency", "币种"],
+    ["account_alias", "账户"],
+    ["broker_trade_id", "成交编号"],
+    ["account_value_cny", "账户总资产"],
+  ]);
+
+  function setTradeImportError(message = "") {
+    const node = byId("trade-import-error");
+    if (!node) return;
+    node.hidden = !message;
+    node.textContent = message;
+  }
+
+  function setTradeStep(step) {
+    document.querySelectorAll("[data-trade-step]").forEach((item) => {
+      item.classList.toggle("active", Number(item.dataset.tradeStep) <= step);
+    });
+  }
+
+  function tradeMetricCard(label, value, note = "") {
+    const card = document.createElement("article");
+    card.className = "trading-style-metric";
+    const labelNode = document.createElement("span"); labelNode.textContent = label;
+    const valueNode = document.createElement("strong"); valueNode.textContent = value;
+    card.append(labelNode, valueNode);
+    if (note) { const small = document.createElement("small"); small.textContent = note; card.append(small); }
+    return card;
+  }
+
+  function tradeNumber(value, suffix = "") {
+    const number = Number(value);
+    return Number.isFinite(number) ? `${number.toLocaleString("zh-CN", {maximumFractionDigits: 2})}${suffix}` : "—";
+  }
+
+  function renderTradingStyleProfile(profile) {
+    state.tradingStyleProfile = profile;
+    const panel = byId("trading-style-summary-content");
+    const status = byId("trading-style-status");
+    if (!panel || !status) return;
+    clear(panel);
+    status.textContent = profile?.status || "INSUFFICIENT_DATA";
+    status.className = `status-chip ${profile?.status === "CALCULATED" ? "ready" : profile?.status === "PRELIMINARY" ? "warning" : ""}`.trim();
+    const metrics = profile?.metrics;
+    if (!metrics) {
+      const empty = document.createElement("div"); empty.className = "empty-state"; empty.textContent = "尚未形成交易风格结果。"; panel.append(empty); return;
+    }
+    panel.append(
+      tradeMetricCard("主风格", profile.primary_style || "样本不足", `${tradeNumber(Number(profile.confidence) * 100, "%")} 置信度`),
+      tradeMetricCard("月均交易", tradeNumber(metrics.trades_per_month, " 笔"), `${metrics.trade_count} 笔 · ${tradeNumber(metrics.observed_span_days, " 天")}`),
+      tradeMetricCard("中位持有期", tradeNumber(metrics.median_holding_days, " 天"), `FIFO 配对覆盖 ${tradeNumber(Number(metrics.matched_sell_coverage) * 100, "%")}`),
+      tradeMetricCard("单笔中位金额", metrics.median_trade_amount_cny == null ? "—" : `¥${tradeNumber(metrics.median_trade_amount_cny)}`, "按数量 × 成交价"),
+      tradeMetricCard("标的 HHI", tradeNumber(metrics.symbol_hhi), `前三标的 ${tradeNumber(metrics.top3_symbol_share_pct, "%")}`),
+      tradeMetricCard("90 日换手率", tradeNumber(metrics.turnover_90d_pct, "%"), metrics.turnover_90d_pct == null ? "缺少账户资产观测" : "成交额 ÷ 账户资产均值"),
+    );
+    const boundary = byId("trading-style-risk-boundary");
+    if (boundary) {
+      clear(boundary);
+      const questionnaire = state.profileSummary?.questionnaire_snapshot?.profile || null;
+      const behavior = state.behaviorProfile;
+      const effective = state.profileSummary?.effective_profile || questionnaire;
+      const title = document.createElement("div"); title.className = "callout-title"; title.textContent = "双轨风险边界";
+      const copy = document.createElement("p");
+      if (!questionnaire) copy.textContent = "尚未形成正式问卷评级；交易记录仅用于描述行为风格。";
+      else if (!behavior?.behavior_risk_score) copy.textContent = `正式问卷 ${tradeNumber(questionnaire.risk_score, " 分")}；当前交易/快照证据不足，不调整正式等级。`;
+      else if (Number(behavior.behavior_risk_score) > Number(questionnaire.risk_score)) copy.textContent = `OVERBOUND：观察行为 ${tradeNumber(behavior.behavior_risk_score, " 分")} 高于问卷 ${tradeNumber(questionnaire.risk_score, " 分")}，正式等级不予上调。`;
+      else copy.textContent = `CALCULATED：问卷 ${tradeNumber(questionnaire.risk_score, " 分")}，观察行为 ${tradeNumber(behavior.behavior_risk_score, " 分")}，当前有效 ${tradeNumber(effective?.risk_score, " 分")}。`;
+      boundary.append(title, copy); boundary.hidden = false;
+    }
+    if (profile.data_gaps?.length) {
+      const gap = document.createElement("article"); gap.className = "trading-style-metric";
+      const label = document.createElement("span"); label.textContent = "数据缺口";
+      const value = document.createElement("small"); value.textContent = profile.data_gaps.join("；");
+      gap.append(label, value); panel.append(gap);
+    }
+  }
+
+  async function loadTradingStyleProfile() {
+    const response = await fetch("/api/v1/advisor/trading-style/profile", {headers: {"X-Owner-ID": state.ownerId}});
+    if (!response.ok) throw await apiError(response);
+    const result = await response.json();
+    renderTradingStyleProfile(result.profile);
+    return result.profile;
+  }
+
+  function renderTradeMapping(preview) {
+    const panel = byId("trade-mapping-panel");
+    const fields = byId("trade-mapping-fields");
+    if (!panel || !fields) return;
+    const sheetField = byId("trade-sheet-field");
+    const sheetSelector = byId("trade-sheet-selector");
+    clear(sheetSelector);
+    (preview.sheets || []).forEach((sheet) => {
+      const option = document.createElement("option"); option.value = sheet; option.textContent = sheet;
+      option.selected = sheet === preview.selected_sheet; sheetSelector.append(option);
+    });
+    sheetField.hidden = (preview.sheets || []).length <= 1;
+    clear(fields);
+    TRADE_MAPPING_FIELDS.forEach(([key, label]) => {
+      const wrapper = document.createElement("label"); wrapper.textContent = label;
+      const select = document.createElement("select"); select.dataset.tradeMap = key;
+      const blank = document.createElement("option"); blank.value = ""; blank.textContent = "未映射"; select.append(blank);
+      preview.detected_columns.forEach((column) => {
+        const option = document.createElement("option"); option.value = column; option.textContent = column;
+        option.selected = preview.suggested_mapping?.[key] === column; select.append(option);
+      });
+      wrapper.append(select); fields.append(wrapper);
+    });
+    panel.hidden = false;
+    byId("trade-preview-count").textContent = `${preview.rows.length} 行 · PASS ${preview.accepted_count} · 待复核 ${preview.review_count}`;
+    renderTradePreviewRows(preview.rows);
+  }
+
+  function localDateTimeInput(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) return String(value).replace(" ", "T").slice(0, 16);
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.valueOf() - offset).toISOString().slice(0, 16);
+  }
+
+  function renderTradePreviewRows(rows) {
+    const tbody = byId("trade-preview-rows"); clear(tbody);
+    rows.forEach((row, index) => {
+      const proposed = row.proposed || {};
+      const tr = document.createElement("tr"); tr.dataset.previewIndex = String(index); tr.dataset.originalStatus = row.status;
+      const statusCell = document.createElement("td");
+      const badge = document.createElement("span"); badge.className = `cf-verdict ${row.status === "PASS" ? "cf-verdict-pass" : "cf-verdict-warning"}`; badge.textContent = row.status; statusCell.append(badge); tr.append(statusCell);
+      const fields = [
+        ["traded_at", "datetime-local", localDateTimeInput(proposed.traded_at)],
+        ["security_code", "text", proposed.security_code || ""],
+        ["security_name", "text", proposed.security_name || ""],
+        ["side", "select", proposed.side || ""],
+        ["quantity", "number", proposed.quantity || ""],
+        ["price_cny", "number", proposed.price_cny || ""],
+        ["gross_amount_cny", "number", proposed.gross_amount_cny || ""],
+      ];
+      fields.forEach(([key, type, value]) => {
+        const td = document.createElement("td");
+        let input;
+        if (type === "select") {
+          input = document.createElement("select");
+          [["", "请选择"], ["BUY", "买入"], ["SELL", "卖出"]].forEach(([optionValue, text]) => {
+            const option = document.createElement("option"); option.value = optionValue; option.textContent = text; option.selected = optionValue === value; input.append(option);
+          });
+        } else {
+          input = document.createElement("input"); input.type = type; input.value = value; if (type === "number") { input.min = "0"; input.step = "0.0001"; }
+        }
+        input.dataset.tradeField = key; td.append(input); tr.append(td);
+      });
+      const issueCell = document.createElement("td"); issueCell.textContent = (row.issues || []).join("；") || "—"; tr.append(issueCell);
+      tbody.append(tr);
+    });
+  }
+
+  async function previewTradeImport() {
+    setTradeImportError("");
+    const input = byId("trade-import-files");
+    const files = [...(input?.files || [])];
+    if (!files.length) { setTradeImportError("请选择 CSV、XLSX 或交易截图。"); return; }
+    const button = byId("preview-trade-import"); button.disabled = true;
+    try {
+      const form = new FormData(); files.forEach(file => form.append("files", file));
+      const selectedSheet = byId("trade-sheet-selector")?.value;
+      if (selectedSheet) form.append("sheet", selectedSheet);
+      const response = await fetch("/api/v1/advisor/trading-history/import/preview", {method: "POST", headers: {"X-Owner-ID": state.ownerId}, body: form});
+      if (!response.ok) throw await apiError(response);
+      const preview = await response.json(); state.tradeImportPreview = preview;
+      renderTradeMapping(preview); setTradeStep(2);
+      byId("trade-import-status").textContent = preview.review_count ? "REVIEW_REQUIRED" : "PASS";
+    } catch (error) { setTradeImportError(error.message); }
+    finally { button.disabled = false; }
+  }
+
+  function applyTradeMapping() {
+    const preview = state.tradeImportPreview; if (!preview) return;
+    const mapping = Object.fromEntries([...document.querySelectorAll("[data-trade-map]")].map(select => [select.dataset.tradeMap, select.value]));
+    document.querySelectorAll("#trade-preview-rows tr").forEach((tr) => {
+      const row = preview.rows[Number(tr.dataset.previewIndex)];
+      for (const [field, column] of Object.entries(mapping)) {
+        if (!column) continue;
+        const input = tr.querySelector(`[data-trade-field="${field}"]`);
+        let value = row.raw_values?.[column] ?? "";
+        if (field === "side") value = /卖|sell/i.test(value) ? "SELL" : /买|buy/i.test(value) ? "BUY" : "";
+        if (field === "traded_at") value = localDateTimeInput(value);
+        if (["quantity", "price_cny", "gross_amount_cny", "fee_cny", "account_value_cny"].includes(field)) value = String(value).replaceAll(",", "").replace(/[^0-9.\-]/g, "");
+        if (field === "asset_type") {
+          const normalized = String(value).toLowerCase();
+          value = normalized.includes("etf") ? "ETF" : normalized.includes("基金") ? "MUTUAL_FUND" : normalized.includes("转债") || normalized.includes("可转") ? "CONVERTIBLE_BOND" : normalized.includes("股票") || normalized.includes("stock") ? "STOCK" : normalized ? "OTHER" : null;
+        }
+        row.proposed[field] = value || null;
+        if (input) input.value = value || "";
+      }
+    });
+  }
+
+  function collectTradeConfirmRows() {
+    const preview = state.tradeImportPreview;
+    const rows = [];
+    document.querySelectorAll("#trade-preview-rows tr").forEach((tr) => {
+      if (tr.dataset.originalStatus === "OVERBOUND") return;
+      const value = (field) => tr.querySelector(`[data-trade-field="${field}"]`)?.value.trim() || "";
+      const time = value("traded_at"), code = value("security_code"), name = value("security_name"), side = value("side");
+      const quantity = Number(value("quantity")), price = Number(value("price_cny"));
+      const amountText = value("gross_amount_cny"), amount = amountText ? Number(amountText) : quantity * price;
+      if (!time || (!code && !name) || !side || !(quantity > 0) || !(price > 0) || !(amount > 0)) throw new Error(`第 ${Number(tr.dataset.previewIndex) + 1} 行仍有必填字段缺失或数值无效。`);
+      const source = preview.rows[Number(tr.dataset.previewIndex)];
+      const currency = String(source.proposed?.currency || "CNY").trim().toUpperCase();
+      if (!["CNY", "RMB", "人民币"].includes(currency)) throw new Error(`第 ${Number(tr.dataset.previewIndex) + 1} 行不是人民币交易，首版不支持导入。`);
+      rows.push({
+        traded_at: new Date(time).toISOString(), security_code: code || null, security_name: name || null, side,
+        quantity: String(quantity), price_cny: String(price), gross_amount_cny: String(amount),
+        fee_cny: source.proposed?.fee_cny || "0", asset_type: source.proposed?.asset_type || null,
+        account_alias: source.proposed?.account_alias || "默认账户", broker_trade_id: source.proposed?.broker_trade_id || null,
+        account_value_cny: source.proposed?.account_value_cny || null, source_row: source.row_number,
+        source_confidence: source.confidence, review_notes: source.issues || [],
+      });
+    });
+    if (!rows.length) throw new Error("没有可确认的有效交易记录。");
+    return rows;
+  }
+
+  async function refreshTradeDependentProfiles(styleProfile) {
+    renderTradingStyleProfile(styleProfile);
+    if (state.profile?.profile) {
+      await loadProfileSummary();
+      renderTradingStyleProfile(styleProfile);
+    }
+  }
+
+  async function confirmTradeImport() {
+    const preview = state.tradeImportPreview; if (!preview) return;
+    setTradeImportError("");
+    const button = byId("confirm-trade-import"); button.disabled = true;
+    try {
+      const rows = collectTradeConfirmRows();
+      const response = await fetch("/api/v1/advisor/trading-history/imports", {
+        method: "POST", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId},
+        body: JSON.stringify({schema_version: "trade-import-confirm-request.v1", owner_id: state.ownerId, source_type: preview.source_type, source_digest: preview.source_digest, file_count: preview.file_count, rows}),
+      });
+      if (!response.ok) throw await apiError(response);
+      const result = await response.json(); setTradeStep(3);
+      const duplicateCount = Number(result.batch?.duplicate_count || 0);
+      byId("trade-import-status").textContent = duplicateCount ? `CALCULATED · 排除 ${duplicateCount} 笔疑似重复` : "CALCULATED";
+      if (duplicateCount) byId("trade-confirm-hint").textContent = `已按默认规则排除 ${duplicateCount} 笔精确或疑似重复交易。`;
+      await refreshTradeDependentProfiles(result.style_profile);
+      await loadTradeRecords(true);
+    } catch (error) { setTradeImportError(error.message); }
+    finally { button.disabled = false; }
+  }
+
+  function tradeListQuery(cursor = 0) {
+    const params = new URLSearchParams({cursor: String(cursor), limit: "50"});
+    const filters = [["security", "trade-filter-security"], ["side", "trade-filter-side"], ["status", "trade-filter-status"], ["date_from", "trade-filter-from"], ["date_to", "trade-filter-to"]];
+    filters.forEach(([key, id]) => { const value = byId(id)?.value.trim(); if (value) params.set(key, value); });
+    return params.toString();
+  }
+
+  function renderTradeRecords() {
+    const tbody = byId("trade-history-rows"); clear(tbody);
+    if (!state.tradeRecords.length) { const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 8; td.className = "empty-state"; td.textContent = "暂无符合条件的交易记录。"; tr.append(td); tbody.append(tr); }
+    state.tradeRecords.forEach((item) => {
+      const tr = document.createElement("tr"); if (item.status === "WITHDRAWN") tr.className = "trade-row-withdrawn";
+      const values = [new Date(item.traded_at).toLocaleString("zh-CN"), `${item.security_name || ""}${item.security_code ? ` · ${item.security_code}` : ""}`, item.side === "BUY" ? "买入" : "卖出", tradeNumber(item.quantity), `¥${tradeNumber(item.price_cny)}`, `¥${tradeNumber(item.gross_amount_cny)}`, `v${item.revision} · ${item.status}`];
+      values.forEach((value) => { const td = document.createElement("td"); td.textContent = value; tr.append(td); });
+      const actions = document.createElement("td"); actions.className = "trade-row-actions";
+      if (item.status === "ACTIVE") {
+        const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "编辑"; edit.addEventListener("click", () => openTradeEdit(item));
+        const withdraw = document.createElement("button"); withdraw.type = "button"; withdraw.textContent = "撤销"; withdraw.addEventListener("click", () => withdrawTrade(item)); actions.append(edit, withdraw);
+      } else {
+        const restore = document.createElement("button"); restore.type = "button"; restore.textContent = "恢复"; restore.addEventListener("click", () => restoreTrade(item)); actions.append(restore);
+      }
+      tr.append(actions); tbody.append(tr);
+    });
+    byId("load-more-trades").hidden = state.tradeListCursor == null;
+  }
+
+  async function loadTradeRecords(reset = true) {
+    const cursor = reset ? 0 : state.tradeListCursor;
+    if (cursor == null) return;
+    const response = await fetch(`/api/v1/advisor/trading-history/trades?${tradeListQuery(cursor)}`, {headers: {"X-Owner-ID": state.ownerId}});
+    if (!response.ok) throw await apiError(response);
+    const result = await response.json();
+    state.tradeRecords = reset ? result.items : [...state.tradeRecords, ...result.items]; state.tradeListCursor = result.next_cursor;
+    byId("trade-history-count").textContent = `${result.total} 笔`; renderTradeRecords();
+  }
+
+  function openTradeEdit(item) {
+    byId("trade-edit-id").value = item.trade_id; byId("trade-edit-revision").value = item.revision;
+    byId("trade-edit-time").value = localDateTimeInput(item.traded_at); byId("trade-edit-side").value = item.side;
+    byId("trade-edit-code").value = item.security_code || ""; byId("trade-edit-name").value = item.security_name || "";
+    byId("trade-edit-quantity").value = item.quantity; byId("trade-edit-price").value = item.price_cny;
+    byId("trade-edit-fee").value = item.fee_cny; byId("trade-edit-account").value = item.account_alias;
+    byId("trade-edit-error").hidden = true; byId("trade-edit-dialog").showModal();
+  }
+
+  async function saveTradeEdit(event) {
+    event.preventDefault(); const error = byId("trade-edit-error"); error.hidden = true;
+    const id = byId("trade-edit-id").value;
+    try {
+      const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(id)}`, {method: "PATCH", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId}, body: JSON.stringify({
+        schema_version: "trade-update-request.v1", expected_revision: Number(byId("trade-edit-revision").value), traded_at: new Date(byId("trade-edit-time").value).toISOString(),
+        security_code: byId("trade-edit-code").value.trim() || null, security_name: byId("trade-edit-name").value.trim() || null,
+        side: byId("trade-edit-side").value, quantity: byId("trade-edit-quantity").value, price_cny: byId("trade-edit-price").value,
+        fee_cny: byId("trade-edit-fee").value || "0", account_alias: byId("trade-edit-account").value.trim(),
+      })});
+      if (!response.ok) throw await apiError(response);
+      const result = await response.json(); byId("trade-edit-dialog").close(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
+    } catch (exception) { error.textContent = exception.message; error.hidden = false; }
+  }
+
+  async function withdrawTrade(item) {
+    if (!window.confirm("确认撤销该笔交易？撤销后将立即退出全部风格与风险计算，并可恢复。")) return;
+    const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(item.trade_id)}?expected_revision=${item.revision}`, {method: "DELETE", headers: {"X-Owner-ID": state.ownerId}});
+    if (!response.ok) throw await apiError(response); const result = await response.json(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
+  }
+
+  async function restoreTrade(item) {
+    const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(item.trade_id)}/restore`, {method: "POST", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId}, body: JSON.stringify({schema_version: "trade-revision-request.v1", expected_revision: item.revision})});
+    if (!response.ok) throw await apiError(response); const result = await response.json(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
+  }
+
+  async function loadTradingStyleWorkspace() {
+    if (!state.profileSummary) await loadProfileSummary();
+    await Promise.all([loadTradingStyleProfile(), loadTradeRecords(true)]);
   }
 
   function setPortfolioContextStatus(message, className = "") {
@@ -5948,6 +6481,7 @@
     portfolio: "portfolio",
     overview: "portfolio",
     market: "market",
+    "trading-style": "trading-style",
     "portfolio-optimization": "portfolio",
     "portfolio-rebalancing": "portfolio",
     "scenario-simulation": "portfolio",
@@ -6248,19 +6782,22 @@
     const copilotSec = byId("copilot");
     const overviewSec = byId("overview");
     const marketSec = byId("market");
+    const tradingStyleSec = byId("trading-style");
     const expertSec = byId("expert-workspace-grid");
     const pageTabs = byId("workspace-page-tabs");
 
     const isOverview = (requestedId === "overview");
     const isMarket = (requestedId === "market");
+    const isTradingStyle = (requestedId === "trading-style");
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
 
     if (copilotSec) copilotSec.hidden = !isCopilot;
     if (overviewSec) overviewSec.hidden = !isOverview;
     if (marketSec) marketSec.hidden = !isMarket;
+    if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
-    if (pageTabs) pageTabs.hidden = isCopilot;
+    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle;
 
     setExpertMode(isWorkspacePanel);
 
@@ -6281,7 +6818,7 @@
         if (selected) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
       });
-      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isWorkspacePanel ? requestedNode : null;
+      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isTradingStyle ? tradingStyleSec : isWorkspacePanel ? requestedNode : null;
       const pageHeading = pageContainer?.querySelector(":scope > .page-heading, :scope > .overview-header-bar, :scope > .panel-head, :scope > .panel-header, :scope > header");
       if (pageHeading) pageHeading.insertAdjacentElement("afterend", pageTabs);
       else if (pageContainer) pageContainer.prepend(pageTabs);
@@ -6300,6 +6837,9 @@
       renderOverviewWorkspace();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (isMarket) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (isTradingStyle) {
+      loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (isCopilot) {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -6324,6 +6864,7 @@
       copilot: "#copilot",
       portfolio: "#overview",
       market: "#market",
+      "trading-style": "#trading-style",
       research: "#stock-research",
       decisions: "#recommendation-history",
       profile: "#profile",
@@ -11395,9 +11936,10 @@
 
   async function replacePortfolioRows(positions, cash) {
     const owner = state.ownerId, mode = state.dataMode;
+    const normalizedCash = positions.length ? cash || 0 : 0;
     const response = await fetch("/api/v1/advisor/portfolio/current", {
       method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
-      body: JSON.stringify({owner_id: owner, data_mode: mode, positions, cash_cny: cash || 0}),
+      body: JSON.stringify({owner_id: owner, data_mode: mode, positions, cash_cny: normalizedCash}),
     });
     if (!response.ok) throw await apiError(response);
     const data = await response.json();
@@ -12049,6 +12591,7 @@
   const questionnairePrevious = byId("questionnaire-prev");
   if (questionnairePrevious) questionnairePrevious.addEventListener("click", () => {
     state.questionnaireSectionIndex = Math.max(0, state.questionnaireSectionIndex - 1);
+    saveQuestionnaireDraft();
     renderQuestionnaire();
     scrollQuestionnaireToTop();
   });
@@ -12064,6 +12607,7 @@
       (state.questionnaireTemplate?.sections?.length || 1) - 1,
       state.questionnaireSectionIndex + 1,
     );
+    saveQuestionnaireDraft();
     renderQuestionnaire();
     scrollQuestionnaireToTop();
   });
@@ -12250,6 +12794,15 @@
     const input = byId("copilot-natural-input");
     if (input) { input.value = `请分析【${name}】近期走势，并说明数据边界和风险。`; input.focus(); }
   });
+  byId("preview-trade-import")?.addEventListener("click", previewTradeImport);
+  byId("apply-trade-mapping")?.addEventListener("click", applyTradeMapping);
+  byId("trade-sheet-selector")?.addEventListener("change", () => previewTradeImport());
+  byId("confirm-trade-import")?.addEventListener("click", confirmTradeImport);
+  byId("refresh-trading-style")?.addEventListener("click", () => loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message)));
+  byId("apply-trade-filters")?.addEventListener("click", () => loadTradeRecords(true).catch(error => setTradeImportError(error.message)));
+  byId("load-more-trades")?.addEventListener("click", () => loadTradeRecords(false).catch(error => setTradeImportError(error.message)));
+  byId("trade-edit-form")?.addEventListener("submit", saveTradeEdit);
+  byId("trade-edit-cancel")?.addEventListener("click", () => byId("trade-edit-dialog").close());
   byId("theme-toggle")?.addEventListener("click", () => {
     const current = state.userPreferences?.theme || (document.body.classList.contains("prism-theme-dark") ? "DARK" : "LIGHT");
     saveThemePreference(current === "DARK" ? "LIGHT" : "DARK");

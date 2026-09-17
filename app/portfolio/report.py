@@ -291,7 +291,7 @@ def _profile_projection(
         profile_id=profile.profile_id,
         profile_version=profile.profile_version,
         suitability_level=presentation.suitability_level.value,
-        archetype=presentation.archetype,
+        archetype=presentation.persona or presentation.archetype,
         risk_score=profile.risk_score,
         max_single_asset_weight_pct=budget.max_single_asset_weight_pct,
         equity_weight_pct=equity_weight_pct,

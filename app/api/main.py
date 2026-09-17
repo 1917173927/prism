@@ -201,6 +201,25 @@ from app.portfolio.health import (
     calculate_portfolio_health,
 )
 from app.profile import RiskQuestionnaire
+from app.trading_history import (
+    HistoricalTradeRecord,
+    ImportLimitError,
+    ImportParseError,
+    TradeBatchListResponse,
+    TradeImportBatch,
+    TradeImportConfirmRequest,
+    TradeImportConfirmResponse,
+    TradeImportPreview,
+    TradeListResponse,
+    TradeMutationResponse,
+    TradeRecordStatus,
+    TradeRevisionRequest,
+    TradeUpdateRequest,
+    TradingStyleLookupResponse,
+    behavior_events_from_trades,
+    calculate_trading_style,
+    preview_trade_files,
+)
 from app.providers import (
     ProviderOperation,
     ProviderRequest,
@@ -234,6 +253,10 @@ from app.providers.wencai_normalization import (
     decode_stock_quote_fields,
 )
 from app.providers.security_codes import invalid_explicit_convertible_bond_code
+from app.providers.security_directory import (
+    OfficialSecurityDirectoryProvider,
+    SecurityDirectoryError,
+)
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
@@ -497,6 +520,7 @@ def create_app(
     industry_provider: EastmoneyIndustryProvider | None = None,
     yahoo_finance_provider: YahooFinanceProvider | None = None,
     etnet_provider: EtNetProvider | None = None,
+    security_directory_provider: OfficialSecurityDirectoryProvider | None = None,
     # Backward-compatible injection point for existing iFinD provider tests.
     ifind_quant_provider: IFindQuantProvider | None = None,
     secret_store: ProtectedSecretStore | None = None,
@@ -700,6 +724,9 @@ def create_app(
     )
     active_yahoo_finance = yahoo_finance_provider or ifind_quant_provider or YahooFinanceProvider()
     active_etnet = etnet_provider or EtNetProvider()
+    active_security_directory = (
+        security_directory_provider or OfficialSecurityDirectoryProvider()
+    )
     live_probe_lock = asyncio.Lock()
 
     async def probe_wencai_contract() -> tuple[bool, tuple[dict[str, Any], ...]]:
@@ -732,26 +759,34 @@ def create_app(
         return passed, results
 
     async def resolve_ocr_security_identities(result: dict) -> None:
-        """Fill missing OCR codes only when the live directory gives one exact match."""
-        resolver = getattr(active_live_finance, "resolve_security_identity", None)
-        if resolver is None or not getattr(active_live_finance, "is_configured", False):
-            return
-        unresolved = [
+        """Bind OCR names to one exact directory identity, including wrong OCR codes."""
+        candidates = [
             position for position in result.get("positions", [])
-            if not re.fullmatch(
-                r"\d{6}\.(?:SH|SZ|BJ)", str(position.get("asset_id") or "").upper()
-            ) and str(position.get("name") or "").strip()
+            if str(position.get("name") or "").strip()
         ]
         semaphore = asyncio.Semaphore(4)
 
         async def resolve(position: dict) -> None:
+            identity = None
             try:
                 async with semaphore:
-                    identity = await resolver(str(position["name"]).strip())
-            except (FuyaoProviderError, TimeoutError, TypeError, ValueError):
-                return
+                    identity = await active_security_directory.resolve_security_identity(
+                        str(position["name"]).strip()
+                    )
+            except (SecurityDirectoryError, TimeoutError, TypeError, ValueError):
+                identity = None
+            if identity is None:
+                resolver = getattr(active_live_finance, "resolve_security_identity", None)
+                if resolver is not None and getattr(active_live_finance, "is_configured", False):
+                    try:
+                        async with semaphore:
+                            identity = await resolver(str(position["name"]).strip())
+                    except (FuyaoProviderError, TimeoutError, TypeError, ValueError):
+                        identity = None
             if not identity:
                 return
+            original_asset_id = str(position.get("asset_id") or "").strip().upper()
+            corrected = bool(original_asset_id and original_asset_id != identity["asset_id"])
             position["asset_id"] = identity["asset_id"]
             position["name"] = identity.get("name") or position["name"]
             position["identity_candidates"] = [identity]
@@ -762,9 +797,11 @@ def create_app(
                 reason for reason in (position.get("review_reasons") or [])
                 if reason != "SECURITY_IDENTITY_REQUIRED"
             ]
+            if corrected and "SECURITY_CODE_CORRECTED" not in position["review_reasons"]:
+                position["review_reasons"].append("SECURITY_CODE_CORRECTED")
             position["needs_review"] = bool(position["review_reasons"])
 
-        await asyncio.gather(*(resolve(position) for position in unresolved))
+        await asyncio.gather(*(resolve(position) for position in candidates))
         result["has_low_confidence_items"] = any(
             bool(position.get("needs_review"))
             for position in result.get("positions", [])
@@ -1171,6 +1208,266 @@ def create_app(
             event_ids=tuple(item.event_id for item in stored),
         )
 
+    def _recalculate_trading_style(owner_id: str):
+        records = active_store.list_trade_records(owner_id)
+        current = active_store.get_latest_trading_style_profile(owner_id)
+        profile = calculate_trading_style(
+            owner_id,
+            records,
+            calculated_at=active_clock(),
+            profile_version=1 if current is None else current.profile_version + 1,
+        )
+        return active_store.save_trading_style_profile(profile)
+
+    def _recalculate_behavior_from_confirmed_facts(owner_id: str):
+        """Recompute behavior evidence after ledger changes when a questionnaire exists."""
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+        if snapshot is None:
+            return None
+        events = active_store.list_behavior_events(owner_id)
+        historical_trade_events = behavior_events_from_trades(active_store.list_trade_records(owner_id))
+        legacy_ids = {item.event_id for item in events}
+        events = events + tuple(item for item in historical_trade_events if item.event_id not in legacy_ids)
+        current = active_store.get_latest_behavior_profile(owner_id)
+        profile = calculate_behavior_profile(
+            snapshot.profile,
+            events,
+            calculated_at=active_clock(),
+            display_policy=active_store.get_display_policy(owner_id),
+            profile_version=1 if current is None else current.profile_version + 1,
+        )
+        return active_store.save_behavior_profile(profile)
+
+    @api.post(
+        "/api/v1/advisor/trading-history/import/preview",
+        response_model=TradeImportPreview,
+    )
+    async def preview_trading_history_import(
+        files: list[UploadFile] = File(...),
+        sheet: str | None = Form(default=None),
+        owner_id: str = Depends(owner_dependency),
+    ):
+        del owner_id
+        buffered: list[tuple[str, str, bytes]] = []
+        try:
+            for file in files:
+                limit = 10 * 1024 * 1024 + 1
+                content = await file.read(limit)
+                buffered.append((file.filename or "upload", file.content_type or "application/octet-stream", content))
+            return preview_trade_files(buffered, selected_sheet=sheet)
+        except ImportLimitError as exc:
+            return _error_response(413, "TRADE_IMPORT_OVERBOUND", str(exc))
+        except ImportParseError as exc:
+            return _error_response(422, "TRADE_IMPORT_REVIEW_REQUIRED", str(exc))
+
+    @api.post(
+        "/api/v1/advisor/trading-history/imports",
+        response_model=TradeImportConfirmResponse,
+    )
+    def confirm_trading_history_import(
+        request: TradeImportConfirmRequest,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        if request.owner_id != owner_id:
+            raise StoreOwnerError("trade import owner does not match owner scope")
+        now = active_clock()
+        batch_id = "trade-batch:" + sha256(f"{owner_id}:{request.source_digest}".encode("utf-8")).hexdigest()[:32]
+        records: list[HistoricalTradeRecord] = []
+        seen_ids: set[str] = set()
+        existing_records = active_store.list_trade_records(owner_id)
+        existing_ids = {item.trade_id for item in existing_records}
+        existing_signatures = {
+            (item.account_alias, item.traded_at.isoformat(), item.security_code or item.security_name,
+             item.side.value, str(item.quantity), str(item.price_cny))
+            for item in existing_records
+        }
+        seen_signatures: set[tuple[str, str, str | None, str, str, str]] = set()
+        duplicate_count = 0
+        for row in request.rows:
+            identity = row.broker_trade_id or f"{request.source_digest}:{row.source_row}"
+            trade_id = "historical-trade:" + sha256(
+                f"{owner_id}:{row.account_alias}:{identity}".encode("utf-8")
+            ).hexdigest()[:32]
+            signature = (
+                row.account_alias, row.traded_at.isoformat(), row.security_code or row.security_name,
+                row.side.value, str(row.quantity), str(row.price_cny),
+            )
+            if trade_id in seen_ids or trade_id in existing_ids or signature in seen_signatures or signature in existing_signatures:
+                duplicate_count += 1
+                continue
+            seen_ids.add(trade_id)
+            seen_signatures.add(signature)
+            amount = row.gross_amount_cny or row.quantity * row.price_cny
+            records.append(HistoricalTradeRecord(
+                trade_id=trade_id,
+                owner_id=owner_id,
+                batch_id=batch_id,
+                revision=1,
+                traded_at=row.traded_at,
+                security_code=row.security_code,
+                security_name=row.security_name,
+                side=row.side,
+                quantity=row.quantity,
+                price_cny=row.price_cny,
+                gross_amount_cny=amount,
+                fee_cny=row.fee_cny,
+                asset_type=row.asset_type,
+                account_alias=row.account_alias,
+                broker_trade_id=row.broker_trade_id,
+                account_value_cny=row.account_value_cny,
+                source_row=row.source_row,
+                source_confidence=row.source_confidence,
+                created_at=now,
+                updated_at=now,
+                review_notes=row.review_notes,
+            ))
+        batch = TradeImportBatch(
+            batch_id=batch_id,
+            owner_id=owner_id,
+            source_type=request.source_type,
+            source_digest=request.source_digest,
+            file_count=request.file_count,
+            accepted_count=len(records),
+            duplicate_count=duplicate_count,
+            rejected_count=0,
+            confirmed_at=now,
+        )
+        stored_batch, stored_records, created = active_store.save_trade_import(batch, tuple(records))
+        profile = _recalculate_trading_style(owner_id) if created else active_store.get_latest_trading_style_profile(owner_id)
+        if profile is None:
+            profile = _recalculate_trading_style(owner_id)
+        if created:
+            _recalculate_behavior_from_confirmed_facts(owner_id)
+        return TradeImportConfirmResponse(batch=stored_batch, trades=stored_records, style_profile=profile)
+
+    @api.get(
+        "/api/v1/advisor/trading-history/imports",
+        response_model=TradeBatchListResponse,
+    )
+    def list_trading_history_imports(
+        cursor: int = Query(0, ge=0),
+        limit: int = Query(50, ge=1, le=100),
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradeBatchListResponse:
+        items = active_store.list_trade_imports(owner_id)
+        page = items[cursor:cursor + limit]
+        next_cursor = cursor + limit if cursor + limit < len(items) else None
+        return TradeBatchListResponse(items=page, next_cursor=next_cursor, total=len(items))
+
+    @api.get(
+        "/api/v1/advisor/trading-history/trades",
+        response_model=TradeListResponse,
+    )
+    def list_trading_history_trades(
+        cursor: int = Query(0, ge=0),
+        limit: int = Query(50, ge=1, le=100),
+        security: str | None = Query(default=None, max_length=100),
+        side: str | None = Query(default=None, pattern="^(BUY|SELL)$"),
+        status: str | None = Query(default=None, pattern="^(ACTIVE|WITHDRAWN)$"),
+        date_from: date | None = Query(default=None),
+        date_to: date | None = Query(default=None),
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradeListResponse:
+        items = active_store.list_trade_records(owner_id)
+        filtered = []
+        needle = security.casefold().strip() if security else ""
+        for item in items:
+            if needle and needle not in (item.security_code or "").casefold() and needle not in (item.security_name or "").casefold():
+                continue
+            if side and item.side.value != side:
+                continue
+            if status and item.status.value != status:
+                continue
+            if date_from and item.traded_at.date() < date_from:
+                continue
+            if date_to and item.traded_at.date() > date_to:
+                continue
+            filtered.append(item)
+        page = tuple(filtered[cursor:cursor + limit])
+        next_cursor = cursor + limit if cursor + limit < len(filtered) else None
+        return TradeListResponse(items=page, next_cursor=next_cursor, total=len(filtered))
+
+    def _trade_mutation_result(record: HistoricalTradeRecord) -> TradeMutationResponse:
+        profile = _recalculate_trading_style(record.owner_id)
+        _recalculate_behavior_from_confirmed_facts(record.owner_id)
+        return TradeMutationResponse(trade=record, style_profile=profile)
+
+    @api.patch(
+        "/api/v1/advisor/trading-history/trades/{trade_id}",
+        response_model=TradeMutationResponse,
+    )
+    def update_trading_history_trade(
+        trade_id: str,
+        request: TradeUpdateRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradeMutationResponse:
+        current = active_store.get_trade_record(owner_id, trade_id)
+        if current is None:
+            raise HTTPException(status_code=404)
+        updates = request.model_dump(exclude={"schema_version", "expected_revision"}, exclude_unset=True)
+        if "quantity" in updates or "price_cny" in updates:
+            if "gross_amount_cny" not in updates:
+                updates["gross_amount_cny"] = updates.get("quantity", current.quantity) * updates.get("price_cny", current.price_cny)
+        updated = HistoricalTradeRecord.model_validate(current.model_copy(update={
+            **updates,
+            "revision": current.revision + 1,
+            "updated_at": active_clock(),
+        }).model_dump(mode="python"))
+        stored = active_store.append_trade_revision(updated, request.expected_revision)
+        return _trade_mutation_result(stored)
+
+    @api.delete(
+        "/api/v1/advisor/trading-history/trades/{trade_id}",
+        response_model=TradeMutationResponse,
+    )
+    def withdraw_trading_history_trade(
+        trade_id: str,
+        expected_revision: int = Query(..., ge=1),
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradeMutationResponse:
+        current = active_store.get_trade_record(owner_id, trade_id)
+        if current is None:
+            raise HTTPException(status_code=404)
+        withdrawn = current.model_copy(update={
+            "revision": current.revision + 1,
+            "status": TradeRecordStatus.WITHDRAWN,
+            "updated_at": active_clock(),
+        })
+        stored = active_store.append_trade_revision(withdrawn, expected_revision)
+        return _trade_mutation_result(stored)
+
+    @api.post(
+        "/api/v1/advisor/trading-history/trades/{trade_id}/restore",
+        response_model=TradeMutationResponse,
+    )
+    def restore_trading_history_trade(
+        trade_id: str,
+        request: TradeRevisionRequest,
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradeMutationResponse:
+        current = active_store.get_trade_record(owner_id, trade_id)
+        if current is None:
+            raise HTTPException(status_code=404)
+        restored = current.model_copy(update={
+            "revision": current.revision + 1,
+            "status": TradeRecordStatus.ACTIVE,
+            "updated_at": active_clock(),
+        })
+        stored = active_store.append_trade_revision(restored, request.expected_revision)
+        return _trade_mutation_result(stored)
+
+    @api.get(
+        "/api/v1/advisor/trading-style/profile",
+        response_model=TradingStyleLookupResponse,
+    )
+    def get_trading_style_profile(
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradingStyleLookupResponse:
+        profile = active_store.get_latest_trading_style_profile(owner_id)
+        if profile is None:
+            profile = _recalculate_trading_style(owner_id)
+        return TradingStyleLookupResponse(profile=profile)
+
     @api.get(
         "/api/v1/advisor/behavior/profile",
         response_model=BehaviorProfileLookupResponse,
@@ -1194,6 +1491,9 @@ def create_app(
         if request.owner_id != owner_id:
             raise StoreOwnerError("behavior profile owner does not match owner scope")
         events = active_store.list_behavior_events(owner_id)
+        historical_trade_events = behavior_events_from_trades(active_store.list_trade_records(owner_id))
+        legacy_ids = {item.event_id for item in events}
+        events = events + tuple(item for item in historical_trade_events if item.event_id not in legacy_ids)
         current = active_store.get_latest_behavior_profile(owner_id)
         version = 1 if current is None else current.profile_version + 1
         policy = active_store.get_display_policy(owner_id)
@@ -1537,6 +1837,11 @@ def create_app(
             snapshot_version=1 if current is None else current.snapshot_version + 1,
         )
         stored, created = active_store.save_questionnaire_snapshot(snapshot)
+        if created and (
+            active_store.list_trade_records(owner_id)
+            or active_store.list_behavior_events(owner_id)
+        ):
+            _recalculate_behavior_from_confirmed_facts(owner_id)
         return QuestionnaireConfirmationResponse(
             snapshot=stored,
             presentation=build_profile_presentation(stored),
@@ -1631,11 +1936,11 @@ def create_app(
     async def get_runtime_data_mode():
         controller = get_runtime_mode_controller()
         if (
-            (controller.needs_initial_probe and active_live_finance.is_configured)
+            (controller.needs_fuyao_probe and active_live_finance.is_configured)
             or (controller.needs_wencai_probe and active_wencai_provider.is_configured)
         ):
             async with live_probe_lock:
-                if controller.needs_initial_probe:
+                if controller.needs_fuyao_probe and active_live_finance.is_configured:
                     capabilities = await active_live_finance.probe_capabilities()
                     await controller.apply_fuyao_probe(capabilities, auto_activate=True,
                                                        errors=getattr(active_live_finance, "last_probe_errors", None))
@@ -3008,13 +3313,14 @@ def create_app(
                 separators=(",", ":"),
                 default=str,
             ).encode("utf-8")
+            confirmed_payload_hash = sha256(confirmed_payload).hexdigest()
             record = PortfolioOcrConfirmation(
                 confirmation_id="ocr-confirmation:" + sha256(
-                    f"{owner_id}:{req.image_digest}".encode("utf-8")
+                    f"{owner_id}:{req.image_digest}:{confirmed_payload_hash}".encode("utf-8")
                 ).hexdigest()[:32],
                 owner_id=owner_id,
                 image_digest=req.image_digest,
-                confirmed_payload_hash=sha256(confirmed_payload).hexdigest(),
+                confirmed_payload_hash=confirmed_payload_hash,
                 confirmed_at=confirmed_at,
                 portfolio=portfolio,
             )

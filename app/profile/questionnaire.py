@@ -25,8 +25,16 @@ from app.profile.contracts import (
 from app.profile.scoring import risk_level_for_score
 
 
-QUESTIONNAIRE_VERSION = "investor-questionnaire.v1"
-QUESTIONNAIRE_RULESET_VERSION = "investor-questionnaire-rules.v1"
+QUESTIONNAIRE_VERSION = "investor-questionnaire.v2"
+QUESTIONNAIRE_RULESET_VERSION = "investor-questionnaire-rules.v2"
+SUPPORTED_QUESTIONNAIRE_VERSIONS = (
+    "investor-questionnaire.v1",
+    QUESTIONNAIRE_VERSION,
+)
+SUPPORTED_QUESTIONNAIRE_RULESET_VERSIONS = (
+    "investor-questionnaire-rules.v1",
+    QUESTIONNAIRE_RULESET_VERSION,
+)
 DIMENSION_KEYS = ("risk", "exp", "act", "res", "inf", "ai", "per", "aid")
 
 
@@ -63,6 +71,7 @@ class QuestionnaireQuestion(ContractModel):
     score_weights: tuple[QuestionnaireDimensionWeight, ...] = Field(default_factory=tuple)
     minimum_score: int | None = Field(default=None, ge=1, le=5)
     maximum_score: int | None = Field(default=None, ge=1, le=5)
+    required: bool = True
 
     @model_validator(mode="after")
     def validate_question(self) -> Self:
@@ -88,8 +97,8 @@ class QuestionnaireSection(ContractModel):
 
 class QuestionnaireTemplate(ContractModel):
     schema_version: Literal["questionnaire-template.v1"] = "questionnaire-template.v1"
-    questionnaire_version: Literal["investor-questionnaire.v1"] = QUESTIONNAIRE_VERSION
-    ruleset_version: Literal["investor-questionnaire-rules.v1"] = QUESTIONNAIRE_RULESET_VERSION
+    questionnaire_version: Literal["investor-questionnaire.v2"] = QUESTIONNAIRE_VERSION
+    ruleset_version: Literal["investor-questionnaire-rules.v2"] = QUESTIONNAIRE_RULESET_VERSION
     sections: tuple[QuestionnaireSection, ...] = Field(min_length=6, max_length=6)
     questions: tuple[QuestionnaireQuestion, ...] = Field(min_length=19, max_length=19)
 
@@ -116,6 +125,8 @@ class QuestionnaireAnswer(ContractModel):
     def validate_shape(self) -> Self:
         if len(self.selected_option_ids) != len(set(self.selected_option_ids)):
             raise ValueError("selected questionnaire options must be unique")
+        if self.question_id == "Q13" and not self.selected_option_ids and self.score is None:
+            return self
         if bool(self.selected_option_ids) == (self.score is not None):
             raise ValueError("questionnaire answer requires choices or a score, not both")
         return self
@@ -131,8 +142,14 @@ class QuestionnaireSnapshot(ContractModel):
     snapshot_id: NonEmptyStr
     owner_id: NonEmptyStr
     snapshot_version: int = Field(ge=1)
-    questionnaire_version: Literal["investor-questionnaire.v1"] = QUESTIONNAIRE_VERSION
-    ruleset_version: Literal["investor-questionnaire-rules.v1"] = QUESTIONNAIRE_RULESET_VERSION
+    questionnaire_version: Literal[
+        "investor-questionnaire.v1",
+        "investor-questionnaire.v2",
+    ] = QUESTIONNAIRE_VERSION
+    ruleset_version: Literal[
+        "investor-questionnaire-rules.v1",
+        "investor-questionnaire-rules.v2",
+    ] = QUESTIONNAIRE_RULESET_VERSION
     confirmed_at: datetime
     answers: tuple[QuestionnaireAnswer, ...] = Field(min_length=19, max_length=19)
     dimensions: tuple[QuestionnaireDimensionScore, ...] = Field(min_length=8, max_length=8)
@@ -215,7 +232,7 @@ QUESTIONS = (
         _o("portfolio", "缺少组合和仓位管理方法", aid="0.85", per="0.45"), _o("risk", "难以识别或控制风险", aid="0.90"),
         _o("discipline", "容易受情绪影响", aid="0.75"), _o("none", "暂未遇到明显困难", aid="0"))),
     QuestionnaireQuestion(question_id="Q12", section_id="pain", prompt="这些困难对你作出投资决策的影响有多大？", question_type="SCORE", score_weights=_w(aid="1"), minimum_score=1, maximum_score=5),
-    QuestionnaireQuestion(question_id="Q13", section_id="scenes", prompt="你希望系统重点帮助哪些场景？", question_type="MULTI", options=(
+    QuestionnaireQuestion(question_id="Q13", section_id="scenes", prompt="你希望系统重点帮助哪些场景？", question_type="MULTI", required=False, options=(
         _o("market", "大盘和市场走势", aid="0.45"), _o("industry", "行业和板块配置", aid="0.55", per="0.30"),
         _o("stock", "个股分析", aid="0.60"), _o("fund", "ETF 或基金筛选", aid="0.55"), _o("bond", "可转债分析", aid="0.50"),
         _o("portfolio", "持仓诊断和组合优化", aid="0.85", per="0.80"), _o("risk", "投资风险分析", aid="0.80", per="0.55"))),
@@ -268,7 +285,7 @@ def validate_answers(answers: tuple[QuestionnaireAnswer, ...]) -> tuple[Question
             if answer.score is None or answer.selected_option_ids:
                 raise ValueError(f"{question.question_id} requires a score")
         else:
-            if answer.score is not None or not answer.selected_option_ids:
+            if answer.score is not None or (question.required and not answer.selected_option_ids):
                 raise ValueError(f"{question.question_id} requires option selections")
             if question.question_type == QuestionnaireQuestionType.SINGLE and len(answer.selected_option_ids) != 1:
                 raise ValueError(f"{question.question_id} requires exactly one option")
@@ -423,6 +440,8 @@ __all__ = [
     "QUESTIONNAIRE_RULESET_VERSION",
     "QUESTIONNAIRE_TEMPLATE",
     "QUESTIONNAIRE_VERSION",
+    "SUPPORTED_QUESTIONNAIRE_RULESET_VERSIONS",
+    "SUPPORTED_QUESTIONNAIRE_VERSIONS",
     "QuestionnaireAnswer",
     "QuestionnaireDimensionScore",
     "QuestionnaireOption",

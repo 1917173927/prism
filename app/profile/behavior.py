@@ -102,8 +102,8 @@ class BehaviorEvent(ContractModel):
             raise ValueError("occurred_at must be timezone-aware")
         trade_fields = (self.asset_id, self.asset_type, self.side, self.quantity, self.price_cny)
         if self.event_type == BehaviorEventType.TRADE:
-            if any(value is None for value in trade_fields) or self.portfolio_value_cny is None:
-                raise ValueError("TRADE requires asset, side, quantity, price and portfolio value")
+            if any(value is None for value in trade_fields):
+                raise ValueError("TRADE requires asset, side, quantity and price")
         elif any(value is not None for value in (self.side, self.quantity, self.price_cny)):
             raise ValueError("POSITION_SNAPSHOT must not contain trade fields")
         if self.event_type == BehaviorEventType.POSITION_SNAPSHOT and (
@@ -307,16 +307,29 @@ def calculate_behavior_profile(
         raise ValueError("display policy must share profile owner scope")
 
     window_start = calculated_at - timedelta(days=90)
-    trades = tuple(
+    all_trades = tuple(
         item for item in ordered
-        if item.event_type == BehaviorEventType.TRADE and window_start <= item.occurred_at <= calculated_at
+        if item.event_type == BehaviorEventType.TRADE and item.occurred_at <= calculated_at
+    )
+    trades = tuple(
+        item for item in all_trades if window_start <= item.occurred_at
     )
     snapshots = tuple(
         item for item in ordered
         if item.event_type == BehaviorEventType.POSITION_SNAPSHOT and item.occurred_at <= calculated_at
     )
     observations = tuple(sorted((*trades, *snapshots), key=lambda item: (item.occurred_at, item.event_id)))
-    sufficient = len(trades) >= 3 and len(snapshots) >= 2
+    trade_span_days = Decimal("0")
+    if len(all_trades) >= 2:
+        trade_span_days = Decimal(str((all_trades[-1].occurred_at - all_trades[0].occurred_at).total_seconds() / 86400))
+    # Preserve the legacy behavior-event API while applying the stricter
+    # evidence boundary to user-imported historical trades.
+    has_historical_import = any(item.source.startswith("confirmed historical trade batch ") for item in all_trades)
+    sufficient = (
+        len(all_trades) >= 20 and trade_span_days >= Decimal("90") and len(snapshots) >= 2
+        if has_historical_import
+        else len(trades) >= 3 and len(snapshots) >= 2
+    )
     portfolio_values = [item.portfolio_value_cny for item in (*trades, *snapshots) if item.portfolio_value_cny]
     mean_portfolio = (
         sum(portfolio_values, Decimal("0")) / Decimal(len(portfolio_values))

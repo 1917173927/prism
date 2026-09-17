@@ -94,10 +94,15 @@ def test_profile_presentation_contains_complete_questionnaire_only_result() -> N
     presentation = build_profile_presentation(snapshot)
 
     assert snapshot.suitability_level.value == "C4"
-    assert presentation.archetype == "稳健成长型"
+    assert presentation.schema_version == "profile-presentation.v2"
+    assert presentation.archetype == presentation.persona == "自主研究型"
+    assert presentation.persona_fit == Decimal("70.53")
     assert [item.key for item in presentation.dimensions] == list(DIMENSION_KEYS)
     assert [item.target_pct for item in presentation.asset_allocation] == [Decimal("10"), Decimal("20"), Decimal("70")]
     assert presentation.equity_range.minimum_pct == Decimal("60")
     assert presentation.equity_range.maximum_pct == Decimal("80")
     assert len(presentation.key_profile) == 6
-    assert len(presentation.service_strategy) == 3
+    assert [item.rule_id for item in presentation.rule_trace.service_strategy] == [
+        "S02", "S03", "S04", "S07", "S09", "S10",
+    ]
+    assert presentation.feats == ("optimize",)

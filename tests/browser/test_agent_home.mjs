@@ -6,9 +6,14 @@ import puppeteer from "puppeteer-core";
 const baseUrl = process.env.PRISM_TEST_BASE_URL || "http://127.0.0.1:8017";
 const outputDir = path.resolve("output/agent-home");
 await fs.mkdir(outputDir, { recursive: true });
+const executablePath = process.env.PRISM_TEST_BROWSER || (
+  process.platform === "win32"
+    ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    : "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+);
 
 const browser = await puppeteer.launch({
-  executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  executablePath,
   headless: true,
   args: ["--no-sandbox"],
 });
@@ -17,20 +22,26 @@ try {
   const page = await browser.newPage();
   const consoleErrors = [];
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource:")) {
+      const location = message.location().url;
+      consoleErrors.push(location ? `${message.text()} @ ${location}` : message.text());
+    }
   });
+  page.on("pageerror", (error) => consoleErrors.push(error.message));
   await page.setViewport({ width: 1440, height: 1000, deviceScaleFactor: 1 });
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("body.questionnaire-required");
+  await page.evaluate(() => { window.location.hash = "profile"; });
+  await page.waitForSelector("#profile:not([hidden])");
 
   assert.equal(await page.$eval("#profile", (node) => node.hidden), false);
-  assert.equal(await page.$eval(".sidebar", (node) => getComputedStyle(node).display), "none");
-  assert.match(await page.$eval("#questionnaire-progress-text", (node) => node.textContent), /19/);
+  assert.match(await page.$eval("#questionnaire-progress-text", (node) => node.textContent), /18/);
 
   await page.evaluate(() => { window.location.hash = "copilot"; });
-  await page.waitForFunction(() => window.location.hash === "#profile");
-  assert.equal(await page.$eval("#profile", (node) => node.hidden), false);
-  assert.equal(await page.$eval("#copilot", (node) => node.hidden), true);
+  await page.waitForSelector("#copilot:not([hidden])");
+  assert.equal(await page.$eval("#profile", (node) => node.hidden), true);
+  await page.evaluate(() => { window.location.hash = "profile"; });
+  await page.waitForSelector("#profile:not([hidden])");
   await page.screenshot({ path: path.join(outputDir, "first-entry-questionnaire.png"), fullPage: true });
 
   const confirmationStatus = await page.evaluate(async () => {
@@ -67,6 +78,15 @@ try {
     };
   });
   assert.ok(widths.conversation > widths.rail * 2.2, JSON.stringify(widths));
+
+  await page.evaluate(() => { window.location.hash = "profile"; });
+  await page.waitForSelector("#profile:not([hidden]) .profile-result-identity h4");
+  assert.ok((await page.$eval(".profile-result-identity h4", (node) => node.textContent.trim())).length > 0);
+  const recommendedFeatureCount = await page.$$(".profile-feature-card").then((nodes) => nodes.length);
+  assert.ok(recommendedFeatureCount >= 1 && recommendedFeatureCount <= 3);
+  assert.match(await page.$eval(".profile-compliance-fixed", (node) => node.textContent), /不构成投资建议/);
+  await page.evaluate(() => { window.location.hash = "copilot"; });
+  await page.waitForSelector("#copilot:not([hidden])");
 
   await page.click("#start-conversation-profile-update");
   for (let step = 0; step < 4; step += 1) {

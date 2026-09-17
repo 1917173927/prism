@@ -48,7 +48,14 @@ Before presenting code, diffs, or solutions, conduct a mandatory self-review:
 
 ---
 
-## 5. Professional PRD & Engineering Standards (金融工程与竞赛规范文风)
+## 5. Mandatory Git Archival After Every Modification
+- After every completed modification, run the relevant verification, create a Git commit containing the intended changes, and push that commit to the configured remote branch before declaring the task complete.
+- This requirement applies to code, tests, documentation, configuration, database migrations, assets, and this instruction file itself.
+- Never leave completed modifications only in the local working tree. If a push is blocked by authentication, connectivity, branch protection, or failed verification, report the blocker explicitly and do not claim completion.
+
+---
+
+## 6. Professional PRD & Engineering Standards (金融工程与竞赛规范文风)
 所有面向业务、架构、PRD、接口和汇报的文档与文字表达，必须严格执行以下专业规范：
 
 1. **语气基调与表达规范 (Tone & Persona)**:

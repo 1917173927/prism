@@ -4,15 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
-    <meta name="description" content="Prism 可解释投资研究工作台">
-    <title>Prism · 决策工作台</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
+    <meta name="description" content="问财智投可解释证券研究与决策支持工作台">
+    <title>问财智投 · 决策工作台</title>
+    <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-chat-peer-layout">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260916-chat-feature-popover" defer></script>
+    <script src="/static/app.js?v=20260916-trading-style" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -120,11 +120,11 @@
 
     <div class="app-shell">
       <aside class="sidebar" aria-label="主导航">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">P</span>
+        <div class="brand" aria-label="问财智投">
+          <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
           <div>
-            <strong>Prism</strong>
-            <span>个人投资工作台</span>
+            <strong>问财智投</strong>
+            <span>个性化证券投顾</span>
           </div>
         </div>
 
@@ -145,6 +145,10 @@
             <a class="nav-item" href="#market">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
               <span>大盘鉴别</span>
+            </a>
+            <a class="nav-item" href="#trading-style">
+              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
+              <span>交易风格</span>
             </a>
             <a class="nav-item" href="#profile">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
@@ -196,7 +200,7 @@
         <header class="topbar">
           <div class="topbar-title-area">
             <span class="eyebrow">个人投资工作台</span>
-            <h1>Prism 投资 Agent</h1>
+            <h1>问财智投</h1>
             <p class="topbar-subtitle">结合你的持仓、投资偏好与市场信息进行分析。</p>
           </div>
           <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
@@ -269,7 +273,7 @@
         <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">
           <div class="agent-home-heading">
             <div>
-              <span class="eyebrow clay">Prism 投资 Agent</span>
+              <span class="eyebrow clay">问财智投 Agent</span>
               <h2 id="copilot-hero-title">分析你的投资组合</h2>
               <p>结合你的持仓、投资偏好与可用市场数据回答。</p>
             </div>
@@ -912,6 +916,81 @@
           <p class="market-risk-note">数据来源、观察时间及审查状态会随结果展示。仅供研究参考，不构成投资建议。</p>
         </section>
 
+        <section class="workspace-page-section trading-style-page" id="trading-style" hidden aria-labelledby="trading-style-title">
+          <div class="page-heading">
+            <div>
+              <span class="eyebrow">投资者画像 · 行为证据</span>
+              <h2 id="trading-style-title">历史交易与交易风格</h2>
+              <p>导入成交记录，以确定性规则分析交易频率、持有期、成交规模与标的分散度。</p>
+            </div>
+            <span id="trading-style-status" class="status-chip">INSUFFICIENT_DATA</span>
+          </div>
+
+          <section class="surface trading-style-summary" aria-labelledby="trading-style-summary-title">
+            <div class="market-section-heading">
+              <div><h3 id="trading-style-summary-title">交易风格摘要</h3><p>历史行为与正式风险测评采用双轨展示，行为证据不得提高适当性等级。</p></div>
+              <button id="refresh-trading-style" type="button" class="copilot-action-btn secondary">刷新结果</button>
+            </div>
+            <div id="trading-style-summary-content" class="trading-style-metrics" aria-live="polite">
+              <div class="empty-state">尚未导入历史交易记录。</div>
+            </div>
+            <div id="trading-style-risk-boundary" class="doc-callout doc-callout-info" hidden></div>
+          </section>
+
+          <section class="surface trade-import-card" aria-labelledby="trade-import-title">
+            <div class="market-section-heading">
+              <div><h3 id="trade-import-title">导入历史交易</h3><p>支持单个 CSV/XLSX，或最多 10 张 PNG/JPEG/WebP 截图；原始文件不会保存。</p></div>
+              <span id="trade-import-status" class="cf-verdict cf-verdict-warning">等待上传</span>
+            </div>
+            <ol class="trade-import-steps" aria-label="导入步骤">
+              <li class="active" data-trade-step="1"><strong>1</strong><span>上传文件</span></li>
+              <li data-trade-step="2"><strong>2</strong><span>映射与复核</span></li>
+              <li data-trade-step="3"><strong>3</strong><span>确认入账</span></li>
+            </ol>
+            <div class="trade-upload-row">
+              <input id="trade-import-files" type="file" accept=".csv,.xlsx,image/png,image/jpeg,image/webp" multiple>
+              <button id="preview-trade-import" type="button" class="copilot-action-btn primary">解析并预览</button>
+            </div>
+            <div id="trade-import-error" class="notice error" role="alert" hidden></div>
+            <div id="trade-mapping-panel" class="trade-mapping-panel" hidden>
+              <div class="market-section-heading"><div><h4>字段映射</h4><p>系统已建议表头映射；可调整后重新应用到预览行。</p></div><span id="trade-preview-count" class="status-chip"></span></div>
+              <label id="trade-sheet-field" hidden>工作表
+                <select id="trade-sheet-selector" aria-label="选择 XLSX 工作表"></select>
+              </label>
+              <div id="trade-mapping-fields" class="trade-mapping-grid"></div>
+              <button id="apply-trade-mapping" type="button" class="copilot-action-btn secondary">应用字段映射</button>
+              <div class="table-wrap trade-preview-table-wrap">
+                <table class="trade-preview-table"><thead><tr><th>状态</th><th>交易时间</th><th>代码</th><th>名称</th><th>方向</th><th>数量</th><th>价格</th><th>金额</th><th>问题</th></tr></thead><tbody id="trade-preview-rows"></tbody></table>
+              </div>
+              <div class="trade-import-actions">
+                <span id="trade-confirm-hint">请逐行核对；存在阻断问题时不能确认。</span>
+                <button id="confirm-trade-import" type="button" class="copilot-action-btn primary">确认导入有效记录</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="surface trade-history-card" aria-labelledby="trade-history-title">
+            <div class="market-section-heading">
+              <div><h3 id="trade-history-title">交易明细</h3><p>编辑采用版本冲突保护；撤销记录不再参与任何计算，并可恢复。</p></div>
+              <span id="trade-history-count" class="count-pill">0 笔</span>
+            </div>
+            <div class="trade-history-filters">
+              <input id="trade-filter-security" type="search" placeholder="证券代码或名称">
+              <select id="trade-filter-side"><option value="">全部方向</option><option value="BUY">买入</option><option value="SELL">卖出</option></select>
+              <select id="trade-filter-status"><option value="">全部状态</option><option value="ACTIVE">有效</option><option value="WITHDRAWN">已撤销</option></select>
+              <input id="trade-filter-from" type="date" aria-label="开始日期">
+              <input id="trade-filter-to" type="date" aria-label="结束日期">
+              <button id="apply-trade-filters" type="button" class="copilot-action-btn secondary">筛选</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>时间</th><th>证券</th><th>方向</th><th>数量</th><th>成交价</th><th>成交金额</th><th>版本/状态</th><th>操作</th></tr></thead><tbody id="trade-history-rows"><tr><td colspan="8" class="empty-state">暂无交易记录。</td></tr></tbody></table></div>
+            <button id="load-more-trades" type="button" class="copilot-action-btn secondary" hidden>加载更多</button>
+          </section>
+
+          <section class="doc-callout doc-callout-warning" aria-label="数据边界">
+            <div class="callout-content"><div class="callout-title">数据边界</div><p>未配对卖出不会参与持有期；缺少账户资产快照时不计算换手率。历史交易不会修改当前持仓，也不会触发真实交易。</p></div>
+          </section>
+        </section>
+
         <div id="global-error" class="notice error" role="alert" hidden></div>
 
         <div class="workspace-grid" id="expert-workspace-grid" hidden aria-labelledby="expert-workspace-title">
@@ -1475,8 +1554,8 @@
               <div class="questionnaire-actions">
                 <button id="questionnaire-prev" class="query-submit secondary" type="button">上一部分</button>
                 <button id="questionnaire-next" class="query-submit" type="button">下一部分</button>
-                <button id="questionnaire-preview" class="query-submit secondary" type="button">预览偏好</button>
-                <button id="questionnaire-confirm" class="query-submit" type="submit">确认问卷</button>
+                <button id="questionnaire-preview" class="query-submit secondary" type="button" hidden>生成结果预览</button>
+                <button id="questionnaire-confirm" class="query-submit" type="submit" hidden>确认并保存问卷</button>
               </div>
             </form>
 
@@ -1739,8 +1818,31 @@
   <button id="commit-session-truth" type="button" class="query-submit">确认使用新资料</button>
   <button id="cancel-session-truth" type="button" class="query-submit secondary">取消</button>
 </dialog>
+<dialog id="trade-edit-dialog" class="prd-dialog trade-edit-dialog" aria-labelledby="trade-edit-title">
+  <form id="trade-edit-form" method="dialog">
+    <h2 id="trade-edit-title">修订交易记录</h2>
+    <input id="trade-edit-id" type="hidden">
+    <input id="trade-edit-revision" type="hidden">
+    <div class="trade-edit-grid">
+      <label>交易时间<input id="trade-edit-time" type="datetime-local" required></label>
+      <label>方向<select id="trade-edit-side" required><option value="BUY">买入</option><option value="SELL">卖出</option></select></label>
+      <label>证券代码<input id="trade-edit-code" maxlength="50"></label>
+      <label>证券名称<input id="trade-edit-name" maxlength="100"></label>
+      <label>数量<input id="trade-edit-quantity" type="number" min="0.0001" step="0.0001" required></label>
+      <label>成交价格<input id="trade-edit-price" type="number" min="0.0001" step="0.0001" required></label>
+      <label>手续费<input id="trade-edit-fee" type="number" min="0" step="0.01" value="0"></label>
+      <label>账户别名<input id="trade-edit-account" maxlength="100" required></label>
+    </div>
+    <p id="trade-edit-error" class="notice error" role="alert" hidden></p>
+    <div class="questionnaire-actions">
+      <button id="trade-edit-cancel" type="button" class="query-submit secondary">取消</button>
+      <button type="submit" class="query-submit">保存修订</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="questionnaire-welcome" class="prd-dialog" aria-labelledby="welcome-title">
-  <h2 id="welcome-title">欢迎使用 Prism</h2><p>完成 19 题投资能力问卷，生成 8 维风险画像。也可以先浏览，再到个人中心完成测评。</p>
+  <h2 id="welcome-title">欢迎使用问财智投</h2><p>完成 19 题投资能力问卷，生成 8 维风险画像。也可以先浏览，再到个人中心完成测评。</p>
   <div class="modal-actions"><button id="welcome-later" type="button">稍后再说</button><button id="welcome-start" type="button" class="copilot-action-btn primary">开始填写问卷</button></div>
 </dialog>
 <dialog id="manual-position-dialog" class="prd-dialog" aria-labelledby="manual-position-title">

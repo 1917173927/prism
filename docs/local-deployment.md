@@ -14,6 +14,7 @@
 | `HITHINK_FINANCE_API_KEY` | 未设置 | 扶摇服务端凭据 | 真实能力探测成功后可用 |
 | `IWENCAI_API_KEY` / `IWENCAI_BASE_URL` | 未设置 / `https://openapi.iwencai.com` | 问财 OpenAPI 服务端凭据与地址 | 配置 Skill 版本头并完成真实查询后可用 |
 | `WENCAI_SKILLHUB_CONTRACT_VERIFIED` | `false` | 问财响应契约人工确认闸门 | `true` 后允许问财 LIVE 能力 |
+| 上交所/深交所证券目录 | 无需密钥 | OCR 证券简称精确匹配交易所代码 | 仅返回代码、简称与交易所；不提供行情、财务或行业数据 |
 | `/api/health` | 无认证 | 进程和数据模式健康检查 | 不等于供应商可用性承诺 |
 
 正常启动默认启用本地账户。未登录的页面导航重定向至 Prism 登录页，API 返回 JSON 401；服务端会话 Cookie 设置 `HttpOnly` 与 `SameSite=Lax`，HTTPS 下同时设置 `Secure`。会话最长 24 小时、连续空闲 2 小时失效；退出撤销当前会话，修改密码撤销该账户全部会话。只有显式设置 `PRISM_DEV_NO_AUTH=true` 才进入无认证开发演示，此时 `X-Owner-ID` 仅为数据命名空间，不构成访问保护。
@@ -34,6 +35,8 @@
 模拟首次使用：运行 `.venv\Scripts\python.exe tools/dev_preview.py --fresh --port 8874`。该命令是显式无认证开发入口，会设置 `PRISM_DEV_NO_AUTH=true`，在系统临时目录创建独立 SQLite，且不清空原数据库。正式账户模式拒绝 Mock/Fixture 业务结果；开发预览中的模拟回复和数据始终保留演示标识。
 
 本地可在仓库根目录创建被 Git 忽略的 `.env`，启动脚本和 `tools/dev_preview.py` 会将其中的服务端变量注入当前进程；直接运行 Uvicorn 时需先在当前 shell 设置同名环境变量。供应商密钥不进入前端、数据库或 Git。
+
+持仓 OCR 的证券简称到代码补全不再依赖扶摇或问财密钥。服务端并行核对上交所官方证券目录和深交所官方 A 股列表，只接受简称精确且代码唯一的结果；若 OCR 已给出格式正确但与官方简称不一致的代码，使用官方代码替换并保留 `SECURITY_CODE_CORRECTED` 人工复核标记。该链路不能替代真实行情、公司数据或行业数据，相关能力仍要求服务端凭据。Windows DPAPI 密文与原 Windows 账户绑定，不能复制到其他电脑；公开下载包不得内置可提取的供应商明文密钥。跨设备免配置使用真实行情时，应由统一受控后端持有密钥，并在完成限流、轮换、吊销和供应商再分发授权后向下载端提供业务接口。
 
 Markdown 资源已随仓库提供，正常启动无需 Node。修改 `app/api/static/markdown.src.js` 后运行 `npm ci`、`npm run build:markdown` 重新生成本地脚本。
 

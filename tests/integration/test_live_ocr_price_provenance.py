@@ -46,14 +46,25 @@ class FakeLiveFinance:
         }
 
 
-class FakeNameResolvingLiveFinance(FakeLiveFinance):
+class FakeNameResolvingDirectory:
     async def resolve_security_identity(self, name: str):
         assert name == "江苏新能"
         return {
             "asset_id": "603693.SH",
             "name": "江苏新能",
             "market": "SH",
-            "source": "test exact-name ticker directory",
+            "source": "test exact-name official directory",
+        }
+
+
+class FakeCorrectingDirectory:
+    async def resolve_security_identity(self, name: str):
+        assert name == "华天科技"
+        return {
+            "asset_id": "002185.SZ",
+            "name": "华天科技",
+            "market": "SZ",
+            "source": "test exact-name official directory",
         }
 
 
@@ -84,29 +95,79 @@ class FakeNameOnlyOcrParser:
         }
 
 
-def test_ocr_resolves_name_only_holding_through_exact_live_directory(monkeypatch) -> None:
+def test_ocr_resolves_name_only_holding_without_provider_credential(monkeypatch) -> None:
     monkeypatch.setattr(
         "app.llm.ocr_portfolio_parser.OCRPortfolioParser.get_instance",
         lambda: FakeNameOnlyOcrParser(),
     )
-    reset_runtime_mode_controller(DataMode.LIVE)
+    reset_runtime_mode_controller(DataMode.MOCK)
     store = SQLiteDecisionEventStore(":memory:")
     client = TestClient(create_app(
-        store, live_finance_provider=FakeNameResolvingLiveFinance()
+        store,
+        security_directory_provider=FakeNameResolvingDirectory(),
     ))
 
     parsed = client.post(
-        "/api/v1/advisor/portfolio/ocr",
-        headers={"X-Owner-ID": "name-only-owner"},
+        "/api/v1/copilot/upload-portfolio-ocr",
         files={"file": ("holding.png", b"bounded-image", "image/png")},
     )
 
     assert parsed.status_code == 200, parsed.text
     position = parsed.json()["positions"][0]
     assert position["asset_id"] == "603693.SH"
-    assert position["identity_candidates"][0]["source"] == "test exact-name ticker directory"
+    assert position["identity_candidates"][0]["source"] == "test exact-name official directory"
     assert "SECURITY_IDENTITY_REQUIRED" not in position["review_reasons"]
-    assert position["field_sources"]["identity"] == "test exact-name ticker directory"
+    assert position["field_sources"]["identity"] == "test exact-name official directory"
+    store.close()
+    reset_runtime_mode_controller(DataMode.MOCK)
+
+
+def test_ocr_corrects_syntactically_valid_code_when_exact_name_disagrees(monkeypatch) -> None:
+    class WrongCodeOcrParser:
+        def parse_image_bytes(self, content: bytes):
+            assert content == b"bounded-image"
+            return {
+                "status": "SUCCESS",
+                "positions": [{
+                    "asset_id": "600000.SH",
+                    "name": "华天科技",
+                    "asset_class": "EQUITY",
+                    "quantity": 100,
+                    "cost_price": 15.3,
+                    "price": 16.97,
+                    "market_value_cny": 1697,
+                    "needs_review": False,
+                    "review_reasons": [],
+                    "field_sources": {"identity": "broker screenshot OCR"},
+                }],
+                "cash_cny": 0,
+                "parsed_count": 1,
+                "has_low_confidence_items": False,
+            }
+
+    monkeypatch.setattr(
+        "app.llm.ocr_portfolio_parser.OCRPortfolioParser.get_instance",
+        lambda: WrongCodeOcrParser(),
+    )
+    reset_runtime_mode_controller(DataMode.LIVE)
+    store = SQLiteDecisionEventStore(":memory:")
+    client = TestClient(create_app(
+        store,
+        live_finance_provider=FakeLiveFinance(),
+        security_directory_provider=FakeCorrectingDirectory(),
+    ))
+
+    parsed = client.post(
+        "/api/v1/copilot/upload-portfolio-ocr",
+        files={"file": ("holding.png", b"bounded-image", "image/png")},
+    )
+
+    assert parsed.status_code == 200, parsed.text
+    position = parsed.json()["positions"][0]
+    assert position["asset_id"] == "002185.SZ"
+    assert position["identity_candidates"][0]["source"] == "test exact-name official directory"
+    assert position["review_reasons"] == ["SECURITY_CODE_CORRECTED"]
+    assert position["needs_review"] is True
     store.close()
     reset_runtime_mode_controller(DataMode.MOCK)
 
