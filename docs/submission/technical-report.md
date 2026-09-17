@@ -1010,8 +1010,8 @@ Prism 采用 Python 后端、静态前端和可替换数据提供方组成的模
 | --- | --- | --- | --- |
 | 账户与运行时 | `/api/v1/auth/*`、`/api/v1/runtime/*` | 登录会话、数据模式、提供方就绪状态 | 账户上下文、能力矩阵、运行版本 |
 | 投资者画像与组合 | `/api/v1/advisor/profile/*`、`/api/v1/advisor/portfolio/*` | 问卷、画像确认、组合导入、持仓报告 | 快照、画像、组合暴露与健康度 |
-| 市场与专业研究 | `/api/v1/market/*`、`/api/v1/research/*` | 行情、指数、个股、基金和可转债研究 | 来源记录、研究节点、验证结果 |
-| 组合决策 | `/api/v1/advisor/portfolio/optimization`、`/api/v1/advisor/portfolio/rebalancing`、`/api/v1/advisor/scenarios/*` | 目标结构、压力分析、再平衡计算 | 确定性计算结果、约束、执行摘要 |
+| 市场与专业研究 | `/api/v1/market/*`、`/api/v1/advisor/research-matrix-*`、`/api/v1/advisor/stock-research-*`、`/api/v1/advisor/fund-research-*`、`/api/v1/advisor/convertible-bond-research-*` | 行情、指数、个股、基金和可转债研究 | 来源记录、研究节点、验证结果 |
+| 组合决策 | `/api/v1/advisor/portfolio-optimization-*`、`/api/v1/advisor/scenario-simulation-*`、`/api/v1/advisor/custom-stress-scenarios`、`/api/v1/advisor/rebalancing-*` | 目标结构、压力分析、再平衡计算 | 确定性计算结果、约束、执行摘要 |
 | 投顾对话 | `/api/v1/advisor/queries`、`/api/v1/copilot/chat` | 意图识别、任务编排、研究执行和流式回执 | 研究计划、证据链、建议组合或复核状态 |
 | 记忆与审计 | `/api/v1/advisor/context-memory*`、`/api/v1/decision-events*`、`/api/v1/access-audit` | 显式记忆、决策事件、访问记录 | 用户归属记录、内容哈希、审计摘要 |
 
@@ -1306,7 +1306,7 @@ Prism 的运行边界由数据模式、用户归属、提供方能力、计算�
 | --- | --- | --- | --- |
 | `Provider` | 提供结构化金融数据、研究输入或行情的适配器 | `app/providers/` | `SUCCESS`、`PARTIAL`、`EMPTY`、`FAILED` |
 | `Evidence` | 带来源、期间、观察时间、来源链和质量状态的底层证据 | `app/contracts/evidence.py` | `VERIFIED`、`PARTIAL`、`STALE` |
-| `Fact` | 由满足验证条件的证据支持的结构化事实 | `app/contracts/evidence.py` | `VERIFIED`、`UNRESOLVED` |
+| `Fact` | 由满足验证条件的证据支持的结构化事实 | `app/contracts/evidence.py` | `VERIFIED`、`UNAVAILABLE`、`INVALID`、`NOT_APPLICABLE` |
 | `Finding` | 对事实进行确定性规则分析后形成的发现 | `app/contracts/evidence.py` | 严重度与方法说明 |
 | `RiskProfile` | 用于风险预算、适当性约束和配置边界的投资者画像 | `app/profile/contracts.py` | 画像版本、风险等级、确认状态 |
 | `PortfolioImportBundle` | 持仓快照与可选基金成分快照组成的组合输入 | `app/portfolio/contracts.py` | `COMPLETE`、`PARTIAL`、`EMPTY`、`FAILED` |
