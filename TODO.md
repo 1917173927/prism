@@ -11,6 +11,11 @@
 > Historical baseline: P2 Phase 34–39 implemented. Current work: local deployment and incremental P3 gap closure; status below is item-specific.
 > External integrations and real model / SLA validation remain evidence-dependent.
 
+## GitHub Pages 前端展示
+
+- [x] 使用 `app/api/static/demos/prism-console` 发布只读 Mock 前端，并通过 `.github/workflows/deploy-pages.yml` 自动更新。
+- [ ] 在 GitHub Pages 添加 `prism.daoyezongzi.org`，再在 Cloudflare 创建指向 `daoyezongzi.github.io` 的 CNAME 记录。
+
 ## 本地部署缺口执行
 
 - [x] 整屏持仓 OCR 按表头定位列、按文字高度匹配双行，识别账户现金与总资产；三张用户原图上传接口及 17 项回归通过。
