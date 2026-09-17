@@ -239,49 +239,29 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 
 当前页面入口为 `#research-tracks`、`#advanced-explainability` 和 `#evaluation-dashboard`；研究、证据和回执对象由 `app/research/`、`app/contracts/`、`app/recommendation/` 与 `app/store/` 提供。
 
-### 3.7 版本演进界面样例
+### 3.7 当前页面截图
 
-以下图片保留历史版本的界面组织方式，图片时间为 2026-09-07。评委可用它们了解页面从工作台、组合分析到研究、解释和评测的演进过程；当前页面以本节前面的现场入口和第 7.1 节核验结果为准。
+以下图片均由最新 Pages 快照页面生成，采集时间为 2026-09-17，分别对应评委进入系统后可以直接查看的主要页面。
 
-![历史界面样例：投资工作台（2026-09-07，V3）](../showcase/01_v3_investor_workbench_overview.png)
+![当前 Pages 快照：个人投资工作台](../showcase/current-pages-snapshot-workbench-20260917.png)
 
-图 7 历史界面样例：投资工作台中的资产范围、任务入口和工作流组织。
+图 7 当前 Pages 快照：主导航、六项分析工具、账户与偏好和投顾对话入口。
 
-![历史界面样例：持仓健康体检（2026-09-07，V3）](../showcase/02_v3_health_check_result.png)
+![当前 Pages 快照：持仓分析](../showcase/current-pages-snapshot-portfolio-20260917.png)
 
-图 8 历史界面样例：持仓穿透、重叠集中度和风险提示的展示方式。
+图 8 当前 Pages 快照：持仓分析报告、风险对照、行业分布和持仓明细。
 
-![历史界面样例：标的深度研究（2026-09-07，V3）](../showcase/03_v3_stock_deep_research.png)
+![当前 Pages 快照：大盘鉴别](../showcase/current-pages-snapshot-market-20260917.png)
 
-图 9 历史界面样例：标的基本面、估值、行业和画像匹配信息的组织方式。
+图 9 当前 Pages 快照：指数行情、技术指标、宏观因子联动和行业轮动入口。
 
-![历史界面样例：组合再平衡计划（2026-09-07，V3）](../showcase/04_v3_rebalancing_plan_stepper.png)
+![当前 Pages 快照：交易风格](../showcase/current-pages-snapshot-trading-style-20260917.png)
 
-图 10 历史界面样例：目标结构差异转化为分步行动的展示方式。
+图 10 当前 Pages 快照：历史交易导入、交易风格状态和交易明细筛选。
 
-| 历史界面样例：持仓输入（2026-09-07，V3） | 历史界面样例：风险画像配置（2026-09-07，V3） |
-| --- | --- |
-| ![历史界面样例：自然语言持仓输入](../showcase/05_v3_portfolio_input_modal.png) | ![历史界面样例：风险画像配置](../showcase/06_v3_user_profile_modal.png) |
+![当前 Pages 快照：个人中心](../showcase/current-pages-snapshot-profile-20260917.png)
 
-![历史界面样例：后端 API 结构与 Swagger（2026-09-07，V3）](../showcase/10_backend_api_architecture_swagger.png)
-
-图 11 历史界面样例：接口文档与投研接口分组的展示方式。
-
-![历史界面样例：多维投研研究矩阵（2026-09-07，V1）](../showcase/11_v1_developer_research_matrix.png)
-
-图 12 历史界面样例：多维研究节点和证据追溯入口的展示方式。
-
-![历史界面样例：因果归因与反事实分析（2026-09-07，V2）](../showcase/07_v2_advanced_explainability_dag.png)
-
-图 13 历史界面样例：解释关系、归因因素和反事实条件的展示方式。
-
-![历史界面样例：情景压力测试（2026-09-07，V2）](../showcase/08_v2_scenario_simulation_diff.png)
-
-图 14 历史界面样例：基线组合与情景组合差异的展示方式。
-
-![历史界面样例：自动化评测看板（2026-09-07，V2）](../showcase/09_v2_evaluation_dashboard_scorecard.png)
-
-图 15 历史界面样例：质量指标、规则状态和运行结果的展示方式。
+图 11 当前 Pages 快照：19 题问卷、八维投资者画像和资产配置参考。
 
 ## 4. 总体技术方案
 
@@ -764,9 +744,9 @@ node --check app/api/static/app.js
 
 本次文档整理后的验证记录如下：
 
-* 本次执行的 21 个领域单元测试文件全部通过；
 * `node --check app/api/static/app.js` 返回码为 0；
-* 文档中的 6 个本地技术图示、11 个历史界面样例引用和代码、测试路径均已检查存在。
+* `tests/browser/test_pages_snapshot.mjs` 对最新 Pages 快照页面验证通过；
+* 文档中的 6 个本地技术图示、5 个最新 Pages 快照界面截图引用和代码、测试路径均已检查存在。
 
 ### 7.5 评审结果读取方式
 
@@ -879,7 +859,7 @@ flowchart LR
 | `README.md` | 项目运行方式、核心能力和仓库入口 |
 | `docs/submission/technical-report.md` | 系统设计、接口、计算、风险和测试依据 |
 | `docs/submission/figures/` | 评审版技术图示 |
-| `docs/showcase/README.md`、`docs/showcase/*.png` | 界面样例和版本演进材料 |
+| `docs/showcase/current-pages-snapshot-*.png` | 最新 Pages 快照界面截图 |
 | `app/api/static/index.html` | 当前界面页面结构、页面锚点和入口 |
 | `app/api/static/app.js` | 当前界面状态与交互逻辑 |
 | `app/api/static/pages-snapshot.js`、`app/api/static/pages-snapshot.json` | 当前 Pages 演示的接口快照回放资源 |
@@ -938,7 +918,7 @@ flowchart LR
 | 风险与合规双闸门图 | `docs/submission/figures/prism-figure-06-decision-gates.png` |
 | 当前界面结构 | `app/api/static/index.html`、`app/api/static/app.js`、`app/api/static/styles.css`、`app/api/static/prism-v2.css` |
 | 当前 Pages 演示 | `https://prism.daoyezongzi.org/?pages=1`、`app/api/static/pages-snapshot.js`、`app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
-| 历史界面样例 | `docs/showcase/README.md` 与 `docs/showcase/*.png`，图片时间为 2026-09-07 |
+| 当前 Pages 快照截图 | `docs/showcase/current-pages-snapshot-workbench-20260917.png`、`current-pages-snapshot-portfolio-20260917.png`、`current-pages-snapshot-market-20260917.png`、`current-pages-snapshot-trading-style-20260917.png`、`current-pages-snapshot-profile-20260917.png` |
 | 当前接口实现 | `app/api/main.py` |
 | 当前技术设计依据 | `docs/submission/technical-report.md` |
 
