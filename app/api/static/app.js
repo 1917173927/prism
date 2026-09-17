@@ -153,9 +153,9 @@
   let authenticatedOwner = null;
   let accountAccessEnabled = false;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
-  async function refreshSessionTruth() {
+  async function refreshSessionTruth(signal) {
     const owner = state.ownerId;
-    const response = await fetch("/api/v1/advisor/session-truth", {headers:{"X-Owner-ID":owner}});
+    const response = await fetch("/api/v1/advisor/session-truth", {headers:{"X-Owner-ID":owner}, signal});
     if (!response.ok) throw await apiError(response);
     const result = await response.json();
     if (state.ownerId !== owner) return null;
@@ -10190,8 +10190,42 @@
     stepEl.classList.add(status);
   }
 
+  const CHAT_PRECHECK_TIMEOUT_MS = 8000;
+  const CHAT_STREAM_IDLE_TIMEOUT_MS = 15000;
   let activeChatController = null;
   let chatContextRevision = 0;
+
+  function createLinkedTimeoutController(parentSignal, timeoutMs) {
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    if (parentSignal) {
+      if (parentSignal.aborted) controller.abort();
+      else parentSignal.addEventListener("abort", onAbort, {once: true});
+    }
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return {
+      signal: controller.signal,
+      dispose() {
+        clearTimeout(timer);
+        parentSignal?.removeEventListener("abort", onAbort);
+      },
+    };
+  }
+
+  async function readChatStreamChunk(reader) {
+    let timer = null;
+    try {
+      return await Promise.race([
+        reader.read(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("模型响应超时，请稍后重新发送。")), CHAT_STREAM_IDLE_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timer !== null) clearTimeout(timer);
+    }
+  }
+
   async function handleStreamingChat(customQuery) {
     if (activeChatController) return;
     const controller = new AbortController();
@@ -10218,14 +10252,17 @@
     if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
     const chatOwner = state.ownerId;
     let chatTruth = null;
+    const truthRequest = createLinkedTimeoutController(signal, CHAT_PRECHECK_TIMEOUT_MS);
     try {
-      const currentTruth = await refreshSessionTruth();
+      const currentTruth = await refreshSessionTruth(truthRequest.signal);
       if (currentTruth?.revision && currentTruth.status === "LOCKED") chatTruth = currentTruth;
     } catch (error) {
       // A missing or stale portfolio/profile truth may not block ordinary chat.
       // Keeping chatTruth null prevents the backend from treating this turn as
       // personalized advice based on an unconfirmed snapshot.
       chatTruth = null;
+    } finally {
+      truthRequest.dispose();
     }
 
     if (signal.aborted) return;
@@ -10358,7 +10395,7 @@
 
       try {
       while (true) {
-        const { value, done } = await reader.read();
+        const { value, done } = await readChatStreamChunk(reader);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -12196,6 +12233,28 @@
     output.append(card);
   }
 
+  function buildMarketFeatureResultCard() {
+    const card = document.createElement("div");
+    card.className = "copilot-decision-card";
+    const heading = document.createElement("h3");
+    heading.textContent = "大盘分析已完成";
+    const summary = document.createElement("p");
+    summary.className = "research-boundary";
+    const index = selectedMarketIndex();
+    const status = byId("market-status")?.textContent || "行情已更新";
+    summary.textContent = `${index?.name || "当前指数"}：${status}。图表已更新，点击按钮后查看。`;
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "copilot-action-btn secondary";
+    action.textContent = "查看大盘图";
+    action.addEventListener("click", () => {
+      window.location.hash = "market";
+      syncNavigation("market");
+    });
+    card.append(heading, summary, action);
+    return card;
+  }
+
   function providerCellValue(value) {
     if (value == null || value === "") return "未提供";
     if (typeof value === "number") {
@@ -12430,8 +12489,8 @@
         renderMarketIndexCards();
         await loadMarketQuotes();
         await assessMarket();
-        window.location.hash = "market";
-        syncNavigation("market");
+        const output = agentFeatureOutput();
+        if (output) output.append(buildMarketFeatureResultCard());
         return;
       }
       if (id === "industry") {

@@ -69,6 +69,36 @@ def test_structured_query_preserves_provider_fields(monkeypatch):
     assert "25.1" in answer and "净资产收益率[2025]" in answer
 
 
+def test_structured_query_compacts_period_series() -> None:
+    result = {
+        "status": "SUCCESS",
+        "query": "上证指数市净率",
+        "items": [{
+            "指数@市净率[20260423]": 1.3875,
+            "指数@市净率[20260424]": 1.3844,
+            "指数@市净率[20260427]": 1.3789,
+            "指数@市净率[20260428]": 1.3810,
+            "指数@市净率[20260429]": 1.3907,
+            "指数@市净率[20260430]": 1.3901,
+            "指数@市净率[20260506]": 1.3992,
+            "指数@市净率[20260507]": 1.3973,
+            "指数@市净率[20260508]": 1.3915,
+            "指数@市净率[20260511]": 1.4056,
+            "指数@市净率[20260512]": 1.4029,
+            "指数@市净率[20260513]": 1.4097,
+        }],
+        "missing_fields": [],
+        "retrieved_at": "2026-09-17T00:00:00Z",
+    }
+    answer = CopilotAgent()._synthesize_grounded_response(
+        "上证指数市净率", {}, [{"tool": "query_financial_data", "result": result}], None
+    )
+    assert answer.count("指数@市净率") == 1
+    assert "最新 1.4097（20260513）" in answer
+    assert "区间 1.3789～1.4097" in answer
+    assert "最近 20260511=1.4056、20260512=1.4029、20260513=1.4097" in answer
+
+
 def test_stock_quote_uses_global_wencai_when_fuyao_is_unconfigured(monkeypatch):
     failures = []
     controller = SimpleNamespace(

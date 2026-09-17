@@ -920,6 +920,70 @@ class CopilotAgent:
             },
         }
 
+    @staticmethod
+    def _compact_financial_rows(rows: list[dict[str, Any]]) -> list[str]:
+        period_pattern = re.compile(r"^(?P<metric>.+?)\[(?P<period>\d{4}(?:[-/]?\d{2}){0,2})\]$")
+
+        def render(value: Any) -> str:
+            if value is None or value == "":
+                return "未提供"
+            if isinstance(value, (dict, list, tuple)):
+                return json.dumps(value, ensure_ascii=False)
+            return str(value)
+
+        def numeric(value: Any) -> Decimal | None:
+            if isinstance(value, bool) or value is None:
+                return None
+            text = str(value).strip().replace(",", "").replace("%", "")
+            if not re.fullmatch(r"[+-]?\d+(?:\.\d+)?", text):
+                return None
+            return Decimal(text)
+
+        lines: list[str] = []
+        for index, row in enumerate(rows, 1):
+            if not isinstance(row, dict):
+                lines.append(f"- 记录 {index}：{render(row)}")
+                continue
+            series: dict[str, list[tuple[str, str, Any]]] = {}
+            scalar: list[tuple[str, Any]] = []
+            for key, value in row.items():
+                key_text = str(key)
+                match = period_pattern.fullmatch(key_text)
+                if match:
+                    series.setdefault(match.group("metric"), []).append((match.group("period"), key_text, value))
+                else:
+                    scalar.append((key_text, value))
+
+            if len(rows) > 1:
+                lines.append(f"记录 {index}：")
+            for metric, entries in series.items():
+                entries.sort(key=lambda item: re.sub(r"\D", "", item[0]))
+                if len(entries) == 1:
+                    period, key_text, value = entries[0]
+                    lines.append(f"- {key_text}：{render(value)}")
+                    continue
+                latest_period, _, latest_value = entries[-1]
+                line = f"- {metric}：最新 {render(latest_value)}（{latest_period}）"
+                numeric_entries = [(numeric(value), period, value) for period, _, value in entries]
+                numeric_entries = [item for item in numeric_entries if item[0] is not None]
+                if len(numeric_entries) >= 2:
+                    low = min(numeric_entries, key=lambda item: item[0])
+                    high = max(numeric_entries, key=lambda item: item[0])
+                    line += f"；区间 {render(low[2])}～{render(high[2])}"
+                recent = entries[-3:]
+                line += "；最近 " + "、".join(
+                    f"{period}={render(value)}" for period, _, value in recent
+                )
+                lines.append(line)
+
+            for key, value in scalar[:8]:
+                lines.append(f"- {key}：{render(value)}")
+            if len(scalar) > 8:
+                lines.append(f"- 其余 {len(scalar) - 8} 个字段已省略")
+            if not series and not scalar:
+                lines.append("- 当前记录没有可展示字段")
+        return lines
+
     def _synthesize_grounded_response(
         self,
         user_message: str,
@@ -1051,11 +1115,9 @@ class CopilotAgent:
             rows = result.get("items") or []
             if not rows:
                 lines.append("未取得匹配数据，不以模型常识补值。")
-            for index, row in enumerate(rows, 1):
-                lines.append(f"\n记录 {index}：")
-                for key, value in row.items():
-                    rendered = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list, tuple)) else str(value) if value is not None else "未提供"
-                    lines.append(f"- {key}：{rendered}")
+            else:
+                lines.append(f"返回 {len(rows)} 条记录；时间序列字段已汇总为最新值、区间和最近三期。")
+                lines.extend(self._compact_financial_rows(rows))
             if result.get("missing_fields"):
                 lines.append("缺失字段：" + "、".join(result["missing_fields"]))
             lines.append(f"来源：问财 SkillHub；检索时间：{result['retrieved_at']}。保留上游字段及报告期，未生成独立审计或估值结论。")

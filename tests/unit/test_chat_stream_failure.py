@@ -62,10 +62,16 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
     source = Path("app/api/static/app.js").read_text(encoding="utf-8")
     function = re.search(r"  async function handleStreamingChat\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
     function += "\n" + re.search(r"  async function performStreamingChat\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
+    function += "\n" + re.search(r"  async function readChatStreamChunk\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
     function += "\n" + "\n".join(re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
-                                  for name in ["profileLevelText", "currentProfileTag", "activeProfileTag", "recordTruthTurnAlert"])
+                                  for name in [
+                                      "createLinkedTimeoutController",
+                                      "profileLevelText", "currentProfileTag", "activeProfileTag", "recordTruthTurnAlert",
+                                  ])
     probe = r'''
 const assert = require('node:assert/strict');
+const CHAT_PRECHECK_TIMEOUT_MS = 8000;
+const CHAT_STREAM_IDLE_TIMEOUT_MS = 15000;
 class Element {
   constructor(){
     this.children=[]; this.style={}; this.value='';
