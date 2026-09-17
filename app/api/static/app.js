@@ -11348,8 +11348,9 @@
     const color = name => css.getPropertyValue(name).trim();
     const chartHeight = 420 + (activeMarketIndicators.has("macd") ? 130 : 0) + (activeMarketIndicators.has("kdj") ? 130 : 0);
     container.style.height = `${chartHeight}px`;
+    const initialWidth = container.clientWidth;
     const chart = window.LightweightCharts.createChart(container, {
-      width: container.clientWidth, height: chartHeight,
+      width: initialWidth, height: chartHeight,
       layout: {background: {type: "solid", color: color("--surface")}, textColor: color("--text-secondary"),
         panes: {separatorColor: color("--border"), separatorHoverColor: color("--brand"), enableResize: true}},
       grid: {vertLines: {color: color("--border-subtle")}, horzLines: {color: color("--border-subtle")}},
@@ -11420,7 +11421,10 @@
     chart.timeScale().fitContent();
     marketChartResizeObserver = new ResizeObserver(entries => {
       const width = Math.floor(entries[0]?.contentRect.width || 0);
-      if (width > 0 && renderedMarketChart === chart) chart.applyOptions({width});
+      if (width > 0 && renderedMarketChart === chart) {
+        chart.applyOptions({width});
+        if (initialWidth === 0) chart.timeScale().fitContent();
+      }
     });
     marketChartResizeObserver.observe(container);
   }

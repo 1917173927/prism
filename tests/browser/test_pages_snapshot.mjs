@@ -40,6 +40,36 @@ try {
   await page.waitForFunction(
     () => document.querySelector("#market")?.textContent.includes("上证指数"),
   );
+  const chartActivity = await page.evaluate(() => {
+    const canvas = document.querySelector("#market-kline canvas");
+    if (!canvas || !canvas.width || !canvas.height) return null;
+    const parseColor = value => {
+      const match = value.match(/^#([0-9a-f]{6})$/i);
+      return match ? [1, 3, 5].map(index => Number.parseInt(match[1].slice(index - 1, index + 1), 16)) : null;
+    };
+    const palette = ["--market-up", "--market-down", "--brand"]
+      .map(name => parseColor(getComputedStyle(document.body).getPropertyValue(name).trim()))
+      .filter(Boolean);
+    const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+    let left = 0;
+    let total = 0;
+    for (let y = 0; y < canvas.height; y += 2) {
+      for (let x = 0; x < canvas.width; x += 2) {
+        const offset = (y * canvas.width + x) * 4;
+        const matchesPalette = palette.some(([red, green, blue]) =>
+          Math.abs(pixels[offset] - red) <= 12
+          && Math.abs(pixels[offset + 1] - green) <= 12
+          && Math.abs(pixels[offset + 2] - blue) <= 12,
+        );
+        if (!matchesPalette) continue;
+        total += 1;
+        if (x < canvas.width / 2) left += 1;
+      }
+    }
+    return {left, total};
+  });
+  assert.ok(chartActivity, "首次进入市场页面后没有可读取的 K 线画布");
+  assert.ok(chartActivity.left > chartActivity.total * 0.3, `K 线仍集中在右侧：${JSON.stringify(chartActivity)}`);
 
   await page.evaluate(() => { window.location.hash = "copilot"; });
   await page.waitForSelector("#copilot:not([hidden])");
