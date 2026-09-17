@@ -32,19 +32,10 @@ Prism 面向同花顺 A18“基于同花顺问财 SkillHub 的个性化证券投
 
 Prism 将投顾任务组织为结构化处理链路：
 
-```mermaid
-flowchart LR
-    A[用户问题与结构化上下文] --> B[风险画像与组合上下文]
-    B --> C[意图识别与任务规划]
-    C --> D[专业研究节点协作]
-    D --> E[证据整理与交叉验证]
-    B --> F[组合暴露与风险计算]
-    F --> G[配置边界与调整计算]
-    E --> H[适当性、风险与合规闸门]
-    G --> H
-    H --> I[建议、回执与决策事件]
-    I --> J[工作台展示与证据追踪]
-```
+<figure class="technical-figure">
+  <img src="figures/prism-figure-01-overview.png" alt="Prism 投顾处理链路">
+  <figcaption>图 1 Prism 投顾处理链路</figcaption>
+</figure>
 
 系统提供以下能力组合：
 
@@ -202,33 +193,10 @@ Prism 采用模块化单体结构。各领域模块在同一 Python 应用进程
 
 系统的逻辑依赖关系如下。语言交互产生结构化意图、工具结果或解释文本；经过显式提取、确认和接口规则校验的结构化输入，才进入相应应用服务。对话工具结果单独返回，不自动写入研究证据、闸门、回执或决策事件。
 
-```mermaid
-flowchart TD
-    U[用户与静态工作台] --> A[FastAPI 接口层]
-    A --> I[结构化输入与投顾查询]
-    A --> C[对话入口]
-    C --> L[LLM 客户端与工具调用]
-    L --> T[会话事实与上下文预览]
-    T -->|用户确认或显式保存| I
-
-    I --> S[应用服务层]
-    S --> P[画像服务]
-    S --> O[组合上下文]
-    S --> R[研究矩阵与研究卡]
-    S --> Q[优化、情景模拟与再平衡]
-
-    X[数据提供方适配层] --> R
-    X --> O
-    R --> E[证据归一化与交叉验证]
-    P --> K[确定性组合与风险计算]
-    O --> K
-    Q --> A
-    E --> G[风险闸门与合规闸门]
-    K --> G
-    G --> N[建议组合与决策回执]
-    N --> D[决策事件、历史与访问审计]
-    D --> A
-```
+<figure class="technical-figure">
+  <img src="figures/prism-figure-02-architecture.png" alt="Prism 系统总体架构">
+  <figcaption>图 2 Prism 系统总体架构</figcaption>
+</figure>
 
 主投顾服务在 `app/service/advisor_query.py` 中形成一条可回放的端到端调用链：请求经过接口规则复核后生成风险画像，计算持仓暴露、集中度、风险预算和配置边界，执行研究运行并构造证据流水线，再生成建议候选，执行双闸门，最后组合建议结果。`app/api/main.py` 在得到结果后构造并保存 `DecisionEvent`，由接口返回决策结果和事件状态。
 
@@ -252,31 +220,10 @@ flowchart TD
 
 模块之间以领域对象和应用服务作为边界。主要依赖关系如下：
 
-```mermaid
-flowchart LR
-    C[共用接口规则] --> P[画像]
-    C --> O[组合]
-    C --> V[数据提供方]
-    C --> R[研究与协调]
-    P --> K[风险]
-    O --> K
-    K --> A[配置边界]
-    V --> R
-    R --> E[证据与交叉验证]
-    P --> G[风险与合规闸门]
-    O --> G
-    A --> G
-    E --> G
-    G --> N[建议与回执]
-    P --> N
-    O --> N
-    I[接口] --> S[应用服务]
-    S --> N
-    S --> R
-    S --> K
-    S --> T[存储与审计]
-    I --> L[LLM 与对话工具]
-```
+<figure class="technical-figure">
+  <img src="figures/prism-figure-03-dependencies.png" alt="Prism 模块依赖关系">
+  <figcaption>图 3 Prism 模块依赖关系</figcaption>
+</figure>
 
 | 模块 | 职责 | 主要依赖与边界 |
 | --- | --- | --- |
@@ -365,22 +312,10 @@ Prism 的任务执行由结构化意图、研究专员矩阵和有界运行器�
 
 一次研究运行包含运行预算、截止时间和节点集合。节点初始为 `PENDING`，没有未完成依赖的节点进入 `RUNNING`。当前一轮的可运行节点通过 `asyncio.gather` 并行调用提供方；只有依赖节点全部为 `COMPLETE`，下游节点才会在下一轮进入运行状态。每个节点的请求同时受节点超时和运行剩余预算约束。
 
-```mermaid
-flowchart TD
-    A[结构化意图与研究矩阵] --> B[构造 ResearchPlan]
-    B --> C[创建 ResearchRunState]
-    C --> D[激活无未完成依赖的节点]
-    D --> E[并行调用数据提供方]
-    E --> F[生成节点结果、证据和观察值]
-    F --> G[记录节点结果并更新状态]
-    G --> H{是否产生新的就绪节点}
-    H -- 是 --> D
-    H -- 否 --> I[结束研究运行]
-    I --> J[交叉验证与证据流水线]
-    J --> K{流水线状态}
-    K -- READY --> L[交给风险与合规闸门]
-    K -- REVIEW_REQUIRED 或 BLOCKED --> M[保留问题并进入复核路径]
-```
+<figure class="technical-figure">
+  <img src="figures/prism-figure-04-research-dag.png" alt="Prism 研究编排与证据流水线">
+  <figcaption>图 4 Prism 研究编排与证据流水线</figcaption>
+</figure>
 
 运行器按节点标识稳定排序结果，合并证据和观察值时检查全局标识唯一性。状态机负责收敛依赖关系：必需节点无法完成时，运行转为失败并关闭其余活跃节点；依赖未完成时，状态机会关闭受影响的下游节点；可选节点异常时，运行可以保留部分结果并进入部分完成状态。研究运行结束后，结果由证据流水线统一判断是否形成可用的证据闭包。
 
@@ -593,23 +528,10 @@ Prism 使用版本化问卷形成投资者的基础风险输入。问卷模板�
 
 画像对最终建议的影响沿确定性数据链传递：
 
-```mermaid
-flowchart LR
-    A[问卷回答] --> B[问卷快照与风险画像]
-    B --> C[组合导入包与时点持仓]
-    C --> D[暴露计算]
-    D --> E[集中度计算]
-    B --> F[风险预算]
-    E --> F
-    D --> G[配置边界]
-    F --> G
-    B --> H[研究与证据]
-    C --> H
-    G --> I[风险闸门]
-    H --> I
-    I --> J[合规闸门]
-    J --> K[建议组合与决策回执]
-```
+<figure class="technical-figure">
+  <img src="figures/prism-figure-05-personalization-chain.png" alt="画像进入建议计算链路">
+  <figcaption>图 5 画像进入建议计算链路</figcaption>
+</figure>
 
 当前 `FixtureAdvisorQueryService.run` 的投顾查询顺序为：服务端重新校验请求，依据问卷生成 `RiskProfile`，计算组合暴露和集中度，评估风险预算并生成配置边界，执行研究运行和证据流水线，组装建议候选，执行风险与合规闸门，最后调用建议组合器。研究、画像、组合和风险对象之间的用户归属、画像版本、组合标识、报告标识和时间字段在服务层逐项校验。
 
@@ -841,19 +763,10 @@ Prism 将投资者画像、组合风险结果、研究证据和配置约束绑�
 
 `evaluate_decision_gates` 聚合独立的风险闸门和合规闸门结果，按照 `BLOCKED > REVIEW_REQUIRED > PASS` 计算总状态。`eligible_for_recommendation` 仅在两个子闸门均为 `PASS` 时为真。总结果保存三个闸门标识、用户与画像标识、研究运行标识、子闸门状态、检查引用和问题码，供后续建议组合与决策回执引用。
 
-```mermaid
-flowchart LR
-    A[RiskProfile<br/>研究流水线<br/>风险评估与配置边界] --> B[风险闸门]
-    C[RiskProfile] --> D[合规闸门]
-    E[READY 研究证据流水线] --> D
-    F[AdvisoryCandidate<br/>发现标识与披露] --> D
-    B --> G[DecisionGateResult]
-    D --> G
-    G -->|两个闸门 PASS| H[建议组合器]
-    G -->|REVIEW_REQUIRED 或 BLOCKED| I[建议组合器]
-    H --> J[Recommendation 与 DecisionReceipt]
-    I --> K[无建议、无回执的安全拒绝组合结果]
-```
+<figure class="technical-figure">
+  <img src="figures/prism-figure-06-decision-gates.png" alt="Prism 风险与合规双闸门">
+  <figcaption>图 6 Prism 风险与合规双闸门</figcaption>
+</figure>
 
 建议组合器 `compose_recommendations` 在生成结果前重新验证所有输入，并再次执行双闸门。闸门内容过期、候选对象变化、组合报告不闭合、配置边界不一致或模型复制修改绕过接口规则时，组合器返回带安全问题码的 `REVIEW_REQUIRED` 或 `BLOCKED` 结果，结果中不生成建议和回执。
 
