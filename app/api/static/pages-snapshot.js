@@ -1,6 +1,11 @@
 (() => {
   "use strict";
 
+  const pageHosts = new Set(["prism.daoyezongzi.org"]);
+  const query = new URLSearchParams(window.location.search);
+  const enabled = pageHosts.has(window.location.hostname) || query.get("pages") === "1";
+  if (!enabled) return;
+
   const SNAPSHOT_OWNER_ID = "usr-01f9f18ddf81440f80e6b97db526427d";
   const SNAPSHOT_PATH = "/static/pages-snapshot.json";
   const originalFetch = window.fetch.bind(window);

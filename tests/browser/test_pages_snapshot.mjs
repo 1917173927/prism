@@ -17,7 +17,9 @@ try {
   });
   page.on("pageerror", error => consoleErrors.push(error.message));
   await page.setViewport({width: 1440, height: 1000, deviceScaleFactor: 1});
-  await page.goto(baseUrl, {waitUntil: "networkidle0", timeout: 60000});
+  const snapshotUrl = new URL(baseUrl);
+  snapshotUrl.searchParams.set("pages", "1");
+  await page.goto(snapshotUrl, {waitUntil: "networkidle0", timeout: 60000});
   await page.waitForFunction(
     () => window.PRISM_PAGES_SNAPSHOT === true
       && document.querySelector("#copilot:not([hidden])")
