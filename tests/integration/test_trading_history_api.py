@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.api.main import create_app
 from app.profile.questionnaire import QUESTIONNAIRE_TEMPLATE
 from app.store import SQLiteDecisionEventStore
+from app.trading_history import TradeImportPreview
 
 
 NOW = datetime(2026, 9, 17, 8, tzinfo=UTC)
@@ -150,3 +151,68 @@ def test_trade_page_is_a_primary_navigation_workspace() -> None:
     assert "function renderTradingStyleProfile(" in script
     assert "function previewTradeImport(" in script
     assert ".trading-style-page" in styles
+
+
+def test_screenshot_preview_resolves_security_code_once_per_unique_name(monkeypatch) -> None:
+    calls: list[str] = []
+
+    class FakeSecurityDirectory:
+        async def resolve_security_identity(self, name: str):
+            calls.append(name)
+            return {
+                "asset_id": "600186.SH",
+                "name": "莲花控股",
+                "market": "SH",
+                "source": "test exact-name official directory",
+            }
+
+    def fake_preview(_files, *, selected_sheet=None):
+        assert selected_sheet is None
+        row = {
+            "row_number": 1,
+            "raw_values": {"证券名称": "莲花控股"},
+            "proposed": {
+                "traded_at": "2026-09-14T10:43:00+08:00",
+                "security_code": None,
+                "security_name": "莲花控股",
+                "side": "SELL",
+                "quantity": "200",
+                "price_cny": "13.180",
+                "gross_amount_cny": "2636.000",
+            },
+            "confidence": "0.99",
+            "status": "PASS",
+            "issues": [],
+        }
+        return TradeImportPreview(
+            source_type="IMAGE",
+            source_digest="c" * 64,
+            file_count=1,
+            detected_columns=("证券名称",),
+            suggested_mapping={"security_name": "证券名称"},
+            rows=(row, {**row, "row_number": 2}),
+            accepted_count=2,
+            review_count=0,
+            rejected_count=0,
+        )
+
+    monkeypatch.setattr("app.api.main.preview_trade_files", fake_preview)
+    store = SQLiteDecisionEventStore(":memory:")
+    with TestClient(create_app(
+        store=store,
+        security_directory_provider=FakeSecurityDirectory(),
+    )) as client:
+        response = client.post(
+            "/api/v1/advisor/trading-history/import/preview",
+            headers={"X-Owner-ID": OWNER},
+            files={"files": ("statement.png", b"bounded-image", "image/png")},
+        )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [row["proposed"]["security_code"] for row in body["rows"]] == [
+        "600186.SH", "600186.SH",
+    ]
+    assert body["rows"][0]["proposed"]["security_identity_source"] == "test exact-name official directory"
+    assert body["accepted_count"] == 2
+    assert calls == ["莲花控股"]

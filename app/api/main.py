@@ -758,31 +758,35 @@ def create_app(
         )
         return passed, results
 
+    identity_resolution_semaphore = asyncio.Semaphore(4)
+
+    async def resolve_security_identity_by_name(name: str) -> dict[str, str] | None:
+        """Resolve one exact identity using the same source chain for every OCR workflow."""
+        identity = None
+        try:
+            async with identity_resolution_semaphore:
+                identity = await active_security_directory.resolve_security_identity(name)
+        except (SecurityDirectoryError, TimeoutError, TypeError, ValueError):
+            identity = None
+        if identity is None:
+            resolver = getattr(active_live_finance, "resolve_security_identity", None)
+            if resolver is not None and getattr(active_live_finance, "is_configured", False):
+                try:
+                    async with identity_resolution_semaphore:
+                        identity = await resolver(name)
+                except (FuyaoProviderError, TimeoutError, TypeError, ValueError):
+                    identity = None
+        return identity
+
     async def resolve_ocr_security_identities(result: dict) -> None:
         """Bind OCR names to one exact directory identity, including wrong OCR codes."""
         candidates = [
             position for position in result.get("positions", [])
             if str(position.get("name") or "").strip()
         ]
-        semaphore = asyncio.Semaphore(4)
 
         async def resolve(position: dict) -> None:
-            identity = None
-            try:
-                async with semaphore:
-                    identity = await active_security_directory.resolve_security_identity(
-                        str(position["name"]).strip()
-                    )
-            except (SecurityDirectoryError, TimeoutError, TypeError, ValueError):
-                identity = None
-            if identity is None:
-                resolver = getattr(active_live_finance, "resolve_security_identity", None)
-                if resolver is not None and getattr(active_live_finance, "is_configured", False):
-                    try:
-                        async with semaphore:
-                            identity = await resolver(str(position["name"]).strip())
-                    except (FuyaoProviderError, TimeoutError, TypeError, ValueError):
-                        identity = None
+            identity = await resolve_security_identity_by_name(str(position["name"]).strip())
             if not identity:
                 return
             original_asset_id = str(position.get("asset_id") or "").strip().upper()
@@ -806,6 +810,55 @@ def create_app(
             bool(position.get("needs_review"))
             for position in result.get("positions", [])
         )
+
+    async def resolve_trade_preview_security_identities(
+        preview: TradeImportPreview,
+    ) -> TradeImportPreview:
+        """Enrich screenshot trade rows from the verified security directory."""
+        if preview.source_type != "IMAGE":
+            return preview
+        names = tuple(dict.fromkeys(
+            str(row.proposed.get("security_name") or "").strip()
+            for row in preview.rows
+            if str(row.proposed.get("security_name") or "").strip()
+        ))
+        resolved = await asyncio.gather(*(
+            resolve_security_identity_by_name(name) for name in names
+        ))
+        identities = dict(zip(names, resolved))
+        updated_rows = []
+        for row in preview.rows:
+            proposed = dict(row.proposed)
+            name = str(proposed.get("security_name") or "").strip()
+            existing_code = str(proposed.get("security_code") or "").strip().upper()
+            identity = identities.get(name)
+            issues = list(row.issues)
+            status = row.status
+            if identity is not None:
+                resolved_code = str(identity["asset_id"]).strip().upper()
+                proposed["security_code"] = resolved_code
+                proposed["security_name"] = identity.get("name") or name
+                proposed["security_identity_source"] = identity.get("source") or "verified security directory"
+                if existing_code and existing_code != resolved_code:
+                    issues.append(f"证券代码已由 {existing_code} 更正为 {resolved_code}，请复核")
+                    if status != "OVERBOUND":
+                        status = "REVIEW_REQUIRED"
+            elif name and not existing_code:
+                issues.append("未能从证券目录唯一匹配证券代码，请人工填写")
+                if status != "OVERBOUND":
+                    status = "REVIEW_REQUIRED"
+            updated_rows.append(row.model_copy(update={
+                "proposed": proposed,
+                "issues": tuple(dict.fromkeys(issues)),
+                "status": status,
+            }))
+        rows = tuple(updated_rows)
+        return preview.model_copy(update={
+            "rows": rows,
+            "accepted_count": sum(row.status == "PASS" for row in rows),
+            "review_count": sum(row.status == "REVIEW_REQUIRED" for row in rows),
+            "rejected_count": sum(row.status == "OVERBOUND" for row in rows),
+        })
 
     async def fetch_overseas_quote(symbol: str) -> dict | None:
         providers = []
@@ -1254,7 +1307,8 @@ def create_app(
                 limit = 10 * 1024 * 1024 + 1
                 content = await file.read(limit)
                 buffered.append((file.filename or "upload", file.content_type or "application/octet-stream", content))
-            return preview_trade_files(buffered, selected_sheet=sheet)
+            preview = preview_trade_files(buffered, selected_sheet=sheet)
+            return await resolve_trade_preview_security_identities(preview)
         except ImportLimitError as exc:
             return _error_response(413, "TRADE_IMPORT_OVERBOUND", str(exc))
         except ImportParseError as exc:
