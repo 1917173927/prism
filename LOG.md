@@ -1727,4 +1727,4 @@ Phase 27 已在本地 worktree 接受，最终验收记录见
 - 新增 `app/api/static/pages-mock.js`，仅在 `prism.daoyezongzi.org` 或显式 `?pages=1` 环境接管 `/api` 请求，提供合成画像、示例持仓、行情、研究、组合计算、对话与评测数据。
 - 本地 FastAPI 使用的静态页面与后端入口保持原样；公开页面不连接账号、真实行情、后端服务或模型服务，刷新页面后演示状态恢复。
 - `.github/workflows/deploy-pages.yml` 会组装完整静态工作台后上传到 GitHub Pages，变更范围覆盖 `app/api/static/**`。
-- 自定义域名 `prism.daoyezongzi.org` 已使用 GitHub Pages CNAME 与 Cloudflare DNS-only CNAME；HTTPS 强制开关仍需在证书就绪后确认。
+- 自定义域名 `prism.daoyezongzi.org` 已使用 GitHub Pages CNAME 与 Cloudflare DNS-only CNAME；GitHub Pages `https_enforced` 已确认开启。
