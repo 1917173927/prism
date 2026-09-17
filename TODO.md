@@ -13,8 +13,9 @@
 
 ## GitHub Pages 前端展示
 
-- [x] 使用 `app/api/static/demos/prism-console` 发布只读 Mock 前端，并通过 `.github/workflows/deploy-pages.yml` 自动更新。
-- [ ] 在 GitHub Pages 添加 `prism.daoyezongzi.org`，再在 Cloudflare 创建指向 `daoyezongzi.github.io` 的 CNAME 记录。
+- [x] 使用最新 `app/api/static/index.html` 与完整静态资源目录发布前端工作台，并通过 `.github/workflows/deploy-pages.yml` 自动更新。
+- [x] 为公开 Pages 域名加入仅前端运行的 `pages-mock.js`，让画像、持仓、行情、研究、组合与对话入口可以进入并展示合成数据。
+- [ ] 在 GitHub Pages 证书就绪后打开 `Enforce HTTPS`，并复核 `https://prism.daoyezongzi.org` 的证书状态。
 
 ## 本地部署缺口执行
 
