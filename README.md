@@ -225,162 +225,244 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
 - 风险与合规独立于建议生成；
 - Provider 失败必须显式降级；
 - 每项能力必须有新鲜测试证据。
+Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作台。系统接收已确认的投资者画像、投资组合和研究意图，组织数据提供方、研究任务、证据校验、确定性组合计算、风险与合规检查，并返回可追踪的研究结果与决策回执。
+
+金融事实保留来源、期间、观察时间和数据状态；金额、权重、暴露、集中度、风险预算、配置边界、情景差异和再平衡数量由 Python 确定性服务计算；LLM 负责意图、槽位和自然语言表达。建议生成前经过独立风险与合规门槛，系统不调用交易接口。
+
+## 文档与依据
+
+| 文档 | 用途 |
+| --- | --- |
+| [Prism.md](Prism.md) | 项目目标、总体约束和产品工程规范 |
+| [技术设计文档](docs/submission/technical-report.md) | 当前模块、接口、数据规则、部署结构、测试方法和系统边界 |
+| [系统总体架构](docs/architecture.md) | 模块分层、运行流程和页面设计资料 |
+| [本地部署与数据维护](docs/local-deployment.md) | 账户、凭据、数据库、备份、真实 HTTP 观测和工作流维护 |
+| [问财 LIVE 数据接入说明](docs/iwencai-live-provider.md) | 问财 SkillHub 配置、九项能力探测和真实查询边界 |
+| [PRD 对接指南](docs/prd-integration-guide.md) | 面向产品联调的模块、接口和数据状态说明 |
+| [架构决策 ADR-0001](docs/adr/0001-modular-monolith.md) | 模块化单体的架构决策 |
+| [TODO](TODO.md) / [LOG](LOG.md) | 当前执行项、验证记录和技术问题 |
+
+## 处理链路
+
+```mermaid
+flowchart LR
+    A[账户与已确认上下文] --> B[意图与研究计划]
+    B --> C[有限拓扑研究运行]
+    C --> D[ProviderResult 与证据校验]
+    A --> E[暴露、集中度与风险预算]
+    E --> F[配置边界、优化与再平衡]
+    D --> G[风险与合规门槛]
+    F --> G
+    G --> H[建议与 DecisionReceipt]
+    H --> I[DecisionEvent 与工作台]
+```
+
+主投顾查询接口的依赖关系为：
+
+```text
+RiskProfile + PortfolioImportBundle
+    -> Exposure / Concentration / Risk Budget / Allocation Envelope
+    -> ResearchPlan / ResearchRunState
+    -> Evidence / Fact / Finding
+    -> Risk Gate + Compliance Gate
+    -> Recommendation + DecisionReceipt
+    -> DecisionEvent
+```
+
+## 已提供能力
+
+| 能力域 | 当前实现 |
+| --- | --- |
+| 投资者上下文 | 19 道风险问卷、确定性风险评分、风险画像、行为事件与行为画像、结构化画像提案确认、持仓文本与图片 OCR 导入、基金和 ETF 穿透快照 |
+| 研究协作 | 意图计划、宏观/行业/个股/基金/可转债研究轨道、研究节点依赖、有界 DAG 执行、超时与取消传播、研究场景和 Evidence Card |
+| 证据处理 | `ProviderRequest`、`ProviderResult`、请求语义指纹、来源与数据血缘、四态结果、双来源交叉验证、`Evidence → Fact → Finding` 引用链 |
+| 组合计算 | 直接与间接暴露、基金/ETF 穿透、HHI 集中度、风险预算、配置边界、目标结构计算、情景模拟、整手数量、费用、现金下限、交易后风险复核 |
+| 风险与建议 | 风险门槛、合规文本检查、建议资格判定、`HOLD`/`REDUCE` 组合、确定性 `DecisionReceipt`、内容哈希和 `DecisionEvent` |
+| 对话与工作台 | `/api/v1/copilot/chat` 的 SSE 对话、结构化工具调用、组合与市场页面、证据链浏览、历史回执、上下文记忆、AntV X6 工作流画布和 Lightweight Charts 图表 |
+| 本地运行 | 本地账户与会话、owner 隔离、SQLite 默认存储、可选 PostgreSQL、SQLite 在线备份恢复、Windows DPAPI 凭据保护、访问审计 |
+
+## 运行状态
+
+Prism 将数据内容状态、送达方式和证据质量分开记录。页面和接口必须依据状态处理结果，不以空值代替缺失数据。
+
+| 范围 | `MOCK` | `LIVE` |
+| --- | --- | --- |
+| 研究、投顾、场景和固定工作流 | 使用版本化固定数据进行演示、测试和确定性回放 | 当前完整研究矩阵、个股/基金/可转债研究、投顾主流程和固定工作流仍要求真实服务；正式路径拒绝固定演示结果 |
+| A 股行情与基金披露 | 可使用固定数据 | 扶摇能力通过真实探测后提供服务端行情和报告期披露数据；缺失字段保留复核状态 |
+| 组合刷新、优化与再平衡 | 可使用固定组合回放 | 同时需要已验证报价和公司/行业元数据；任一部分不可用时停止对应操作或返回复核 |
+| 对话模型 | 可使用有限规则路径 | 由页面个人模型设置或服务端环境配置兼容 OpenAI API 的模型；金融事实需要结构化工具结果 |
+| 海外市场 | 可按配置使用公开数据源 | 默认由 Yahoo Finance 和港股资讯网适配器按配置提供；iFinD 仅支持显式注入。各路径按权限、标的和数据完整性返回结果，无法核验时显示 `UNAVAILABLE` |
+
+数据提供方结果使用以下四态：
+
+| 状态 | 含义 | 后续处理 |
+| --- | --- | --- |
+| `SUCCESS` | 记录存在且请求必需字段完整 | 可归一化为 `VERIFIED` 证据 |
+| `PARTIAL` | 记录存在，但存在字段缺失或结构化问题 | 可展示，保留缺失字段并进入复核 |
+| `EMPTY` | 查询范围明确且没有记录 | 保留空结果，不写入推测数值 |
+| `FAILED` | 请求、鉴权、额度、网络或解析失败 | 返回结构化问题，进入备用来源、旧缓存、复核或阻断路径 |
+
+提供方送达方式包括 `DIRECT`、`CACHE_FRESH`、`FALLBACK_PROVIDER` 和 `CACHE_STALE_FALLBACK`。旧缓存归一化为 `STALE`，不能形成 `VERIFIED` 事实。风险与合规门槛使用 `PASS`、`REVIEW_REQUIRED` 和 `BLOCKED`。
 
 ## 本地运行
 
-要求 64 位 Python 3.11 或 3.12。OCR 运行依赖当前不支持 Python 3.13 及以上版本。
+运行环境要求 64 位 Python 3.11 或 3.12，当前 `pyproject.toml` 约束为 `>=3.11,<3.13`。
 
-### 1. macOS 环境 (一键启动)
+### Windows
 
-在 macOS 系统下，支持双击运行或终端一键启动：
-
-```bash
-# 终端一键运行 (自动检查依赖、释放端口冲突、通过健康检查后唤起浏览器)
-./start_mac.sh
-
-# 或在 Finder 访达中直接双击运行
-start.command
-```
-
-手动启动方式：
-```bash
-uv sync
-uv run uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-### 2. Windows 环境
-
-Windows 下双击 `start.bat` 即可启动本地工作台。脚本会优先选择 Python 3.12，
-其次选择 Python 3.11，自动创建 `.venv` 并在缺少运行依赖时安装 `.[web]`。
+双击 `start.bat`，或在 PowerShell 中执行：
 
 ```powershell
 .\start.bat
 ```
 
-如需手动创建开发环境并安装测试依赖：
+启动脚本会选择 Python 3.12 或 3.11，创建 `.venv`，检查并安装 Web 运行依赖，然后启动 Uvicorn。手动安装开发依赖：
 
 ```powershell
 py -3.12 -m venv .venv
-.venv\Scripts\python -m pip install -e ".[dev,web]"
+.venv\Scripts\python.exe -m pip install -e ".[dev,web]"
+.venv\Scripts\python.exe -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-服务默认监听 `http://127.0.0.1:8000`，浏览器入口为 `/`，OpenAPI 文档为
-`/api/docs`，健康检查为 `/api/health`。
-
-### 3. 测试套件执行
+### macOS
 
 ```bash
-# macOS / Linux
-uv run pytest
-
-# Windows
-.venv\Scripts\python -m pytest
+uv sync --extra dev --extra web
+./start_mac.sh
 ```
 
-## 当前验证基线
+也可以使用已有的 `uv` 环境：
 
-在当前工作区已验证：
+```bash
+uv run uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+```
 
-- 2026-09-08 全量：`638 passed`，包含 9 项真实 PostgreSQL 17.11 测试；2 条 Starlette/httpx 与 AnyIO 弃用警告。该次运行显式设置临时数据库的 `PRISM_TEST_POSTGRES_DSN`；不提供 DSN 时这 9 项明确跳过。
-- 后续 P3 扩展全量：`655 passed, 9 skipped`；未启动临时 PostgreSQL，跳过其 9 项测试。另补模式切换后的黑板刷新回归，结果见 LOG。
-- `python -m tools.evaluate_mvp --json`：9/9 固定评测用例通过，核心质量指标为 `1.0`；
-- 前端语法、`npm run build:workflow`、Python 编译和 wheel 构建通过；wheel 包含 PostgreSQL 适配器、迁移、X6 脚本及许可证，不包含私有运行数据。
+启动后访问：
 
-上述固定评测指标只描述其九个用例。另有本地真实 HTTP 100 并发持仓 GET：100/100 成功、P95 326ms；这些证据均不能外推为外部并发能力、市场准确率或长期生产 SLA。
+| 地址 | 用途 |
+| --- | --- |
+| [http://127.0.0.1:8000/](http://127.0.0.1:8000/) | Prism 工作台 |
+| [http://127.0.0.1:8000/api/docs](http://127.0.0.1:8000/api/docs) | OpenAPI 文档 |
+| [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) | 进程、数据模式和能力摘要 |
 
-## 仓库索引
+### 开发预览
 
-- [主项目规范](Prism.md)
-- [产品 PRD 对接指南](docs/prd-integration-guide.md)
-- [实施架构](docs/architecture.md)
-- [Evidence Contract](docs/archive/evidence-contract.md)
-- [Provider Protocol](docs/archive/provider-protocol.md)
-- [复用矩阵](docs/archive/reuse-matrix.md)
-- [架构决策 ADR-0001](docs/adr/0001-modular-monolith.md)
-- [当前实施计划](docs/plans/2026-09-01-foundation.md)
-- [Gemini Phase 1 执行合同](docs/plans/2026-09-01-mvp-phase-1-provider-protocol.md)
-- [Phase 1 Hardening 计划](docs/plans/2026-09-01-mvp-phase-1-hardening.md)
-- [Phase 2 Profile/Portfolio 计划](docs/plans/2026-09-01-mvp-phase-2-profile-portfolio-contracts.md)
-- [Phase 2 Profile/Portfolio 契约](docs/archive/profile-portfolio-contracts.md)
-- [Phase 3 Look-through Exposure 计划](docs/plans/2026-09-01-mvp-phase-3-lookthrough-exposure.md)
-- [Phase 3 Portfolio Exposure 契约](docs/archive/portfolio-exposure.md)
-- [Phase 4 Concentration/Risk Budget 计划](docs/plans/2026-09-01-mvp-phase-4-concentration-risk-budget.md)
-- [Phase 4 Concentration/Risk Budget 契约](docs/archive/risk-budget.md)
-- [Phase 5 Allocation Envelope 计划](docs/plans/2026-09-01-mvp-phase-5-allocation-envelope.md)
-- [Phase 5 Allocation Envelope 契约](docs/archive/allocation-envelope.md)
-- [Phase 6 Structured Research/Cross-Validation 计划](docs/plans/2026-09-01-mvp-phase-6-research-cross-validation.md)
-- [Phase 6 Structured Research/Cross-Validation 契约](docs/archive/research-cross-validation.md)
-- [Phase 7 Bounded Orchestration 计划](docs/plans/2026-09-01-mvp-phase-7-bounded-orchestration.md)
-- [Phase 7 Bounded Orchestration 契约](docs/archive/bounded-orchestration.md)
-- [Phase 8 Evidence/Finding 桥接计划](docs/plans/2026-09-01-mvp-phase-8-evidence-finding.md)
-- [Phase 8 Evidence/Finding 桥接契约](docs/archive/evidence-finding-bridge.md)
-- [Phase 9 Fixture-backed Research Run 计划](docs/plans/2026-09-01-mvp-phase-9-fixture-research-run.md)
-- [Phase 9 Fixture-backed Research Run 契约](docs/archive/fixture-research-run.md)
-- [Phase 10 Research-to-Evidence Pipeline 计划](docs/plans/2026-09-01-mvp-phase-10-research-evidence-pipeline.md)
-- [Phase 10 Research-to-Evidence Pipeline 契约](docs/archive/research-evidence-pipeline.md)
-- [Phase 11 Risk/Compliance Gate 计划](docs/plans/2026-09-01-mvp-phase-11-risk-compliance-gates.md)
-- [Phase 11 Risk/Compliance Gate 契约](docs/archive/risk-compliance-gates.md)
-- [Phase 12 Recommendation/Decision Receipt 计划](docs/plans/2026-09-02-mvp-phase-12-recommendation-decision-receipt.md)
-- [Phase 12 Recommendation/Decision Receipt 契约](docs/archive/recommendation-decision-receipt.md)
-- [Phase 13 Owner-scoped API/Persistence/UI 计划](docs/plans/2026-09-02-mvp-phase-13-owner-scoped-api-persistence-ui.md)
-- [Phase 13 Decision Events API 与工作台](docs/archive/decision-events-api.md)
-- [Phase 14 Advisor Query API 与 Fixture 边界](docs/archive/advisor-query-api.md)
-- [Phase 14 Advisor Query/Profile/Portfolio 计划](docs/plans/2026-09-02-mvp-phase-14-advisor-query-profile-portfolio.md)
-- [Phase 15 Advisor Query 结构化工作台](docs/archive/advisor-query-workbench.md)
-- [Phase 15 结构化工作台计划与验收](docs/plans/2026-09-02-mvp-phase-15-advisor-query-workbench.md)
-- [Phase 16 四类研究专员节点矩阵](docs/archive/research-specialist-matrix.md)
-- [Phase 16 研究节点矩阵计划与验收](docs/plans/2026-09-02-mvp-phase-16-research-node-matrix.md)
-- [Phase 17 Research Tracks 工作台](docs/archive/research-workbench.md)
-- [Phase 17 研究工作台计划与验收](docs/plans/2026-09-02-mvp-phase-17-research-workbench.md)
-- [Phase 18 Portfolio/Risk Profile 上下文工作台](docs/archive/flagship-context-workbench.md)
-- [Phase 18 旗舰上下文工作台计划与验收](docs/plans/2026-09-02-mvp-phase-18-flagship-context-workbench.md)
-- [Phase 19 早期负载测试工具](docs/archive/load-test.md)
-- [Phase 19 负载测试计划与验收](docs/plans/2026-09-02-mvp-phase-19-load-test-harness.md)
-- [Phase 20 结构化上下文确认](docs/archive/context-input.md)
-- [Phase 20 上下文确认计划与验收](docs/plans/2026-09-02-mvp-phase-20-context-input-confirmation.md)
-- [Phase 21 MVP 固定评测集](docs/archive/mvp-evaluation.md)
-- [Phase 21 固定评测与回放计划](docs/plans/2026-09-02-mvp-phase-21-evaluation-harness.md)
-- [Phase 22 Intent/Plan 契约](docs/archive/intent-planning.md)
-- [Phase 22 结构化意图与任务计划预览计划](docs/plans/2026-09-02-mvp-phase-22-intent-planning.md)
-- [Phase 23 画像提案确认契约](docs/archive/profile-proposal-confirmation.md)
-- [Phase 23 结构化画像提案与冲突确认计划](docs/plans/2026-09-02-mvp-phase-23-profile-confirmation.md)
-- [Phase 24 Research Tracks 场景回放契约](docs/archive/research-scenarios.md)
-- [Phase 24 研究场景与不确定性计划](docs/plans/2026-09-02-mvp-phase-24-research-scenarios.md)
-- [Phase 25 个股研究 Evidence Card](docs/archive/stock-research-card.md)
-- [Phase 25 个股研究计划与验收](docs/plans/2026-09-02-mvp-phase-25-stock-research.md)
-- [Phase 26 ETF/Fund 资产研究 Evidence Card](docs/archive/fund-research-card.md)
-- [Phase 26 ETF/Fund 资产研究计划与验收](docs/plans/2026-09-02-mvp-phase-26-fund-research.md)
-- [Phase 27 可转债资产研究 Evidence Card](docs/archive/convertible-bond-research-card.md)
-- [Phase 27 可转债资产研究计划与验收](docs/plans/2026-09-02-mvp-phase-27-convertible-bond.md)
-- [Phase 28 Portfolio Optimization 契约](docs/archive/portfolio-optimization.md)
-- [Phase 28 Portfolio Optimization 计划与验收](docs/plans/2026-09-02-mvp-phase-28-portfolio-optimization.md)
-- [Phase 29 Context Memory 契约](docs/archive/context-memory.md)
-- [Phase 29 Context Memory 计划与验收](docs/plans/2026-09-02-mvp-phase-29-persistent-context-memory.md)
-- [Phase 30 Provider Cache/Fallback 契约](docs/archive/provider-cache-fallback.md)
-- [Phase 30 Provider Cache/Fallback 计划与验收](docs/plans/2026-09-02-mvp-phase-30-provider-cache-fallback.md)
-- [Phase 30 Provider Cache/Fallback 复审](docs/reviews/2026-09-02-phase-30-provider-cache-fallback-review.md)
-- [Phase 31 Advanced Evidence UI 契约](docs/archive/advanced-evidence-ui.md)
-- [Phase 31 Advanced Evidence UI 计划与验收](docs/plans/2026-09-02-mvp-phase-31-advanced-evidence-ui.md)
-- [Phase 32 中文 UI 与导航计划与验收](docs/plans/2026-09-02-mvp-phase-32-ui-localization-navigation.md)
-- [Phase 32 中文 UI 与导航独立审查](docs/reviews/2026-09-02-phase-32-ui-localization-navigation-review.md)
-- [Phase 33 Scenario Simulation 契约](docs/archive/scenario-simulation.md)
-- [Phase 33 Scenario Simulation 计划与验收](docs/plans/2026-09-02-mvp-phase-33-scenario-simulation.md)
-- [Phase 33 Scenario Simulation 独立审查](docs/reviews/2026-09-02-phase-33-scenario-simulation-review.md)
-- [Phase 34–37 P2 四项里程碑计划](docs/plans/2026-09-02-mvp-phase-34-to-37-p2-milestones.md)
-- [Phase 34 Recommendation History](docs/archive/recommendation-history.md)
-- [Phase 35 Portfolio Rebalancing](docs/archive/portfolio-rebalancing.md)
-- [Phase 36 Evaluation Dashboard](docs/archive/evaluation-dashboard.md)
-- [Phase 37 Advanced Explainability](docs/archive/advanced-explainability.md)
-- [Phase 38 Copilot 任务中心](app/api/static/index.html)
-- [Phase 39 Copilot Agent](app/llm/agent.py)
-- [Phase 39 OpenAI-compatible LLM 客户端](app/llm/client.py)
-- [Phase 39 市场/ETF Provider](app/providers/live_market.py)
-- [Phase 39 问财 Provider 适配器](app/providers/live_wencai.py)
-- [任务状态](TODO.md)
-- [执行记录](LOG.md)
+需要独立的无认证演示环境时执行：
 
-## 上游边界
+```powershell
+.venv\Scripts\python.exe tools\dev_preview.py --fresh --port 8874
+```
 
-`D:\Github_Storage\tradeeye-copilot` 与 `D:\Github_Storage\TradeEye` 是只读参考。Prism 不在运行时导入相邻仓库；需要的能力以小范围移植、适配器或重新实现的方式进入本仓库，并保留来源与契约测试。
+该入口使用独立 SQLite 和显式 `PRISM_DEV_NO_AUTH=true`。仅在本机开发时使用；`X-Owner-ID` 在此模式下只承担对象隔离作用。
 
-Prism 当前是研究与决策支持原型，不构成证券投资建议，也不执行真实交易。
+## 配置与数据目录
+
+Windows 的 `start.bat` 会读取仓库根目录中被 Git 忽略的 `.env`，并将其中的服务端变量注入当前进程。macOS 和 Linux 请在当前 shell 中设置同名环境变量；`start_mac.sh` 不会读取 `.env`。完整配置和维护命令见[本地部署与数据维护](docs/local-deployment.md)。
+
+| 配置 | 默认或示例 | 用途 |
+| --- | --- | --- |
+| `PRISM_DB_PATH` | `data/private/prism.sqlite3` | SQLite 数据库路径 |
+| `PRISM_DATABASE_URL` | 未设置 | 可选 PostgreSQL 连接；设置后优先使用 PostgreSQL |
+| `PRISM_SECRET_STORE_PATH` | `data/private/prism-secrets.json` | Windows DPAPI 保护的本地凭据文件 |
+| `PRISM_DEV_NO_AUTH` | `false` | 显式开启无认证开发预览 |
+| `HITHINK_FINANCE_API_KEY` | 未设置 | 扶摇服务端凭据 |
+| `IWENCAI_API_KEY` / `IWENCAI_BASE_URL` | 未设置 / `https://openapi.iwencai.com` | 问财 OpenAPI 服务端凭据和地址 |
+| `WENCAI_SKILLHUB_CONTRACT_VERIFIED` | `false` | 问财响应规则人工确认开关 |
+| `PRISM_LLM_API_KEY`、`DEEPSEEK_API_KEY` 等 | 未设置 | 服务端默认模型配置；个人模型可在页面设置 |
+
+供应商密钥不进入前端、业务数据库、日志或 Git。Windows 页面输入的个人模型密钥由当前账户的 DPAPI 保护；其他系统的页面输入仅在当前服务进程内有效。
+
+问财凭据可由维护者使用：
+
+```powershell
+.venv\Scripts\python.exe -m tools.wencai_setup
+.venv\Scripts\python.exe -m tools.wencai_setup --configure
+```
+
+保存后重新启动服务。配置成功仍需通过真实查询和响应规则检查，单项能力失败时保留对应失败状态。
+
+## 主要接口
+
+OpenAPI 文档位于 `/api/docs`。以下路径是当前主要联调入口，完整列表以 `app/api/main.py` 和 OpenAPI 输出为准。
+
+| 接口 | 用途 |
+| --- | --- |
+| `GET /api/health` | 检查进程、数据模式和运行时能力摘要 |
+| `GET/POST /api/v1/auth/*` | 本地账户注册、登录、退出和密码修改 |
+| `GET/PUT /api/v1/runtime/data-mode` | 读取或切换 `MOCK` / `LIVE` 数据模式 |
+| `GET /api/v1/runtime/capability-gaps` | 查看当前真实能力、缺失字段和验证条件 |
+| `GET/PUT/POST /api/v1/runtime/wencai-settings*` | 问财配置、保存和九项技能测试 |
+| `GET/POST /api/v1/advisor/profile/*` | 问卷模板、画像预览、确认和摘要 |
+| `GET/PUT /api/v1/advisor/portfolio/current` | 读取或保存当前组合 |
+| `POST /api/v1/advisor/portfolio/refresh` | 使用已验证提供方刷新组合字段 |
+| `POST /api/v1/advisor/queries` | 执行结构化投顾查询并返回研究、门槛和回执 |
+| `POST /api/v1/copilot/chat` | 投顾对话、工具进度和 SSE 流式响应 |
+| `POST /api/v1/copilot/parse-portfolio`、`/parse-portfolio-ocr` | 解析文本或图片中的持仓草稿 |
+| `GET /api/v1/market/catalog`、`/quotes/{market}`、`/analysis/{market}/{index_id}` | 市场指数目录、行情和技术分析 |
+| `GET /api/v1/advisor/research-matrix-template`、`POST /api/v1/advisor/research-runs` | 研究矩阵模板和运行 |
+| `GET/POST /api/v1/advisor/stock-research-*`、`fund-research-*`、`convertible-bond-research-*` | 个股、基金和可转债研究卡 |
+| `GET /api/v1/advisor/portfolio-optimization-template`、`POST /api/v1/advisor/portfolio-optimization-runs` | 目标结构和约束计算 |
+| `GET /api/v1/advisor/rebalancing-template`、`POST /api/v1/advisor/rebalancing-runs` | 整手、费用、现金和交易后风险测算 |
+| `GET/POST /api/v1/advisor/context-memory*` | 显式上下文记忆保存、读取和检索 |
+| `GET/POST /api/v1/decision-events*` | 决策事件列表、详情和幂等写入 |
+| `GET/POST /api/v1/advisor/workflow*` | 固定研究工作流读取、保存和运行 |
+
+认证模式下，服务端根据登录账户绑定 `owner_id`；请求体、路径或 `X-Owner-ID` 不能改变账户归属。无认证开发模式只适合本机预览。
+
+## 测试与构建
+
+Windows 使用项目虚拟环境执行：
+
+```powershell
+.venv\Scripts\python.exe -m pytest
+.venv\Scripts\python.exe -m tools.evaluate_mvp --json --repeat 3
+.venv\Scripts\python.exe -m compileall app tools
+node --check app/api/static/app.js
+npm run build:workflow
+npm run build:markdown
+git diff --check
+```
+
+macOS 先执行 `uv sync --extra dev --extra web`，再使用 `uv run` 执行 Python 模块命令。需要真实 PostgreSQL 验证时，显式设置专用测试 DSN 后执行：
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests/integration/test_postgres_store.py
+```
+
+macOS 命令为：
+
+```bash
+uv run pytest tests/integration/test_postgres_store.py
+```
+
+`tools/evaluate_mvp.py` 使用 `eval_cases/` 和固定输入执行确定性回放，不访问网络、不调用模型，也不写入用户决策事件。`httpx.ASGITransport` 负载结果属于进程内测试；`tools/http_load_test.py` 才通过 TCP/HTTP 观测已经运行的服务。两类结果均不能单独证明外部数据准确率、长期可用性或生产服务等级。
+
+浏览器脚本的默认地址与应用启动地址可能不同：`tests/browser/test_agent_home.mjs` 默认使用 `8017`，部分 Playwright 工具默认使用 `8777`，可分别由 `PRISM_TEST_BASE_URL` 和 `PRISM_UI_BASE_URL` 覆盖。Windows 运行 `test_agent_home.mjs` 前需要检查脚本中的浏览器可执行文件配置。
+
+## 当前边界
+
+| 边界 | 当前说明 |
+| --- | --- |
+| 真实研究覆盖 | 完整投顾、研究矩阵、个股/基金/可转债研究、预设情景和固定工作流仍以固定数据路径为主；实时研究开放前需要真实字段、独立来源和运行时能力证据 |
+| 数据服务 | 扶摇、问财、Yahoo Finance 和港股资讯网按当前配置提供数据；iFinD 为可显式注入的兼容适配器。各提供方受凭据、额度、权限、接口稳定性和展示授权影响，运行时按能力项返回状态 |
+| 组合计算 | 已提供暴露、集中度、风险预算、目标结构、情景和再平衡计算；协方差、流动性压力、历史回测和全局约束求解仍待补充 |
+| 模型质量 | 自然语言画像提取、语义记忆排序和对话表达依赖实际模型配置；金融数值和风险资格不由模型裁决 |
+| 外部副作用 | 组合优化和再平衡只返回 `ADVISORY_ONLY` 测算及行动计划，不同步券商账户、不生成订单、不执行交易 |
+| 部署安全 | 当前重点是本地账户、owner 隔离、受保护凭据、SQLite/PostgreSQL 和访问审计；公网身份服务、独立防篡改审计、限流、共享缓存和长期监控需要部署方单独建设 |
+
+## 代码目录
+
+| 路径 | 职责 |
+| --- | --- |
+| `app/api/` | FastAPI 应用工厂、路由、请求响应模型和错误映射 |
+| `app/profile/` | 风险问卷、画像评分、行为画像和展示数据 |
+| `app/portfolio/`、`app/risk/`、`app/allocation/` | 持仓输入、暴露、集中度、风险预算和配置边界 |
+| `app/orchestration/`、`app/research/` | 研究计划、有限 DAG 运行、交叉验证和证据桥接 |
+| `app/gates/`、`app/recommendation/` | 风险与合规门槛、建议组合和决策回执 |
+| `app/providers/` | 问财、扶摇、行情、行业、海外数据和缓存策略 |
+| `app/store/`、`app/security/`、`app/runtime/` | 持久化、迁移、账户安全、密钥保护和运行模式 |
+| `app/api/static/` | HTML、CSS、JavaScript、图表和工作流前端资源 |
+| `tests/` | 单元、接口、集成、数据规则和安全边界测试 |
+| `tools/` | 回放评测、负载观测、备份恢复、凭据测试和前端资源构建 |
+
+Prism 当前用于研究与决策支持。页面展示和组合测算不构成证券投资建议，任何真实交易均需由用户依据适用法律、账户规则和独立审查自行决定。
