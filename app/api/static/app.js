@@ -151,7 +151,6 @@
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
-  let authenticatedAdmin = false;
   let accountAccessEnabled = false;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
   async function refreshSessionTruth() {
@@ -10571,7 +10570,7 @@
     configured: false,
     connectionStatus: "NONE",
     baseUrl: "https://api.deepseek.com/v1",
-    model: "deepseek-chat",
+    model: "deepseek-v4-flash",
     provider: "deepseek",
   };
   let llmFormDirty = false;
@@ -10589,11 +10588,10 @@
   }
 
   function setLLMFormBusy(busy) {
-    const readOnly = accountAccessEnabled && !authenticatedAdmin;
     ["llm-provider-select", "llm-api-key-input", "llm-base-url-input", "llm-model-input",
       "btn-save-llm-config", "btn-clear-llm-config"].forEach(id => {
       const element = byId(id);
-      if (element) element.disabled = busy || readOnly;
+      if (element) element.disabled = busy;
     });
   }
 
@@ -10674,9 +10672,7 @@
     const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
     const status = byId("llm-config-status");
     status.style.display = "block";
-    const accessHint = accountAccessEnabled && !authenticatedAdmin
-      ? "该配置由管理员统一维护，当前账户只读使用。"
-      : "密钥不回显，留空保存会保留现有密钥。";
+    const accessHint = "密钥不回显，留空保存会保留现有密钥；后续保存会更新全局配置。";
     status.textContent = settings.is_configured ? `全局共享 · ${settings.model} · ${persistence}。${accessHint}` : `尚未配置全局模型服务 · ${persistence}。${accessHint}`;
     setLLMFormBusy(false);
     return settings;
@@ -12720,7 +12716,7 @@
       const modelInput = byId("llm-model-input");
       if (p === "deepseek") {
         if (urlInput) urlInput.value = "https://api.deepseek.com/v1";
-        if (modelInput) modelInput.value = "deepseek-chat";
+        if (modelInput) modelInput.value = "deepseek-v4-flash";
       } else if (p === "qwen") {
         if (urlInput) urlInput.value = "https://dashscope.aliyuncs.com/compatible-mode/v1";
         if (modelInput) modelInput.value = "qwen-plus";
@@ -12915,7 +12911,6 @@
     const context = await response.json();
     accountAccessEnabled = context.enabled === true;
     authenticatedOwner = context.enabled ? context.owner_id : null;
-    authenticatedAdmin = context.admin === true;
     if (context.enabled && !authenticatedOwner) throw new Error("账户身份无效");
     if (authenticatedOwner) {
       const mockOption = byId("chat-runtime-mode")?.querySelector('option[value="MOCK"]');

@@ -163,7 +163,7 @@
       "headers": {
         "content-type": "application/json"
       },
-      "body": "{\"is_configured\":false,\"scope\":\"SERVER\",\"model\":\"deepseek-chat\",\"base_url\":\"https://api.deepseek.com/v1\",\"connection_verified\":false,\"persistence\":\"OS_PROTECTED\"}"
+      "body": "{\"is_configured\":false,\"scope\":\"SERVER\",\"model\":\"deepseek-v4-flash\",\"base_url\":\"https://api.deepseek.com/v1\",\"connection_verified\":false,\"persistence\":\"OS_PROTECTED\"}"
     },
     "GET /api/v1/user/preferences": {
       "status": 200,

@@ -53,6 +53,19 @@ def _client(secret_store, accounts_path):
     )), store
 
 
+def test_model_settings_uses_deepseek_v4_flash_when_model_is_omitted(tmp_path) -> None:
+    protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
+    client, db = _client(protected, tmp_path / "accounts.json")
+    try:
+        response = client.put("/api/v1/user/model-settings", headers=_headers(), json={
+            "api_key": "default-model-test-key",
+        })
+        assert response.status_code == 200
+        assert response.json()["model"] == "deepseek-v4-flash"
+    finally:
+        db.close()
+
+
 def test_global_model_setting_survives_app_restart_without_key_disclosure(tmp_path) -> None:
     protected = ProtectedSecretStore(tmp_path / "protected.json", ReversibleTestProtector())
     accounts = tmp_path / "accounts.json"

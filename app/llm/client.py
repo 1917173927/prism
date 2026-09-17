@@ -19,7 +19,7 @@ class LLMConfig(BaseModel):
 
     api_key: str = Field(default="")
     base_url: str = Field(default="https://api.deepseek.com/v1")
-    model: str = Field(default="deepseek-chat")
+    model: str = Field(default="deepseek-v4-flash")
     temperature: float = Field(default=0.2)
     timeout_seconds: float = Field(default=30.0)
 
@@ -37,7 +37,7 @@ class LLMConfig(BaseModel):
             or os.getenv("OPENAI_BASE_URL")
             or ("https://dashscope.aliyuncs.com/compatible-mode/v1" if "DASHSCOPE_API_KEY" in os.environ else "https://api.deepseek.com/v1")
         )
-        model = os.getenv("PRISM_LLM_MODEL") or os.getenv("OPENAI_MODEL") or "deepseek-chat"
+        model = os.getenv("PRISM_LLM_MODEL") or os.getenv("OPENAI_MODEL") or "deepseek-v4-flash"
         return cls(api_key=api_key, base_url=base_url.rstrip("/"), model=model)
 
 

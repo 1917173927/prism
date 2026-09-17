@@ -360,7 +360,7 @@ class ReplacePortfolioApiRequest(CopilotValidatePortfolioOcrApiRequest):
 class CopilotConfigApiRequest(BaseModel):
     api_key: str = ""
     base_url: str = "https://api.deepseek.com/v1"
-    model: str = "deepseek-chat"
+    model: str = "deepseek-v4-flash"
 
 
 class CopilotStoredConfig(CopilotConfigApiRequest):
