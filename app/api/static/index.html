@@ -8,11 +8,11 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style-focus">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style-insights">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260916-trading-style-focus" defer></script>
+    <script src="/static/app.js?v=20260916-trading-style-insights" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -938,6 +938,29 @@
               <div id="trading-style-secondary" class="trading-style-secondary"></div>
             </details>
             <div id="trading-style-risk-boundary" class="doc-callout doc-callout-info" hidden></div>
+          </section>
+
+          <section id="trade-style-insights" class="trade-style-insights" aria-label="交易风格建议与重点交易标的" hidden>
+            <article class="surface trade-guidance-card" aria-labelledby="trade-guidance-title">
+              <div class="market-section-heading">
+                <div><h3 id="trade-guidance-title">风格改进建议</h3><p id="trade-guidance-maturity">根据确定性风格规则生成。</p></div>
+                <span id="trade-guidance-status" class="status-chip">PRELIMINARY</span>
+              </div>
+              <ol id="trade-guidance-list" class="trade-guidance-list"></ol>
+              <p class="trade-guidance-disclaimer">仅用于改善交易纪律，不包含个股买卖方向，也不参与正式风险等级计算。</p>
+            </article>
+
+            <article class="surface trade-market-card" aria-labelledby="trade-market-title">
+              <div class="market-section-heading">
+                <div><h3 id="trade-market-title">重点交易标的</h3><p>按有效历史成交额排序，最多展示三只 A 股。</p></div>
+                <div class="trade-market-actions">
+                  <span id="trade-market-status" class="status-chip">等待行情</span>
+                  <button id="refresh-trade-market" type="button" class="copilot-action-btn secondary">刷新行情</button>
+                </div>
+              </div>
+              <div id="trade-market-message" class="notice" role="status" hidden></div>
+              <div id="trade-market-securities" class="trade-market-securities" aria-live="polite"></div>
+            </article>
           </section>
 
           <section class="surface trade-import-card" aria-labelledby="trade-import-title">

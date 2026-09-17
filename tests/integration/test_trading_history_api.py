@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.main import create_app
 from app.profile.questionnaire import QUESTIONNAIRE_TEMPLATE
+from app.runtime.mode import DataMode, reset_runtime_mode_controller
 from app.store import SQLiteDecisionEventStore
 from app.trading_history import TradeImportPreview, TradingStyleProfile
 
@@ -167,6 +168,10 @@ def test_trade_page_is_a_primary_navigation_workspace() -> None:
     assert 'id="trade-advanced-filters"' in html
     assert 'id="trade-boundary-details"' in html
     assert 'id="trading-style-more"' in html
+    assert 'id="trade-style-insights"' in html
+    assert 'id="trade-guidance-list"' in html
+    assert 'id="trade-market-securities"' in html
+    assert 'id="refresh-trade-market"' in html
     assert 'id="refresh-trading-style"' not in html
     mapping_start = html.index('id="trade-mapping-details"')
     preview_start = html.index('class="trade-preview-heading"')
@@ -179,8 +184,78 @@ def test_trade_page_is_a_primary_navigation_workspace() -> None:
     assert "workflow.open = false" in script
     assert "function resetTradeImportWorkflow(" in script
     assert "workflow.open = !state.hasTradeHistory" in script
+    assert "function renderTradingStyleInsights(" in script
+    assert "function loadTradingStyleInsights(" in script
+    assert "tradeStyleInsightsAbortController?.abort()" in script
     assert ".trading-style-page" in styles
     assert ".trading-style-hero" in styles
+    assert ".trade-style-insights" in styles
+    assert ".trade-day-range-marker" in styles
+
+
+def test_trading_style_insights_are_owner_scoped_and_use_live_quotes() -> None:
+    class FakeLiveFinance:
+        is_configured = True
+
+        async def get_quotes(self, codes):
+            assert codes == ["600000.SH"]
+            return {"600000.SH": {
+                "symbol": "600000.SH",
+                "name": "浦发银行",
+                "price_cny": 11.5,
+                "change_pct": 4.55,
+                "price_change_cny": 0.5,
+                "open_price_cny": 11.1,
+                "high_price_cny": 12,
+                "low_price_cny": 10,
+                "previous_close_cny": 11,
+                "volume_shares": 1_000_000,
+                "turnover_cny": 11_500_000,
+                "observed_at": "2026-09-17T14:30:00+08:00",
+                "retrieved_at": "2026-09-17T14:30:01+08:00",
+                "source": "verified fake live provider",
+                "provider_tier": "LIVE_PRIMARY",
+                "is_synthetic": False,
+            }}
+
+    store = SQLiteDecisionEventStore(":memory:")
+    with TestClient(create_app(store=store, clock=lambda: NOW, live_finance_provider=FakeLiveFinance())) as client:
+        payload = {
+            "schema_version": "trade-import-confirm-request.v1",
+            "owner_id": OWNER,
+            "source_type": "CSV",
+            "source_digest": "d" * 64,
+            "file_count": 1,
+            "rows": rows(),
+        }
+        confirmed = client.post(
+            "/api/v1/advisor/trading-history/imports",
+            headers={"X-Owner-ID": OWNER},
+            json=payload,
+        )
+        assert confirmed.status_code == 200
+        reset_runtime_mode_controller(DataMode.LIVE)
+
+        response = client.get(
+            "/api/v1/advisor/trading-style/insights",
+            headers={"X-Owner-ID": OWNER},
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["primary_style"] == confirmed.json()["style_profile"]["primary_style"]
+        assert body["guidance_ruleset_version"] == "trading-style-guidance.v1"
+        assert len(body["guidance"]) == 3
+        assert body["market_status"] == "PASS"
+        assert body["securities"][0]["history"]["security_code"] == "600000.SH"
+        assert body["securities"][0]["quote"]["day_range_position_pct"] == "75.00"
+
+        isolated = client.get(
+            "/api/v1/advisor/trading-style/insights",
+            headers={"X-Owner-ID": "other-owner"},
+        )
+        assert isolated.status_code == 200
+        assert isolated.json()["guidance"] == []
+        assert isolated.json()["securities"] == []
 
 
 def test_screenshot_preview_resolves_security_code_once_per_unique_name(monkeypatch) -> None:

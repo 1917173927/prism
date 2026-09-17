@@ -12,7 +12,11 @@ from app.trading_history import (
     TradeRecordStatus,
     TradeSide,
     TradingStyleProfile,
+    aggregate_trade_securities,
     calculate_trading_style,
+    combine_security_insight,
+    guidance_for_profile,
+    normalize_trade_quote,
     preview_trade_files,
 )
 
@@ -92,6 +96,86 @@ def test_style_labels_start_with_first_trade_and_are_deterministic() -> None:
     assert first.metrics.matched_sell_coverage == Decimal("1.0000")
     assert first.metrics.turnover_90d_pct is None
     assert first.primary_style in {"主动波段型", "稳健均衡型", "低频长持型", "高频短线型"}
+
+
+def test_guidance_is_deterministic_for_all_supported_styles() -> None:
+    profile = calculate_trading_style(OWNER, (trade(0, side=TradeSide.BUY),), calculated_at=NOW)
+    expected = {
+        "高频短线型": "建立交易次数与费用预算",
+        "主动波段型": "记录入场、退出和失效条件",
+        "低频长持型": "建立投资逻辑清单",
+        "稳健均衡型": "维持标的与行业分散",
+    }
+    for style, first_title in expected.items():
+        guidance = guidance_for_profile(profile.model_copy(update={"primary_style": style}))
+        assert len(guidance) == 3
+        assert guidance[0].title == first_title
+    empty = calculate_trading_style(OWNER, (), calculated_at=NOW)
+    assert guidance_for_profile(empty) == ()
+
+
+def test_security_insights_rank_active_equities_and_validate_day_range() -> None:
+    records = (
+        trade(0, side=TradeSide.BUY).model_copy(update={
+            "security_code": "600000.SH", "security_name": "浦发银行",
+        }),
+        trade(1, side=TradeSide.BUY, quantity="200").model_copy(update={
+            "security_code": "300750.SZ", "security_name": "宁德时代",
+        }),
+        trade(2, side=TradeSide.SELL, quantity="150").model_copy(update={
+            "security_code": "000001.SZ", "security_name": "平安银行",
+        }),
+        trade(3, side=TradeSide.BUY, quantity="999").model_copy(update={
+            "security_code": "510300.SH", "asset_type": "ETF",
+        }),
+        trade(4, side=TradeSide.BUY, quantity="999").model_copy(update={
+            "security_code": "600519.SH", "status": TradeRecordStatus.WITHDRAWN,
+        }),
+    )
+    ranked = aggregate_trade_securities(records)
+    assert [item.security_code for item in ranked] == ["300750.SZ", "000001.SZ", "600000.SH"]
+    assert ranked[0].gross_amount_share_pct == Decimal("44.44")
+    assert ranked[0].trade_count == ranked[0].buy_count == 1
+
+    snapshot = normalize_trade_quote({
+        "price_cny": 12,
+        "price_change_cny": 1,
+        "change_pct": 9.09,
+        "open_price_cny": 11.5,
+        "high_price_cny": 13,
+        "low_price_cny": 10,
+        "previous_close_cny": 11,
+        "volume_shares": 1000,
+        "turnover_cny": 12000,
+        "observed_at": "2026-09-17T14:30:00+08:00",
+        "retrieved_at": "2026-09-17T14:30:01+08:00",
+        "source": "verified-test-provider",
+        "provider_tier": "LIVE_PRIMARY",
+        "is_synthetic": False,
+    }, data_mode="LIVE", retrieved_at=NOW)
+    assert snapshot is not None
+    assert snapshot.day_range_position_pct == Decimal("66.67")
+    assert snapshot.missing_fields == ()
+    assert combine_security_insight(ranked[0], snapshot).quote_status == "PASS"
+
+    invalid_range = normalize_trade_quote({
+        **snapshot.model_dump(mode="python"),
+        "high_price_cny": 9,
+        "low_price_cny": 10,
+    }, data_mode="LIVE", retrieved_at=NOW)
+    assert invalid_range is not None
+    assert invalid_range.day_range_position_pct is None
+    assert {"high_price_cny", "low_price_cny"}.issubset(invalid_range.missing_fields)
+    synthetic_data = {
+        **snapshot.model_dump(mode="python"),
+        "is_synthetic": True,
+    }
+    assert normalize_trade_quote(synthetic_data, data_mode="LIVE", retrieved_at=NOW) is None
+    mock_snapshot = normalize_trade_quote(synthetic_data, data_mode="MOCK", retrieved_at=NOW)
+    assert mock_snapshot is not None
+    mock_insight = combine_security_insight(ranked[0], mock_snapshot)
+    assert mock_insight.quote_status == "REVIEW_REQUIRED"
+    assert "MOCK" in mock_insight.message
 
 
 def test_fifo_holding_period_is_quantity_weighted_and_withdrawn_rows_are_ignored() -> None:

@@ -12,6 +12,7 @@ const byId = id => {
   return elements.get(id);
 };
 const context = vm.createContext({byId, state: {ownerId: "owner", dataMode: "LIVE"}, authenticatedOwner: "owner",
+  authenticatedAdmin: true,
   accountAccessEnabled: true, document: {body: {appendChild() {}}}, setError() {},
   apiError: async () => new Error("request failed"), fetch: null});
 vm.runInContext(source.slice(start, end), context);

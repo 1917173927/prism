@@ -261,3 +261,99 @@ class TradeBatchListResponse(ContractModel):
 class TradingStyleLookupResponse(ContractModel):
     schema_version: Literal["trading-style-lookup-response.v1"] = "trading-style-lookup-response.v1"
     profile: TradingStyleProfile
+
+
+class TradeStyleGuidanceItem(ContractModel):
+    code: NonEmptyStr
+    category: Literal["DISCIPLINE", "RISK_CONTROL", "REVIEW", "DIVERSIFICATION"]
+    title: NonEmptyStr
+    description: NonEmptyStr
+
+
+class TradeSecurityHistorySummary(ContractModel):
+    security_code: NonEmptyStr
+    security_name: NonEmptyStr | None = None
+    trade_count: int = Field(ge=1)
+    buy_count: int = Field(ge=0)
+    sell_count: int = Field(ge=0)
+    gross_amount_cny: Decimal = Field(gt=0)
+    gross_amount_share_pct: Decimal = Field(ge=0, le=100)
+    last_traded_at: datetime
+
+    @model_validator(mode="after")
+    def validate_history_summary(self) -> Self:
+        if self.last_traded_at.tzinfo is None or self.last_traded_at.utcoffset() is None:
+            raise ValueError("last_traded_at must be timezone-aware")
+        if self.buy_count + self.sell_count != self.trade_count:
+            raise ValueError("buy and sell counts must equal trade_count")
+        return self
+
+
+class TradeSecurityQuoteSnapshot(ContractModel):
+    price_cny: Decimal = Field(gt=0)
+    change_pct: Decimal | None = None
+    price_change_cny: Decimal | None = None
+    open_price_cny: Decimal | None = Field(default=None, gt=0)
+    high_price_cny: Decimal | None = Field(default=None, gt=0)
+    low_price_cny: Decimal | None = Field(default=None, gt=0)
+    previous_close_cny: Decimal | None = Field(default=None, gt=0)
+    volume_shares: Decimal | None = Field(default=None, ge=0)
+    turnover_cny: Decimal | None = Field(default=None, ge=0)
+    day_range_position_pct: Decimal | None = Field(default=None, ge=0, le=100)
+    observed_at: datetime
+    retrieved_at: datetime
+    source: NonEmptyStr
+    provider_tier: NonEmptyStr
+    is_synthetic: bool
+    missing_fields: tuple[NonEmptyStr, ...] = Field(default_factory=tuple)
+
+    @model_validator(mode="after")
+    def validate_quote_snapshot(self) -> Self:
+        for value in (self.observed_at, self.retrieved_at):
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise ValueError("quote timestamps must be timezone-aware")
+        if len(set(self.missing_fields)) != len(self.missing_fields):
+            raise ValueError("missing_fields must be unique")
+        return self
+
+
+class TradeStyleSecurityInsight(ContractModel):
+    history: TradeSecurityHistorySummary
+    quote_status: Literal["PASS", "REVIEW_REQUIRED", "UNAVAILABLE"]
+    quote: TradeSecurityQuoteSnapshot | None = None
+    message: NonEmptyStr | None = None
+
+    @model_validator(mode="after")
+    def validate_security_insight(self) -> Self:
+        if self.quote_status == "UNAVAILABLE" and self.quote is not None:
+            raise ValueError("unavailable quote must not contain a snapshot")
+        if self.quote_status == "PASS" and self.quote is None:
+            raise ValueError("passing quote requires a snapshot")
+        return self
+
+
+class TradeStyleInsightsResponse(ContractModel):
+    schema_version: Literal["trade-style-insights-response.v1"] = "trade-style-insights-response.v1"
+    based_on_profile_id: NonEmptyStr
+    based_on_profile_version: int = Field(ge=1)
+    style_status: TradingStyleStatus
+    primary_style: NonEmptyStr | None = None
+    guidance_ruleset_version: Literal["trading-style-guidance.v1"] = "trading-style-guidance.v1"
+    guidance: tuple[TradeStyleGuidanceItem, ...]
+    data_mode: Literal["LIVE", "MOCK"]
+    market_status: Literal["PASS", "REVIEW_REQUIRED", "UNAVAILABLE"]
+    securities: tuple[TradeStyleSecurityInsight, ...]
+    market_message: NonEmptyStr | None = None
+
+    @model_validator(mode="after")
+    def validate_insights(self) -> Self:
+        if self.primary_style is None:
+            if self.style_status != TradingStyleStatus.INSUFFICIENT_DATA or self.guidance:
+                raise ValueError("missing primary style requires insufficient status and no guidance")
+        elif len(self.guidance) != 3:
+            raise ValueError("a primary style requires exactly three guidance items")
+        if self.market_status == "PASS" and (
+            not self.securities or any(item.quote_status != "PASS" for item in self.securities)
+        ):
+            raise ValueError("passing market status requires passing security insights")
+        return self

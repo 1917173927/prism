@@ -215,9 +215,14 @@ from app.trading_history import (
     TradeRecordStatus,
     TradeRevisionRequest,
     TradeUpdateRequest,
+    TradeStyleInsightsResponse,
     TradingStyleLookupResponse,
+    aggregate_trade_securities,
     behavior_events_from_trades,
     calculate_trading_style,
+    combine_security_insight,
+    guidance_for_profile,
+    normalize_trade_quote,
     preview_trade_files,
 )
 from app.providers import (
@@ -1521,6 +1526,160 @@ def create_app(
         if profile is None or profile.ruleset_version != "trading-style-rules.v2":
             profile = _recalculate_trading_style(owner_id)
         return TradingStyleLookupResponse(profile=profile)
+
+    async def _wencai_trade_style_quote(symbol: str) -> dict[str, Any] | None:
+        if not active_wencai_provider.is_configured:
+            return None
+        try:
+            result = await active_wencai_provider.execute(ProviderRequest(
+                request_id=f"trade-style-quote-{uuid4().hex}",
+                operation=ProviderOperation.COMPANY_DATA,
+                subject=(
+                    f"{symbol} 股票简称 最新价 最新涨跌幅 开盘价 最高价 最低价 "
+                    "昨收价 成交量 成交额 行情时间"
+                ),
+                parameters={"limit": 5},
+            ))
+        except Exception:
+            return None
+        if result.status not in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL}:
+            return None
+        identity = decode_stock_identity(result, symbol)
+        quote = decode_stock_quote_fields(result, symbol)
+        if quote.get("price_cny") is None:
+            return None
+        return {
+            "symbol": symbol,
+            "name": identity.get("name") or symbol,
+            **quote,
+            "retrieved_at": result.retrieved_at.isoformat(),
+            "provider_tier": "LIVE_FALLBACK",
+            "is_synthetic": False,
+            "source": "iwencai.com / SkillHub (Official Live)",
+        }
+
+    async def _trade_style_raw_quotes(
+        symbols: tuple[str, ...], *, data_mode: DataMode, deadline: float
+    ) -> dict[str, dict[str, Any] | None]:
+        if not symbols:
+            return {}
+        if data_mode == DataMode.MOCK:
+            provider = FallbackStaticProvider()
+            tasks = {symbol: asyncio.create_task(provider.get_quote(symbol.split(".")[0])) for symbol in symbols}
+            remaining = max(0.001, deadline - monotonic())
+            done, pending = await asyncio.wait(tasks.values(), timeout=remaining)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            return {
+                symbol: task.result() if task in done and not task.cancelled() and task.exception() is None else None
+                for symbol, task in tasks.items()
+            }
+
+        raw: dict[str, dict[str, Any] | None] = {symbol: None for symbol in symbols}
+        if getattr(active_live_finance, "is_configured", False):
+            remaining = max(0.001, deadline - monotonic())
+            try:
+                batch_loader = getattr(active_live_finance, "get_quotes", None)
+                if batch_loader is not None:
+                    batch = await asyncio.wait_for(batch_loader(list(symbols)), timeout=remaining)
+                    raw.update({symbol: batch.get(symbol) for symbol in symbols})
+                else:
+                    values = await asyncio.wait_for(
+                        asyncio.gather(*(active_live_finance.get_quote(symbol) for symbol in symbols), return_exceptions=True),
+                        timeout=remaining,
+                    )
+                    for symbol, value in zip(symbols, values):
+                        if isinstance(value, dict):
+                            raw[symbol] = value
+            except Exception:
+                pass
+
+        missing = tuple(symbol for symbol, value in raw.items() if value is None)
+        remaining = deadline - monotonic()
+        if missing and remaining > 0 and active_wencai_provider.is_configured:
+            tasks = {symbol: asyncio.create_task(_wencai_trade_style_quote(symbol)) for symbol in missing}
+            done, pending = await asyncio.wait(tasks.values(), timeout=remaining)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            for symbol, task in tasks.items():
+                if task in done and not task.cancelled() and task.exception() is None:
+                    raw[symbol] = task.result()
+        return raw
+
+    @api.get(
+        "/api/v1/advisor/trading-style/insights",
+        response_model=TradeStyleInsightsResponse,
+    )
+    async def get_trading_style_insights(
+        owner_id: str = Depends(owner_dependency),
+    ) -> TradeStyleInsightsResponse:
+        profile = active_store.get_latest_trading_style_profile(owner_id)
+        if profile is None or profile.ruleset_version != "trading-style-rules.v2":
+            profile = _recalculate_trading_style(owner_id)
+        histories = aggregate_trade_securities(active_store.list_trade_records(owner_id), limit=3)
+        data_mode = get_runtime_mode_controller().mode
+        if not histories:
+            return TradeStyleInsightsResponse(
+                based_on_profile_id=profile.profile_id,
+                based_on_profile_version=profile.profile_version,
+                style_status=profile.status,
+                primary_style=profile.primary_style,
+                guidance=guidance_for_profile(profile),
+                data_mode=data_mode.value,
+                market_status="UNAVAILABLE",
+                securities=(),
+                market_message="有效历史交易中暂无可验证的 A 股个股代码。",
+            )
+
+        deadline = monotonic() + 3.0
+        raw_quotes = (
+            {}
+            if access_enabled and data_mode != DataMode.LIVE
+            else await _trade_style_raw_quotes(
+                tuple(item.security_code for item in histories), data_mode=data_mode, deadline=deadline
+            )
+        )
+        retrieved_at = active_clock()
+        securities = tuple(
+            combine_security_insight(
+                history,
+                normalize_trade_quote(
+                    raw_quotes.get(history.security_code),
+                    data_mode=data_mode.value,
+                    retrieved_at=retrieved_at,
+                ),
+            )
+            for history in histories
+        )
+        available_count = sum(item.quote is not None for item in securities)
+        market_status = (
+            "UNAVAILABLE" if available_count == 0
+            else "PASS" if all(item.quote_status == "PASS" for item in securities)
+            else "REVIEW_REQUIRED"
+        )
+        if access_enabled and data_mode != DataMode.LIVE:
+            market_message = "正式账户需要 LIVE 数据模式，未返回示例行情。"
+        elif market_status == "UNAVAILABLE":
+            market_message = "当前未取得可验证行情，历史交易汇总仍可查看。"
+        elif market_status == "REVIEW_REQUIRED":
+            market_message = "部分标的或字段暂不可用，已仅展示可验证数据。"
+        else:
+            market_message = None
+        return TradeStyleInsightsResponse(
+            based_on_profile_id=profile.profile_id,
+            based_on_profile_version=profile.profile_version,
+            style_status=profile.status,
+            primary_style=profile.primary_style,
+            guidance=guidance_for_profile(profile),
+            data_mode=data_mode.value,
+            market_status=market_status,
+            securities=securities,
+            market_message=market_message,
+        )
 
     @api.get(
         "/api/v1/advisor/behavior/profile",

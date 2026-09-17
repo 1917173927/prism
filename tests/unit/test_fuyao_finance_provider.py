@@ -332,7 +332,10 @@ def test_fuyao_quotes_use_one_bounded_batch_snapshot() -> None:
             "data": {
                 "timestamp": 1788742800000,
                 "item": [
-                    {"thscode": "600519.SH", "ticker": "600519", "last_price": 1500.25},
+                    {"thscode": "600519.SH", "ticker": "600519", "last_price": 1500.25,
+                     "price_change_ratio_pct": 1.25, "price_change": 18.5,
+                     "open_price": 1488.0, "high_price": 1510.0, "low_price": 1480.0,
+                     "prev_price": 1481.75, "volume": 1000, "turnover": 1500250},
                     {"thscode": "300750.SZ", "ticker": "300750", "last_price": 338.25},
                 ],
             },
@@ -345,6 +348,9 @@ def test_fuyao_quotes_use_one_bounded_batch_snapshot() -> None:
         quotes = await provider.get_quotes(["600519", "300750.SZ", "600519.SH"])
         assert set(quotes) == {"600519.SH", "300750.SZ"}
         assert quotes["600519.SH"]["price_cny"] == 1500.25
+        assert quotes["600519.SH"]["change_pct"] == 1.25
+        assert quotes["600519.SH"]["high_price_cny"] == 1510.0
+        assert quotes["600519.SH"]["turnover_cny"] == 1500250
         assert quotes["300750.SZ"]["price_cny"] == 338.25
         assert quotes["300750.SZ"]["is_synthetic"] is False
 

@@ -75,6 +75,7 @@
     profile: null,
     behaviorProfile: null,
     tradingStyleProfile: null,
+    tradingStyleInsights: null,
     tradeImportPreview: null,
     tradeRecords: [],
     tradeListCursor: null,
@@ -2843,6 +2844,152 @@
     return Number.isFinite(number) ? `${number.toLocaleString("zh-CN", {maximumFractionDigits: 2})}${suffix}` : "—";
   }
 
+  function tradeCompactCny(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "—";
+    return `¥${new Intl.NumberFormat("zh-CN", {notation: "compact", maximumFractionDigits: 2}).format(number)}`;
+  }
+
+  function tradeDateTime(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf()) ? "未提供" : date.toLocaleString("zh-CN", {hour12: false});
+  }
+
+  let tradeStyleInsightsAbortController = null;
+  let tradeStyleInsightsRequestSequence = 0;
+
+  function renderTradeMarketSecurity(item, dataMode) {
+    const history = item.history || {};
+    const quote = item.quote;
+    const card = document.createElement("article"); card.className = "trade-security-card";
+    const heading = document.createElement("div"); heading.className = "trade-security-heading";
+    const identity = document.createElement("div");
+    const name = document.createElement("strong"); name.textContent = history.security_name || history.security_code;
+    const code = document.createElement("span"); code.textContent = history.security_code;
+    identity.append(name, code);
+    const verdict = document.createElement("span");
+    verdict.className = `cf-verdict ${item.quote_status === "PASS" ? "cf-verdict-pass" : "cf-verdict-warning"}`;
+    verdict.textContent = quote?.is_synthetic ? "MOCK" : item.quote_status;
+    heading.append(identity, verdict); card.append(heading);
+
+    if (quote) {
+      const quoteLine = document.createElement("div"); quoteLine.className = "trade-security-quote";
+      const price = document.createElement("strong"); price.textContent = `¥${tradeNumber(quote.price_cny)}`;
+      const change = document.createElement("span");
+      const changeNumber = Number(quote.change_pct);
+      change.textContent = Number.isFinite(changeNumber) ? `${changeNumber >= 0 ? "+" : ""}${tradeNumber(changeNumber, "%")}` : "涨跌幅未提供";
+      if (Number.isFinite(changeNumber)) change.className = changeNumber >= 0 ? "is-up" : "is-down";
+      quoteLine.append(price, change); card.append(quoteLine);
+
+      if (quote.day_range_position_pct != null) {
+        const range = document.createElement("div"); range.className = "trade-day-range";
+        range.setAttribute("role", "img");
+        range.setAttribute("aria-label", `当日最低 ${tradeNumber(quote.low_price_cny)}，现价 ${tradeNumber(quote.price_cny)}，最高 ${tradeNumber(quote.high_price_cny)}`);
+        const rangeLabels = document.createElement("div");
+        const low = document.createElement("span"); low.textContent = `低 ${tradeNumber(quote.low_price_cny)}`;
+        const high = document.createElement("span"); high.textContent = `高 ${tradeNumber(quote.high_price_cny)}`;
+        rangeLabels.append(low, high);
+        const track = document.createElement("div"); track.className = "trade-day-range-track";
+        const marker = document.createElement("span"); marker.className = "trade-day-range-marker";
+        marker.style.left = `${Math.min(100, Math.max(0, Number(quote.day_range_position_pct)))}%`;
+        track.append(marker); range.append(rangeLabels, track); card.append(range);
+      }
+
+      const facts = document.createElement("dl"); facts.className = "trade-security-facts";
+      [["开盘", quote.open_price_cny], ["昨收", quote.previous_close_cny], ["涨跌额", quote.price_change_cny], ["成交额", quote.turnover_cny, true]].forEach(([label, value, compact]) => {
+        const dt = document.createElement("dt"); dt.textContent = label;
+        const dd = document.createElement("dd"); dd.textContent = value == null ? "—" : compact ? tradeCompactCny(value) : `¥${tradeNumber(value)}`;
+        facts.append(dt, dd);
+      });
+      card.append(facts);
+    } else {
+      const unavailable = document.createElement("p"); unavailable.className = "trade-security-unavailable"; unavailable.textContent = item.message || "当前未取得可验证行情。"; card.append(unavailable);
+    }
+
+    const historyLine = document.createElement("p"); historyLine.className = "trade-security-history";
+    historyLine.textContent = `历史 ${history.trade_count} 笔 · 买 ${history.buy_count} / 卖 ${history.sell_count} · 累计 ${tradeCompactCny(history.gross_amount_cny)} · 占比 ${tradeNumber(history.gross_amount_share_pct, "%")}`;
+    const lastTrade = document.createElement("small"); lastTrade.textContent = `最近交易：${tradeDateTime(history.last_traded_at)}`;
+    card.append(historyLine, lastTrade);
+    if (quote) {
+      const meta = document.createElement("small"); meta.className = "trade-security-meta";
+      meta.textContent = `${dataMode === "MOCK" ? "示例快照" : "行情观察"}：${tradeDateTime(quote.observed_at)} · ${quote.source}`;
+      card.append(meta);
+    }
+    return card;
+  }
+
+  function renderTradingStyleInsights(insights) {
+    state.tradingStyleInsights = insights;
+    const section = byId("trade-style-insights");
+    if (!section) return;
+    if (!insights?.primary_style || !insights.guidance?.length) {
+      section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    const preliminary = insights.style_status === "PRELIMINARY";
+    byId("trade-guidance-maturity").textContent = preliminary
+      ? "基于有限样本的初步建议，样本增加后将自动更新。"
+      : "基于已达到正式门槛的交易风格生成。";
+    const guidanceStatus = byId("trade-guidance-status");
+    guidanceStatus.textContent = insights.style_status;
+    guidanceStatus.className = `status-chip ${preliminary ? "warning" : "ready"}`;
+    const list = byId("trade-guidance-list"); clear(list);
+    insights.guidance.forEach((item, index) => {
+      const li = document.createElement("li");
+      const number = document.createElement("span"); number.textContent = String(index + 1).padStart(2, "0");
+      const copy = document.createElement("div");
+      const title = document.createElement("strong"); title.textContent = item.title;
+      const detail = document.createElement("p"); detail.textContent = item.description;
+      copy.append(title, detail); li.append(number, copy); list.append(li);
+    });
+
+    const marketStatus = byId("trade-market-status");
+    marketStatus.textContent = insights.data_mode === "MOCK" ? `${insights.market_status} · MOCK` : insights.market_status;
+    marketStatus.className = `status-chip ${insights.market_status === "PASS" ? "ready" : "warning"}`;
+    const message = byId("trade-market-message");
+    message.textContent = insights.market_message || "";
+    message.hidden = !insights.market_message;
+    const securities = byId("trade-market-securities"); clear(securities);
+    if (!insights.securities?.length) {
+      const empty = document.createElement("div"); empty.className = "empty-state"; empty.textContent = "有效历史交易中暂无可展示的 A 股个股。"; securities.append(empty);
+      return;
+    }
+    insights.securities.forEach((item) => securities.append(renderTradeMarketSecurity(item, insights.data_mode)));
+  }
+
+  async function loadTradingStyleInsights() {
+    const section = byId("trade-style-insights");
+    const button = byId("refresh-trade-market");
+    const sequence = ++tradeStyleInsightsRequestSequence;
+    const owner = state.ownerId;
+    tradeStyleInsightsAbortController?.abort();
+    const controller = new AbortController(); tradeStyleInsightsAbortController = controller;
+    if (button) button.disabled = true;
+    if (section && state.tradingStyleProfile?.metrics?.trade_count > 0) section.hidden = false;
+    const status = byId("trade-market-status"); if (status) status.textContent = "获取行情中";
+    const securities = byId("trade-market-securities"); securities?.setAttribute("aria-busy", "true");
+    try {
+      const response = await fetch("/api/v1/advisor/trading-style/insights", {
+        headers: {"X-Owner-ID": owner}, signal: controller.signal,
+      });
+      if (!response.ok) throw await apiError(response);
+      const result = await response.json();
+      if (sequence !== tradeStyleInsightsRequestSequence || owner !== state.ownerId) return;
+      renderTradingStyleInsights(result);
+    } catch (error) {
+      if (error.name === "AbortError" || sequence !== tradeStyleInsightsRequestSequence || owner !== state.ownerId) return;
+      const message = byId("trade-market-message");
+      if (message) { message.textContent = error.message || "行情暂时不可用，请稍后重试。"; message.hidden = false; }
+      if (status) { status.textContent = "REVIEW_REQUIRED"; status.className = "status-chip warning"; }
+    } finally {
+      if (sequence === tradeStyleInsightsRequestSequence) {
+        if (button) button.disabled = false;
+        securities?.setAttribute("aria-busy", "false");
+      }
+    }
+  }
+
   function renderTradingStyleProfile(profile) {
     state.tradingStyleProfile = profile;
     const panel = byId("trading-style-summary-content");
@@ -3095,6 +3242,7 @@
       await loadProfileSummary();
       renderTradingStyleProfile(styleProfile);
     }
+    await loadTradingStyleInsights();
   }
 
   async function confirmTradeImport() {
@@ -3205,7 +3353,8 @@
 
   async function loadTradingStyleWorkspace() {
     if (!state.profileSummary) await loadProfileSummary();
-    await Promise.all([loadTradingStyleProfile(), loadTradeRecords(true)]);
+    await loadTradingStyleProfile();
+    await Promise.all([loadTradeRecords(true), loadTradingStyleInsights()]);
   }
 
   function setPortfolioContextStatus(message, className = "") {
@@ -12874,6 +13023,7 @@
   byId("trade-sheet-selector")?.addEventListener("change", () => previewTradeImport());
   byId("confirm-trade-import")?.addEventListener("click", confirmTradeImport);
   byId("continue-trade-import")?.addEventListener("click", resetTradeImportWorkflow);
+  byId("refresh-trade-market")?.addEventListener("click", loadTradingStyleInsights);
   byId("apply-trade-filters")?.addEventListener("click", () => loadTradeRecords(true).catch(error => setTradeImportError(error.message)));
   byId("trade-filter-security")?.addEventListener("keydown", (event) => { if (event.key === "Enter") loadTradeRecords(true).catch(error => setTradeImportError(error.message)); });
   byId("load-more-trades")?.addEventListener("click", () => loadTradeRecords(false).catch(error => setTradeImportError(error.message)));
