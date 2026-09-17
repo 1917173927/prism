@@ -20,6 +20,7 @@ from app.llm.prompts import (
 )
 from app.providers.live_market import (
     LiveMarketProvider,
+    MarketDataProvider,
     StaticMarketProvider,
     A_SHARE_DATABASE,
     ETF_LOOKTHROUGH_DATABASE,
@@ -28,6 +29,7 @@ from app.providers.fixture_wencai import FixtureWencaiProvider, FIXTURE_WENCAI_D
 from app.providers.skillhub import WencaiSkillHubProvider
 from app.providers.live_wencai import LiveWencaiProvider
 from app.providers.contracts import ProviderOperation, ProviderRequest
+from app.providers.security_directory import OfficialSecurityDirectoryProvider
 from app.providers.wencai_normalization import (
     decode_stock_identity,
     decode_stock_metrics,
@@ -60,6 +62,8 @@ class CopilotAgent:
         self,
         llm_client: AsyncLLMClient | None = None,
         live_finance_provider: FuyaoFinanceProvider | None = None,
+        market_quote_provider: MarketDataProvider | None = None,
+        security_directory_provider: OfficialSecurityDirectoryProvider | None = None,
         skillhub_provider: WencaiSkillHubProvider | None = None,
         on_wencai_failure: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
@@ -70,6 +74,8 @@ class CopilotAgent:
         self.fixture_wencai_provider = FixtureWencaiProvider()
         self.wencai_provider = self.skillhub_provider
         self.live_finance_provider = live_finance_provider or FuyaoFinanceProvider()
+        self.market_quote_provider = market_quote_provider
+        self.security_directory_provider = security_directory_provider
         self.on_wencai_failure = on_wencai_failure
 
     async def stream_chat(
@@ -309,6 +315,45 @@ class CopilotAgent:
             compact = compact.replace(token, "")
         return bool(compact)
 
+    @staticmethod
+    def _extract_text_position_mentions(text: str) -> list[tuple[str, int]]:
+        quantity_pattern = re.compile(
+            r"(?P<quantity>\d+(?:\.\d+)?)\s*(?P<unit>万份|股|手|份)"
+        )
+        price_marker_pattern = re.compile(
+            r"(?:买入均价|买入价格|买入成本|成本价|成本|现价|当前价|市价|现金|可用资金)"
+        )
+        name_pattern = re.compile(
+            r"(?:\d{6}(?:\.(?:SH|SZ|BJ))?|[\u4e00-\u9fffA-Za-z][\u4e00-\u9fffA-Za-z0-9·（）()\-]*)"
+        )
+
+        def extract_name(raw: str) -> str:
+            candidate = price_marker_pattern.split(raw, maxsplit=1)[0]
+            candidate = re.split(r"(?:以及|另有|和|及)", candidate, maxsplit=1)[0]
+            candidate = re.sub(r"^(?:我|本人|目前|持有|持仓|拥有|有|还有|以及|另有)+", "", candidate)
+            candidate = candidate.strip(" \t,，:：的")
+            matched = name_pattern.match(candidate)
+            return matched.group(0).strip() if matched else ""
+
+        mentions: list[tuple[str, int]] = []
+        seen: set[tuple[str, int]] = set()
+        for clause in re.split(r"[；;\n。]+", text):
+            for match in quantity_pattern.finditer(clause):
+                quantity = Decimal(match.group("quantity"))
+                unit = match.group("unit")
+                if unit == "手":
+                    quantity *= 100
+                elif unit == "万份":
+                    quantity *= 10000
+                if quantity <= 0 or quantity != quantity.to_integral_value():
+                    continue
+                name = extract_name(clause[match.end():]) or extract_name(clause[:match.start()])
+                item = (name, int(quantity))
+                if name and item not in seen:
+                    seen.add(item)
+                    mentions.append(item)
+        return mentions
+
     async def parse_portfolio_from_text(
         self, text: str, *, data_mode: DataMode | None = None
     ) -> dict[str, Any]:
@@ -393,6 +438,29 @@ class CopilotAgent:
                         "market_value_cny": round(qty * nav, 2),
                     })
 
+        known_asset_names = {
+            str(info.get("name") or info.get("fund_name") or "").strip()
+            for info in (*A_SHARE_DATABASE.values(), *ETF_LOOKTHROUGH_DATABASE.values())
+        }
+        for name, quantity in self._extract_text_position_mentions(text_clean):
+            if not name or name in known_asset_names:
+                continue
+            if self.security_directory_provider is None:
+                continue
+            identity = await self.security_directory_provider.resolve_security_identity(name)
+            if not identity:
+                continue
+            asset_id = str(identity.get("asset_id") or "").strip().upper()
+            if not asset_id or any(position["asset_id"] == asset_id for position in positions):
+                continue
+            positions.append({
+                "asset_id": asset_id,
+                "name": str(identity.get("name") or name).strip(),
+                "asset_class": "EQUITY",
+                "sector": "Unclassified",
+                "quantity": quantity,
+            })
+
         if not positions:
             return {
                 "status": "EMPTY",
@@ -411,7 +479,7 @@ class CopilotAgent:
             clauses = re.split(r"[；;\n。]+", text_clean)
             clause = next((part for part in clauses if code in part or position["name"] in part), "")
             price_match = re.search(r"(?:现价|当前价|市价)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*元?", clause)
-            cost_match = re.search(r"(?:买入均价|买入价格|成本价|成本)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*元?", clause)
+            cost_match = re.search(r"(?:买入均价|买入价格|买入成本|成本价|成本)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*元?", clause)
             if price_match:
                 price = Decimal(price_match.group(1))
             elif request_mode == DataMode.LIVE:
@@ -437,7 +505,28 @@ class CopilotAgent:
                 position["previous_close"] = quote.get("previous_close_cny")
                 position["observed_at"] = quote.get("observed_at")
             else:
-                price = Decimal(str(position["price"]))
+                if position.get("price") is None:
+                    quote = (
+                        await self.market_quote_provider.get_quote(position["asset_id"])
+                        if self.market_quote_provider is not None else None
+                    )
+                    if quote and quote.get("price_cny") is not None:
+                        price = Decimal(str(quote["price_cny"]))
+                        position["previous_close"] = quote.get("previous_close_cny")
+                        position["observed_at"] = quote.get("observed_at")
+                    else:
+                        return {
+                            "status": "REVIEW_REQUIRED",
+                            "schema_version": "portfolio-text-extraction.v1",
+                            "cash_cny": cash,
+                            "total_value_cny": cash,
+                            "positions": [],
+                            "parsed_count": 0,
+                            "review_reasons": ["CURRENT_PRICE_REQUIRED"],
+                            "message": f"已识别 {position['name']}（{position['asset_id']}），当前模式未取得现价，请补充现价后重新录入。",
+                        }
+                else:
+                    price = Decimal(str(position["price"]))
             position["price"] = float(price)
             position["cost_price"] = float(Decimal(cost_match.group(1))) if cost_match else position["price"]
             position["market_value_cny"] = float((Decimal(str(position["quantity"])) * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))

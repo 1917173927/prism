@@ -2753,6 +2753,8 @@ def create_app(
 
     copilot_agent = CopilotAgent(
         live_finance_provider=active_live_finance,
+        market_quote_provider=active_market_quotes,
+        security_directory_provider=active_security_directory,
         skillhub_provider=active_wencai_provider,
         on_wencai_failure=persist_wencai_failure,
     )
