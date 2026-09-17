@@ -22,6 +22,11 @@ from app.service.natural_profile import NaturalProfileRequest, NaturalProfileErr
 from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status, fingerprint, SessionAssertionsRequest, check_session_assertions
 from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
 from app.service.semantic_memory import search_context_memories
+from app.service.live_stock_analysis import (
+    AnalysisStatus,
+    build_live_stock_analysis,
+    resolve_live_stock_identity,
+)
 from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -223,11 +228,18 @@ from app.llm.client import AsyncLLMClient, LLMConfig
 from app.security import ProtectedSecretStore, SecretProtectionError
 from app.runtime.paths import default_private_data_dir
 from app.providers.industry import EastmoneyIndustryProvider
+from app.providers.wencai_normalization import (
+    decode_stock_identity,
+    decode_stock_metrics,
+    decode_stock_quote_fields,
+)
+from app.providers.security_codes import invalid_explicit_convertible_bond_code
 from app.providers.live_market import A_SHARE_DATABASE, ETF_LOOKTHROUGH_DATABASE
 from app.runtime.mode import (
     DataMode,
     LiveProviderUnavailableError,
     ModeRevisionConflictError,
+    PROVIDER_WIDE_WENCAI_FAILURE_CODES,
     get_runtime_mode_controller,
 )
 from typing import Any, Literal
@@ -298,6 +310,7 @@ class ConfirmedOcrPosition(BaseModel):
     day_pnl_cny: Decimal | None = None
     day_pnl_pct: Decimal | None = None
     field_sources: dict[str, str] = Field(default_factory=dict)
+    field_confidence_pct: dict[str, Decimal] = Field(default_factory=dict)
     identity_candidates: list[dict[str, Any]] = Field(default_factory=list)
     zero_position: bool = False
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
@@ -327,6 +340,10 @@ class CopilotConfigApiRequest(BaseModel):
     model: str = "deepseek-chat"
 
 
+class CopilotStoredConfig(CopilotConfigApiRequest):
+    connection_verified: bool = False
+
+
 class WencaiConfigApiRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -340,6 +357,15 @@ class WencaiStoredConfig(WencaiConfigApiRequest):
     # the shared protected store. Accept it without promoting readiness;
     # chat queries still validate their own live provider response.
     verified_skills: tuple[str, ...] = ()
+
+
+class FuyaoStoredConfig(BaseModel):
+    """Installation-wide Fuyao credential kept only in protected storage."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    api_key: str = Field(min_length=1, max_length=4096)
+    base_url: str = Field(default="https://fuyao.aicubes.cn", max_length=300)
 
 
 class AuthLoginRequest(BaseModel):
@@ -591,7 +617,7 @@ def create_app(
             })
         return None
 
-    user_model_settings: dict[str, CopilotConfigApiRequest] = {}
+    global_model_settings: dict[str, CopilotStoredConfig] = {}
     trusted_live_portfolios: dict[str, tuple[str, float]] = {}
 
     def portfolio_fingerprint(portfolio: PortfolioImportBundle) -> str:
@@ -605,25 +631,22 @@ def create_app(
         age_seconds = monotonic() - verified_at
         return age_seconds <= 300 and fingerprint == portfolio_fingerprint(portfolio)
 
-    def model_setting_scope(owner_id: str) -> str:
-        # Without account authentication this is a single-user loopback
-        # workbench.  Use one installation-scoped DPAPI slot instead of
-        # pretending the caller-controlled owner label is an identity boundary.
-        if active_secret_store is not None and not access_enabled:
-            return "local:workbench"
-        return owner_id
+    def persisted_model_setting() -> CopilotStoredConfig | None:
+        """Return the installation-wide model service configuration.
 
-    def persisted_model_setting(owner_id: str) -> CopilotConfigApiRequest | None:
-        scope = model_setting_scope(owner_id)
-        cached = user_model_settings.get(scope)
+        Account data remains owner-scoped, while the server-side model
+        credential is infrastructure shared by every authenticated account.
+        """
+        scope = "global"
+        cached = global_model_settings.get(scope)
         if active_secret_store is None:
             return cached
         try:
             encoded = active_secret_store.get(f"llm:{scope}")
             if encoded is None:
-                user_model_settings.pop(scope, None)
+                global_model_settings.pop(scope, None)
                 return None
-            setting = CopilotConfigApiRequest.model_validate_json(encoded)
+            setting = CopilotStoredConfig.model_validate_json(encoded)
         except (SecretProtectionError, ValidationError, ValueError) as exc:
             raise HTTPException(
                 status_code=503,
@@ -631,16 +654,28 @@ def create_app(
             ) from exc
         if not setting.api_key.strip():
             return None
-        user_model_settings[scope] = setting
+        global_model_settings[scope] = setting
         return setting
+
+    def persist_global_model_setting(setting: CopilotStoredConfig) -> None:
+        if active_secret_store is not None:
+            try:
+                active_secret_store.set("llm:global", setting.model_dump_json())
+            except (SecretProtectionError, ValueError) as exc:
+                raise HTTPException(status_code=503, detail="模型密钥安全保存失败") from exc
+        global_model_settings["global"] = setting
     wencai_setting_state: WencaiStoredConfig | None = None
+    fuyao_setting_state: FuyaoStoredConfig | None = None
     if active_secret_store is not None:
         try:
             encoded_wencai = active_secret_store.get("provider:wencai")
             if encoded_wencai is not None:
                 wencai_setting_state = WencaiStoredConfig.model_validate_json(encoded_wencai)
+            encoded_fuyao = active_secret_store.get("provider:fuyao")
+            if encoded_fuyao is not None:
+                fuyao_setting_state = FuyaoStoredConfig.model_validate_json(encoded_fuyao)
         except (SecretProtectionError, ValidationError, ValueError) as exc:
-            raise RuntimeError("问财密钥安全存储暂时不可用") from exc
+            raise RuntimeError("金融数据密钥安全存储暂时不可用") from exc
 
     active_market_quotes = market_provider or CompositeMarketProvider()
     active_wencai_provider = wencai_provider or WencaiSkillHubProvider(
@@ -652,13 +687,88 @@ def create_app(
             configured=bool(wencai_setting_state.api_key.strip()),
             contract_verified=wencai_setting_state.contract_verified,
         )
-    active_live_finance = live_finance_provider or FuyaoFinanceProvider()
+    active_live_finance = live_finance_provider or FuyaoFinanceProvider(
+        api_key=fuyao_setting_state.api_key if fuyao_setting_state else None,
+        base_url=fuyao_setting_state.base_url if fuyao_setting_state else None,
+    )
+    if fuyao_setting_state is not None and live_finance_provider is None:
+        get_runtime_mode_controller().restore_fuyao_configuration(
+            configured=bool(fuyao_setting_state.api_key.strip())
+        )
     active_industry = industry_provider or (
         EastmoneyIndustryProvider() if live_finance_provider is None and wencai_provider is None else None
     )
     active_yahoo_finance = yahoo_finance_provider or ifind_quant_provider or YahooFinanceProvider()
     active_etnet = etnet_provider or EtNetProvider()
     live_probe_lock = asyncio.Lock()
+
+    async def probe_wencai_contract() -> tuple[bool, tuple[dict[str, Any], ...]]:
+        """Verify all installed SkillHub routes and persist only a full pass."""
+        nonlocal wencai_setting_state
+        results = await active_wencai_provider.probe_installed_skills()
+        passed = all(
+            row["status"] in {"SUCCESS", "PARTIAL"}
+            and row.get("record_count", 0) > 0
+            and row.get("item_count", 0) > 0
+            for row in results
+        )
+        error_code = next((row["error_code"] for row in results if row["error_code"]), None)
+        if passed and wencai_setting_state is not None:
+            wencai_setting_state = wencai_setting_state.model_copy(
+                update={"contract_verified": True}
+            )
+            if active_secret_store is not None:
+                try:
+                    active_secret_store.set(
+                        "provider:wencai", wencai_setting_state.model_dump_json()
+                    )
+                except (SecretProtectionError, ValueError) as exc:
+                    raise HTTPException(status_code=503, detail="问财验证状态保存失败") from exc
+        await get_runtime_mode_controller().apply_wencai_probe(
+            available=passed,
+            error_code=error_code,
+            auto_activate=passed,
+        )
+        return passed, results
+
+    async def resolve_ocr_security_identities(result: dict) -> None:
+        """Fill missing OCR codes only when the live directory gives one exact match."""
+        resolver = getattr(active_live_finance, "resolve_security_identity", None)
+        if resolver is None or not getattr(active_live_finance, "is_configured", False):
+            return
+        unresolved = [
+            position for position in result.get("positions", [])
+            if not re.fullmatch(
+                r"\d{6}\.(?:SH|SZ|BJ)", str(position.get("asset_id") or "").upper()
+            ) and str(position.get("name") or "").strip()
+        ]
+        semaphore = asyncio.Semaphore(4)
+
+        async def resolve(position: dict) -> None:
+            try:
+                async with semaphore:
+                    identity = await resolver(str(position["name"]).strip())
+            except (FuyaoProviderError, TimeoutError, TypeError, ValueError):
+                return
+            if not identity:
+                return
+            position["asset_id"] = identity["asset_id"]
+            position["name"] = identity.get("name") or position["name"]
+            position["identity_candidates"] = [identity]
+            sources = dict(position.get("field_sources") or {})
+            sources["identity"] = identity.get("source") or "verified security directory"
+            position["field_sources"] = sources
+            position["review_reasons"] = [
+                reason for reason in (position.get("review_reasons") or [])
+                if reason != "SECURITY_IDENTITY_REQUIRED"
+            ]
+            position["needs_review"] = bool(position["review_reasons"])
+
+        await asyncio.gather(*(resolve(position) for position in unresolved))
+        result["has_low_confidence_items"] = any(
+            bool(position.get("needs_review"))
+            for position in result.get("positions", [])
+        )
 
     async def fetch_overseas_quote(symbol: str) -> dict | None:
         providers = []
@@ -997,7 +1107,20 @@ def create_app(
     def get_runtime_capability_gaps(owner_id: str = Depends(owner_dependency)):
         del owner_id
         controller = get_runtime_mode_controller()
+        live = controller.capabilities["LIVE"]
         definitions = (
+            ("market_analysis", "大盘分析", live["market_data"] or live["stock_quote"],
+             ["可验证指数行情或问财市场数据"], "固定指数返回行情、历史序列、来源和观察时间"),
+            ("industry_analysis", "行业配置", live["industry_data"] and live["portfolio_refresh"],
+             ["问财行业元数据", "已验证持仓报价"], "真实持仓可完成行业穿透、HHI 与画像上限对照"),
+            ("stock_analysis", "个股分析", live["company_data"] or live["stock_quote"],
+             ["问财公司数据或扶摇股票行情"], "代码精确匹配后返回行情及分章节研究边界"),
+            ("fund_analysis", "ETF 基金筛选", live["fund_data"] or live["fund_lookthrough"],
+             ["问财基金数据或扶摇披露持仓"], "基金代码或筛选条件返回真实记录、来源和披露日期"),
+            ("convertible_bond_analysis", "可转债投资", live["convertible_bond_data"],
+             ["问财可转债筛选与条款数据"], "价格、转股条款、评级及流动性字段返回真实记录"),
+            ("portfolio_optimization", "资产重组优化", live["portfolio_optimization"],
+             ["已验证持仓报价", "问财行业元数据", "已确认风险画像"], "真实持仓刷新后执行确定性上限重分配"),
             ("security_identity", "证券身份识别", controller.is_wencai_ready,
              ["完整交易所证券目录、历史简称与市场代码"], "查询名称后返回唯一代码、市场和可追溯来源"),
             ("stock_research", "股票研究", not service_uses_fixture(active_stock),
@@ -1507,12 +1630,17 @@ def create_app(
     @api.get("/api/v1/runtime/data-mode")
     async def get_runtime_data_mode():
         controller = get_runtime_mode_controller()
-        if controller.needs_initial_probe and active_live_finance.is_configured:
+        if (
+            (controller.needs_initial_probe and active_live_finance.is_configured)
+            or (controller.needs_wencai_probe and active_wencai_provider.is_configured)
+        ):
             async with live_probe_lock:
                 if controller.needs_initial_probe:
                     capabilities = await active_live_finance.probe_capabilities()
                     await controller.apply_fuyao_probe(capabilities, auto_activate=True,
                                                        errors=getattr(active_live_finance, "last_probe_errors", None))
+                if controller.needs_wencai_probe:
+                    await probe_wencai_contract()
         return JSONResponse(content={"status": "SUCCESS", "data": controller.get_status()})
 
     @api.put("/api/v1/runtime/data-mode")
@@ -2299,8 +2427,10 @@ def create_app(
     # -------------------------------------------------------------------------
     # Copilot Direction 2: Live LLM Chat, Tool Calling & Portfolio Parser Routes
     # -------------------------------------------------------------------------
-    async def persist_wencai_failure(_: str) -> None:
+    async def persist_wencai_failure(error_code: str) -> None:
         nonlocal wencai_setting_state
+        if error_code not in PROVIDER_WIDE_WENCAI_FAILURE_CODES:
+            return
         if wencai_setting_state is None or not wencai_setting_state.contract_verified:
             return
         wencai_setting_state = wencai_setting_state.model_copy(
@@ -2322,26 +2452,28 @@ def create_app(
         on_wencai_failure=persist_wencai_failure,
     )
 
-    def owner_llm_config(owner_id: str | None) -> LLMConfig:
-        setting = persisted_model_setting(owner_id) if owner_id else None
-        return LLMConfig(**setting.model_dump()) if setting else copilot_agent.client.config
+    def global_llm_config() -> LLMConfig:
+        setting = persisted_model_setting()
+        return LLMConfig(**setting.model_dump(
+            include={"api_key", "base_url", "model"}
+        )) if setting else copilot_agent.client.config
 
-    def owner_llm_client(owner_id: str | None) -> AsyncLLMClient:
-        return AsyncLLMClient(owner_llm_config(owner_id))
+    def global_llm_client() -> AsyncLLMClient:
+        return AsyncLLMClient(global_llm_config())
 
     @api.post("/api/v1/advisor/profile-extractions")
     async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
         if req.owner_id != owner_id:
             raise StoreOwnerError("profile extraction owner mismatch")
         try:
-            return await extract_natural_profile(req, owner_llm_client(owner_id), active_clock())
+            return await extract_natural_profile(req, global_llm_client(), active_clock())
         except NaturalProfileError as exc:
             return _error_response(422, "PROFILE_EXTRACTION_REFUSED", str(exc))
 
     @api.post("/api/v1/advisor/context-memory/search")
     async def search_memory(req: MemorySearchRequest, owner_id: str = Depends(owner_dependency)):
         try:
-            return await search_context_memories(active_store, owner_id, req.query, owner_llm_client(owner_id), limit=req.limit)
+            return await search_context_memories(active_store, owner_id, req.query, global_llm_client(), limit=req.limit)
         except ValueError:
             return _error_response(422, "MEMORY_SEARCH_REFUSED", "检索内容无效或包含敏感信息")
 
@@ -2482,9 +2614,11 @@ def create_app(
                 source=DisplayPolicySource.DEFAULT,
             )
 
-        persisted_setting = persisted_model_setting(scoped_owner) if scoped_owner else None
+        persisted_setting = persisted_model_setting()
         if not req.llm_config and persisted_setting is not None:
-            req.llm_config = persisted_setting.model_dump()
+            req.llm_config = persisted_setting.model_dump(
+                include={"api_key", "base_url", "model"}
+            )
         controller = get_runtime_mode_controller()
         configured = bool((req.llm_config or {}).get("api_key")) or copilot_agent.client.is_configured
         if req.model_mode != "MOCK" and not configured:
@@ -2590,6 +2724,7 @@ def create_app(
         parser = OCRPortfolioParser.get_instance()
         try:
             result = parser.parse_base64_image(req.image_base64)
+            await resolve_ocr_security_identities(result)
             return JSONResponse(content=result)
         except Exception as exc:
             return JSONResponse(
@@ -2749,6 +2884,7 @@ def create_app(
         try:
             content = await file.read()
             result = parser.parse_image_bytes(content)
+            await resolve_ocr_security_identities(result)
             return JSONResponse(content=result)
         except Exception as exc:
             return JSONResponse(
@@ -2780,6 +2916,7 @@ def create_app(
             result = OCRPortfolioParser.get_instance().parse_image_bytes(content)
         except Exception:
             return _error_response(400, "OCR_PARSE_FAILED", "portfolio screenshot could not be parsed")
+        await resolve_ocr_security_identities(result)
         if get_runtime_mode_controller().mode == DataMode.LIVE:
             try:
                 for position in result.get("positions", []):
@@ -2860,6 +2997,7 @@ def create_app(
             calculated = recalculate_portfolio_values(
                 confirmed_positions, req.cash_cny, owner_id,
                 allow_synthetic_lookthrough=mode == DataMode.MOCK and not access_enabled,
+                validate_reported_market_value=True,
             )
             portfolio = PortfolioImportBundle.model_validate(calculated["portfolio"])
             confirmed_at = active_clock()
@@ -2891,7 +3029,11 @@ def create_app(
         except StoreConflictError:
             raise
         except (ArithmeticError, TypeError, ValueError, ValidationError):
-            return _error_response(422, "OCR_VALUE_VALIDATION_FAILED", "confirmed OCR rows failed deterministic validation")
+            return _error_response(
+                422,
+                "OCR_VALUE_VALIDATION_FAILED",
+                "持仓数据校验失败；请检查证券代码、持股、可用数量、价格、市值和报价时间",
+            )
         calculated.update({
             "confirmation": stored.model_dump(mode="json"),
             "created": created,
@@ -2903,15 +3045,11 @@ def create_app(
 
     @api.get("/api/v1/user/model-settings")
     def get_user_model_settings(owner_id: str = Depends(owner_dependency)):
-        setting = persisted_model_setting(owner_id)
+        setting = persisted_model_setting()
         cfg = setting or copilot_agent.client.config
-        setting_scope = (
-            "LOCAL_MACHINE"
-            if active_secret_store is not None and not access_enabled
-            else "USER"
-        )
-        return {"is_configured": bool(cfg.api_key), "scope": setting_scope if setting else "SERVER",
+        return {"is_configured": bool(cfg.api_key), "scope": "GLOBAL" if setting else "SERVER",
                 "model": cfg.model, "base_url": cfg.base_url,
+                "connection_verified": bool(setting and setting.connection_verified),
                 "persistence": "OS_PROTECTED" if active_secret_store is not None else "PROCESS_ONLY"}
 
     @api.put("/api/v1/user/model-settings")
@@ -2928,36 +3066,35 @@ def create_app(
             raise HTTPException(status_code=422, detail="模型名称或密钥格式无效")
         api_key = req.api_key.strip()
         if not api_key:
-            existing = persisted_model_setting(owner_id)
+            existing = persisted_model_setting()
             if existing is None:
                 return _error_response(409, "MODEL_NOT_CONFIGURED", "请先输入 API Key，再保存配置")
             if urlsplit(existing.base_url).hostname != url.hostname:
                 raise HTTPException(status_code=422, detail="更换服务商时请填写对应的 API Key")
             api_key = existing.api_key
-        setting = req.model_copy(update={"api_key": api_key, "base_url": req.base_url.strip().rstrip("/"), "model": req.model.strip()})
-        scope = model_setting_scope(owner_id)
-        if active_secret_store is not None:
-            try:
-                active_secret_store.set(f"llm:{scope}", setting.model_dump_json())
-            except (SecretProtectionError, ValueError) as exc:
-                raise HTTPException(status_code=503, detail="模型密钥安全保存失败") from exc
-        user_model_settings[scope] = setting
+        setting = CopilotStoredConfig(
+            api_key=api_key,
+            base_url=req.base_url.strip().rstrip("/"),
+            model=req.model.strip(),
+            connection_verified=False,
+        )
+        persist_global_model_setting(setting)
         return get_user_model_settings(owner_id)
 
     @api.delete("/api/v1/user/model-settings")
     def delete_user_model_settings(owner_id: str = Depends(owner_dependency)):
-        scope = model_setting_scope(owner_id)
+        scope = "global"
         if active_secret_store is not None:
             try:
                 active_secret_store.delete(f"llm:{scope}")
             except (SecretProtectionError, ValueError) as exc:
                 raise HTTPException(status_code=503, detail="模型密钥安全删除失败") from exc
-        user_model_settings.pop(scope, None)
+        global_model_settings.pop(scope, None)
         return get_user_model_settings(owner_id)
 
     @api.post("/api/v1/user/model-settings/test")
     async def test_user_model_settings(owner_id: str = Depends(owner_dependency)):
-        config = owner_llm_config(owner_id)
+        config = global_llm_config()
         if not config.api_key:
             return _error_response(409, "MODEL_NOT_CONFIGURED", "请先保存 API Key")
         client = AsyncLLMClient(config.model_copy(update={"timeout_seconds": 8}))
@@ -2973,6 +3110,11 @@ def create_app(
             ok, failure = await asyncio.wait_for(probe(), timeout=10)
         except (TimeoutError, ValueError):
             ok, failure = False, "模型连接测试超时，请稍后重试"
+        setting = persisted_model_setting()
+        if setting is not None:
+            persist_global_model_setting(setting.model_copy(
+                update={"connection_verified": ok}
+            ))
         if not ok:
             return _error_response(502, "MODEL_TEST_FAILED", failure)
         return {"status": "PASS"}
@@ -3040,34 +3182,10 @@ def create_app(
 
     @api.post("/api/v1/runtime/wencai-settings/test")
     async def test_wencai_settings():
-        nonlocal wencai_setting_state
         if not active_wencai_provider.is_configured:
             return _error_response(409, "WENCAI_NOT_CONFIGURED", "请先保存问财 API Key")
-        results = await active_wencai_provider.probe_installed_skills()
-        passed = all(
-            row["status"] in {"SUCCESS", "PARTIAL"}
-            and row.get("record_count", 0) > 0
-            and row.get("item_count", 0) > 0
-            for row in results
-        )
-        error_code = next((row["error_code"] for row in results if row["error_code"]), None)
-        if passed and wencai_setting_state is not None:
-            wencai_setting_state = wencai_setting_state.model_copy(
-                update={"contract_verified": True}
-            )
-            if active_secret_store is not None:
-                try:
-                    active_secret_store.set(
-                        "provider:wencai", wencai_setting_state.model_dump_json()
-                    )
-                except (SecretProtectionError, ValueError) as exc:
-                    raise HTTPException(status_code=503, detail="问财验证状态保存失败") from exc
-        controller = get_runtime_mode_controller()
-        await controller.apply_wencai_probe(
-            available=passed,
-            error_code=error_code,
-            auto_activate=passed,
-        )
+        async with live_probe_lock:
+            passed, results = await probe_wencai_contract()
         body = {"status": "PASS" if passed else "FAILED", "skills": results}
         return JSONResponse(status_code=200 if passed else 502, content=body)
 
@@ -3296,7 +3414,7 @@ def create_app(
     ) -> JSONResponse:
         """Expose the verified provider contract for read-only research tools."""
         controller = get_runtime_mode_controller()
-        if controller.mode != DataMode.LIVE or not controller.is_wencai_ready:
+        if controller.mode != DataMode.LIVE or not active_wencai_provider.is_configured:
             return JSONResponse(
                 status_code=409,
                 content={
@@ -3306,6 +3424,21 @@ def create_app(
                     "missing_fields": ["WENCAI_RESEARCH_AND_REFRESH"],
                 },
             )
+        if request.operation == ProviderOperation.CONVERTIBLE_BOND_DATA:
+            invalid_code = invalid_explicit_convertible_bond_code(request.subject)
+            if invalid_code is not None:
+                return JSONResponse(status_code=422, content={
+                    "schema_version": "api-error.v1",
+                    "status": "REJECTED",
+                    "error_code": "INVALID_CONVERTIBLE_BOND_CODE",
+                    "message": (
+                        f"[{invalid_code}] 不是有效的沪深可转债代码；"
+                        "可输入 110/111/113/118/123/127/128 开头的六位代码，"
+                        "或输入不含代码的明确筛选条件。"
+                    ),
+                    "actual_source": None,
+                    "missing_fields": ["valid_convertible_bond_code_or_screen_condition"],
+                })
         provider_request = ProviderRequest(
             request_id=request.request_id,
             operation=request.operation,
@@ -3319,6 +3452,8 @@ def create_app(
             error_code = result.issues[0].code.value if result.issues else "PROVIDER_FAILED"
             await controller.record_wencai_failure(error_code)
             await persist_wencai_failure(error_code)
+        else:
+            await controller.record_wencai_success()
         status_code = 200 if result.status in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL, ProviderStatus.EMPTY} else 502
         return JSONResponse(status_code=status_code, content=result.model_dump(mode="json"))
 
@@ -3331,28 +3466,126 @@ def create_app(
         """Query real-time stock quote and valuation data."""
         clean_code = _validated_exchange_code(symbol, VALID_A_SHARE_PREFIXES)
         if clean_code is None:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": "REJECTED",
-                    "error_code": "INVALID_SECURITY_CODE",
-                    "message": f"证券代码格式无效：[{symbol}] 不符合 6 位数字代码规范。",
-                },
-            )
+            name_candidate = symbol.strip()
+            if any(character.isdigit() for character in name_candidate) or not (2 <= len(name_candidate) <= 32) or not active_wencai_provider.is_configured:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": "REJECTED",
+                        "error_code": "INVALID_SECURITY_CODE",
+                        "message": f"证券代码或名称格式无效：[{symbol}]。",
+                    },
+                )
+            candidates = await resolve_live_stock_identity(active_wencai_provider, name_candidate)
+            if not candidates:
+                return JSONResponse(status_code=404, content={
+                    "status": "NOT_FOUND",
+                    "error_code": "SECURITY_IDENTITY_NOT_FOUND",
+                    "message": f"未找到与名称 [{symbol}] 精确匹配的 A 股证券，请输入证券代码。",
+                    "identity_candidates": [],
+                })
+            if len(candidates) != 1:
+                return JSONResponse(status_code=409, content={
+                    "status": "REVIEW_REQUIRED",
+                    "error_code": "SECURITY_IDENTITY_AMBIGUOUS",
+                    "message": "证券名称不是唯一匹配，请选择代码后重试。",
+                    "identity_candidates": candidates,
+                })
+            clean_code = candidates[0]["symbol"].split(".")[0]
         controller = get_runtime_mode_controller()
         if blocked := reject_mock_in_formal("股票行情"):
             return blocked
         if controller.mode == DataMode.LIVE:
+            fuyao_failure: FuyaoProviderError | None = None
             try:
                 fetch_quote = getattr(active_live_finance, "get_stock_research", active_live_finance.get_quote) if include_financials else active_live_finance.get_quote
-                data = await fetch_quote(symbol)
+                data = await fetch_quote(clean_code)
             except FuyaoProviderError as exc:
+                fuyao_failure = exc
                 if exc.code in CAPABILITY_FAILURE_CODES:
                     await controller.record_fuyao_capability_failure("stock_quote", exc.code)
+                data = None
+            wencai_stock_code = _validated_exchange_code(
+                clean_code, FuyaoFinanceProvider.A_SHARE_PREFIXES
+            )
+            if (
+                data is None
+                and wencai_stock_code is not None
+                and active_wencai_provider.is_configured
+            ):
+                normalized_symbol = FuyaoFinanceProvider._normalize_thscode(
+                    wencai_stock_code, FuyaoFinanceProvider.A_SHARE_PREFIXES
+                )
+                request_id = f"live-quote-fallback-{uuid4().hex}"
+                try:
+                    result = await active_wencai_provider.execute(ProviderRequest(
+                        request_id=request_id,
+                        operation=ProviderOperation.COMPANY_DATA,
+                        subject=(
+                            f"{normalized_symbol} 股票简称 最新价 最新涨跌幅 所属同花顺行业 "
+                            "市盈率(TTM) 市净率 净资产收益率(ROE) 销售毛利率 资产负债率 最新报告期"
+                        ),
+                        parameters={"limit": 5},
+                    ))
+                except Exception:
+                    result = None
+                if result is not None and result.status in {ProviderStatus.SUCCESS, ProviderStatus.PARTIAL}:
+                    identity = decode_stock_identity(result, normalized_symbol)
+                    quote = decode_stock_quote_fields(result, normalized_symbol)
+                    metrics = decode_stock_metrics(result, normalized_symbol)
+                    if identity and quote.get("price_cny") is not None:
+                        observed_at = quote.get("observed_at") or identity.get("observed_at")
+                        fallback_data = {
+                            "symbol": normalized_symbol,
+                            "name": identity.get("name") or normalized_symbol,
+                            "price_cny": quote["price_cny"],
+                            "observed_at": observed_at,
+                            "industry": identity.get("industry"),
+                            **metrics,
+                            "source": "iwencai.com / SkillHub (Official Live)",
+                            "retrieved_at": result.retrieved_at.isoformat(),
+                            "missing_fields": [
+                                field for field, value in {
+                                    "observed_at": observed_at,
+                                    "industry": identity.get("industry"),
+                                }.items() if value in (None, "")
+                            ],
+                            "is_synthetic": False,
+                        }
+                        return JSONResponse(content={
+                            "status": "SUCCESS",
+                            "data": fallback_data,
+                            "execution_context": {
+                                "data_mode": "LIVE",
+                                "provider": "wencai_skillhub_provider",
+                                "provider_serving_mode": "LIVE_FALLBACK",
+                                "is_synthetic": False,
+                                "observed_at": observed_at,
+                                "retrieved_at": fallback_data["retrieved_at"],
+                                "missing_fields": fallback_data["missing_fields"],
+                            },
+                        })
+                if result is not None and result.status == ProviderStatus.FAILED:
+                    error_code = result.issues[0].code.value if result.issues else "PROVIDER_FAILED"
+                    await controller.record_wencai_failure(error_code)
+                    await persist_wencai_failure(error_code)
+                return JSONResponse(status_code=502, content={
+                    "status": "FAILED",
+                    "error_code": "WENCAI_STOCK_DATA_INCOMPLETE",
+                    "message": "问财未返回与请求代码精确匹配且包含最新价的个股数据。",
+                    "missing_fields": ["security_code", "price_cny"],
+                    "execution_context": {
+                        "data_mode": "LIVE",
+                        "provider": "wencai_skillhub_provider",
+                        "provider_serving_mode": "UNAVAILABLE",
+                        "is_synthetic": False,
+                    },
+                })
+            if fuyao_failure is not None:
                 return JSONResponse(status_code=503, content={
                     "status": "FAILED",
-                    "error_code": exc.code,
-                    "message": exc.safe_message,
+                    "error_code": fuyao_failure.code,
+                    "message": fuyao_failure.safe_message,
                     "execution_context": {
                         "data_mode": "LIVE",
                         "provider": "fuyao_finance_api",
@@ -3412,6 +3645,119 @@ def create_app(
                 },
             }
         )
+
+    @api.get("/api/v1/copilot/stock-analysis")
+    async def copilot_stock_analysis_endpoint(
+        symbol: str = Query(..., min_length=2, max_length=32),
+        lookback_years: int = Query(5, ge=3, le=5),
+        owner_id: str = Depends(owner_dependency),
+    ):
+        """Return one owner-scoped, sectioned LIVE stock research report.
+
+        Each upstream section keeps its own status.  A partial or unavailable
+        section is never replaced with a fixture and does not erase the other
+        verified sections.
+        """
+        clean_code = _validated_exchange_code(symbol, FuyaoFinanceProvider.A_SHARE_PREFIXES)
+        controller = get_runtime_mode_controller()
+        if blocked := reject_mock_in_formal("个股深度研判"):
+            return blocked
+        if controller.mode != DataMode.LIVE:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "schema_version": "api-error.v1",
+                    "status": "UNAVAILABLE",
+                    "error_code": "REAL_DATA_MODE_REQUIRED",
+                    "message": "个股深度研判只在 LIVE 模式执行，未调用 Fixture。",
+                    "missing_fields": ["verified_live_provider"],
+                },
+            )
+        if not active_wencai_provider.is_configured:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "schema_version": "api-error.v1",
+                    "status": "UNAVAILABLE",
+                    "error_code": "WENCAI_PROVIDER_UNAVAILABLE",
+                    "message": "个股深度研判所需的问财 LIVE 数据能力尚未配置。",
+                    "missing_fields": ["WENCAI_SKILLHUB_API_KEY"],
+                },
+            )
+        analysis_timeout_seconds = 12.0
+        if clean_code is None:
+            if re.fullmatch(r"\d{6}(?:\.[A-Za-z]{2})?", symbol.strip()):
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "schema_version": "api-error.v1",
+                        "status": "REJECTED",
+                        "error_code": "INVALID_STOCK_CODE",
+                        "message": f"证券代码格式无效或不是 A 股股票：[{symbol}]。",
+                        "missing_fields": ["valid_a_share_stock_code"],
+                    },
+                )
+            candidates = await resolve_live_stock_identity(active_wencai_provider, symbol)
+            if not candidates:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "schema_version": "api-error.v1",
+                        "status": "UNAVAILABLE",
+                        "error_code": "SECURITY_IDENTITY_NOT_FOUND",
+                        "message": f"未找到与名称 [{symbol}] 精确匹配的 A 股证券，请输入证券代码。",
+                        "identity_candidates": [],
+                    },
+                )
+            if len(candidates) != 1:
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "schema_version": "api-error.v1",
+                        "status": "REVIEW_REQUIRED",
+                        "error_code": "SECURITY_IDENTITY_AMBIGUOUS",
+                        "message": "证券名称不是唯一匹配，请选择代码后重新分析。",
+                        "identity_candidates": candidates,
+                    },
+                )
+            normalized_symbol = candidates[0]["symbol"]
+            analysis_timeout_seconds = 8.0
+        else:
+            normalized_symbol = FuyaoFinanceProvider._normalize_thscode(
+                clean_code, FuyaoFinanceProvider.A_SHARE_PREFIXES
+            )
+        portfolio_data = active_store.get_current_portfolio(owner_id, DataMode.LIVE.value)
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+        profile = snapshot.profile if snapshot is not None else None
+        if profile is not None:
+            behavior = active_store.get_latest_behavior_profile(owner_id)
+            if behavior is not None and behavior.questionnaire_profile_id == profile.profile_id:
+                profile = effective_risk_profile(profile, behavior)
+        try:
+            report = await asyncio.wait_for(
+                build_live_stock_analysis(
+                    normalized_symbol,
+                    lookback_years=lookback_years,
+                    provider=active_wencai_provider,
+                    structured_provider=active_live_finance,
+                    portfolio_data=portfolio_data,
+                    profile=profile,
+                    generated_at=active_clock(),
+                ),
+                timeout=analysis_timeout_seconds,
+            )
+        except TimeoutError:
+            return JSONResponse(
+                status_code=504,
+                content={
+                    "schema_version": "api-error.v1",
+                    "status": AnalysisStatus.UNAVAILABLE.value,
+                    "error_code": "STOCK_ANALYSIS_TIMEOUT",
+                    "message": "个股深度研判超过 12 秒总时限；快速行情结果仍可使用。",
+                    "missing_fields": ["deep_analysis_sections"],
+                },
+            )
+        return JSONResponse(content=report.model_dump(mode="json"))
 
     @api.get("/api/v1/copilot/live-fund")
     async def copilot_live_fund_endpoint(fund_code: str = "588000"):

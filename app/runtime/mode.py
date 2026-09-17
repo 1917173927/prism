@@ -18,6 +18,13 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# Only an authentication rejection proves that the shared credential can no
+# longer call any Wencai route. Query shape, timeout, quota and response
+# mapping failures are operation/request scoped and must not revoke every
+# analysis tool.
+PROVIDER_WIDE_WENCAI_FAILURE_CODES = frozenset({"AUTH_FAILED"})
+
+
 class DataMode(StrEnum):
     """Runtime data operation mode."""
     MOCK = "MOCK"
@@ -53,6 +60,7 @@ class RuntimeModeController:
             "stock_quote": None,
             "fund_lookthrough": None,
         }
+        self._fuyao_configured_override: bool | None = None
         self._fuyao_verification = (
             "NOT_CHECKED" if self._fuyao_configured else "UNCONFIGURED"
         )
@@ -105,6 +113,8 @@ class RuntimeModeController:
 
     @property
     def _fuyao_configured(self) -> bool:
+        if self._fuyao_configured_override is not None:
+            return self._fuyao_configured_override
         return bool(os.getenv("HITHINK_FINANCE_API_KEY", "").strip())
 
     @property
@@ -193,6 +203,21 @@ class RuntimeModeController:
     def needs_initial_probe(self) -> bool:
         return self._initial_probe_pending
 
+    @property
+    def needs_wencai_probe(self) -> bool:
+        """Probe a saved but unverified SkillHub contract once per process.
+
+        A persisted API key proves configuration only. The first runtime
+        status read verifies the installed Skill contracts so the UI does
+        not remain permanently UNAVAILABLE until an administrator manually
+        presses the connection-test button.
+        """
+        return (
+            self.is_wencai_configured
+            and not self.is_contract_verified
+            and self._wencai_checked_at is None
+        )
+
     async def apply_fuyao_probe(
         self, capabilities: dict[str, bool], *, auto_activate: bool = False,
         errors: dict[str, str | None] | None = None,
@@ -223,6 +248,13 @@ class RuntimeModeController:
                 self._revision += 1
             self._updated_at = checked_at
 
+    def restore_fuyao_configuration(self, *, configured: bool) -> None:
+        """Restore a machine-protected global Fuyao credential at startup."""
+        self._fuyao_configured_override = configured
+        self._fuyao_verification = "NOT_CHECKED" if configured else "UNCONFIGURED"
+        self._initial_probe_pending = configured
+        self._updated_at = datetime.now(UTC)
+
     async def record_fuyao_capability_failure(
         self, capability: str, error_code: str
     ) -> None:
@@ -239,12 +271,27 @@ class RuntimeModeController:
             self._updated_at = checked_at
 
     async def record_wencai_failure(self, error_code: str) -> None:
-        """Invalidate Wencai capabilities after an observed provider failure."""
+        """Record a provider failure without conflating it with global outage."""
         async with self._lock:
             checked_at = datetime.now(UTC)
-            self._wencai_available = False
+            if error_code in PROVIDER_WIDE_WENCAI_FAILURE_CODES:
+                self._wencai_available = False
+                self._wencai_contract_verified_override = False
+            if error_code == "PORTFOLIO_REFRESH_FAILED":
+                self._portfolio_metadata_available = False
             self._wencai_checked_at = checked_at
             self._wencai_last_error_code = error_code
+            self._updated_at = checked_at
+
+    async def record_wencai_success(self) -> None:
+        """Recover runtime readiness after a verified live route succeeds."""
+        async with self._lock:
+            checked_at = datetime.now(UTC)
+            self._wencai_configured_override = True
+            self._wencai_contract_verified_override = True
+            self._wencai_available = True
+            self._wencai_checked_at = checked_at
+            self._wencai_last_error_code = None
             self._updated_at = checked_at
 
     async def record_portfolio_metadata_result(
@@ -296,6 +343,7 @@ class RuntimeModeController:
             self._wencai_configured_override = True
             self._wencai_contract_verified_override = available
             self._wencai_available = available
+            self._portfolio_metadata_available = available
             self._wencai_checked_at = checked_at
             self._wencai_last_error_code = None if available else (error_code or "PROBE_FAILED")
             if auto_activate and self.is_live_ready and self._mode != DataMode.LIVE:

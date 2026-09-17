@@ -285,9 +285,11 @@ def test_live_refresh_combines_fuyao_quote_with_real_wencai_industry():
 
     assert body.status == "COMPLETE"
     assert adapter.wencai_metadata_succeeded is True
+    assert adapter.industry_metadata["300750.SZ"]["sector"] == "电力设备"
+    assert adapter.industry_metadata["300750.SZ"]["industry"] == ("电力设备", "电池", "锂电池")
     refreshed = body.portfolio.position_snapshot.positions[0]
     assert refreshed.market_value == Decimal("33825.00")
-    assert refreshed.sector == "Industrials"
+    assert refreshed.sector == "电力设备"
     assert "Fuyao structured financial data API" in refreshed.source
     assert "wencai_skillhub_provider" in refreshed.source
 
@@ -435,7 +437,7 @@ def test_live_refresh_blocks_incomplete_fund_lookthrough(monkeypatch):
     assert "top_holdings" in body["missing_fields"]
 
 
-def test_live_refresh_failure_revokes_wencai_runtime_capability(monkeypatch):
+def test_live_refresh_failure_revokes_only_portfolio_refresh_capability(monkeypatch):
     monkeypatch.setenv("WENCAI_SKILLHUB_API_KEY", "test-key")
     monkeypatch.setenv("WENCAI_SKILLHUB_CONTRACT_VERIFIED", "true")
     reset_runtime_mode_controller(mode=DataMode.LIVE)
@@ -450,11 +452,12 @@ def test_live_refresh_failure_revokes_wencai_runtime_capability(monkeypatch):
     assert response.status_code == 200
     assert response.json()["status"] == "REVIEW_REQUIRED"
     status = client.get("/api/v1/runtime/data-mode").json()["data"]
-    # A failed upstream capability must fail closed without silently switching
-    # the whole workspace onto synthetic data.
+    # A failed portfolio enrichment must fail closed for portfolio refresh
+    # without revoking unrelated Wencai routes or switching to synthetic data.
     assert status["data_mode"] == "LIVE"
-    assert status["wencai_ready"] is False
-    assert status["wencai_ready"] is False
+    assert status["wencai_ready"] is True
+    assert status["portfolio_metadata_ready"] is False
+    assert status["capabilities"]["LIVE"]["semantic_search"] is True
     assert status["capabilities"]["LIVE"]["portfolio_refresh"] is False
     assert status["wencai_capability_status"]["last_error_code"] == "PORTFOLIO_REFRESH_FAILED"
 

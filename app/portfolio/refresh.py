@@ -31,9 +31,9 @@ from app.providers.contracts import (
 )
 from app.providers.fingerprint import compute_request_fingerprint
 from app.providers.wencai_normalization import (
-    canonical_sector_from_wencai,
     decode_stock_identity,
     decode_stock_quote_fields,
+    source_industry_label,
 )
 
 
@@ -233,9 +233,18 @@ class LivePortfolioProviderAdapter:
         industry = identity.get("industry")
         if not industry:
             return None, None, None, (), False
-        sector = canonical_sector_from_wencai(industry)
+        sector = source_industry_label(industry)
         name = identity.get("name")
         source = enrichment.records[0].source if enrichment.records else None
+        if sector is not None:
+            self.industry_metadata[asset_id] = {
+                "asset_id": asset_id,
+                "industry": industry,
+                "sector": sector,
+                "name": str(name) if name not in (None, "") else None,
+                "source": source or "iwencai.com / SkillHub (Official Live)",
+                "retrieved_at": enrichment.retrieved_at.isoformat(),
+            }
         return sector, str(name) if name not in (None, "") else None, source, (), sector is not None
 
     async def _execute_fuyao(self, request: ProviderRequest) -> ProviderResult | None:
@@ -484,7 +493,7 @@ def _record_fields(result: ProviderResult, position: Position) -> dict[str, obje
     return {
         "price_cny": quote.get("price_cny"),
         "observed_at": quote.get("observed_at") or _wencai_observed_at(fields, {}),
-        "sector": canonical_sector_from_wencai(identity.get("industry")),
+        "sector": source_industry_label(identity.get("industry")),
         "name": identity.get("name") or position.asset_name,
         "source": "iwencai.com / SkillHub (Official Live)",
     }

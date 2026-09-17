@@ -9,7 +9,10 @@ import re
 
 import httpx
 
-from app.providers.wencai_normalization import canonical_sector_from_wencai
+from app.providers.wencai_normalization import (
+    canonical_sector_from_wencai,
+    source_industry_label,
+)
 
 
 class EastmoneyIndustryProvider:
@@ -43,10 +46,11 @@ class EastmoneyIndustryProvider:
             industry = row.get("EM2016")
             if not isinstance(industry, str):
                 return None
-            sector = canonical_sector_from_wencai(industry)
-            if sector is None:
+            sector = source_industry_label(industry)
+            if sector is None or sector.casefold() in {"未知", "未知行业", "unknown", "unclassified"}:
                 return None
             result = {"asset_id": asset_id, "industry": industry, "sector": sector,
+                      "policy_sector": canonical_sector_from_wencai(industry),
                       "name": row.get("SECURITY_NAME_ABBR"), "source": "Eastmoney public stock industry",
                       "retrieved_at": datetime.now(UTC).isoformat()}
             if len(self._cache) >= 2048:

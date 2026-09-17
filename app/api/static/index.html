@@ -7,12 +7,12 @@
     <meta name="description" content="Prism 可解释投资研究工作台">
     <title>Prism · 决策工作台</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23bd5700'/%3E%3Cpath d='M18 46V18h16c9 0 14 5 14 13s-5 13-14 13h-7v2H18zm9-11h7c4 0 6-1 6-4s-2-4-6-4h-7v8z' fill='white'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/static/styles.css?v=20260915-profile-result2">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260915-portfolio-report1">
+    <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-chat-peer-layout">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260915-progress-left" defer></script>
+    <script src="/static/app.js?v=20260916-chat-feature-popover" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -276,6 +276,70 @@
           </div>
 
           <div class="agent-home-grid" id="agent-home-grid">
+            <div class="agent-workbench-column">
+          <section class="agent-feature-tools" id="agent-feature-tools" aria-labelledby="agent-feature-tools-title">
+            <header class="agent-feature-tools-head">
+              <div>
+                <h3 id="agent-feature-tools-title">六项分析工具</h3>
+                <p>先确认分析范围与所需数据，再开始真实数据查询。功能入口不会在点击时自动执行。</p>
+              </div>
+              <div class="agent-feature-head-actions">
+                <span class="agent-feature-mode">LIVE 数据 · 结构化入口</span>
+                <button class="agent-feature-toggle" id="agent-feature-toggle" type="button" aria-expanded="true" aria-controls="agent-feature-popover">
+                  <span id="agent-feature-toggle-label">收起</span>
+                  <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
+                </button>
+              </div>
+            </header>
+            <div class="agent-feature-popover" id="agent-feature-popover">
+              <div class="agent-feature-grid" role="list">
+              <button class="agent-feature-card" type="button" data-feature-id="market" data-chat-prefix="大盘分析" aria-expanded="false" aria-controls="agent-feature-config">
+                <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-activity"/></svg></span>
+                <span class="agent-feature-copy"><strong>大盘分析</strong><span>趋势、估值与市场风险</span><small>市场范围 · 观察周期 · 关注维度</small></span>
+                <span class="agent-feature-status" data-feature-status="market">READY</span>
+              </button>
+              <button class="agent-feature-card" type="button" data-feature-id="industry" data-chat-prefix="行业配置" aria-expanded="false" aria-controls="agent-feature-config">
+                <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-layers"/></svg></span>
+                <span class="agent-feature-copy"><strong>行业配置</strong><span>检查行业暴露及画像上限</span><small>已确认持仓 · 风险画像 · 行业数据</small></span>
+                <span class="agent-feature-status" data-feature-status="industry">NEED_INPUT</span>
+              </button>
+              <button class="agent-feature-card" type="button" data-feature-id="stock" data-chat-prefix="个股分析" aria-expanded="false" aria-controls="agent-feature-config">
+                <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg></span>
+                <span class="agent-feature-copy"><strong>个股分析</strong><span>行情、财务、估值及动态证据</span><small>证券代码 · 五年财务 · 当前账户适配</small></span>
+                <span class="agent-feature-status" data-feature-status="stock">NEED_INPUT</span>
+              </button>
+              <button class="agent-feature-card" type="button" data-feature-id="fund" data-chat-prefix="ETF 基金筛选" aria-expanded="false" aria-controls="agent-feature-config">
+                <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-compass"/></svg></span>
+                <span class="agent-feature-copy"><strong>ETF 基金筛选</strong><span>净值、费率、持仓与行业穿透</span><small>基金代码或筛选条件 · 风险画像</small></span>
+                <span class="agent-feature-status" data-feature-status="fund">NEED_INPUT</span>
+              </button>
+              <button class="agent-feature-card" type="button" data-feature-id="convertible" data-chat-prefix="可转债投资" aria-expanded="false" aria-controls="agent-feature-config">
+                <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-shuffle"/></svg></span>
+                <span class="agent-feature-copy"><strong>可转债投资</strong><span>价格、转股条款、评级与流动性</span><small>转债代码或筛选条件 · 风险画像</small></span>
+                <span class="agent-feature-status" data-feature-status="convertible">NEED_INPUT</span>
+              </button>
+              <button class="agent-feature-card" type="button" data-feature-id="optimization" data-chat-prefix="资产重组优化" aria-expanded="false" aria-controls="agent-feature-config">
+                <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-scale"/></svg></span>
+                <span class="agent-feature-copy"><strong>资产重组优化</strong><span>集中度、风险预算与调整测算</span><small>已确认持仓 · 画像约束 · 优化目标</small></span>
+                <span class="agent-feature-status" data-feature-status="optimization">NEED_INPUT</span>
+              </button>
+              </div>
+              <form class="agent-feature-config" id="agent-feature-config" hidden>
+              <header>
+                <div><span class="eyebrow">已选择</span><h4 id="agent-feature-config-title">配置分析</h4></div>
+                <button id="agent-feature-config-close" type="button" aria-label="关闭功能配置">关闭</button>
+              </header>
+              <p id="agent-feature-config-help"></p>
+              <div class="agent-feature-fields" id="agent-feature-fields"></div>
+              <div class="agent-feature-requirements" id="agent-feature-requirements" role="status" aria-live="polite"></div>
+              <div class="agent-feature-actions">
+                <span>生成的问题会同步到下方输入框，可继续补充要求。</span>
+                <button class="btn btn-primary" id="agent-feature-start" type="submit">开始分析 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button>
+              </div>
+              </form>
+            </div>
+          </section>
+
             <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
               <div class="copilot-chat-stream-panel" id="copilot-chat-panel">
                 <header class="chat-panel-header conversation-head">
@@ -295,14 +359,6 @@
                 </div>
               </div>
 
-              <div class="chat-capabilities" aria-label="六项分析功能">
-                <button type="button" data-chat-prefix="大盘分析">大盘分析</button>
-                <button type="button" data-chat-prefix="行业配置">行业配置</button>
-                <button type="button" data-chat-prefix="个股分析">个股分析</button>
-                <button type="button" data-chat-prefix="ETF 基金筛选">ETF 基金筛选</button>
-                <button type="button" data-chat-prefix="可转债投资">可转债投资</button>
-                <button type="button" data-chat-prefix="资产重组优化">资产重组优化</button>
-              </div>
               <div class="copilot-query-box">
                 <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
                 <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="我更在意控制回撤，这套持仓需要怎么调整？" autocomplete="off"></textarea>
@@ -325,6 +381,7 @@
 
               <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
             </section>
+            </div>
 
             <aside class="agent-profile-rail" id="agent-profile-rail" aria-label="账户与偏好">
               <section class="agent-profile-summary">
@@ -423,7 +480,7 @@
 
           <!-- 自定义真实持仓录入弹窗 (支持截图 OCR 与文本 NER 双模) -->
           <div id="portfolio-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="portfolio-modal-title">
-            <div class="copilot-modal-content" style="max-width: 680px;">
+            <div class="copilot-modal-content portfolio-entry-modal">
               <div class="copilot-modal-header">
                 <h3 id="portfolio-modal-title"><svg class="prism-icon"><use href="#icon-file-text"/></svg> 录入与识别真实投资持仓</h3>
                 <button id="close-portfolio-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
@@ -488,7 +545,7 @@
                 <span class="mode-status-indicator" aria-hidden="true"></span>
                 <span class="mode-label-text" id="global-data-mode-label">MOCK · 合成数据</span>
               </button>
-            </div><p class="source-mode-help">个人配置优先于服务端默认配置；保存后自动测试连接。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口，配置仅用于当前账户。</p>
+            </div><p class="source-mode-help">模型服务采用安装级全局配置；管理员保存一次后所有账户共享使用。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口。普通账户只能查看连接状态，不能读取或覆盖密钥。</p>
 
                 <div style="margin-bottom:12px;">
                   <label for="llm-provider-select" style="font-size:12.5px; font-weight:600; display:block; margin-bottom:4px;">服务商预设：</label>
@@ -516,13 +573,13 @@
 
                 <div class="modal-actions" style="gap:8px;">
                   <button id="btn-clear-llm-config" class="copilot-action-btn secondary" type="button">
-                    <span>恢复服务端默认</span>
+                    <span>清除全局配置</span>
                   </button>
                   <button id="btn-save-llm-config" class="copilot-action-btn primary" type="button">
                     <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存配置</span>
                   </button>
                 </div>
-                <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。需要删除时使用“恢复服务端默认”。</p>
+                <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。清除或修改全局配置需要管理员权限。</p>
                 <div id="llm-config-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>
             </div>
@@ -646,6 +703,25 @@
             </div>
           </div>
 
+          <nav id="workspace-page-tabs" class="workspace-page-tabs" aria-label="当前页面功能" hidden>
+            <a href="#overview" data-domain="portfolio">组合总览</a>
+            <a href="#portfolio" data-domain="portfolio">持仓明细</a>
+            <a href="#portfolio-optimization" data-domain="portfolio">组合优化</a>
+            <a href="#portfolio-rebalancing" data-domain="portfolio">调仓方案</a>
+            <a href="#scenario-simulation" data-domain="portfolio">情景模拟</a>
+            <a href="#stock-research" data-domain="research">个股研究</a>
+            <a href="#fund-research" data-domain="research">ETF / 基金研究</a>
+            <a href="#convertible-bond-research" data-domain="research">可转债研究</a>
+            <a href="#recommendation-history" data-domain="decisions">历史建议</a>
+            <a href="#advanced-explainability" data-domain="decisions">为什么这样判断</a>
+            <a href="#profile" data-domain="profile">问卷与画像</a>
+            <a href="#evaluation-dashboard" data-domain="system" class="dev-only">评测看板</a>
+            <a href="#context-memory" data-domain="system" class="dev-only">上下文记忆</a>
+            <a href="#research-tracks" data-domain="system" class="dev-only">研究轨道</a>
+            <a href="#advisor" data-domain="system" class="dev-only">投顾查询</a>
+            <a href="#dev-assist" data-domain="system" class="dev-only">研发辅助</a>
+          </nav>
+
           <section class="metric-strip" aria-label="组合摘要">
             <article>
               <span>持仓市值</span>
@@ -669,6 +745,15 @@
             </article>
           </section>
 
+          <section id="portfolio-analysis-status" class="portfolio-analysis-warning doc-callout doc-callout-warning" role="status" aria-live="polite" hidden>
+            <div class="callout-icon"><svg class="prism-icon"><use href="#icon-alert"/></svg></div>
+            <div class="callout-content">
+              <div id="portfolio-analysis-status-title" class="callout-title">扩展分析暂不可用</div>
+              <p id="portfolio-analysis-status-message"></p>
+              <button id="portfolio-analysis-retry" type="button" class="copilot-action-btn secondary">重新分析</button>
+            </div>
+          </section>
+
           <section id="portfolio-empty" class="surface portfolio-empty" hidden>
             <h3>添加你的第一笔持仓</h3><p>支持截图识别、文字录入和手动添加。</p>
             <button type="button" data-open-portfolio>导入持仓</button>
@@ -688,11 +773,11 @@
             <div id="portfolio-report-headline" class="portfolio-report-headline"></div>
             <div id="portfolio-report-observations" class="portfolio-report-observations"></div>
             <div class="portfolio-report-grid">
-              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-structure-title">
+              <section class="portfolio-report-subcard portfolio-report-asset-card" aria-labelledby="portfolio-report-structure-title">
                 <h4 id="portfolio-report-structure-title">资产结构</h4>
                 <div id="portfolio-report-asset-structure"></div>
               </section>
-              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-risk-title">
+              <section class="portfolio-report-subcard portfolio-report-risk-card" aria-labelledby="portfolio-report-risk-title">
                 <h4 id="portfolio-report-risk-title">风险对照</h4>
                 <div id="portfolio-report-risk-summary"></div>
               </section>
@@ -707,123 +792,12 @@
             </div>
             <p id="portfolio-report-disclosure" class="portfolio-report-disclosure"></p>
           </section>
-<div class="portfolio-holdings-layout">
           <section class="surface portfolio-detail-card">
             <h3>持仓明细 <span id="portfolio-data-label" class="status-chip"></span></h3>
             <p id="portfolio-summary-note" role="status"></p>
             <div class="table-wrap"><table><thead><tr><th>标的 / 代码</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>累计盈亏</th><th>持仓占比</th><th>操作</th></tr></thead><tbody id="portfolio-position-rows"></tbody></table></div>
-          </section>    <aside id="visual-companion-drawer" class="portfolio-dashboard" aria-label="组合分析视图" aria-hidden="false">
-      <div class="companion-header" hidden>
-        <div class="companion-header-title">
-          <span class="companion-sparkle" aria-hidden="false"></span>
-          <div>
-            <span class="eyebrow clay">组合分析辅助</span>
-            <h3>资产结构与风险分析</h3>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="companion-body">
-        <!-- 资产配置动态环形图卡片 -->
-        <section class="companion-card" id="companion-allocation-card">
-          <div class="companion-card-head">
-            <h4>资产配置</h4>
-            <span id="companion-allocation-badge" class="count-pill">实时穿透</span>
-          </div>
-          <div id="companion-allocation-chart" class="companion-chart-container">
-            <div class="empty-state">加载持仓后生成动态资产环形图。</div>
-          </div>
-          <div id="companion-allocation-legend" class="chart-legend"></div>
-        </section>
-
-        <!-- 风险预算与行业暴露仪表盘 -->
-        <section class="companion-card" id="companion-risk-card">
-          <div class="companion-card-head">
-            <h4>风险预算</h4>
-            <span id="companion-risk-badge" class="status-chip">未评估</span>
-          </div>
-          <div id="companion-risk-gauge" class="companion-chart-container">
-            <div class="empty-state">评估风险画像后生成风险刻度盘。</div>
-          </div>
-          <div id="companion-exposure-bars" class="companion-exposure-container"></div>
-        </section>
-
-        <!-- 因果决策闭合图谱 -->
-        <section class="companion-card" id="companion-lineage-card" hidden>
-          <div class="companion-card-head">
-            <h4>结论依据</h4>
-            <span id="companion-lineage-badge" class="status-chip">分析过程</span>
-          </div>
-          <div id="companion-lineage-flow" class="lineage-nodes">
-            <div class="lineage-node" id="node-profile">
-              <span class="lineage-node-status">1</span>
-              <div>
-                <strong>投资偏好与设置</strong>
-                <div class="muted">你的风险等级与目标偏好</div>
-              </div>
-            </div>
-            <div class="lineage-node" id="node-intent">
-              <span class="lineage-node-status">2</span>
-              <div>
-                <strong>问题拆解</strong>
-                <div class="muted">确定本次需要回答什么</div>
-              </div>
-            </div>
-            <div class="lineage-node" id="node-research">
-              <span class="lineage-node-status">3</span>
-              <div>
-                <strong>资料与数据核对</strong>
-                <div class="muted">组合、行业与标的事实</div>
-              </div>
-            </div>
-            <div class="lineage-node" id="node-gate">
-              <span class="lineage-node-status">4</span>
-              <div>
-                <strong>偏好与设置核对</strong>
-                <div class="muted">核对是否符合你的投资偏好</div>
-              </div>
-            </div>
-            <div class="lineage-node" id="node-receipt">
-              <span class="lineage-node-status">5</span>
-              <div>
-                <strong>保存本次结果</strong>
-                <div class="muted">方便之后回看依据与变化</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 情景压力冲击对比器 -->
-        <section class="companion-card" id="companion-scenario-card" hidden>
-          <div class="companion-card-head">
-            <h4>情景压力分析</h4>
-            <span id="companion-scenario-badge" class="status-chip">假设分析</span>
-          </div>
-          <div id="companion-scenario-diff" class="companion-chart-container">
-            <div class="empty-state">运行情景模拟后查看权重变化对比。</div>
-          </div>
-        </section>
-
-        <!-- 伴侣智能审计视点 -->
-        <section class="companion-card" id="companion-insights-card" hidden>
-          <div class="companion-card-head">
-          <h4>分析提示</h4>
-          <span class="eyebrow">使用须知</span>
-          </div>
-          <ul id="companion-insights-list" class="companion-insights-list">
-            <li class="companion-insight-item">
-              <strong>依据优先</strong>：标明数据来源与计算依据。
-            </li>
-            <li class="companion-insight-item">
-              <strong>实时联动</strong>：调整投资偏好或持仓后，图表将即时联动更新。
-            </li>
-          </ul>
-        </section>
-      </div>
-    </aside>
-</div>
-          <div class="overview-grid">
+          </section>
+          <div id="portfolio-extended-analysis" class="overview-grid">
             <section class="surface holdings-card overview-card">
               <header class="surface-head overview-card-header">
                 <div>
@@ -939,25 +913,6 @@
         </section>
 
         <div id="global-error" class="notice error" role="alert" hidden></div>
-
-        <nav id="workspace-page-tabs" class="workspace-page-tabs" aria-label="当前页面功能" hidden>
-          <a href="#overview" data-domain="portfolio">组合总览</a>
-          <a href="#portfolio" data-domain="portfolio">持仓明细</a>
-          <a href="#portfolio-optimization" data-domain="portfolio">组合优化</a>
-          <a href="#portfolio-rebalancing" data-domain="portfolio">调仓方案</a>
-          <a href="#scenario-simulation" data-domain="portfolio">情景模拟</a>
-          <a href="#stock-research" data-domain="research">个股研究</a>
-          <a href="#fund-research" data-domain="research">ETF / 基金研究</a>
-          <a href="#convertible-bond-research" data-domain="research">可转债研究</a>
-          <a href="#recommendation-history" data-domain="decisions">历史建议</a>
-          <a href="#advanced-explainability" data-domain="decisions">为什么这样判断</a>
-          <a href="#profile" data-domain="profile">问卷与画像</a>
-          <a href="#evaluation-dashboard" data-domain="system" class="dev-only">评测看板</a>
-          <a href="#context-memory" data-domain="system" class="dev-only">上下文记忆</a>
-          <a href="#research-tracks" data-domain="system" class="dev-only">研究轨道</a>
-          <a href="#advisor" data-domain="system" class="dev-only">投顾查询</a>
-          <a href="#dev-assist" data-domain="system" class="dev-only">研发辅助</a>
-        </nav>
 
         <div class="workspace-grid" id="expert-workspace-grid" hidden aria-labelledby="expert-workspace-title">
           <div class="expert-mode-banner">
@@ -1711,18 +1666,6 @@
         </div>
       </main>
     </div>
-
-    <!-- 视觉伴侣 (Visual Companion) 背景遮罩 -->
-    <div id="companion-backdrop" class="companion-backdrop" aria-hidden="true"></div>
-
-    <!-- 按需打开的分析视图 -->
-
-
-    <!-- 浮动呼出悬浮球 -->
-    <button id="floating-companion-btn" class="floating-companion-btn" type="button" aria-label="打开组合分析视图">
-      <span class="companion-sparkle" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-      <span>分析视图</span>
-    </button>
 
     <!-- Global Runtime Data Mode Confirmation Modal -->
     <div class="copilot-modal" id="modal-data-mode-confirm" role="dialog" aria-modal="true" aria-labelledby="modal-mode-title" style="display: none;">

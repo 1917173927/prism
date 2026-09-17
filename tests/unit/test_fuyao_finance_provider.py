@@ -73,6 +73,45 @@ def test_fuyao_http_200_business_error_is_rejected() -> None:
     asyncio.run(run())
 
 
+def test_fuyao_security_identity_requires_one_exact_valid_name_match() -> None:
+    response_mode = "exact"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/meta/tickers/search"
+        assert request.url.params["q"] == "江苏新能"
+        rows = [{
+            "thscode": "603693.SH", "ticker": "603693",
+            "name": "江苏新能", "asset_type": "a-share",
+        }]
+        if response_mode == "ambiguous":
+            rows.append({
+                "thscode": "300000.SZ", "ticker": "300000",
+                "name": "江苏新能", "asset_type": "a-share",
+            })
+        if response_mode == "fuzzy":
+            rows[0]["name"] = "江苏新能源"
+        return httpx.Response(200, json={"code": 0, "data": {"item": rows}})
+
+    async def run() -> None:
+        nonlocal response_mode
+        provider = FuyaoFinanceProvider(
+            api_key="test-key", transport=httpx.MockTransport(handler)
+        )
+        identity = await provider.resolve_security_identity("江苏新能")
+        assert identity == {
+            "asset_id": "603693.SH",
+            "name": "江苏新能",
+            "market": "SH",
+            "source": "Fuyao A-share ticker directory",
+        }
+        response_mode = "ambiguous"
+        assert await provider.resolve_security_identity("江苏新能") is None
+        response_mode = "fuzzy"
+        assert await provider.resolve_security_identity("江苏新能") is None
+
+    asyncio.run(run())
+
+
 def test_fuyao_quote_enforces_end_to_end_deadline() -> None:
     async def handler(_: httpx.Request) -> httpx.Response:
         await asyncio.sleep(0.3)

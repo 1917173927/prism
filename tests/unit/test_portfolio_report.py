@@ -3,6 +3,8 @@ from decimal import Decimal
 from pathlib import Path
 
 from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+from app.portfolio.contracts import PortfolioImportBundle
+from app.portfolio.health import PortfolioHealthRequest, calculate_portfolio_health
 from app.portfolio.report import build_portfolio_report
 from app.profile.presentation import build_profile_presentation
 from app.profile.questionnaire import QUESTIONNAIRE_TEMPLATE, QuestionnaireAnswer, build_questionnaire_snapshot
@@ -112,6 +114,39 @@ def test_report_binds_profile_range_and_configuration_reference() -> None:
     assert report.concentration.single_asset_limit_pct is not None
     assert report.base_protection.profile_reference_pct is not None
     assert report.configuration_reference
+
+
+def test_risk_sectors_use_source_industry_labels_without_zero_fixed_buckets() -> None:
+    data = _portfolio_data()
+    data["portfolio"]["position_snapshot"]["positions"][0]["sector"] = "农林牧渔"
+    data["positions"][0]["sector"] = "农林牧渔"
+    portfolio = PortfolioImportBundle.model_validate(data["portfolio"])
+    profile, presentation = _questionnaire_profile()
+    calculated_at = datetime(2026, 9, 16, 10, 0, tzinfo=UTC)
+    health = calculate_portfolio_health(PortfolioHealthRequest(
+        request_id="source-industry-health",
+        owner_id="report-owner",
+        calculated_at=calculated_at,
+        portfolio=portfolio,
+        profile=profile,
+    ))
+
+    assert [row.name for row in health.sectors] == ["农林牧渔", "可用现金"]
+    assert health.sectors[0].sector_key == "INDUSTRY:农林牧渔"
+    assert health.sectors[0].limit_operator == "MAX"
+    assert not {"科技半导体", "先进制造", "消费医药", "金融周期"}.intersection(
+        row.name for row in health.sectors
+    )
+
+    report = build_portfolio_report(
+        data,
+        owner_id="report-owner",
+        data_mode="LIVE",
+        profile=profile,
+        presentation=presentation,
+        health=health,
+    )
+    assert [row.name for row in report.risk.sectors] == ["农林牧渔", "可用现金"]
 
 
 def test_metadata_and_cost_changes_create_distinct_immutable_reports():

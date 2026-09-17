@@ -27,6 +27,13 @@ from app.providers.live_market import (
 from app.providers.fixture_wencai import FixtureWencaiProvider, FIXTURE_WENCAI_DATABASE
 from app.providers.skillhub import WencaiSkillHubProvider
 from app.providers.live_wencai import LiveWencaiProvider
+from app.providers.contracts import ProviderOperation, ProviderRequest
+from app.providers.wencai_normalization import (
+    decode_stock_identity,
+    decode_stock_metrics,
+    decode_stock_quote_fields,
+)
+from app.providers.security_codes import invalid_explicit_convertible_bond_code
 from app.providers.fuyao import (
     CAPABILITY_FAILURE_CODES,
     FuyaoFinanceProvider,
@@ -291,6 +298,17 @@ class CopilotAgent:
             sanitized["target_sector_cap"] = float(value)
         return sanitized, None
 
+    @staticmethod
+    def _has_specific_industry_scope(query: str) -> bool:
+        """Reject generic wording before it can become an arbitrary stock screen."""
+        compact = re.sub(r"[\s，。！？、,:：;；()（）]+", "", str(query or ""))
+        for token in (
+            "行业配置", "行业", "配置", "概念", "定义", "方法", "说明", "解释",
+            "分析", "查询", "数据", "当前", "最新", "请", "一下", "什么是",
+        ):
+            compact = compact.replace(token, "")
+        return bool(compact)
+
     async def parse_portfolio_from_text(
         self, text: str, *, data_mode: DataMode | None = None
     ) -> dict[str, Any]:
@@ -461,16 +479,76 @@ class CopilotAgent:
 
         if is_live:
             if name == "query_stock_quote":
+                fuyao_failure: FuyaoProviderError | None = None
                 try:
                     fetch_quote = getattr(self.live_finance_provider, "get_stock_research", self.live_finance_provider.get_quote)
                     data = await fetch_quote(str(args["symbol"]))
                 except FuyaoProviderError as exc:
+                    fuyao_failure = exc
                     if exc.code in CAPABILITY_FAILURE_CODES:
                         await controller.record_fuyao_capability_failure("stock_quote", exc.code)
+                    data = None
+                if (
+                    data is None
+                    and fuyao_failure is not None
+                    and fuyao_failure.code in CAPABILITY_FAILURE_CODES
+                    and self.skillhub_provider.is_configured
+                ):
+                    try:
+                        symbol = FuyaoFinanceProvider._normalize_thscode(
+                            str(args["symbol"]), FuyaoFinanceProvider.A_SHARE_PREFIXES
+                        )
+                    except FuyaoProviderError:
+                        symbol = str(args["symbol"]).strip().upper()
+                    wencai_result = await self.skillhub_provider.execute(ProviderRequest(
+                        request_id=f"live-stock-fallback-{int(datetime.now(UTC).timestamp())}",
+                        operation=ProviderOperation.COMPANY_DATA,
+                        subject=(
+                            f"{symbol} 股票简称 最新价 最新涨跌幅 所属同花顺行业 "
+                            "市盈率(TTM) 市净率 净资产收益率(ROE) 最新报告期"
+                        ),
+                        parameters={"limit": 5},
+                    ))
+                    if wencai_result.status.value in {"SUCCESS", "PARTIAL"}:
+                        identity = decode_stock_identity(wencai_result, symbol)
+                        quote = decode_stock_quote_fields(wencai_result, symbol)
+                        metrics = decode_stock_metrics(wencai_result, symbol)
+                        if identity and quote.get("price_cny") is not None:
+                            data = {
+                                "symbol": symbol,
+                                "name": identity.get("name") or symbol,
+                                "price_cny": quote["price_cny"],
+                                "observed_at": quote.get("observed_at") or identity.get("observed_at"),
+                                "industry": identity.get("industry"),
+                                **metrics,
+                                "source": "iwencai.com / SkillHub (Official Live)",
+                                "retrieved_at": wencai_result.retrieved_at.isoformat(),
+                                "missing_fields": [
+                                    field for field in ("observed_at", "industry")
+                                    if not (quote.get(field) or identity.get(field))
+                                ],
+                                "is_synthetic": False,
+                            }
+                            return {
+                                "status": "SUCCESS",
+                                "source": data["source"],
+                                "data": data,
+                                "execution_context": {
+                                    "data_mode": "LIVE",
+                                    "provider": "wencai_skillhub_provider",
+                                    "provider_serving_mode": "LIVE_FALLBACK",
+                                    "is_synthetic": False,
+                                },
+                            }
+                if fuyao_failure is not None:
                     return {
                         "status": "FAILED",
-                        "error_code": exc.code,
-                        "message": exc.safe_message,
+                        "error_code": fuyao_failure.code,
+                        "message": (
+                            "扶摇行情服务未配置，且问财未返回与请求代码精确匹配的行情。"
+                            if self.skillhub_provider.is_configured
+                            else fuyao_failure.safe_message
+                        ),
                         "execution_context": {
                             "data_mode": "LIVE",
                             "provider": "fuyao_finance_api",
@@ -490,9 +568,61 @@ class CopilotAgent:
                     },
                 }
             if name == "query_fund_lookthrough":
+                fund_reference = str(args["fund_code"]).strip()
+                explicit_code = re.fullmatch(
+                    r"\d{6}(?:\.(?:SH|SZ|BJ))?", fund_reference, flags=re.IGNORECASE
+                )
+                if explicit_code is None:
+                    if not self.skillhub_provider.is_configured:
+                        return {
+                            "status": "FAILED",
+                            "error_code": "AUTH_FAILED",
+                            "message": "基金名称筛选需要问财 SkillHub，但当前尚未配置凭据。",
+                            "execution_context": {
+                                "data_mode": "LIVE",
+                                "provider": "wencai_skillhub_provider",
+                                "provider_serving_mode": "UNAVAILABLE",
+                                "is_synthetic": False,
+                            },
+                        }
+                    query = (
+                        f"{fund_reference} 基金代码 基金简称 单位净值 管理费率 托管费率 "
+                        "最高申购费率 最高赎回费率 跟踪误差"
+                    )
+                    result = await self.skillhub_provider.execute(ProviderRequest(
+                        request_id=f"live-copilot-fund-screen-{int(datetime.now(UTC).timestamp())}",
+                        operation=ProviderOperation.FUND_DATA,
+                        subject=query,
+                        parameters={"limit": 5},
+                    ))
+                    fields = dict(result.records[0].fields) if result.records else {}
+                    raw_items = fields.get("items")
+                    rows = (
+                        [dict(row) for row in raw_items if isinstance(row, dict)][:5]
+                        if isinstance(raw_items, (list, tuple)) else []
+                    )
+                    return {
+                        "status": result.status.value,
+                        "query": query,
+                        "category": "fund",
+                        "items": rows,
+                        "missing_fields": list(result.missing_fields),
+                        "error_code": result.issues[0].code.value if result.issues else None,
+                        "message": (
+                            result.issues[0].safe_message
+                            if result.status.value == "FAILED" and result.issues else None
+                        ),
+                        "retrieved_at": result.retrieved_at.isoformat(),
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "wencai_skillhub_provider",
+                            "provider_serving_mode": "LIVE_NAME_SCREEN",
+                            "is_synthetic": False,
+                        },
+                    }
                 try:
                     data = await self.live_finance_provider.get_fund_lookthrough(
-                        str(args["fund_code"])
+                        fund_reference
                     )
                 except FuyaoProviderError as exc:
                     if exc.code in CAPABILITY_FAILURE_CODES:
@@ -535,7 +665,6 @@ class CopilotAgent:
                             "is_synthetic": False,
                         },
                     }
-                from app.providers.contracts import ProviderOperation, ProviderRequest
                 channel = str(args.get("channel", "announcement"))
                 operations = {
                     "market": ProviderOperation.MARKET_DATA,
@@ -555,6 +684,41 @@ class CopilotAgent:
                     subject=str(args.get("query", "市场行情")),
                     parameters={"limit": 5} if name == "query_financial_data" else {"channel": channel},
                 )
+                if (
+                    name == "query_financial_data"
+                    and args["category"] == "industry"
+                    and not self._has_specific_industry_scope(args["query"])
+                ):
+                    return {
+                        "status": "BLOCKED",
+                        "error_code": "INDUSTRY_QUERY_UNDERSPECIFIED",
+                        "message": (
+                            "行业配置必须基于已确认持仓，或明确指定行业、指数、指标与期间；"
+                            "当前请求过于宽泛，已阻止将其误执行为选股查询。"
+                        ),
+                        "execution_context": {
+                            "data_mode": "LIVE",
+                            "provider": "tool_contract_gate",
+                            "is_synthetic": False,
+                        },
+                    }
+                if name == "query_financial_data" and args["category"] == "convertible_bond":
+                    invalid_code = invalid_explicit_convertible_bond_code(args["query"])
+                    if invalid_code is not None:
+                        return {
+                            "status": "REJECTED",
+                            "error_code": "INVALID_CONVERTIBLE_BOND_CODE",
+                            "message": (
+                                f"[{invalid_code}] 不是有效的沪深可转债代码；"
+                                "请输入 110/111/113/118/123/127/128 开头的六位代码，"
+                                "或输入不含代码的明确筛选条件。"
+                            ),
+                            "execution_context": {
+                                "data_mode": "LIVE",
+                                "provider": "tool_contract_gate",
+                                "is_synthetic": False,
+                            },
+                        }
                 res = await self.skillhub_provider.execute(req)
                 if res.status.value == "FAILED" and name == "query_wencai_semantic":
                     error_code = res.issues[0].code.value if res.issues else "PROVIDER_FAILED"
@@ -805,15 +969,28 @@ class CopilotAgent:
             if available:
                 lines.append("；".join(f"{label}：{field(stock, key, unit)}" for label, key, unit in available) + "。")
             if stock.get("financial_report_period"):
-                lines.append(f"财务报告期：{stock['financial_report_period']}。历史估值分位尚未接入，暂不据此判断高估或低估。")
+                lines.append(f"财务报告期：{stock['financial_report_period']}。当前工具结果是快速阶段；历史分位与跨期趋势必须以深度章节或后续结构化查询为准。")
             elif stock.get("financial_issues"):
                 lines.extend(item["message"] for item in stock["financial_issues"])
             return "\n".join(lines)
 
         elif fund_tool:
             fund_result = fund_tool["result"]
-            if fund_result.get("status") != "SUCCESS":
+            if fund_result.get("status") not in {"SUCCESS", "PARTIAL", "EMPTY"}:
                 return fund_result.get("message", "基金穿透底稿不可用。")
+            if "data" not in fund_result:
+                lines.append("### ETF / 基金筛选")
+                lines.append(f"查询：{fund_result.get('query', user_message)}；状态：{fund_result.get('status')}。")
+                rows = fund_result.get("items") or []
+                if not rows:
+                    lines.append("未取得匹配基金，不以模型常识补造标的。")
+                for index, row in enumerate(rows, 1):
+                    lines.append(f"\n记录 {index}：")
+                    for key, value in row.items():
+                        rendered = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list, tuple)) else str(value) if value is not None else "未提供"
+                        lines.append(f"- {key}：{rendered}")
+                lines.append(f"来源：问财 SkillHub；检索时间：{fund_result.get('retrieved_at', '未提供')}。筛选结果不等同于单基金持仓穿透。")
+                return "\n".join(lines)
             fund = fund_result["data"]
             lines.append(f"### 基金披露持仓：{fund['fund_name']} ({fund['fund_code']})")
             lines.append(f"本次数据模式：{mode_label}。基金持仓为定期披露，不代表实时持仓；披露期：{field(fund, 'holding_disclosure_as_of')}。")

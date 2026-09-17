@@ -311,8 +311,9 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css?v=20260915-' in markup
-    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260915-' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
+    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260916-' in markup
+    assert '<script src="/static/app.js?v=20260916-' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
@@ -390,7 +391,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
 
     for geometry in (
         "grid-template-columns: 220px minmax(0, 1fr)",
-        "grid-template-columns: minmax(0, 1fr) 286px",
+        "grid-template-columns: minmax(0, 1fr) 310px",
         "min-height: 260px",
         "border-radius: var(--radius-lg)",
         "box-shadow: none",
@@ -440,6 +441,97 @@ def test_portfolio_panel_declares_demo_data_and_hides_snapshot_identifiers() -> 
     assert "快照 ${text(fund.snapshot_id)}" not in script
 
 
+def test_ocr_editor_is_wide_scroll_free_and_all_business_fields_are_editable() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "styles.css").read_text(encoding="utf-8")
+    renderer = script.split("function renderPortfolioOcrResult(data)", 1)[1].split(
+        "function initPortfolioModalTabs()", 1
+    )[0]
+
+    assert 'class="copilot-modal-content portfolio-entry-modal"' in markup
+    assert "width: min(1240px, calc(100vw - 24px))" in styles
+    assert "max-width: 1240px" in styles
+    wrapper_styles = styles.split(".ocr-table-wrapper {", 1)[1].split("}", 1)[0]
+    assert "overflow-x: visible" in wrapper_styles
+    assert "overflow-x: auto" not in wrapper_styles
+    assert '["代码", "名称", "持股", "可用", "成本价", "当前市价", "持仓市值", "报价时间"]' in renderer
+    for field in (
+        "asset_id", "name", "quantity", "available_quantity", "cost_price",
+        "price", "market_value_cny", "observed_at",
+    ):
+        assert f'field: "{field}"' in renderer
+    assert '"置信度", "审核裁决"' not in renderer
+    assert "置信度仅用于定位可能有误的字段，不限制编辑或确认" in renderer
+    assert "const defaultObservedAt = toLocalDateTimeInputValue()" in renderer
+    assert 'MISSING_OBSERVED_AT: []' in renderer
+    assert 'value: pos.observed_at ? toLocalDateTimeInputValue(pos.observed_at) : defaultObservedAt' in renderer
+    assert 'fieldSources.observed_at = "system default: browser local current time"' in renderer
+    assert 'return { asset_id: assetId, name,' in renderer
+    assert 'return { ...pos' not in renderer
+    submitted_position = renderer.split("仅提交 ConfirmedOcrPosition 契约允许的字段", 1)[1].split(
+        "const validated = await validateAndActivatePortfolio", 1
+    )[0]
+    for derived_field in ("previous_close", "day_pnl_cny", "confidence_pct", "identity_candidates", "weight"):
+        assert derived_field not in submitted_position
+    assert 'confirmStatus.className = "ocr-confirm-status"' in renderer
+    assert 'actions.append(errorNote)' not in renderer
+    assert 'const validated = await validateAndActivatePortfolio' in renderer
+    assert 'runPortfolioAnalysis();' not in renderer
+
+
+def test_industry_shortcut_uses_confirmed_portfolio_template() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    assert 'data-chat-prefix="行业配置"' in markup
+    assert "检查行业暴露及画像上限" in markup
+    assert "请基于我已确认的持仓和风险画像" in script
+    assert "不要推荐无关股票" in script
+    assert "requiresPortfolio: true, requiresProfile: true" in script
+
+
+def test_stock_shortcut_requires_a_subject_and_routes_codes_to_real_research() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+
+    assert 'position => position.asset_type === "STOCK"' in script
+    assert 'if (id === "stock" && spec.name === "target") control.value = currentFeatureStock()' in script
+    assert 'setError("请输入需要分析的 6 位证券代码或证券名称")' in script
+    assert 'runCopilotStockResearch(directStock[1])' in script
+    assert "/api/v1/copilot/stock-analysis?symbol=" in script
+
+
+def test_six_analysis_shortcuts_use_explicit_live_or_deterministic_chains() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    feature_block = script.split("const AGENT_FEATURES", 1)[1].split(
+        'byId("welcome-start")', 1
+    )[0]
+
+    assert 'await runConfiguredAgentFeature(featureId, values)' in feature_block
+    assert 'await handleNaturalQuerySubmit()' not in feature_block
+    assert '"FUND_DATA",' in feature_block
+    assert '基金代码 基金简称 单位净值 管理费率 托管费率' in feature_block
+    assert '披露持仓 行业分布' not in feature_block
+    assert 'function normalizeFeatureRows(title, rows)' in feature_block
+    assert '筛选表已按基金代码合并' in feature_block
+    assert 'runLiveProviderFeature("CONVERTIBLE_BOND_DATA"' in feature_block
+    assert 'placeholder: "例如 113056 或 价格低于 130 元"' in feature_block
+    assert 'INVALID_CONVERTIBLE_BOND_CODE' not in feature_block
+    assert 'fallbackSubject.trim()' in feature_block
+    assert '不是有效的沪深可转债代码' in feature_block
+    assert '这不是连接失败' in feature_block
+    assert 'await runCopilotStockResearch(values.target, Number(values.lookback || 5))' in feature_block
+    assert 'const health = await refreshPortfolioHealth()' in feature_block
+    assert 'const result = await runPortfolioOptimization()' in feature_block
+    assert 'await assessMarket()' in feature_block
+    assert 'alternateCapabilities: ["stock_quote"]' in feature_block
+    assert 'alternateCapabilities: ["fund_lookthrough"]' in feature_block
+    assert 'candidates.some(capability => capabilities[capability] === true)' in feature_block
+    assert 'state.wencaiConfigured === true && state.wencaiLastErrorCode !== "AUTH_FAILED"' in feature_block
+    assert '|| configuredProviderReady' in feature_block
+    assert 'await fetchRuntimeDataMode();' in feature_block
+
+
 def test_user_facing_asset_research_localizes_statuses_and_machine_identifiers() -> None:
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     research_start = script.index("function renderResearchMatrix")
@@ -475,11 +567,18 @@ def test_user_facing_asset_research_localizes_statuses_and_machine_identifiers()
     assert "displayScenarioLabel" in research_renderers
     assert "发现 → 事实 → 证据" in research_renderers
 
-def test_allocation_chart_is_isolated_from_sector_donut_styles() -> None:
+def test_formal_report_uses_accessible_solid_asset_pie_from_report_contract() -> None:
     script = (STATIC / 'app.js').read_text(encoding='utf-8')
-    allocation = script.split('function renderCompanionAllocation()', 1)[1].split('function renderCompanionRisk()', 1)[0]
-    assert 'circle.setAttribute("class", "allocation-slice")' in allocation
-    assert 'circle.setAttribute("class", "donut-slice")' not in allocation
+    renderer = script.split('function renderPortfolioAssetStructure', 1)[1].split('function appendRiskBoundaryRow', 1)[0]
+    assert 'assetStructure || []' in renderer
+    assert 'Number(group.market_value_cny) > 0' in renderer
+    assert 'groups.length === 1' in renderer
+    assert 'portfolio-asset-pie-sector' in renderer
+    assert 'svg.setAttribute("role", "img")' in renderer
+    assert 'sector.setAttribute("aria-label", sectorLabel)' in renderer
+    for key, color in (("stock", "#d97706"), ("cash", "#2f855a"), ("etf", "#2563eb"),
+                       ("convertible", "#7c3aed"), ("bond", "#0891b2"), ("other", "#6b7280")):
+        assert f'{key}: "{color}"' in script
 
 
 def test_market_choices_and_visible_source_controls_are_distinct() -> None:
@@ -496,5 +595,89 @@ def test_market_choices_and_visible_source_controls_are_distinct() -> None:
     for removed_id in ('profile-preferences-title', 'preference-holdings', 'preference-market',
                        'profile-natural-text', 'profile-proposal-title'):
         assert f'id="{removed_id}"' not in markup
-    holdings_start = markup.index('class="portfolio-holdings-layout"')
-    assert holdings_start < markup.index('id="companion-allocation-card"') < markup.index('class="overview-grid"', holdings_start)
+    assert 'id="visual-companion-drawer"' not in markup
+    assert 'id="companion-allocation-card"' not in markup
+    assert 'id="companion-risk-card"' not in markup
+    assert 'id="floating-companion-btn"' not in markup
+    assert 'class="portfolio-holdings-layout"' not in markup
+
+
+def test_portfolio_report_navigation_status_and_boundaries_are_restructured() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    heading = markup.index('class="overview-header-bar page-heading overview-heading"')
+    tabs = markup.index('id="workspace-page-tabs"')
+    metrics = markup.index('class="metric-strip"', heading)
+    assert heading < tabs < metrics
+    assert 'insertAdjacentElement("afterend", pageTabs)' in script
+    assert 'id="portfolio-analysis-status"' in markup
+    assert 'id="portfolio-analysis-retry"' in markup
+    assert 'id="portfolio-extended-analysis"' in markup
+    assert 'class="portfolio-report-subcard portfolio-report-asset-card"' in markup
+    assert 'class="portfolio-report-subcard portfolio-report-risk-card"' in markup
+    assert '.portfolio-report-asset-card,' in styles
+    assert '.portfolio-report-risk-card { grid-column: 1 / -1; }' in styles
+    risk_renderer = script.split('function renderPortfolioRiskBoundaries', 1)[1].split('function renderPortfolioReport', 1)[0]
+    for label in ("单一标的集中度", "权益类占比", "行业及未分类资产", "现金比例", "计算口径"):
+        assert label in risk_renderer
+    assert '"REVIEW_REQUIRED"' in risk_renderer
+    assert "最大回撤容忍度仅作为投资者画像边界" in risk_renderer
+    assert 'renderPortfolioAnalysisStatus(error.message' in script
+    assert 'setError(`持仓已保存' not in script
+
+
+def test_feature_tools_yield_space_after_chat_starts_and_remain_reopenable() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    assert 'id="agent-feature-toggle"' in markup
+    assert 'aria-controls="agent-feature-popover"' in markup
+    assert 'id="agent-feature-popover"' in markup
+    assert 'function setAgentFeatureToolsCompact(compact, options = {})' in script
+    assert 'setAgentFeatureToolsCompact(true);\n    const chatOwner' in script
+    assert 'setAgentFeatureToolsCompact(false);' in script
+    assert 'event.key !== "Escape"' in script
+    assert '.agent-feature-tools.is-compact.is-open .agent-feature-popover' in styles
+    assert 'position: absolute;' in styles
+    assert 'max-height: min(72vh, 680px);' in styles
+
+
+def test_feature_tools_share_the_conversation_column_beside_the_profile_rail() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    grid = markup.index('class="agent-home-grid" id="agent-home-grid"')
+    workbench = markup.index('class="agent-workbench-column"', grid)
+    feature_tools = markup.index('id="agent-feature-tools"', workbench)
+    conversation = markup.index('id="agent-conversation"', feature_tools)
+    profile_rail = markup.index('id="agent-profile-rail"', conversation)
+    assert grid < workbench < feature_tools < conversation < profile_rail
+    assert '</section>\n            </div>\n\n            <aside class="agent-profile-rail"' in markup
+    assert 'grid-template-columns: minmax(0, 1fr) 310px;' in styles
+    assert '.agent-workbench-column > .agent-feature-tools { width: 100%; margin-bottom: 0; }' in styles
+    assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation' in styles
+    assert 'min-height: 260px;' in styles
+    assert 'max-height: 520px;' in styles
+    assert 'overscroll-behavior: contain;' in styles
+    assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages' in styles
+
+
+def test_live_provider_results_use_compact_emphasized_card_layout() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    assert 'provider-feature-card' in script
+    assert 'provider-feature-metrics' in script
+    assert 'provider-feature-table-wrap' in script
+    assert 'provider-status-chip' in script
+    assert 'function providerColumns(title, rows)' in script
+    assert 'maximumFractionDigits: 6' in script
+    assert 'max-height: 360px;' in styles
+    assert 'position: sticky;' in styles
+    assert 'text-overflow: ellipsis;' in styles
+    assert 'max-height: 520px;' in styles
+    assert 'scrollbar-gutter: stable;' in styles
+    assert '.agent-conversation .copilot-output-container { display: block; max-height: 520px;' in styles

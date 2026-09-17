@@ -1,6 +1,7 @@
 """Unit tests for lightweight RapidOCR portfolio parser and API endpoints."""
 
 import base64
+from decimal import Decimal
 import io
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -8,7 +9,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import create_app
-from app.llm.ocr_portfolio_parser import OCRPortfolioParser, CONFIDENCE_THRESHOLD
+from app.llm.ocr_portfolio_parser import (
+    OCRPortfolioParser,
+    CONFIDENCE_THRESHOLD,
+    recalculate_portfolio_values,
+)
 
 
 def _create_sample_holdings_image(low_contrast: bool = False) -> bytes:
@@ -218,3 +223,36 @@ def test_fullscreen_reordered_columns_and_account_summary(scale):
     assert position["pnl_pct"] == -13.447
     assert position.get("day_pnl_cny") is None
     assert "MISSING_OBSERVED_AT" in position["review_reasons"]
+    assert set(position["field_confidence_pct"]) >= {
+        "asset_id", "name", "quantity", "available_quantity",
+        "cost_price", "price", "market_value_cny",
+    }
+
+
+def test_confirmed_editable_fields_are_preserved_and_cross_validated():
+    result = recalculate_portfolio_values([{
+        "asset_id": "600251.SH",
+        "name": "用户核对后的名称",
+        "quantity": 100,
+        "available_quantity": 60,
+        "cost_price": 11.58,
+        "price": 10.42,
+        "market_value_cny": 1042,
+    }], Decimal("0"), "editable-owner", validate_reported_market_value=True)
+
+    position = result["positions"][0]
+    assert position["name"] == "用户核对后的名称"
+    assert position["available_quantity"] == 60
+    assert position["market_value_cny"] == 1042
+
+    with pytest.raises(ValueError, match="market_value_cny"):
+        recalculate_portfolio_values([{
+            "asset_id": "600251.SH", "quantity": 100, "price": 10.42,
+            "market_value_cny": 9999,
+        }], Decimal("0"), "editable-owner", validate_reported_market_value=True)
+
+    with pytest.raises(ValueError, match="available_quantity"):
+        recalculate_portfolio_values([{
+            "asset_id": "600251.SH", "quantity": 100, "available_quantity": 101,
+            "price": 10.42, "market_value_cny": 1042,
+        }], Decimal("0"), "editable-owner", validate_reported_market_value=True)

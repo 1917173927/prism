@@ -291,13 +291,208 @@ body.prism-ui-v2 {
 .prism-ui-v2 .agent-home-heading p { max-width: none; margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
 .prism-ui-v2 .agent-boundary-note { display: none; }
 
+.prism-ui-v2 .agent-feature-tools {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.prism-ui-v2 .agent-feature-tools-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.prism-ui-v2 .agent-feature-tools-head h3 { margin: 0; color: var(--text-primary); font-size: 16px; }
+.prism-ui-v2 .agent-feature-tools-head p { margin: 5px 0 0; color: var(--text-secondary); font-size: 12px; }
+.prism-ui-v2 .agent-feature-head-actions { display: flex; align-items: center; gap: 8px; }
+.prism-ui-v2 .agent-feature-mode {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid var(--success);
+  border-radius: 999px;
+  color: var(--success);
+  background: var(--success-soft);
+  font: 650 10px/1.2 var(--mono);
+}
+.prism-ui-v2 .agent-feature-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  cursor: pointer;
+  font: 600 11px/1.2 var(--sans);
+}
+.prism-ui-v2 .agent-feature-toggle:hover { border-color: var(--brand-border); color: var(--brand-hover); background: var(--brand-soft); transform: none; }
+.prism-ui-v2 .agent-feature-toggle:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; border-color: var(--brand); }
+.prism-ui-v2 .agent-feature-toggle .prism-icon { width: 14px; height: 14px; transform: rotate(180deg); transition: transform .16s ease; }
+.prism-ui-v2 .agent-feature-popover { display: grid; gap: 14px; }
+.prism-ui-v2 .agent-feature-tools.is-compact {
+  position: relative;
+  z-index: 8;
+  display: block;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.prism-ui-v2 .agent-feature-tools.is-compact.is-open { z-index: 20; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head {
+  min-height: 46px;
+  align-items: center;
+  padding: 8px 10px 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head > div:first-child { display: flex; align-items: center; gap: 8px; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head h3 { font-size: 13px; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head h3::after {
+  content: " · 6 个入口";
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head p,
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-mode { display: none; }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-toggle .prism-icon { transform: none; }
+.prism-ui-v2 .agent-feature-tools.is-compact.is-open .agent-feature-toggle .prism-icon { transform: rotate(180deg); }
+.prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-popover { display: none; }
+.prism-ui-v2 .agent-feature-tools.is-compact.is-open .agent-feature-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: min(72vh, 680px);
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgba(28, 31, 35, .14);
+}
+.prism-ui-v2 .agent-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.prism-ui-v2 .agent-feature-card {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 11px;
+  min-width: 0;
+  min-height: 106px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-subtle);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.prism-ui-v2 .agent-feature-card:hover { border-color: var(--brand-border); background: var(--brand-soft); transform: translateY(-1px); }
+.prism-ui-v2 .agent-feature-card:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; border-color: var(--brand); }
+.prism-ui-v2 .agent-feature-card[aria-expanded="true"] { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 3px 0 0 var(--brand); }
+.prism-ui-v2 .agent-feature-card[data-feature-availability="UNAVAILABLE"] { opacity: .72; }
+.prism-ui-v2 .agent-feature-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--brand-border);
+  border-radius: 9px;
+  color: var(--brand-hover);
+  background: var(--surface);
+}
+.prism-ui-v2 .agent-feature-copy { display: grid; min-width: 0; gap: 5px; }
+.prism-ui-v2 .agent-feature-copy strong { font-size: 14px; }
+.prism-ui-v2 .agent-feature-copy > span { color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+.prism-ui-v2 .agent-feature-copy small { color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.prism-ui-v2 .agent-feature-status {
+  align-self: start;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface);
+  font: 650 9px/1.2 var(--mono);
+  white-space: nowrap;
+}
+.prism-ui-v2 .agent-feature-status[data-status="READY"] { color: var(--success); border-color: var(--success); background: var(--success-soft); }
+.prism-ui-v2 .agent-feature-status[data-status="NEED_INPUT"] { color: var(--brand-hover); border-color: var(--brand-border); background: var(--brand-soft); }
+.prism-ui-v2 .agent-feature-status[data-status="UNAVAILABLE"] { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+.prism-ui-v2 .agent-feature-config {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+  background: var(--brand-soft);
+}
+.prism-ui-v2 .agent-feature-config[hidden] { display: none; }
+.prism-ui-v2 .agent-feature-config > header,
+.prism-ui-v2 .agent-feature-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.prism-ui-v2 .agent-feature-config h4 { margin: 2px 0 0; font-size: 15px; }
+.prism-ui-v2 .agent-feature-config .eyebrow { color: var(--brand-hover); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.prism-ui-v2 .agent-feature-config > header > button { border: 0; color: var(--text-muted); background: transparent; cursor: pointer; }
+.prism-ui-v2 .agent-feature-config > p { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.prism-ui-v2 .agent-feature-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.prism-ui-v2 .agent-feature-fields label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 11px; }
+.prism-ui-v2 .agent-feature-fields :is(input,select) { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-primary); background: var(--surface); font: inherit; }
+.prism-ui-v2 .agent-feature-requirements { min-height: 0; color: var(--text-secondary); font-size: 11px; }
+.prism-ui-v2 .agent-feature-requirements:not(:empty) { padding: 9px 11px; border-left: 3px solid var(--warning); border-radius: 5px; background: var(--surface); }
+.prism-ui-v2 .agent-feature-requirements.is-unavailable { color: var(--danger); border-left-color: var(--danger); }
+.prism-ui-v2 .agent-feature-actions > span { color: var(--text-muted); font-size: 11px; }
+.prism-ui-v2 .agent-feature-actions .btn { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+
 .prism-ui-v2 .agent-home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 286px;
+  grid-template-columns: minmax(0, 1fr) 310px;
   align-items: start;
   gap: 18px;
   min-width: 0;
 }
+.prism-ui-v2 .agent-workbench-column {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+  container: agent-workbench / inline-size;
+}
+.prism-ui-v2 .agent-workbench-column > .agent-feature-tools { width: 100%; margin-bottom: 0; }
+@container agent-workbench (max-width: 760px) {
+  .prism-ui-v2 .agent-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container agent-workbench (max-width: 520px) {
+  .prism-ui-v2 .agent-feature-grid { grid-template-columns: 1fr; }
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation {
+  display: block;
+  min-height: 0;
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-stream-panel {
+  display: block;
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages {
+  min-height: 260px;
+  max-height: 520px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .agent-empty-state { padding-block: 8px; }
 .prism-ui-v2 .agent-conversation {
   display: block;
   min-width: 0;
@@ -528,15 +723,73 @@ body.prism-ui-v2 {
 }
 .prism-ui-v2 .agent-conversation .quick-tag-chip:hover,
 .prism-ui-v2 .agent-conversation .quick-tag-chip:focus-visible { border-color: var(--brand-border); color: var(--brand-hover); background: var(--brand-soft); box-shadow: none; transform: none; }
-.prism-ui-v2 .agent-conversation .copilot-output-container { display: block; margin: 0; padding: 0 14px 14px; border: 0; background: transparent; }
+.prism-ui-v2 .agent-conversation .copilot-output-container { display: block; max-height: 520px; margin: 2px 14px 16px; padding: 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: linear-gradient(180deg, var(--surface-subtle), var(--surface)); }
 .prism-ui-v2 .agent-conversation .copilot-output-container:empty { display: none; }
+.prism-ui-v2 .provider-feature-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(25, 35, 45, .06);
+}
+.prism-ui-v2 .provider-feature-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px 13px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(135deg, var(--surface), var(--brand-soft));
+}
+.prism-ui-v2 .provider-feature-head h3 { margin: 0; font-size: 17px; line-height: 1.35; }
+.prism-ui-v2 .provider-feature-head .research-boundary { margin: 5px 0 0; color: var(--text-muted); font: 10px/1.45 var(--mono); }
+.prism-ui-v2 .provider-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font: 700 9px/1 var(--mono);
+  letter-spacing: .04em;
+}
+.prism-ui-v2 .provider-status-chip.status-success { color: var(--success); border-color: rgba(23, 131, 95, .28); background: var(--success-soft); }
+.prism-ui-v2 .provider-status-chip.status-partial { color: var(--brand-hover); border-color: var(--brand-border); background: var(--brand-soft); }
+.prism-ui-v2 .provider-feature-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.prism-ui-v2 .provider-feature-metrics > div { display: grid; gap: 3px; padding: 12px 14px; border-right: 1px solid var(--border-subtle); }
+.prism-ui-v2 .provider-feature-metrics > div:last-child { border-right: 0; }
+.prism-ui-v2 .provider-feature-metrics span { color: var(--text-muted); font-size: 9px; }
+.prism-ui-v2 .provider-feature-metrics strong { color: var(--text-primary); font: 700 14px/1.25 var(--mono); }
+.prism-ui-v2 .provider-query-summary { margin: 12px 18px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.prism-ui-v2 .provider-feature-card > .research-boundary { margin: 10px 18px; padding: 9px 11px; border-left: 3px solid var(--brand); border-radius: 5px; background: var(--brand-soft); font-size: 10px; }
+.prism-ui-v2 .provider-feature-table-wrap {
+  max-height: 360px;
+  margin: 12px 18px 18px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: var(--surface);
+  scrollbar-width: thin;
+}
+.prism-ui-v2 .provider-feature-table { min-width: 720px; font-size: 11px; }
+.prism-ui-v2 .provider-feature-table thead th { position: sticky; z-index: 2; top: 0; padding: 9px 11px; color: var(--text-secondary); background: #f4f5f3; box-shadow: 0 1px 0 var(--border); }
+.prism-ui-v2 .provider-feature-table td { max-width: 220px; padding: 8px 11px; overflow: hidden; text-overflow: ellipsis; }
+.prism-ui-v2 .provider-feature-table tbody tr:nth-child(even) { background: rgba(245, 246, 244, .62); }
+.prism-ui-v2 .provider-feature-table tbody tr:hover { background: var(--brand-soft); }
 
 .prism-ui-v2 .agent-profile-rail {
   display: grid;
   grid-template-columns: 1fr;
   align-items: start;
   gap: 10px;
-  width: 286px;
+  width: 310px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -1842,6 +2095,7 @@ body.prism-ui-v2 {
 
 
 @media (max-width: 1040px) {
+  .prism-ui-v2 .agent-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .prism-ui-v2 .agent-home-grid { grid-template-columns: minmax(0, 1fr) 250px; }
   .prism-ui-v2 .agent-profile-rail { width: 250px; }
   .prism-ui-v2 #overview .overview-grid { grid-template-columns: 1fr; }
@@ -1867,12 +2121,44 @@ body.prism-ui-v2 {
   .prism-ui-v2 .main { padding-inline: 24px; }
   .prism-ui-v2 .agent-home-grid { grid-template-columns: 1fr; }
   .prism-ui-v2 .agent-profile-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); width: auto; }
+  .prism-ui-v2 #overview .overview-heading { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .prism-ui-v2 #overview .heading-actions { width: 100%; }
   .prism-ui-v2 #overview .metric-strip { grid-template-columns: repeat(2, 1fr); }
   .prism-ui-v2 #overview .metric-strip article:nth-child(2) { border-right: 0; }
   .prism-ui-v2 #overview .metric-strip article:nth-child(-n+2) { border-bottom: 1px solid var(--border-subtle); }
 }
 
+@media (max-width: 760px) {
+  .prism-ui-v2 .agent-feature-grid,
+  .prism-ui-v2 .agent-feature-fields { grid-template-columns: 1fr; }
+  .prism-ui-v2 .agent-feature-tools-head,
+  .prism-ui-v2 .agent-feature-actions { align-items: stretch; flex-direction: column; }
+  .prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head { align-items: center; flex-direction: row; }
+  .prism-ui-v2 .agent-feature-mode { align-self: flex-start; }
+}
+
 @media (max-width: 620px) {
+  .prism-ui-v2 .agent-feature-grid,
+  .prism-ui-v2 .agent-feature-fields { grid-template-columns: 1fr; }
+  .prism-ui-v2 .agent-feature-tools { padding: 14px; }
+  .prism-ui-v2 .agent-feature-tools-head,
+  .prism-ui-v2 .agent-feature-actions { align-items: stretch; flex-direction: column; }
+  .prism-ui-v2 .agent-feature-tools.is-compact { padding: 0; }
+  .prism-ui-v2 .agent-feature-tools.is-compact .agent-feature-tools-head { align-items: center; flex-direction: row; }
+  .prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation {
+    min-height: 0;
+  }
+  .prism-ui-v2 .agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages {
+    min-height: 210px;
+    max-height: 460px;
+  }
+  .prism-ui-v2 .provider-feature-metrics { grid-template-columns: 1fr; }
+  .prism-ui-v2 .provider-feature-metrics > div { border-right: 0; border-bottom: 1px solid var(--border-subtle); }
+  .prism-ui-v2 .provider-feature-metrics > div:last-child { border-bottom: 0; }
+  .prism-ui-v2 .provider-feature-table-wrap { max-height: 320px; margin-inline: 12px; }
+  .prism-ui-v2 .agent-conversation .copilot-output-container { max-height: 460px; }
+  .prism-ui-v2 .agent-feature-mode { align-self: flex-start; }
+  .prism-ui-v2 .agent-feature-actions .btn { justify-content: center; }
   .prism-ui-v2 .app-shell { display: block; }
   .prism-ui-v2 .sidebar { position: relative; width: 100%; height: auto; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--border); }
   .prism-ui-v2 .brand { justify-content: flex-start; min-height: 34px; padding: 0 2px 8px; }
@@ -1978,6 +2264,26 @@ body.prism-ui-v2 {
 .prism-ui-v2 .portfolio-report-issues { display: grid; gap: 5px; margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
 .prism-ui-v2 .portfolio-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .prism-ui-v2 .portfolio-report-subcard { min-width: 0; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-subtle); }
+.prism-ui-v2 .portfolio-report-asset-card,
+.prism-ui-v2 .portfolio-report-risk-card { grid-column: 1 / -1; }
+.prism-ui-v2 .portfolio-asset-structure { display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); gap: 24px; align-items: center; }
+.prism-ui-v2 .portfolio-asset-pie { display: block; width: min(100%, 240px); height: auto; margin: 0 auto; overflow: visible; }
+.prism-ui-v2 .portfolio-asset-pie-sector { stroke: var(--surface); stroke-width: 1.5; transition: opacity .15s ease; }
+.prism-ui-v2 .portfolio-asset-pie-sector:hover { opacity: .84; }
+.prism-ui-v2 .portfolio-asset-legend { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.prism-ui-v2 .portfolio-asset-legend li { display: grid; grid-template-columns: 10px minmax(68px, auto) 1fr; gap: 9px; align-items: center; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+.prism-ui-v2 .portfolio-asset-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+.prism-ui-v2 .portfolio-asset-legend strong { color: var(--text-primary); font-size: 13px; }
+.prism-ui-v2 .portfolio-asset-legend span:last-child { color: var(--text-secondary); font: 12px/1.5 var(--mono); text-align: right; }
+.prism-ui-v2 .portfolio-risk-boundary-wrap { max-width: 100%; overflow-x: auto; }
+.prism-ui-v2 .portfolio-risk-boundary-table { min-width: 760px; }
+.prism-ui-v2 .portfolio-risk-boundary-table td:last-child { white-space: normal; min-width: 180px; color: var(--text-secondary); }
+.prism-ui-v2 .portfolio-analysis-warning { margin: 16px 0; align-items: flex-start; }
+.prism-ui-v2 .portfolio-analysis-warning[hidden],
+.prism-ui-v2 #portfolio-extended-analysis[hidden] { display: none !important; }
+.prism-ui-v2 .portfolio-analysis-warning .callout-content { min-width: 0; }
+.prism-ui-v2 .portfolio-analysis-warning p { margin: 5px 0 10px; line-height: 1.6; }
+.prism-ui-v2 #overview > .portfolio-detail-card { width: 100%; min-width: 0; margin: 0 0 24px; }
 .prism-ui-v2 .portfolio-report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .prism-ui-v2 .portfolio-report-table th,
 .prism-ui-v2 .portfolio-report-table td { padding: 8px 7px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
@@ -1999,17 +2305,16 @@ body.prism-ui-v2 {
 .prism-ui-v2 .portfolio-diagnosis-drawer h3 { margin: 20px 0 8px; color: var(--text-primary); font-size: 14px; }
 .prism-ui-v2 .portfolio-diagnosis-list { display: grid; gap: 7px; margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 13px; line-height: 1.65; }
 .prism-ui-v2 .portfolio-diagnosis-note { margin: 18px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.6; }
-.portfolio-dashboard { margin-top: 24px; }
-.portfolio-dashboard .companion-header { padding: 12px 0; }
-.portfolio-dashboard .companion-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 0; overflow: visible; }
-.portfolio-dashboard .companion-card { padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin: 0; }
-.portfolio-dashboard .companion-card-head h4 { font-size: 15px; }
 .prism-ui-v2 .overview-actions { flex-wrap: wrap; }
 .prism-theme-dark { --page: #131820; --text-primary: #e7edf7; --text-secondary: #c0cad8; --text-muted: #a1acba; --surface-subtle: #1d2735; }
 .prism-ui-v2.prism-theme-dark .sidebar { background: #18212e; }
-@media (max-width: 720px) { .portfolio-dashboard .companion-body { grid-template-columns: 1fr; } .chat-capabilities { gap: 6px; } #chat-send-progress { max-width: 150px; } }
+@media (max-width: 720px) { .chat-capabilities { gap: 6px; } #chat-send-progress { max-width: 150px; } }
 /* Review pass: readable controls and compact, visible data context. */
 .prism-ui-v2 .agent-profile-rail { width: 310px; gap: 16px; }
+@media (min-width: 821px) and (max-width: 1040px) {
+  .prism-ui-v2 .agent-home-grid { grid-template-columns: minmax(0, 1fr) 250px; }
+  .prism-ui-v2 .agent-profile-rail { width: 250px; }
+}
 .prism-ui-v2 .agent-profile-rail :is(p,dt,dd,summary,.rail-label,.agent-detail-row,.agent-rail-head,.copilot-tag,.copilot-portfolio-badge,.display-policy-hint,.behavior-profile-content,.status-chip,.cf-verdict) { font-size: 14px; line-height: 1.6; }
 .prism-ui-v2 .agent-profile-rail :is(h3,.copilot-persona-badge strong) { font-size: 16px; line-height: 1.5; }
 .prism-ui-v2 .agent-profile-rail :is(.agent-profile-summary,.behavior-profile-card) { padding: 20px; }
@@ -2019,17 +2324,6 @@ body.prism-ui-v2 {
 .prism-ui-v2 .agent-profile-rail .quiet-profile-action { min-height: 40px; padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--surface); }
 .prism-ui-v2 .agent-profile-rail .primary-rail-action { margin-top: 16px; background: var(--surface-subtle); font-weight: 600; }
 .prism-ui-v2 .agent-profile-rail .agent-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.prism-ui-v2 .portfolio-holdings-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; align-items: start; gap: 20px; margin-bottom: 24px; }
-.prism-ui-v2 .portfolio-holdings-layout > .portfolio-detail-card { min-width: 0; margin: 0; }
-.prism-ui-v2 .portfolio-holdings-layout .portfolio-dashboard { margin: 0; min-width: 0; }
-.prism-ui-v2 .portfolio-holdings-layout .companion-body { display: grid; grid-template-columns: 1fr; gap: 16px; }
-.prism-ui-v2 .portfolio-dashboard [hidden] { display: none !important; }
-.prism-ui-v2 .portfolio-dashboard .companion-chart-svg { display: block; width: 100%; height: 200px; }
-.prism-ui-v2 .portfolio-dashboard .chart-legend { display: grid; gap: 8px; font-size: 13px; }
-.prism-ui-v2 .allocation-slice { transition: opacity .15s; }
-.prism-ui-v2 .allocation-slice:hover { opacity: .8; }
-.prism-ui-v2 .portfolio-dashboard .empty-state { padding: 16px 4px; font-size: 14px; line-height: 1.7; }
-.prism-ui-v2 .portfolio-dashboard .companion-card { padding: 18px; }
 .prism-ui-v2 .data-source-status { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; }
 .prism-ui-v2 .data-source-status span { padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .prism-ui-v2 .topbar-more-panel .data-source-status { display: grid; gap: 5px; align-items: stretch; }
@@ -2076,13 +2370,12 @@ body.prism-ui-v2 {
 .prism-ui-v2 #market-industries th,.prism-ui-v2 #market-industries td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; }
 .prism-ui-v2 #market-industries :is(th,td):first-child { text-align: left; }
 .prism-ui-v2 #market-industries th { font-size: 13px; color: var(--text-secondary); background: var(--surface-subtle); }
-@media(max-width:1100px) { .prism-ui-v2 .portfolio-holdings-layout { grid-template-columns: minmax(0,1fr); } .prism-ui-v2 .portfolio-holdings-layout .companion-body { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width:900px) { .prism-ui-v2 .agent-profile-rail { width: auto; } }
 @media(max-width:760px) { .prism-ui-v2 .market-factor-grid { grid-template-columns: 1fr; } }
-@media(max-width:600px) { .prism-ui-v2 .market-region-tabs { display: flex; width: 100%; } .prism-ui-v2 .market-region-tabs button { flex: 1; min-width: 0; padding-inline: 10px; } .prism-ui-v2 .market-index-options { display: flex; margin-inline: -4px; padding: 4px; scroll-snap-type: x mandatory; } .prism-ui-v2 .market-index-options button { flex: 0 0 78%; scroll-snap-align: start; } .prism-ui-v2 .market-chart-toolbar { align-items: stretch; } .prism-ui-v2 .market-chart-toolbar > div { width: 100%; overflow-x: auto; border-right: 0; } .prism-ui-v2 .market-chart-toolbar button { white-space: nowrap; } .prism-ui-v2 .portfolio-holdings-layout .companion-body { grid-template-columns: 1fr; } .prism-ui-v2 .data-source-status { max-width: 100%; } .prism-ui-v2 .data-source-status span { font-size: 11px; } }
-.prism-ui-v2 .portfolio-holdings-layout .portfolio-detail-card :is(th,td) { padding: 10px 6px; font-size: 13px; }
-.prism-ui-v2 .portfolio-holdings-layout .portfolio-detail-card td button { padding: 7px 9px; min-height: 32px; margin: 2px; font-size: 12px; }
-.prism-ui-v2 .portfolio-holdings-layout .portfolio-detail-card td:last-child { white-space: normal; min-width: 60px; }
+@media(max-width:600px) { .prism-ui-v2 .market-region-tabs { display: flex; width: 100%; } .prism-ui-v2 .market-region-tabs button { flex: 1; min-width: 0; padding-inline: 10px; } .prism-ui-v2 .market-index-options { display: flex; margin-inline: -4px; padding: 4px; scroll-snap-type: x mandatory; } .prism-ui-v2 .market-index-options button { flex: 0 0 78%; scroll-snap-align: start; } .prism-ui-v2 .market-chart-toolbar { align-items: stretch; } .prism-ui-v2 .market-chart-toolbar > div { width: 100%; overflow-x: auto; border-right: 0; } .prism-ui-v2 .market-chart-toolbar button { white-space: nowrap; } .prism-ui-v2 .data-source-status { max-width: 100%; } .prism-ui-v2 .data-source-status span { font-size: 11px; } }
+.prism-ui-v2 #overview > .portfolio-detail-card :is(th,td) { padding: 10px 6px; font-size: 13px; }
+.prism-ui-v2 #overview > .portfolio-detail-card td button { padding: 7px 9px; min-height: 32px; margin: 2px; font-size: 12px; }
+.prism-ui-v2 #overview > .portfolio-detail-card td:last-child { white-space: normal; min-width: 60px; }
 .prism-ui-v2 .agent-profile-summary #copilot-hero-name { font-size: 16px; }
 .prism-ui-v2 .agent-profile-summary .copilot-persona-desc { white-space: normal; font-size: 14px; }
 .prism-ui-v2 .agent-profile-rail .behavior-profile-metric span,.prism-ui-v2 .agent-profile-rail .behavior-profile-metric strong { font-size: 13px; }
@@ -2095,6 +2388,7 @@ body.prism-ui-v2 {
   .prism-ui-v2 .portfolio-report-header { display: grid; }
   .prism-ui-v2 .portfolio-report-actions { justify-content: flex-start; }
   .prism-ui-v2 .portfolio-report-grid { grid-template-columns: 1fr; }
+  .prism-ui-v2 .portfolio-asset-structure { grid-template-columns: 1fr; }
   .prism-ui-v2 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 0; }
   .prism-ui-v2 .topbar-title-area { display: none; }
   .prism-ui-v2 .topbar .profile-actions-menu { order: 1; margin: 0; }
@@ -2118,3 +2412,70 @@ body.prism-ui-v2 {
 #copilot-submit-query, #chat-cancel-query { flex-shrink: 0; }
 #questionnaire-section-tabs { scroll-margin-top: 20px; }
 .copilot-metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+
+.prism-ui-v2 .stock-deep-report { display: grid; gap: 14px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+.prism-ui-v2 .stock-deep-loading { display: flex; align-items: center; gap: 8px; padding: 14px; border-radius: 8px; color: var(--text-secondary); background: var(--surface-subtle); }
+.prism-ui-v2 .stock-deep-head,
+.prism-ui-v2 .stock-analysis-section > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.prism-ui-v2 .stock-deep-head h3 { margin: 3px 0 0; font-size: 19px; }
+.prism-ui-v2 .stock-deep-head .eyebrow { color: var(--brand-hover); font: 700 9px/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+.prism-ui-v2 .stock-section-status { padding: 4px 7px; border: 1px solid var(--border); border-radius: 999px; font: 650 9px/1.2 var(--mono); white-space: nowrap; }
+.prism-ui-v2 .stock-section-status.complete { color: var(--success); border-color: var(--success); background: var(--success-soft); }
+.prism-ui-v2 .stock-section-status.partial { color: var(--brand-hover); border-color: var(--brand-border); background: var(--brand-soft); }
+.prism-ui-v2 .stock-section-status.unavailable { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+.prism-ui-v2 .stock-observations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.prism-ui-v2 .stock-observations article { min-width: 0; padding: 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-subtle); }
+.prism-ui-v2 .stock-observations h4 { margin: 0 0 8px; font-size: 13px; }
+.prism-ui-v2 .stock-observations ul { display: grid; gap: 6px; margin: 0; padding-left: 17px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.prism-ui-v2 .stock-analysis-section { display: grid; gap: 12px; padding: 15px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
+.prism-ui-v2 .stock-analysis-section h4 { margin: 0; font-size: 15px; }
+.prism-ui-v2 .stock-performance-bars { display: grid; gap: 8px; }
+.prism-ui-v2 .stock-performance-bars > div { display: grid; grid-template-columns: 48px minmax(100px, 1fr) 76px; align-items: center; gap: 9px; font-size: 11px; }
+.prism-ui-v2 .stock-performance-bars strong { text-align: right; font: 650 11px/1.3 var(--mono); }
+.prism-ui-v2 .stock-performance-track { display: block; height: 8px; overflow: hidden; border-radius: 99px; background: var(--surface-subtle); }
+.prism-ui-v2 .stock-performance-fill { display: block; height: 100%; border-radius: inherit; }
+.prism-ui-v2 .stock-performance-fill.positive { background: var(--market-up, #d97706); }
+.prism-ui-v2 .stock-performance-fill.negative { background: var(--market-down, #17835f); }
+.prism-ui-v2 .stock-mini-chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.prism-ui-v2 .stock-mini-chart { min-width: 0; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--surface-subtle); }
+.prism-ui-v2 .stock-mini-chart h5 { margin: 0 0 5px; font-size: 11px; }
+.prism-ui-v2 .stock-mini-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.prism-ui-v2 .stock-mini-chart rect.positive { fill: var(--brand); }
+.prism-ui-v2 .stock-mini-chart rect.negative { fill: var(--danger); }
+.prism-ui-v2 .stock-mini-chart line.baseline { stroke: var(--border); stroke-width: 1; }
+.prism-ui-v2 .stock-mini-chart text { fill: var(--text-muted); font: 8px var(--mono); }
+.prism-ui-v2 .stock-latest-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.prism-ui-v2 .stock-latest-metrics > div { min-width: 0; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--surface-subtle); }
+.prism-ui-v2 .stock-latest-metrics :is(dt,dd) { margin: 0; }
+.prism-ui-v2 .stock-latest-metrics dt { color: var(--text-muted); font-size: 10px; }
+.prism-ui-v2 .stock-latest-metrics dd { margin-top: 4px; overflow-wrap: anywhere; font: 650 12px/1.4 var(--mono); }
+.prism-ui-v2 .stock-valuation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.prism-ui-v2 .stock-valuation-grid article { padding: 12px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--surface-subtle); }
+.prism-ui-v2 .stock-valuation-grid article > div:first-child { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; }
+.prism-ui-v2 .stock-percentile-track { position: relative; height: 7px; margin: 13px 0 8px; border-radius: 99px; background: linear-gradient(90deg, var(--success-soft), var(--brand-soft), var(--danger-soft)); }
+.prism-ui-v2 .stock-percentile-track span { position: absolute; top: 50%; width: 12px; height: 12px; border: 2px solid var(--surface); border-radius: 50%; background: var(--text-primary); transform: translate(-50%, -50%); }
+.prism-ui-v2 .stock-valuation-grid small { color: var(--text-muted); font-size: 10px; }
+.prism-ui-v2 .stock-evidence-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.prism-ui-v2 .stock-evidence-grid article { min-width: 0; }
+.prism-ui-v2 .stock-evidence-grid h5 { margin: 0 0 8px; font-size: 12px; }
+.prism-ui-v2 .stock-evidence-grid ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.prism-ui-v2 .stock-evidence-grid li { display: grid; gap: 2px; padding-bottom: 7px; border-bottom: 1px solid var(--border-subtle); font-size: 11px; }
+.prism-ui-v2 .stock-evidence-grid a { color: var(--brand-hover); overflow-wrap: anywhere; }
+.prism-ui-v2 .stock-evidence-grid small { color: var(--text-muted); font-size: 9px; overflow-wrap: anywhere; }
+.prism-ui-v2 .stock-section-boundary,
+.prism-ui-v2 .stock-report-boundary { color: var(--text-secondary); font-size: 10px; }
+.prism-ui-v2 .stock-section-boundary summary,
+.prism-ui-v2 .stock-report-boundary summary { cursor: pointer; }
+.prism-ui-v2 .stock-section-boundary ul,
+.prism-ui-v2 .stock-report-boundary ul { margin: 7px 0 0; padding-left: 18px; }
+.prism-ui-v2 .stock-deep-failure p { margin: 5px 0 0; }
+@media(max-width:1024px) {
+  .prism-ui-v2 .stock-observations,
+  .prism-ui-v2 .stock-mini-chart-grid,
+  .prism-ui-v2 .stock-evidence-grid { grid-template-columns: 1fr; }
+  .prism-ui-v2 .stock-latest-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width:760px) {
+  .prism-ui-v2 .stock-valuation-grid,
+  .prism-ui-v2 .stock-latest-metrics { grid-template-columns: 1fr; }
+}

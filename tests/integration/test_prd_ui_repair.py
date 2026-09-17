@@ -32,16 +32,15 @@ def test_confirmed_equity_outside_demo_catalogue_stays_unclassified():
     assert result["portfolio"]["position_snapshot"]["positions"][0]["sector"] == "Unclassified"
 
 
-def test_model_settings_are_owner_scoped_and_not_disclosed(tmp_path):
+def test_model_settings_are_global_and_not_disclosed(tmp_path):
     with TestClient(create_app(database_path=tmp_path / "models.db")) as client:
         a, b = {"X-Owner-ID": "a"}, {"X-Owner-ID": "b"}
-        before = client.get("/api/v1/user/model-settings", headers=b).json()
         cfg = {"api_key": "private-test-key", "model": "deepseek-chat", "base_url": "https://api.deepseek.com/v1"}
         saved = client.put("/api/v1/user/model-settings", headers=a, json=cfg)
         assert saved.status_code == 200
         assert "private-test-key" not in saved.text
-        assert saved.json()["scope"] == "USER"
-        assert client.get("/api/v1/user/model-settings", headers=b).json() == before
+        assert saved.json()["scope"] == "GLOBAL"
+        assert client.get("/api/v1/user/model-settings", headers=b).json() == saved.json()
         bad = client.put("/api/v1/user/model-settings", headers=a, json={**cfg, "base_url": "http://127.0.0.1:8080"})
         assert bad.status_code == 422
         malformed = client.put("/api/v1/user/model-settings", headers=a, json={**cfg, "base_url": "https://api.deepseek.com:invalid"})
