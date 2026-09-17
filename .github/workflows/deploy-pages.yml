@@ -42,6 +42,7 @@ jobs:
           cp app/api/static/*.svg _site/static/
           cp app/api/static/*.png _site/static/
           cp app/api/static/*.txt _site/static/
+          cp app/api/static/*.json _site/static/
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3

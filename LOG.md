@@ -1721,10 +1721,10 @@ Phase 27 已在本地 worktree 接受，最终验收记录见
 - 修复：已配置扶摇但任一能力未就绪时，状态读取在 30 秒冷却期后重新执行真实能力探测；冷却期内并发或重复刷新不增加上游请求。恢复后统一重建 `stock_quote`、`fund_lookthrough`、`portfolio_refresh` 与 `portfolio_optimization` 能力矩阵。
 - 验证：当前 `.env` 与 DPAPI 中的扶摇、问财凭据一致；独立真实探测中扶摇两项能力与问财九项 Skill 全部成功。相关回归 `54 passed`，全量回归 `872 passed, 9 skipped`，Python 编译、JavaScript 语法与差异格式检查通过。
 
-## 2026-09-17：GitHub Pages 最新工作台与静态 Mock 发布
+## 2026-09-17：GitHub Pages 本地数据静态快照发布
 
-- GitHub Pages 发布入口切换为 `app/api/static/index.html` 与完整静态资源目录，页面包含最新工作台的全部导航与功能面板。
-- 新增 `app/api/static/pages-mock.js`，仅在 `prism.daoyezongzi.org` 或显式 `?pages=1` 环境接管 `/api` 请求，提供合成画像、示例持仓、行情、研究、组合计算、对话与评测数据。
-- 本地 FastAPI 使用的静态页面与后端入口保持原样；公开页面不连接账号、真实行情、后端服务或模型服务，刷新页面后演示状态恢复。
-- `.github/workflows/deploy-pages.yml` 会组装完整静态工作台后上传到 GitHub Pages，变更范围覆盖 `app/api/static/**`。
-- 自定义域名 `prism.daoyezongzi.org` 已使用 GitHub Pages CNAME 与 Cloudflare DNS-only CNAME；GitHub Pages `https_enforced` 已确认开启。
+- GitHub Pages 继续使用 `app/api/static/index.html` 与完整静态资源目录，页面包含当前工作台的全部导航与功能面板。
+- 从本机独立读取进程捕获当前账户的真实接口响应，生成 `app/api/static/pages-snapshot.json`；快照包含当前组合、风险画像、组合报告、市场目录、行情和服务状态。
+- 公开页面由 `app/api/static/pages-snapshot.js` 接管 `/api` 请求并返回已保存响应，浏览器只请求同源静态文件，不连接本地服务、账号或模型服务。
+- 未保存响应的写入请求返回只读快照状态；页面仍保留对应功能面板与入口。
+- `.github/workflows/deploy-pages.yml` 会组装 HTML、JavaScript、样式、图标和 JSON 快照后上传到 GitHub Pages；自定义域名与 HTTPS 设置保持不变。
