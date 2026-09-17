@@ -2,11 +2,13 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 
+import pytest
 from openpyxl import Workbook
 from PIL import Image
 
 from app.trading_history import (
     HistoricalTradeRecord,
+    ImportParseError,
     TradeRecordStatus,
     TradeSide,
     calculate_trading_style,
@@ -138,3 +140,61 @@ def test_screenshot_preview_uses_ocr_only_as_reviewable_input(monkeypatch) -> No
     assert preview.rows[0].status == "REVIEW_REQUIRED"
     assert preview.rows[0].proposed["gross_amount_cny"] == "1000"
     assert any("85%" in issue for issue in preview.rows[0].issues)
+
+
+def test_mobile_statement_two_line_rows_are_normalized(monkeypatch) -> None:
+    from app.llm.ocr_portfolio_parser import OCRPortfolioParser
+
+    def box(x: int, y: int):
+        return [[x - 40, y - 5], [x + 40, y - 5], [x + 40, y + 5], [x - 40, y + 5]]
+
+    cells = [
+        (100, 10, "本月操作"), (500, 10, "价格/数量"), (800, 10, "金额/税费①"),
+        (100, 35, "2026-09"),
+        (100, 65, "证券买入-莲花控股"), (500, 65, "11.440"), (800, 65, "-13733.14"),
+        (100, 85, "买09-1010:05"), (500, 85, "1200"), (800, 85, "5.14"),
+    ]
+    result = [(box(x, y), text, 0.99) for x, y, text in cells]
+
+    class FakeEngine:
+        def __call__(self, _data):
+            return result, 0.01
+
+    parser = OCRPortfolioParser.get_instance()
+    monkeypatch.setattr(parser, "_engine", FakeEngine())
+    image = Image.new("RGB", (900, 120), "white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    preview = preview_trade_files([("statement.png", "image/png", buffer.getvalue())])
+    assert len(preview.rows) == 1
+    assert preview.rows[0].status == "PASS"
+    assert preview.rows[0].proposed["traded_at"] == "2026-09-10T10:05:00+08:00"
+    assert preview.rows[0].proposed["security_name"] == "莲花控股"
+    assert preview.rows[0].proposed["side"] == "BUY"
+    assert preview.rows[0].proposed["quantity"] == "1200"
+    assert preview.rows[0].proposed["price_cny"] == "11.440"
+    assert preview.rows[0].proposed["gross_amount_cny"] == "13728.000"
+    assert preview.rows[0].proposed["fee_cny"] == "5.14"
+
+    result[6] = (box(800, 65), "-13000.00", 0.99)
+    review = preview_trade_files([("statement.png", "image/png", buffer.getvalue())])
+    assert review.rows[0].status == "REVIEW_REQUIRED"
+    assert "截图净发生额与成交金额及税费不一致" in review.rows[0].issues
+
+
+def test_screenshot_without_trade_rows_is_not_reported_as_pass(monkeypatch) -> None:
+    from app.llm.ocr_portfolio_parser import OCRPortfolioParser
+
+    class EmptyEngine:
+        def __call__(self, _data):
+            return [], 0.01
+
+    parser = OCRPortfolioParser.get_instance()
+    monkeypatch.setattr(parser, "_engine", EmptyEngine())
+    image = Image.new("RGB", (320, 120), "white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    with pytest.raises(ImportParseError, match="未识别到可导入的交易明细"):
+        preview_trade_files([("empty.png", "image/png", buffer.getvalue())])

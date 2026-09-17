@@ -161,6 +161,8 @@ def _preview_row(row_number: int, row: dict[str, object], mapping: dict[str, str
         expected = quantity * price
         if abs(reported_amount - expected) > max(Decimal("0.01"), expected * Decimal("0.001")):
             issues.append("成交金额与数量乘价格偏差超过 0.1%")
+    if layout_issue := str(row.get("版式校验") or "").strip():
+        issues.append(layout_issue)
     if confidence < OCR_CONFIDENCE_THRESHOLD:
         issues.append("OCR 置信度低于 85%，需要人工复核")
     overbound = currency not in {"CNY", "人民币", "RMB"}
@@ -224,6 +226,108 @@ def _table_preview(filename: str, data: bytes, selected_sheet: str | None) -> tu
     return "XLSX", columns, rows, sheets, sheet_name
 
 
+def _statement_rows(
+    grouped: list[list[dict[str, object]]],
+) -> list[tuple[dict[str, object], Decimal]] | None:
+    """Parse deterministic two-line mobile statement rows such as 同花顺对账单."""
+    header_index = next((index for index, row in enumerate(grouped) if all(
+        token in _key("".join(str(cell["text"]) for cell in row))
+        for token in ("本月操作", "价格数量", "金额税费")
+    )), None)
+    if header_index is None:
+        return None
+
+    header = grouped[header_index]
+    middle_header = next(cell for cell in header if "价格数量" in _key(cell["text"]))
+    right_header = next(cell for cell in header if "金额税费" in _key(cell["text"]))
+    middle_x = float(middle_header["x"])
+    right_x = float(right_header["x"])
+    current_year_month: tuple[int, int] | None = None
+    parsed: list[tuple[dict[str, object], Decimal]] = []
+
+    def column_decimal(row: list[dict[str, object]], target_x: float) -> Decimal | None:
+        numeric = [(cell, _decimal(cell["text"])) for cell in row]
+        candidates = [(cell, value) for cell, value in numeric if value is not None]
+        if not candidates:
+            return None
+        cell, value = min(candidates, key=lambda item: abs(float(item[0]["x"]) - target_x))
+        other_x = right_x if target_x == middle_x else middle_x
+        return value if abs(float(cell["x"]) - target_x) < abs(float(cell["x"]) - other_x) else None
+
+    rows = grouped[header_index + 1:]
+    index = 0
+    while index < len(rows):
+        row = rows[index]
+        joined = " ".join(str(cell["text"]) for cell in row)
+        month_match = re.search(r"(20\d{2})\s*[-/.年]\s*(\d{1,2})", joined)
+        if month_match:
+            year, month = int(month_match.group(1)), int(month_match.group(2))
+            if 1 <= month <= 12:
+                current_year_month = (year, month)
+            index += 1
+            continue
+
+        operation_cell = next((cell for cell in row if re.search(
+            r"(?:证券)?(?:买入|卖出)\s*[-—－一:：]", str(cell["text"])
+        )), None)
+        if operation_cell is None or current_year_month is None or index + 1 >= len(rows):
+            index += 1
+            continue
+        operation_match = re.search(
+            r"(?:证券)?(买入|卖出)\s*[-—－一:：]\s*(.+)", str(operation_cell["text"])
+        )
+        if operation_match is None:
+            index += 1
+            continue
+
+        detail = rows[index + 1]
+        detail_text = " ".join(str(cell["text"]) for cell in detail)
+        date_match = re.search(
+            r"(?:买|卖)?\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})\s*(\d{1,2})\s*:\s*(\d{2})",
+            detail_text,
+        )
+        price = column_decimal(row, middle_x)
+        net_amount = column_decimal(row, right_x)
+        quantity = column_decimal(detail, middle_x)
+        fee = column_decimal(detail, right_x)
+        if date_match is None or price is None or quantity is None:
+            index += 1
+            continue
+        transaction_month, day, hour, minute = (int(value) for value in date_match.groups())
+        year = current_year_month[0]
+        try:
+            traded_at = datetime(year, transaction_month, day, hour, minute, tzinfo=SHANGHAI)
+        except ValueError:
+            index += 1
+            continue
+        gross_amount = abs(quantity * price)
+        side = "买入" if operation_match.group(1) == "买入" else "卖出"
+        expected_net = gross_amount + (fee or Decimal("0")) if side == "买入" else gross_amount - (fee or Decimal("0"))
+        statement_issues: list[str] = []
+        if transaction_month != current_year_month[1]:
+            statement_issues.append("交易月份与对账单月份分组不一致")
+        if net_amount is not None:
+            tolerance = max(Decimal("0.01"), gross_amount * Decimal("0.001"))
+            if abs(abs(net_amount) - expected_net) > tolerance:
+                statement_issues.append("截图净发生额与成交金额及税费不一致")
+        confidence = min(Decimal(str(cell["score"])) for cell in (*row, *detail))
+        parsed.append(({
+            "成交时间": traded_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "证券名称": operation_match.group(2).strip(),
+            "买卖方向": side,
+            "成交数量": str(abs(quantity)),
+            "成交价格": str(abs(price)),
+            "成交金额": str(gross_amount),
+            "手续费": str(abs(fee or Decimal("0"))),
+            "资产类型": "股票",
+            "币种": "CNY",
+            "对账单净发生额": str(net_amount) if net_amount is not None else "",
+            "版式校验": "；".join(statement_issues),
+        }, confidence))
+        index += 2
+    return parsed
+
+
 def _ocr_rows(data: bytes) -> list[tuple[dict[str, object], Decimal]]:
     from PIL import Image
     from app.llm.ocr_portfolio_parser import OCRPortfolioParser
@@ -254,6 +358,9 @@ def _ocr_rows(data: bytes) -> list[tuple[dict[str, object], Decimal]]:
         else:
             grouped[-1].append(item)
     grouped = [sorted(row, key=lambda cell: cell["x"]) for row in grouped]
+    statement = _statement_rows(grouped)
+    if statement is not None:
+        return statement
     header_index = next((index for index, row in enumerate(grouped) if any(
         token in "".join(str(cell["text"]) for cell in row)
         for token in ("成交时间", "成交日期", "证券代码", "买卖方向")
@@ -293,6 +400,8 @@ def preview_trade_files(files: list[tuple[str, str, bytes]], *, selected_sheet: 
         extracted: list[tuple[dict[str, object], Decimal]] = []
         for _, _, data in files:
             extracted.extend(_ocr_rows(data))
+        if not extracted:
+            raise ImportParseError("未识别到可导入的交易明细；请上传包含展开交易行的完整截图")
         columns = list(dict.fromkeys(key for row, _ in extracted for key in row))
         mapping = _mapping(columns)
         preview_rows = tuple(_preview_row(index, row, mapping, confidence) for index, (row, confidence) in enumerate(extracted, 1))
