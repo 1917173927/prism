@@ -7,6 +7,20 @@ ROOT = Path(__file__).resolve().parents[2]
 STATIC = ROOT / "app" / "api" / "static"
 
 
+def test_product_brand_is_consistent_across_entry_pages() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    login = (STATIC / "login.html").read_text(encoding="utf-8")
+    logo = (STATIC / "wencai-zhitou-logo.svg").read_text(encoding="utf-8")
+
+    assert "<title>问财智投 · 决策工作台</title>" in markup
+    assert '<div class="brand" aria-label="问财智投">' in markup
+    assert '<strong>问财智投</strong>' in markup
+    assert 'href="/static/wencai-zhitou-logo.svg"' in markup
+    assert "<title>问财智投 · 账户登录</title>" in login
+    assert "进入问财智投" in login
+    assert "对话气泡和上升走势" in logo
+
+
 def test_primary_navigation_is_chinese_and_has_initial_selection() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
 

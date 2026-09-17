@@ -78,8 +78,37 @@ def test_profile_result_renders_radar_strategy_and_allocation_without_trade_gate
     assert "presentation.tags" in result
     assert "presentation.service_strategy" in result
     assert "presentation.asset_allocation" in result
+    assert "presentation.persona || presentation.archetype" in result
+    assert "presentation.persona_fit" in result
+    assert "presentation.rule_trace" in result
+    assert "renderRecommendedProfileFeatures(presentation)" in result
+    assert "仅作适当性与服务展示参考，不构成投资建议。" in result
     assert "交易记录参考" not in result
     assert "还缺哪些数据" not in result
+
+
+def test_questionnaire_draft_optional_scene_and_preview_gate_are_client_side_only() -> None:
+    for token in (
+        "function questionnaireDraftKey(",
+        "sessionStorage.setItem",
+        "function restoreQuestionnaireDraft(",
+        "function renderQuestionnaireReview(",
+        "question.required !== false",
+        "if (!state.questionnairePreview)",
+    ):
+        assert token in APP
+    assert 'id="questionnaire-preview" class="query-submit secondary" type="button" hidden' in INDEX
+    assert 'id="questionnaire-confirm" class="query-submit" type="submit" hidden' in INDEX
+
+
+def test_profile_feature_cards_reuse_existing_agent_feature_configuration() -> None:
+    result_start = APP.index("function renderRecommendedProfileFeatures(")
+    result_end = APP.index("function renderProfileSummary(", result_start)
+    result = APP[result_start:result_end]
+    assert 'bond: "convertible"' in result
+    assert 'optimize: "optimization"' in result
+    assert "openAgentFeatureConfig(featureIds[feat])" in result
+    assert "DEFAULT · Q13 未选择场景" in result
 
 
 def test_holdings_page_has_kpis_diagnosis_and_formal_report_export() -> None:

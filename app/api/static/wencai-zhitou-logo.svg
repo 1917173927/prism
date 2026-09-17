@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">问财智投</title>
+  <desc id="desc">由对话气泡和上升走势组成的问财智投品牌标识</desc>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#25282d"/>
+  <path d="M17 17.5h30v22H32.5L22 48v-8.5h-5z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="m22.5 33 6-6 5 4.5 8.5-9" fill="none" stroke="#ef8a24" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36.5 22.5H42V28" fill="none" stroke="#ef8a24" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

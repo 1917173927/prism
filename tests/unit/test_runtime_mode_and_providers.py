@@ -571,6 +571,59 @@ class TestRuntimeModeApiEndpoints:
 
         asyncio.run(_run())
 
+    def test_runtime_status_retries_stale_incomplete_fuyao_probe(self):
+        import httpx
+        from datetime import UTC, datetime, timedelta
+        from app.api.main import create_app
+
+        class RecoveringProbeProvider:
+            is_configured = True
+            last_probe_errors = {}
+
+            def __init__(self) -> None:
+                self.calls = 0
+
+            async def probe_capabilities(self):
+                self.calls += 1
+                return (
+                    {"stock_quote": False, "fund_lookthrough": True}
+                    if self.calls == 1
+                    else {"stock_quote": True, "fund_lookthrough": True}
+                )
+
+        async def _run():
+            os.environ["HITHINK_FINANCE_API_KEY"] = "test_fuyao_key"
+            controller = reset_runtime_mode_controller()
+            provider = RecoveringProbeProvider()
+            api = create_app(live_finance_provider=provider)  # type: ignore[arg-type]
+            transport = httpx.ASGITransport(app=api)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://testserver"
+            ) as client:
+                first = await client.get("/api/v1/runtime/data-mode")
+                assert first.status_code == 200
+                assert first.json()["data"]["capabilities"]["LIVE"]["stock_quote"] is False
+                assert provider.calls == 1
+
+                # A refresh inside the cooldown does not hammer the provider.
+                await client.get("/api/v1/runtime/data-mode")
+                assert provider.calls == 1
+
+                stale = datetime.now(UTC) - timedelta(seconds=31)
+                controller._fuyao_capability_checked_at = {
+                    "stock_quote": stale,
+                    "fund_lookthrough": stale,
+                }
+                recovered = await client.get("/api/v1/runtime/data-mode")
+
+            assert recovered.status_code == 200
+            assert provider.calls == 2
+            status = recovered.json()["data"]
+            assert status["capabilities"]["LIVE"]["stock_quote"] is True
+            assert status["capabilities"]["LIVE"]["fund_lookthrough"] is True
+
+        asyncio.run(_run())
+
     def test_concurrent_live_switches_probe_once_and_keep_consistent_state(self):
         import httpx
         from app.api.main import create_app

@@ -20,6 +20,7 @@ from app.store.context import ContextMemoryRecord
 from app.profile import BehaviorEvent, BehaviorProfile, DisplayPolicy, QuestionnaireSnapshot
 from app.portfolio import PortfolioImportBundle, PortfolioOcrConfirmation
 from app.portfolio.report import PortfolioReport
+from app.trading_history import HistoricalTradeRecord, TradeImportBatch, TradingStyleProfile
 
 
 class StoreError(RuntimeError):
@@ -109,6 +110,24 @@ class DecisionEventStore(Protocol):
     def save_behavior_profile(self, profile: BehaviorProfile) -> BehaviorProfile: ...
 
     def get_latest_behavior_profile(self, owner_id: str) -> BehaviorProfile | None: ...
+
+    def save_trade_import(
+        self, batch: TradeImportBatch, records: tuple[HistoricalTradeRecord, ...]
+    ) -> tuple[TradeImportBatch, tuple[HistoricalTradeRecord, ...], bool]: ...
+
+    def list_trade_imports(self, owner_id: str) -> tuple[TradeImportBatch, ...]: ...
+
+    def list_trade_records(self, owner_id: str) -> tuple[HistoricalTradeRecord, ...]: ...
+
+    def get_trade_record(self, owner_id: str, trade_id: str) -> HistoricalTradeRecord | None: ...
+
+    def append_trade_revision(
+        self, record: HistoricalTradeRecord, expected_revision: int
+    ) -> HistoricalTradeRecord: ...
+
+    def save_trading_style_profile(self, profile: TradingStyleProfile) -> TradingStyleProfile: ...
+
+    def get_latest_trading_style_profile(self, owner_id: str) -> TradingStyleProfile | None: ...
 
     def save_display_policy(self, policy: DisplayPolicy) -> DisplayPolicy: ...
 
@@ -887,6 +906,186 @@ class SQLiteDecisionEventStore:
         except Exception as exc:
             raise StoreCorruptError("stored behavior profile failed validation") from exc
 
+    @staticmethod
+    def _parse_trade_batch_row(row: sqlite3.Row) -> TradeImportBatch:
+        try:
+            batch = TradeImportBatch.model_validate(json.loads(row["payload_json"]))
+            if batch.owner_id != row["owner_id"] or batch.batch_id != row["batch_id"]:
+                raise ValueError("trade batch identity mismatch")
+            return batch
+        except Exception as exc:
+            raise StoreCorruptError("stored trade import batch failed validation") from exc
+
+    @staticmethod
+    def _parse_trade_record_row(row: sqlite3.Row) -> HistoricalTradeRecord:
+        try:
+            record = HistoricalTradeRecord.model_validate(json.loads(row["payload_json"]))
+            if (
+                record.owner_id != row["owner_id"]
+                or record.trade_id != row["trade_id"]
+                or record.revision != row["revision"]
+                or record.status.value != row["status"]
+                or _content_hash(record) != row["content_hash"]
+            ):
+                raise ValueError("trade record identity mismatch")
+            return record
+        except Exception as exc:
+            raise StoreCorruptError("stored trade record failed validation") from exc
+
+    def save_trade_import(
+        self, batch: TradeImportBatch, records: tuple[HistoricalTradeRecord, ...]
+    ) -> tuple[TradeImportBatch, tuple[HistoricalTradeRecord, ...], bool]:
+        normalized_batch = TradeImportBatch.model_validate(batch.model_dump(mode="python"))
+        normalized_records = tuple(HistoricalTradeRecord.model_validate(item.model_dump(mode="python")) for item in records)
+        owner_id = _validate_owner(normalized_batch.owner_id)
+        if any(item.owner_id != owner_id or item.batch_id != normalized_batch.batch_id for item in normalized_records):
+            raise StoreOwnerError("trade import records do not match batch scope")
+        if len({item.trade_id for item in normalized_records}) != len(normalized_records):
+            raise StoreConflictError("trade import contains duplicate IDs")
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                existing = self._connection.execute(
+                    "SELECT * FROM trade_import_batches WHERE owner_id=? AND source_digest=?",
+                    (owner_id, normalized_batch.source_digest),
+                ).fetchone()
+                if existing is not None:
+                    stored_batch = self._parse_trade_batch_row(existing)
+                    rows = self._connection.execute(
+                        "SELECT * FROM trade_record_revisions WHERE owner_id=? AND batch_id=? "
+                        "AND revision=(SELECT MAX(r2.revision) FROM trade_record_revisions r2 "
+                        "WHERE r2.owner_id=trade_record_revisions.owner_id AND r2.trade_id=trade_record_revisions.trade_id) "
+                        "ORDER BY trade_id",
+                        (owner_id, stored_batch.batch_id),
+                    ).fetchall()
+                    self._connection.execute("COMMIT")
+                    return stored_batch, tuple(self._parse_trade_record_row(row) for row in rows), False
+                self._connection.execute(
+                    "INSERT INTO trade_import_batches(owner_id,batch_id,source_digest,source_type,payload_json,confirmed_at) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (owner_id, normalized_batch.batch_id, normalized_batch.source_digest, normalized_batch.source_type,
+                     _canonical_contract_json(normalized_batch), normalized_batch.confirmed_at.isoformat()),
+                )
+                for record in normalized_records:
+                    self._connection.execute(
+                        "INSERT INTO trade_record_revisions(owner_id,trade_id,revision,batch_id,status,content_hash,payload_json,updated_at) "
+                        "VALUES (?,?,?,?,?,?,?,?)",
+                        (owner_id, record.trade_id, record.revision, record.batch_id, record.status.value,
+                         _content_hash(record), _canonical_contract_json(record), record.updated_at.isoformat()),
+                    )
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return normalized_batch, normalized_records, True
+
+    def list_trade_imports(self, owner_id: str) -> tuple[TradeImportBatch, ...]:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM trade_import_batches WHERE owner_id=? ORDER BY confirmed_at DESC,batch_id DESC",
+                (owner_id,),
+            ).fetchall()
+        return tuple(self._parse_trade_batch_row(row) for row in rows)
+
+    def list_trade_records(self, owner_id: str) -> tuple[HistoricalTradeRecord, ...]:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM trade_record_revisions r WHERE owner_id=? AND revision=("
+                "SELECT MAX(r2.revision) FROM trade_record_revisions r2 WHERE r2.owner_id=r.owner_id AND r2.trade_id=r.trade_id) "
+                "ORDER BY updated_at DESC,trade_id DESC",
+                (owner_id,),
+            ).fetchall()
+        records = [self._parse_trade_record_row(row) for row in rows]
+        records.sort(key=lambda item: (item.traded_at, item.trade_id), reverse=True)
+        return tuple(records)
+
+    def get_trade_record(self, owner_id: str, trade_id: str) -> HistoricalTradeRecord | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM trade_record_revisions WHERE owner_id=? AND trade_id=? ORDER BY revision DESC LIMIT 1",
+                (owner_id, trade_id),
+            ).fetchone()
+        return self._parse_trade_record_row(row) if row is not None else None
+
+    def append_trade_revision(
+        self, record: HistoricalTradeRecord, expected_revision: int
+    ) -> HistoricalTradeRecord:
+        normalized = HistoricalTradeRecord.model_validate(record.model_dump(mode="python"))
+        owner_id = _validate_owner(normalized.owner_id)
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                row = self._connection.execute(
+                    "SELECT * FROM trade_record_revisions WHERE owner_id=? AND trade_id=? ORDER BY revision DESC LIMIT 1",
+                    (owner_id, normalized.trade_id),
+                ).fetchone()
+                if row is None:
+                    raise StoreError("trade record not found")
+                current = self._parse_trade_record_row(row)
+                if current.revision != expected_revision or normalized.revision != expected_revision + 1:
+                    raise StoreConflictError("trade revision conflict")
+                if normalized.batch_id != current.batch_id:
+                    raise StoreConflictError("trade batch cannot change")
+                self._connection.execute(
+                    "INSERT INTO trade_record_revisions(owner_id,trade_id,revision,batch_id,status,content_hash,payload_json,updated_at) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (owner_id, normalized.trade_id, normalized.revision, normalized.batch_id, normalized.status.value,
+                     _content_hash(normalized), _canonical_contract_json(normalized), normalized.updated_at.isoformat()),
+                )
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return normalized
+
+    def save_trading_style_profile(self, profile: TradingStyleProfile) -> TradingStyleProfile:
+        normalized = TradingStyleProfile.model_validate(profile.model_dump(mode="python"))
+        owner_id = _validate_owner(normalized.owner_id)
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                existing = self._connection.execute(
+                    "SELECT payload_json FROM trading_style_profiles WHERE owner_id=? AND profile_version=?",
+                    (owner_id, normalized.profile_version),
+                ).fetchone()
+                if existing is not None:
+                    stored = TradingStyleProfile.model_validate(json.loads(existing["payload_json"]))
+                    if stored != normalized:
+                        raise StoreConflictError("trading style profile version already exists")
+                    self._connection.execute("COMMIT")
+                    return stored
+                self._connection.execute(
+                    "INSERT INTO trading_style_profiles(owner_id,profile_id,profile_version,content_hash,payload_json,calculated_at) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (owner_id, normalized.profile_id, normalized.profile_version, _content_hash(normalized),
+                     _canonical_contract_json(normalized), normalized.calculated_at.isoformat()),
+                )
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return normalized
+
+    def get_latest_trading_style_profile(self, owner_id: str) -> TradingStyleProfile | None:
+        owner_id = _validate_owner(owner_id)
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM trading_style_profiles WHERE owner_id=? ORDER BY profile_version DESC,calculated_at DESC LIMIT 1",
+                (owner_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            profile = TradingStyleProfile.model_validate(json.loads(row["payload_json"]))
+            if profile.owner_id != owner_id or _content_hash(profile) != row["content_hash"]:
+                raise ValueError("trading style profile identity mismatch")
+            return profile
+        except Exception as exc:
+            raise StoreCorruptError("stored trading style profile failed validation") from exc
+
     def save_display_policy(self, policy: DisplayPolicy) -> DisplayPolicy:
         normalized = DisplayPolicy.model_validate(policy.model_dump(mode="python"))
         _validate_owner(normalized.owner_id)
@@ -1012,15 +1211,37 @@ class SQLiteDecisionEventStore:
             self._connection.execute("BEGIN IMMEDIATE")
             try:
                 row = self._connection.execute(
-                    "SELECT payload_json FROM portfolio_ocr_confirmations WHERE owner_id = ? AND image_digest = ?",
-                    (normalized.owner_id, normalized.image_digest),
+                    "SELECT confirmation_id, payload_json FROM portfolio_ocr_confirmations "
+                    "WHERE confirmation_id = ?",
+                    (normalized.confirmation_id,),
                 ).fetchone()
                 if row is not None:
                     existing = PortfolioOcrConfirmation.model_validate(json.loads(row["payload_json"]))
-                    if existing.confirmed_payload_hash != normalized.confirmed_payload_hash:
-                        raise StoreConflictError("OCR confirmation digest already has different content")
+                    if (
+                        existing.confirmation_id != row["confirmation_id"]
+                        or existing.owner_id != normalized.owner_id
+                        or existing.image_digest != normalized.image_digest
+                        or existing.confirmed_payload_hash != normalized.confirmed_payload_hash
+                    ):
+                        raise StoreConflictError("OCR confirmation identity already has different content")
                     self._connection.execute("COMMIT")
                     return existing, False
+                legacy_rows = self._connection.execute(
+                    "SELECT confirmation_id, payload_json FROM portfolio_ocr_confirmations "
+                    "WHERE owner_id = ? AND image_digest = ?",
+                    (normalized.owner_id, normalized.image_digest),
+                ).fetchall()
+                for legacy_row in legacy_rows:
+                    existing = PortfolioOcrConfirmation.model_validate(json.loads(legacy_row["payload_json"]))
+                    if (
+                        existing.confirmation_id != legacy_row["confirmation_id"]
+                        or existing.owner_id != normalized.owner_id
+                        or existing.image_digest != normalized.image_digest
+                    ):
+                        raise StoreCorruptError("stored OCR confirmation identity mismatch")
+                    if existing.confirmed_payload_hash == normalized.confirmed_payload_hash:
+                        self._connection.execute("COMMIT")
+                        return existing, False
                 self._connection.execute(
                     """
                     INSERT INTO portfolio_ocr_confirmations

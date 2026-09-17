@@ -114,6 +114,21 @@ risk_score = 100 * (
 
 画像提案接口接收类型化的 `ProfileExtractionProposal`，不是原始自然语言。若问卷和提案冲突，必须明确使用问卷或提案的值；存在未解决冲突时不能形成最终 `RiskProfile`。
 
+完整投资者问卷采用 `investor-questionnaire.v2` 与 `investor-questionnaire-rules.v2`。服务端按快照中的 `ruleset_version` 选择规则包：v1 快照严格按旧规则回放，v2 快照生成 `profile-presentation.v2`，不批量回填或静默重算历史数据。Q13 是唯一可空选题；空选仍以空数组写入快照，并在展示投影中使用固定默认功能 `market`、`stock`、`optimize`。
+
+`ProfilePresentation` 是展示与服务分流契约，不替代 `RiskProfile` 或适当性闸门。其 v2 字段边界如下：
+
+| 字段 | 确定性语义 | 约束 | 前端职责 |
+| --- | --- | --- | --- |
+| `persona` / `archetype` | 七类问卷 Persona；`archetype` 为兼容别名 | 两者恒等；Persona 不修改风险分或 C 等级 | 展示原型与解释入口 |
+| `persona_fit` | 获选候选的 Decimal 适配度 | 0–100，四舍五入至两位；兜底为 0 | 只展示，不重算 |
+| `tags` | 风险、经验、活跃度、研究、AI、个性化固定轴标签 | 稳定顺序、无重复、5–6 项 | 展示命中依据 |
+| `service_strategy` | S01–S10 确定性服务策略 | 按规则编号排序；不得改变合规等级 | 展示服务方式 |
+| `feats` | Q13 推荐功能投影 | 保序去重，最多三项；空选使用固定默认值 | 映射既有功能入口 |
+| `rule_trace` | 获选 Persona、标签、策略、配置与功能的命中依据 | 不包含未获选候选详情；保留规则版本和默认标志 | 原生可展开解释，不展示内部公式系数 |
+
+资产配置仅为展示型参考，保持 `cash`、`bonds`、`equity` 键兼容，其中 `cash` 的界面名称统一为“货币类”。该投影不进入交易指令、风险评分或适当性评级计算。`BehaviorProfile.persona` 仍表示历史交易行为风格，界面名称为“交易风格”，不得覆盖问卷 Persona。
+
 ### 4.3 持仓和基金穿透
 
 组合输入是三层结构：

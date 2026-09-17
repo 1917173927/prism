@@ -204,6 +204,21 @@ class RuntimeModeController:
         return self._initial_probe_pending
 
     @property
+    def needs_fuyao_probe(self) -> bool:
+        """Retry incomplete Fuyao capability probes after a bounded cooldown."""
+        if not self._fuyao_configured:
+            return False
+        if self._initial_probe_pending:
+            return True
+        if all(self._fuyao_capabilities.values()):
+            return False
+        checked = [
+            value for value in self._fuyao_capability_checked_at.values()
+            if value is not None
+        ]
+        return not checked or (datetime.now(UTC) - max(checked)).total_seconds() >= 30
+
+    @property
     def needs_wencai_probe(self) -> bool:
         """Probe a saved but unverified SkillHub contract once per process.
 

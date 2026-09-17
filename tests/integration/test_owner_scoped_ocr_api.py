@@ -141,6 +141,70 @@ def test_updated_screenshot_creates_distinct_behavior_snapshot() -> None:
         assert len({event.event_id for event in events}) == 2
 
 
+def test_same_screenshot_can_be_reconfirmed_after_clear_with_revised_quote_time() -> None:
+    store = SQLiteDecisionEventStore(":memory:")
+    headers = {"X-Owner-ID": OWNER}
+    first_payload = {
+        "owner_id": OWNER,
+        "image_digest": "f" * 64,
+        "cash_cny": 416.64,
+        "positions": [{
+            "asset_id": "002185.SZ",
+            "name": "华天科技",
+            "quantity": 100,
+            "available_quantity": 100,
+            "cost_price": 15.3,
+            "price": 16.97,
+            "market_value_cny": 1697,
+            "observed_at": "2026-09-16T13:21:00Z",
+        }],
+    }
+    with TestClient(create_app(store=store, clock=lambda: NOW)) as client:
+        first = client.post(
+            "/api/v1/advisor/portfolio/ocr/confirm",
+            headers=headers,
+            json=first_payload,
+        )
+        assert first.status_code == 200, first.text
+        assert first.json()["created"] is True
+
+        cleared = client.put(
+            "/api/v1/advisor/portfolio/current",
+            headers=headers,
+            json={"owner_id": OWNER, "positions": [], "cash_cny": 0},
+        )
+        assert cleared.status_code == 200
+
+        revised_payload = {
+            **first_payload,
+            "positions": [{
+                **first_payload["positions"][0],
+                "observed_at": "2026-09-17T07:39:00Z",
+            }],
+        }
+        revised = client.post(
+            "/api/v1/advisor/portfolio/ocr/confirm",
+            headers=headers,
+            json=revised_payload,
+        )
+        assert revised.status_code == 200, revised.text
+        assert revised.json()["created"] is True
+        assert revised.json()["positions"][0]["observed_at"] == "2026-09-17T07:39:00Z"
+
+        repeated = client.post(
+            "/api/v1/advisor/portfolio/ocr/confirm",
+            headers=headers,
+            json=revised_payload,
+        )
+        assert repeated.status_code == 200, repeated.text
+        assert repeated.json()["created"] is False
+        assert store._connection.execute(
+            "SELECT COUNT(*) FROM portfolio_ocr_confirmations WHERE owner_id = ? AND image_digest = ?",
+            (OWNER, first_payload["image_digest"]),
+        ).fetchone()[0] == 2
+    store.close()
+
+
 def test_confirm_accepts_editable_broker_row_with_defaulted_quote_time() -> None:
     store = SQLiteDecisionEventStore(":memory:")
     with TestClient(create_app(store=store, clock=lambda: NOW)) as client:
