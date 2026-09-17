@@ -179,21 +179,20 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 
 当前 Pages 演示使用现行静态页面和当前账户接口快照提供可重复的浏览路径。页面入口位于 `app/api/static/index.html`，快照回放由 `app/api/static/pages-snapshot.js` 读取 `app/api/static/pages-snapshot.json` 完成，浏览器验证文件为 `tests/browser/test_pages_snapshot.mjs`。
 
-以下界面图片来自 `docs/showcase/README.md`，文件时间为 2026-09-07，均标记为历史界面样例（V3），用于展示信息组织和交互形态；评委可以通过 [Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1)、现行源码和第 7.1 节的浏览器验证查看当前页面。
+评委可直接打开 [Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1) 查看当前页面。现场页面以“任务入口—分析结果—账户条件”的布局组织内容，具体可观察项如下：
 
-![历史界面样例：投资工作台（2026-09-07，V3）](../showcase/01_v3_investor_workbench_overview.png)
-
-图 7 历史界面样例：投资工作台中的资产范围、任务入口和工作流组织。
+| 当前页面区域 | 现场可见内容 | 评委可判断的能力 |
+| --- | --- | --- |
+| 主导航 | AI 对话、持仓分析、大盘鉴别、交易风格、个人中心；系统治理可展开 | 任务入口与专家工具分层组织 |
+| Agent 首页 | 大盘分析、行业配置、个股分析、ETF 基金筛选、可转债投资、资产重组优化六项工具 | 工具状态以 `READY`、`NEED_INPUT` 显示，进入后再提交结构化任务 |
+| 账户与偏好 | 成长型 · 85 分、已确认持仓（5 项）、总资产 ¥1,437,253、行业上限 ≤ 60% | 画像、持仓数量、资产和配置条件进入页面上下文 |
+| 持仓分析 | 5 项已确认证券、`LIVE` 报告、集中度、行业分布、现金比例和风险状态 | 组合报告、数值计算、超限提示和后续操作集中呈现 |
 
 ### 3.2 持仓健康体检与底层穿透
 
 系统能够读取组合持仓，对基金和 ETF 的底层成分进行穿透，并将多个持仓来源汇总到行业、标的和资产类别层面。
 
 当前页面以 `#overview` 和 `#portfolio` 中的组合报告、持仓明细及底层成分区域呈现。
-
-![历史界面样例：持仓健康体检（2026-09-07，V3）](../showcase/02_v3_health_check_result.png)
-
-图 8 历史界面样例：持仓穿透、重叠集中度和风险提示的展示方式。
 
 体检结果包括：
 
@@ -211,10 +210,6 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 
 股票、ETF、基金和可转债分别由对应研究模块处理，研究任务从统一的投顾工作台进入。
 
-![历史界面样例：标的深度研究（2026-09-07，V3）](../showcase/03_v3_stock_deep_research.png)
-
-图 9 历史界面样例：标的基本面、估值、行业和画像匹配信息的组织方式。
-
 ### 3.4 组合再平衡
 
 再平衡页面将目标结构与当前结构的差异转换为分步行动计划，并在每一步显示调整对象、权重变化和金额变化。
@@ -228,10 +223,6 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 | 行动排序 | 按确定性规则形成分步行动 | 卖出、买入和顺序 |
 | 结果复核 | 重新计算组合暴露、集中度和风险状态 | 调整后结果与风险提示 |
 
-![历史界面样例：组合再平衡计划（2026-09-07，V3）](../showcase/04_v3_rebalancing_plan_stepper.png)
-
-图 10 历史界面样例：目标结构差异转化为分步行动的展示方式。
-
 ### 3.5 画像与持仓输入
 
 用户可以通过结构化表单、自然语言和图片导入完成画像与持仓输入。自然语言内容先形成类型化提案，持仓图片经过识别后进入字段校验和数值重算流程。
@@ -242,15 +233,55 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 | 自然语言持仓 | `#copilot` 持仓入口 | 识别后进入字段校验与组合确认 |
 | 截图或文字导入 | `#portfolio` 与 `#copilot` 持仓入口 | 持仓快照、估值重算和后续分析 |
 
-| 历史界面样例：持仓输入（2026-09-07，V3） | 历史界面样例：风险画像配置（2026-09-07，V3） |
-| --- | --- |
-| ![历史界面样例：自然语言持仓输入](../showcase/05_v3_portfolio_input_modal.png) | ![历史界面样例：风险画像配置](../showcase/06_v3_user_profile_modal.png) |
-
 ### 3.6 研究与审计展示
 
 系统将研究节点、证据链和决策解释集中到研究工作台与审计页面。评委可以从研究主题进入节点结果，再进入来源和计算过程。
 
 当前页面入口为 `#research-tracks`、`#advanced-explainability` 和 `#evaluation-dashboard`；研究、证据和回执对象由 `app/research/`、`app/contracts/`、`app/recommendation/` 与 `app/store/` 提供。
+
+### 3.7 版本演进界面样例
+
+以下图片保留历史版本的界面组织方式，图片时间为 2026-09-07。评委可用它们了解页面从工作台、组合分析到研究、解释和评测的演进过程；当前页面以本节前面的现场入口和第 7.1 节核验结果为准。
+
+![历史界面样例：投资工作台（2026-09-07，V3）](../showcase/01_v3_investor_workbench_overview.png)
+
+图 7 历史界面样例：投资工作台中的资产范围、任务入口和工作流组织。
+
+![历史界面样例：持仓健康体检（2026-09-07，V3）](../showcase/02_v3_health_check_result.png)
+
+图 8 历史界面样例：持仓穿透、重叠集中度和风险提示的展示方式。
+
+![历史界面样例：标的深度研究（2026-09-07，V3）](../showcase/03_v3_stock_deep_research.png)
+
+图 9 历史界面样例：标的基本面、估值、行业和画像匹配信息的组织方式。
+
+![历史界面样例：组合再平衡计划（2026-09-07，V3）](../showcase/04_v3_rebalancing_plan_stepper.png)
+
+图 10 历史界面样例：目标结构差异转化为分步行动的展示方式。
+
+| 历史界面样例：持仓输入（2026-09-07，V3） | 历史界面样例：风险画像配置（2026-09-07，V3） |
+| --- | --- |
+| ![历史界面样例：自然语言持仓输入](../showcase/05_v3_portfolio_input_modal.png) | ![历史界面样例：风险画像配置](../showcase/06_v3_user_profile_modal.png) |
+
+![历史界面样例：后端 API 结构与 Swagger（2026-09-07，V3）](../showcase/10_backend_api_architecture_swagger.png)
+
+图 11 历史界面样例：接口文档与投研接口分组的展示方式。
+
+![历史界面样例：多维投研研究矩阵（2026-09-07，V1）](../showcase/11_v1_developer_research_matrix.png)
+
+图 12 历史界面样例：多维研究节点和证据追溯入口的展示方式。
+
+![历史界面样例：因果归因与反事实分析（2026-09-07，V2）](../showcase/07_v2_advanced_explainability_dag.png)
+
+图 13 历史界面样例：解释关系、归因因素和反事实条件的展示方式。
+
+![历史界面样例：情景压力测试（2026-09-07，V2）](../showcase/08_v2_scenario_simulation_diff.png)
+
+图 14 历史界面样例：基线组合与情景组合差异的展示方式。
+
+![历史界面样例：自动化评测看板（2026-09-07，V2）](../showcase/09_v2_evaluation_dashboard_scorecard.png)
+
+图 15 历史界面样例：质量指标、规则状态和运行结果的展示方式。
 
 ## 4. 总体技术方案
 
@@ -330,10 +361,6 @@ sequenceDiagram
 | 投顾对话 | `/api/v1/advisor/queries`、`/api/v1/copilot/chat` | 投顾查询、工具调用和流式对话 |
 | 解释与历史 | `/api/v1/advisor/explainability-runs`、`/api/v1/decision-events`、`/api/v1/advisor/recommendation-history` | 因果解释、决策事件和建议历史 |
 
-![历史界面样例：后端 API 结构与 Swagger（2026-09-07，V3）](../showcase/10_backend_api_architecture_swagger.png)
-
-图 11 历史界面样例：接口文档与投研接口分组的展示方式。当前接口路径以本节表格、`app/api/main.py` 和 `GET /api/docs` 为准。
-
 ### 4.6 结果状态
 
 系统将数据服务状态、证据质量状态和建议审查状态分别表示，评委可以从页面和接口结果中识别处理进度与结果性质。
@@ -409,10 +436,6 @@ sequenceDiagram
 
 研究执行保留节点状态、超时、取消和问题码；节点结果经过证据验证后才进入事实和发现，研究计划本身不直接生成建议。
 
-![历史界面样例：多维投研研究矩阵（2026-09-07，V1）](../showcase/11_v1_developer_research_matrix.png)
-
-图 12 历史界面样例：多维研究节点和证据追溯入口的展示方式。
-
 #### 工程实现
 
 * `app/orchestration/contracts.py` 定义 `ResearchPlan`、`ResearchRunState` 和节点状态；
@@ -467,10 +490,6 @@ flowchart LR
 #### 展示结果与验证依据
 
 研究页面与解释页面可以从结论进入事实和来源，决策历史可以读取对应回执与事件。`tests/unit/test_evidence_contract.py`、`tests/unit/test_evidence_finding_bridge.py`、`tests/unit/test_research_cross_validation.py`、`tests/integration/test_phase8_evidence_finding_bridge.py`、`tests/integration/test_phase10_research_evidence_pipeline.py` 和 `tests/integration/test_phase12_recommendation_receipt.py` 覆盖证据、事实、发现、交叉验证和回执关系。
-
-![历史界面样例：因果归因与反事实分析（2026-09-07，V2）](../showcase/07_v2_advanced_explainability_dag.png)
-
-图 13 历史界面样例：解释关系、归因因素和反事实条件的展示方式。
 
 ### 5.4 确定性组合计算
 
@@ -692,16 +711,19 @@ flowchart LR
 | 评测看板 | 质量、规则和运行结果的集中展示 | `#evaluation-dashboard` |
 | API 文档 | 接口分组、请求响应和 OpenAPI 入口 | `GET /api/docs`、`app/api/main.py` |
 
-当前演示入口为 [Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1)。现行静态页面会显示快照来源、用户上下文和处理状态，`tests/browser/test_pages_snapshot.mjs` 使用实际页面检查加载、导航、组合体检结果、同源资源和控制台错误。
+当前演示入口为 [Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1)。现场页面显示任务导航、六项分析工具、账户与偏好、持仓分析报告和大盘鉴别结果，`tests/browser/test_pages_snapshot.mjs` 使用实际页面检查加载、导航、组合体检结果、同源资源和控制台错误。
 
 | 当前演示检查点 | 评委可观察内容 | 验证依据 |
 | --- | --- | --- |
-| 用户上下文 | 画像摘要中的 C5、持仓快照中的贵州茅台和用户归属 | `app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
-| 市场目录 | 行情页面中的上证指数 | `app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
-| 组合体检 | 组合体检接口返回 HTTP 200，并保留当前快照用户归属 | `app/api/static/pages-snapshot.js`、`tests/browser/test_pages_snapshot.mjs` |
-| 页面回放 | 浏览器通过静态快照读取接口结果，页面可以重复展示当前账户状态 | `tests/browser/test_pages_snapshot.mjs` |
+| Agent 首页 | 六项分析工具显示 `READY` 或 `NEED_INPUT`，并提供常用提问入口 | `app/api/static/index.html`、`app/api/static/app.js`、`tests/browser/test_pages_snapshot.mjs` |
+| 账户与偏好 | 成长型 · 85 分、已确认持仓（5 项）、总资产 ¥1,437,253、行业上限 ≤ 60% | `app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
+| 持仓分析报告 | `LIVE` 报告覆盖 5 项证券，贵州茅台占证券持仓 53.87%，组合状态为需要复核 | `app/api/static/pages-snapshot.json`、`app/api/static/app.js` |
+| 风险对照 | 单一标的集中度、权益类占比、现金比例分别展示当前值、画像阈值、状态和计算口径 | `app/api/static/pages-snapshot.json`、`app/api/static/app.js` |
+| 大盘鉴别 | 上证指数 `000001.SH`、3,875.60、-0.41%，显示 `CALCULATED`、观察时间和数据来源 | `app/api/static/pages-snapshot.json`、`app/api/static/app.js` |
+| 交易风格 | `INSUFFICIENT_DATA` 状态、历史交易导入步骤和交易明细筛选入口 | `app/api/static/pages-snapshot.json`、`app/api/static/app.js` |
+| 个人中心 | `C5 · 成长型 · 85 分`、八维画像雷达图、19 题问卷和画像级配置参考 | `app/api/static/pages-snapshot.json`、`app/api/static/app.js` |
 
-这些页面和验证路径表明当前静态页面具备可重复的评审路径；页面显示已保存的当前账户响应，具体运行状态见第 9.2 节。
+这些页面和验证路径构成完整的评审路径；评委可以从任务入口进入账户、组合、市场和画像结果，具体运行状态见第 9.2 节。
 
 ### 7.2 自动化验证分层
 
@@ -723,16 +745,6 @@ flowchart LR
 高级解释当前页面位于 `#advanced-explainability`，把用户画像约束、市场事实、风险预算和建议结果组织为可查看的因果关系。
 
 情景模拟当前页面位于 `#scenario-simulation`，将输入条件、原组合、调整后组合和风险变化放在同一视图中。
-
-![历史界面样例：情景压力测试（2026-09-07，V2）](../showcase/08_v2_scenario_simulation_diff.png)
-
-图 14 历史界面样例：基线组合与情景组合差异的展示方式。
-
-![历史界面样例：自动化评测看板（2026-09-07，V2）](../showcase/09_v2_evaluation_dashboard_scorecard.png)
-
-图 15 历史界面样例：质量指标、规则状态和运行结果的展示方式。
-
-以上两张图片属于历史界面样例。当前评测和情景页面的可见标记、源码位置及浏览器验证见 7.1 节。
 
 ### 7.4 验证执行方式
 
