@@ -212,21 +212,25 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 
 以下图片均由最新 Pages 快照页面生成，采集时间为 2026-09-17，展示当前系统的主要页面。
 
+![当前 Pages 快照：个人投资工作台](../showcase/current-pages-snapshot-workbench-20260917.png)
+
+图 7 当前 Pages 快照：主导航、六项分析工具、账户与偏好和投顾对话入口。
+
 ![当前 Pages 快照：持仓分析](../showcase/current-pages-snapshot-portfolio-20260917.png)
 
-图 7 当前 Pages 快照：持仓分析报告、风险对照、行业分布和持仓明细。
+图 8 当前 Pages 快照：持仓分析报告、风险对照、行业分布和持仓明细。
 
 ![当前 Pages 快照：大盘鉴别](../showcase/current-pages-snapshot-market-20260917.png)
 
-图 8 当前 Pages 快照：指数行情、技术指标、宏观因子联动和行业轮动入口。
+图 9 当前 Pages 快照：指数行情、技术指标、宏观因子联动和行业轮动入口。
 
 ![当前 Pages 快照：交易风格](../showcase/current-pages-snapshot-trading-style-20260917.png)
 
-图 9 当前 Pages 快照：历史交易导入、交易风格状态和交易明细筛选。
+图 10 当前 Pages 快照：历史交易导入、交易风格状态和交易明细筛选。
 
 ![当前 Pages 快照：个人中心](../showcase/current-pages-snapshot-profile-20260917.png)
 
-图 10 当前 Pages 快照：19 题问卷、八维投资者画像和资产配置参考。
+图 11 当前 Pages 快照：19 题问卷、八维投资者画像和资产配置参考。
 
 ## 4. 总体技术方案
 
@@ -711,7 +715,7 @@ node --check app/api/static/app.js
 
 * `node --check app/api/static/app.js` 返回码为 0；
 * `tests/browser/test_pages_snapshot.mjs` 对最新 Pages 快照页面验证通过；
-* 文档中的 6 个本地技术图示、4 个最新 Pages 快照界面截图引用和代码、测试路径均已检查存在。
+* 文档中的 6 个本地技术图示、5 个最新 Pages 快照界面截图引用和代码、测试路径均已检查存在。
 
 ## 8. 创新亮点与项目优势
 
