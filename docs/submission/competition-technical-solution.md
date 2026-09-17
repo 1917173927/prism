@@ -6,7 +6,7 @@
 | 参赛方向 | 基于同花顺问财 SkillHub 的个性化证券投顾智能体系统设计 |
 | 文档用途 | 比赛评委技术评审与项目展示 |
 | 阅读重点 | 项目价值、产品能力、技术路线、核心实现、效果验证与创新亮点 |
-| 工程依据 | `app/`、`tests/`、`tools/`、`docs/showcase/` |
+| 工程依据 | `app/`、`tests/`、`tools/`、`docs/submission/figures/` |
 
 Prism 将投资者画像、投资组合、专业研究、金融计算、风险审查和决策解释组织为一条可展示、可验证、可追踪的服务链路。本方案按照项目详细方案常用的阅读顺序编排，评委可以从项目概况进入产品能力，再沿技术路线查看核心实现与验证结果。
 
@@ -91,6 +91,8 @@ Prism 的价值体现在三个层面：
 
 Prism 把一次投顾请求组织成“用户上下文—专业研究—证据验证—组合计算—风险审查—结果呈现”的连续流程。自然语言负责表达意图和解释结果，结构化领域服务负责画像评分、金融计算、风险判定和决策记录。
 
+![图 1 Prism 投顾全链路](figures/prism-figure-01-overview.png)
+
 ```mermaid
 flowchart LR
     A[投资者问题与持仓] --> B[画像与上下文确认]
@@ -139,7 +141,7 @@ flowchart LR
 问题场景 → 设计方法 → 技术路线 → 工程实现 → 展示结果与验证依据
 `
 
-这种编排让产品截图、架构图、流程图、表格和代码索引各自承担清晰的证明作用：图片证明可用功能，流程图证明处理关系，表格说明输入输出，代码和测试索引证明实现依据。
+这种编排让技术图示、流程图、表格和代码索引各自承担清晰的证明作用：技术图示说明系统关系，流程图说明处理过程，表格说明输入输出，代码和测试索引提供工程依据。当前界面能力通过页面锚点、源码位置和验证文件说明。
 
 ## 3. 产品能力与典型应用场景
 
@@ -147,20 +149,21 @@ flowchart LR
 
 投资工作台将账户风险信息、资产概览和重点任务集中在同一页面，用户可以进入持仓体检、标的研究和组合再平衡流程。
 
-![图 1 投资工作台总览](../showcase/01_v3_investor_workbench_overview.png)
+当前评审界面以 `app/api/static/index.html` 和 `app/api/static/app.js` 的现行页面结构为准。Agent 任务中心承担统一入口，组合、研究、解释和评测页面按任务展开。
 
-| 页面区域 | 展示内容 | 对应系统能力 |
+| 当前页面 | 页面锚点 | 评委可观察能力 |
 | --- | --- | --- |
-| 用户状态 | 风险等级、账户信息、当前画像 | 画像服务与上下文确认 |
-| 组合状态 | 资产规模、行业暴露、健康状态 | 组合报告与风险计算 |
-| 任务入口 | 持仓体检、深度研究、再平衡 | 研究、计算和调仓服务 |
-| 结果入口 | 证据、解释、历史回执 | 证据、可解释性和审计服务 |
+| Agent 任务中心 | `#copilot` | 自然语言问题、画像状态、组合状态和任务入口 |
+| 组合总览 | `#overview`、`#portfolio` | 持仓明细、组合报告、基金与 ETF 穿透 |
+| 研究工作台 | `#research-tracks`、`#stock-research`、`#fund-research`、`#convertible-bond-research` | 多专业研究与专项研究 |
+| 组合决策 | `#portfolio-optimization`、`#scenario-simulation`、`#portfolio-rebalancing` | 目标结构、情景模拟和调仓计划 |
+| 分析依据 | `#advanced-explainability`、`#evaluation-dashboard` | 因果解释、评测结果和运行状态 |
 
 ### 3.2 持仓健康体检与底层穿透
 
 系统能够读取组合持仓，对基金和 ETF 的底层成分进行穿透，并将多个持仓来源汇总到行业、标的和资产类别层面。
 
-![图 2 持仓健康体检结果](../showcase/02_v3_health_check_result.png)
+当前页面以 `#overview` 和 `#portfolio` 中的组合报告、持仓明细及底层成分区域呈现。
 
 体检结果包括：
 
@@ -174,15 +177,15 @@ flowchart LR
 
 标的研究页面将行情、财务、估值、行业与画像匹配信息组织为可阅读的研究结果。
 
-![图 3 标的深度研究](../showcase/03_v3_stock_deep_research.png)
+当前页面入口为 `#stock-research`、`#fund-research` 和 `#convertible-bond-research`。研究结果由结构化数据和证据对象支撑，页面可向下展开查看数据来源、观察时间、报告期间、缺失字段和研究状态。
 
-研究结果由结构化数据和证据对象支撑，页面可向下展开查看数据来源、观察时间、报告期间、缺失字段和研究状态。股票、ETF、基金和可转债分别由对应研究模块处理，研究任务从统一的投顾工作台进入。
+股票、ETF、基金和可转债分别由对应研究模块处理，研究任务从统一的投顾工作台进入。
 
 ### 3.4 组合再平衡
 
 再平衡页面将目标结构与当前结构的差异转换为分步行动计划，并在每一步显示调整对象、权重变化和金额变化。
 
-![图 4 组合再平衡计划](../showcase/04_v3_rebalancing_plan_stepper.png)
+当前页面入口为 `#portfolio-optimization`、`#scenario-simulation` 和 `#portfolio-rebalancing`。
 
 | 再平衡环节 | 系统处理 | 页面呈现 |
 | --- | --- | --- |
@@ -195,17 +198,17 @@ flowchart LR
 
 用户可以通过结构化表单、自然语言和图片导入完成画像与持仓输入。自然语言内容先形成类型化提案，持仓图片经过识别后进入字段校验和数值重算流程。
 
-| 自然语言持仓解析 | 风险画像配置 |
-| --- | --- |
-| ![图 5 持仓输入窗口](../showcase/05_v3_portfolio_input_modal.png) | ![图 6 用户画像配置窗口](../showcase/06_v3_user_profile_modal.png) |
+| 输入方式 | 当前实现入口 | 处理结果 |
+| --- | --- | --- |
+| 结构化画像 | `app/api/static/index.html` 的画像区域 | 风险问卷、画像维度和配置条件 |
+| 自然语言持仓 | `#copilot` 持仓入口 | 识别后进入字段校验与组合确认 |
+| 截图或文字导入 | `#portfolio` 与 `#copilot` 持仓入口 | 持仓快照、估值重算和后续分析 |
 
 ### 3.6 研究与审计展示
 
 系统将研究节点、证据链和决策解释集中到研究工作台与审计页面。评委可以从研究主题进入节点结果，再进入来源和计算过程。
 
-![图 7 工作台与研究入口展示](../showcase/frontend_v3_overview.png)
-
-图中展示的是前端工作台与研究入口样式；当前系统的研究、证据和回执对象由 `app/research/`、`app/contracts/`、`app/recommendation/` 与 `app/store/` 提供。
+当前页面入口为 `#research-tracks`、`#advanced-explainability` 和 `#evaluation-dashboard`；研究、证据和回执对象由 `app/research/`、`app/contracts/`、`app/recommendation/` 与 `app/store/` 提供。
 
 ## 4. 总体技术方案
 
@@ -233,6 +236,8 @@ flowchart TD
     PROVIDER --> STORE
 ```
 
+![图 2 Prism 系统总体架构](figures/prism-figure-02-architecture.png)
+
 ### 4.2 分层职责
 
 | 层级 | 主要目录 | 面向评委的能力说明 | 主要输出 |
@@ -244,6 +249,8 @@ flowchart TD
 | 领域计算层 | `app/profile/`、`app/portfolio/`、`app/risk/`、`app/allocation/`、`app/optimization/`、`app/scenarios/`、`app/recommendation/` | 执行画像评分、组合计算、风险预算、配置、情景、建议资格判定 | 数值结果、风险结果、建议回执 |
 | 数据能力层 | `app/providers/` | 统一处理行情、财务、新闻、研究资料和技能查询 | 带来源、时间和状态的提供方结果 |
 | 存储审计层 | `app/store/`、`app/history/`、`app/explainability/` | 保存上下文、决策事件、历史建议、解释关系和访问记录 | 历史回放、审计记录、解释图 |
+
+![图 3 Prism 模块依赖关系](figures/prism-figure-03-dependencies.png)
 
 ### 4.3 用户请求的数据流
 
@@ -325,6 +332,8 @@ sequenceDiagram
 
 系统将正式问卷、自然语言画像提案、用户确认信息和已确认行为事件分开管理。正式问卷形成计算基础，自然语言用于提高输入效率，行为信息用于画像复核。
 
+![图 4 Prism 个性化计算链路](figures/prism-figure-05-personalization-chain.png)
+
 #### 技术路线
 
 ```mermaid
@@ -364,6 +373,8 @@ flowchart LR
 #### 设计方法
 
 系统由中央协调模块生成研究计划，将复杂问题转换为结构化节点；研究执行器根据节点依赖进行有界拓扑执行，专业模块负责自己的研究卡和结果对象。
+
+![图 5 Prism 研究编排与证据流水线](figures/prism-figure-04-research-dag.png)
 
 #### 技术路线
 
@@ -519,6 +530,8 @@ Prism 在建议组合前执行两个独立闸门：
 
 两个闸门分别产生状态，最终按 `BLOCKED > REVIEW_REQUIRED > PASS` 裁决。只有两个闸门均为 `PASS` 时，建议组合器才生成 `DecisionReceipt`。
 
+![图 6 Prism 风险与合规双闸门](figures/prism-figure-06-decision-gates.png)
+
 #### 技术路线
 
 ```mermaid
@@ -595,7 +608,7 @@ flowchart LR
 
 以“投资者提交组合并询问是否需要调整”为例，展示 Prism 如何把用户条件、组合数据、研究证据、风险计算和行动建议连接为完整闭环。
 
-该案例的界面截图使用展示数据，用于说明页面信息组织方式。运行系统时，画像、组合和数据提供方结果由当前请求中的确认上下文与运行状态生成。
+该案例的页面能力以当前 `app/api/static/index.html` 页面结构和接口实现为准。文档中的技术图示用于说明信息组织与处理关系；运行系统时，画像、组合和数据提供方结果由当前请求中的确认上下文与运行状态生成。
 
 ### 6.2 业务处理流程
 
@@ -649,16 +662,16 @@ flowchart TD
 
 评委可以通过以下页面快速观察系统能力：
 
-| 成果页面 | 可见能力 | 对应截图 |
+| 成果页面 | 可见能力 | 当前页面或实现位置 |
 | --- | --- | --- |
-| 投资工作台 | 账户状态、风险画像、资产概览和任务入口 | `01_v3_investor_workbench_overview.png` |
-| 组合健康体检 | 底层穿透、暴露、集中度和证据入口 | `02_v3_health_check_result.png` |
-| 标的深度研究 | 行情、财务、估值、行业和画像匹配 | `03_v3_stock_deep_research.png` |
-| 再平衡计划 | 当前与目标结构、分步行动和复核 | `04_v3_rebalancing_plan_stepper.png` |
-| 情景模拟 | 原方案与调整后方案的影响比较 | `08_v2_scenario_simulation_diff.png` |
-| 高级解释 | 因果关系、关键驱动因素和条件变化 | `07_v2_advanced_explainability_dag.png` |
-| 评测看板 | 质量、规则和运行结果的集中展示 | `09_v2_evaluation_dashboard_scorecard.png` |
-| API 文档 | 接口分组、请求响应和 OpenAPI 入口 | `10_backend_api_architecture_swagger.png` |
+| Agent 任务中心 | 用户问题、画像状态、组合状态和任务入口 | `#copilot`、`app/api/static/index.html` |
+| 组合健康体检 | 底层穿透、暴露、集中度和证据入口 | `#overview`、`#portfolio` |
+| 标的深度研究 | 行情、财务、估值、行业和画像匹配 | `#stock-research`、`#fund-research`、`#convertible-bond-research` |
+| 再平衡计划 | 当前与目标结构、分步行动和复核 | `#portfolio-rebalancing` |
+| 情景模拟 | 原方案与调整后方案的影响比较 | `#scenario-simulation` |
+| 高级解释 | 因果关系、关键驱动因素和条件变化 | `#advanced-explainability` |
+| 评测看板 | 质量、规则和运行结果的集中展示 | `#evaluation-dashboard` |
+| API 文档 | 接口分组、请求响应和 OpenAPI 入口 | `GET /api/docs`、`app/api/main.py` |
 
 ### 7.2 自动化验证分层
 
@@ -675,17 +688,11 @@ flowchart TD
 
 ### 7.3 评测看板与解释结果
 
-评测看板用于集中呈现研究质量、规则状态、回执结果和运行信息。
+评测看板当前页面位于 `#evaluation-dashboard`，用于集中呈现研究质量、规则状态、回执结果和运行信息。
 
-![图 8 评测看板](../showcase/09_v2_evaluation_dashboard_scorecard.png)
+高级解释当前页面位于 `#advanced-explainability`，把用户画像约束、市场事实、风险预算和建议结果组织为可查看的因果关系。
 
-高级解释页面把用户画像约束、市场事实、风险预算和建议结果组织为可查看的因果关系。
-
-![图 9 高级解释结果](../showcase/07_v2_advanced_explainability_dag.png)
-
-自定义情景模拟页面将输入条件、原组合、调整后组合和风险变化放在同一视图中。
-
-![图 10 情景模拟结果](../showcase/08_v2_scenario_simulation_diff.png)
+情景模拟当前页面位于 `#scenario-simulation`，将输入条件、原组合、调整后组合和风险变化放在同一视图中。
 
 ### 7.4 验证执行方式
 
@@ -707,7 +714,7 @@ node --check app/api/static/app.js
 
 * 上述 27 个相关测试文件在本次执行中全部通过；
 * `node --check app/api/static/app.js` 返回码为 0；
-* 文档中的 10 个本地图片引用和代码、测试路径均已检查存在。
+* 文档中的 6 个本地技术图示引用和代码、测试路径均已检查存在。
 
 ### 7.5 评审结果读取方式
 
@@ -819,7 +826,11 @@ flowchart LR
 | --- | --- |
 | `README.md` | 项目运行方式、核心能力和仓库入口 |
 | `docs/submission/technical-report.md` | 系统设计、接口、计算、风险和测试依据 |
-| `docs/showcase/README.md` | 已有界面截图与功能展示索引 |
+| `docs/submission/figures/` | 评审版技术图示 |
+| `app/api/static/index.html` | 当前界面页面结构、页面锚点和入口 |
+| `app/api/static/app.js` | 当前界面状态与交互逻辑 |
+| `app/api/static/styles.css` | 当前界面基础样式 |
+| `app/api/static/prism-v2.css` | 当前界面视觉样式 |
 | `app/api/main.py` | FastAPI 应用、接口路径和应用组装 |
 | `app/contracts/` | 领域对象、证据对象和共享接口规则 |
 | `tests/` | 单元、集成、浏览器和场景验证 |
@@ -842,7 +853,7 @@ flowchart LR
 
 * 采用标题页信息、目录和多级编号标题，帮助评委建立全文结构；
 * 先说明项目背景、赛题需求和方案价值，再展示产品功能与使用场景；
-* 通过产品截图、流程图、架构图、表格和图注连接概念说明与工程实现；
+* 通过技术图示、流程图、架构图、表格和图注连接概念说明与工程实现；
 * 在技术路线中说明开发环境、系统组成、核心方法、实现过程和验证结果；
 * 单独呈现创新亮点、项目优势、运行保障和参考资料；
 * 使用“功能介绍—技术实现”或“问题—设计—技术路线—实现—结果”的连续说明方式，让每项能力具有可阅读的证明链。
@@ -864,11 +875,12 @@ flowchart LR
 
 | 材料类型 | 文件 |
 | --- | --- |
-| 产品总览 | `docs/showcase/01_v3_investor_workbench_overview.png` |
-| 组合体检 | `docs/showcase/02_v3_health_check_result.png` |
-| 深度研究 | `docs/showcase/03_v3_stock_deep_research.png` |
-| 再平衡计划 | `docs/showcase/04_v3_rebalancing_plan_stepper.png` |
-| 情景模拟 | `docs/showcase/08_v2_scenario_simulation_diff.png` |
-| 评测看板 | `docs/showcase/09_v2_evaluation_dashboard_scorecard.png` |
-| API 展示 | `docs/showcase/10_backend_api_architecture_swagger.png` |
+| 投顾全链路图 | `docs/submission/figures/prism-figure-01-overview.png` |
+| 系统总体架构图 | `docs/submission/figures/prism-figure-02-architecture.png` |
+| 模块依赖关系图 | `docs/submission/figures/prism-figure-03-dependencies.png` |
+| 研究编排与证据流水线图 | `docs/submission/figures/prism-figure-04-research-dag.png` |
+| 个性化计算链路图 | `docs/submission/figures/prism-figure-05-personalization-chain.png` |
+| 风险与合规双闸门图 | `docs/submission/figures/prism-figure-06-decision-gates.png` |
+| 当前界面结构 | `app/api/static/index.html`、`app/api/static/app.js`、`app/api/static/styles.css`、`app/api/static/prism-v2.css` |
+| 当前接口实现 | `app/api/main.py` |
 | 当前技术设计依据 | `docs/submission/technical-report.md` |
