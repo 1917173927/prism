@@ -10,6 +10,18 @@
 
 Prism 将投资者画像、投资组合、专业研究、金融计算、风险审查和决策解释组织为一条可展示、可验证、可追踪的服务链路。本方案按照项目详细方案常用的阅读顺序编排，评委可以从项目概况进入产品能力，再沿技术路线查看核心实现与验证结果。
 
+### 评委速读
+
+| 评委关注 | 可直接判断的结论 | 证据入口 |
+| --- | --- | --- |
+| 解决什么问题 | 将画像、研究、组合分析、风险审查和行动计划放入同一投顾工作台 | 第 1、3、6 章 |
+| 如何体现个性化 | 19 道问卷、画像确认和持仓快照进入研究范围、风险预算与目标结构计算 | 第 5.1 节、图 4 |
+| 如何保证可信 | 数据带来源、时间、状态和指纹；研究结论沿 `Evidence → Fact → Finding → Recommendation` 回溯 | 第 5.3、5.6 节 |
+| 如何保证安全 | 风险闸门与合规闸门独立检查，只有双 `PASS` 才生成建议回执 | 第 5.5 节、图 6 |
+| 如何证明已经实现 | 当前 Pages 演示、接口源码、自动化测试、固定案例和负载工具相互对应 | 第 7、9、11 章 |
+
+当前可访问演示：[Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1)。公开页面通过静态快照回放本地服务捕获的接口响应，评委可以重复查看当前账户状态；快照保留原始数据模式和结果状态，当前代码、运行条件和验证依据见第 7、9、12 章。
+
 ## 目录
 
 1. [项目概况与赛题理解](#1-项目概况与赛题理解)
@@ -23,6 +35,7 @@ Prism 将投资者画像、投资组合、专业研究、金融计算、风险�
 9. [工程保障与运行条件](#9-工程保障与运行条件)
 10. [参考资料与实现索引](#10-参考资料与实现索引)
 11. [评审材料索引](#11-评审材料索引)
+12. [架构决策、运行条件与后续工作](#12-架构决策运行条件与后续工作)
 
 ## 1. 项目概况与赛题理解
 
@@ -85,6 +98,19 @@ Prism 的价值体现在三个层面：
 | 投顾对话 | 自然语言问题、确认上下文 | 意图解析、任务编排、结果解释 | 流式回答、研究状态、决策回执 |
 | 审计与回溯 | 决策事件、用户操作、历史建议 | 事件记录、内容哈希、历史对比 | 决策历史、证据展开、变化记录 |
 
+### 1.6 需求与系统约束
+
+| 需求类别 | 评委需要看到的能力 | 实现方式 | 可核验依据 |
+| --- | --- | --- | --- |
+| 投顾功能 | 画像、持仓、研究、组合优化、情景分析和再平衡形成连续处理链 | 统一上下文、研究运行、确定性计算和建议回执 | `app/service/`、`app/profile/`、`app/portfolio/`、`app/recommendation/` |
+| 自然语言交互 | 用户可以用问题描述研究目的、持仓情况和解释要求 | 模型负责意图识别、字段提取和解释；结构化结果经过接口规则校验 | `app/llm/`、`app/service/natural_profile.py`、`/api/v1/copilot/chat` |
+| 数据可信 | 结论能够回到来源、时间、报告期间和具体字段 | `ProviderResult` 四态、证据标识、血缘标识和交叉验证 | `app/providers/`、`app/contracts/evidence.py`、`app/research/` |
+| 风险与合规 | 不满足适当性、证据或披露条件时给出复核或阻断状态 | 风险闸门、合规闸门和建议组合器重复检查 | `app/gates/`、`app/recommendation/` |
+| 并发与时延 | 以不少于 100 个并发咨询、单次响应不超过 3 秒作为目标口径 | 有界并行、超时预算、状态传播和负载工具 | `tools/load_test.py`、`tools/http_load_test.py` |
+| 可用性与审计 | 以 99.9% 可用性作为质量目标，结果可以回看 | 健康检查、决策事件、内容哈希、用户归属和历史回执 | `app/api/`、`app/store/`、`app/history/` |
+
+100 个并发、3 秒和 99.9% 属于目标口径。固定数据、进程内接口和本机 HTTP 测量分别标注验证范围，测量结果不直接表示长期外部服务等级。
+
 ## 2. Prism 整体解决方案
 
 ### 2.1 方案概要
@@ -93,21 +119,15 @@ Prism 把一次投顾请求组织成“用户上下文—专业研究—证据�
 
 ![图 1 Prism 投顾全链路](figures/prism-figure-01-overview.png)
 
-```mermaid
-flowchart LR
-    A[投资者问题与持仓] --> B[画像与上下文确认]
-    B --> C[投资意图解析]
-    C --> D[研究任务计划]
-    D --> E[专业研究节点]
-    E --> F[证据归一化与交叉验证]
-    B --> G[组合暴露与风险计算]
-    F --> H[研究发现与组合结果]
-    G --> H
-    H --> I[风险闸门]
-    I --> J[合规闸门]
-    J --> K[建议组合与决策回执]
-    K --> L[工作台展示与历史审计]
-```
+图 1承担全链路关系说明。评委查看具体实现时，可按以下五个节点读取对应章节，避免重复阅读同一条关系：
+
+| 读取节点 | 评委查看内容 | 对应证据 |
+| --- | --- | --- |
+| 上下文 | 问卷、画像确认、持仓快照和用户归属 | 第 5.1 节、图 4 |
+| 研究 | 研究计划、专业节点、证据验证和研究卡 | 第 5.2、5.3 节、图 5 |
+| 计算 | 暴露、集中度、风险预算、目标结构和情景结果 | 第 5.4 节 |
+| 审查 | 风险闸门、合规闸门和建议资格 | 第 5.5 节、图 6 |
+| 回执 | 建议结果、决策事件、解释关系和历史比较 | 第 6、7、9 章 |
 
 ### 2.2 方案组成
 
@@ -137,9 +157,7 @@ flowchart LR
 
 本方案采用项目详细方案中常见的组织方式，将“项目概况、方案概要、产品方案、技术路线、核心技术、创新亮点、效果验证、工程保障、参考资料”连续呈现。每个核心技术单元均按照以下顺序说明：
 
-`
-问题场景 → 设计方法 → 技术路线 → 工程实现 → 展示结果与验证依据
-`
+`问题场景 → 设计方法 → 技术路线 → 工程实现 → 展示结果与验证依据`
 
 这种编排让技术图示、流程图、表格和代码索引各自承担清晰的证明作用：技术图示说明系统关系，流程图说明处理过程，表格说明输入输出，代码和测试索引提供工程依据。当前界面能力通过页面锚点、源码位置和验证文件说明。
 
@@ -159,11 +177,23 @@ flowchart LR
 | 组合决策 | `#portfolio-optimization`、`#scenario-simulation`、`#portfolio-rebalancing` | 目标结构、情景模拟和调仓计划 |
 | 分析依据 | `#advanced-explainability`、`#evaluation-dashboard` | 因果解释、评测结果和运行状态 |
 
+当前 Pages 演示使用现行静态页面和当前账户接口快照提供可重复的浏览路径。页面入口位于 `app/api/static/index.html`，快照回放由 `app/api/static/pages-snapshot.js` 读取 `app/api/static/pages-snapshot.json` 完成，浏览器验证文件为 `tests/browser/test_pages_snapshot.mjs`。
+
+以下界面图片来自 `docs/showcase/README.md`，文件时间为 2026-09-07，均标记为历史界面样例（V3），用于展示信息组织和交互形态；评委可以通过 [Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1)、现行源码和第 7.1 节的浏览器验证查看当前页面。
+
+![历史界面样例：投资工作台（2026-09-07，V3）](../showcase/01_v3_investor_workbench_overview.png)
+
+图 7 历史界面样例：投资工作台中的资产范围、任务入口和工作流组织。
+
 ### 3.2 持仓健康体检与底层穿透
 
 系统能够读取组合持仓，对基金和 ETF 的底层成分进行穿透，并将多个持仓来源汇总到行业、标的和资产类别层面。
 
 当前页面以 `#overview` 和 `#portfolio` 中的组合报告、持仓明细及底层成分区域呈现。
+
+![历史界面样例：持仓健康体检（2026-09-07，V3）](../showcase/02_v3_health_check_result.png)
+
+图 8 历史界面样例：持仓穿透、重叠集中度和风险提示的展示方式。
 
 体检结果包括：
 
@@ -181,6 +211,10 @@ flowchart LR
 
 股票、ETF、基金和可转债分别由对应研究模块处理，研究任务从统一的投顾工作台进入。
 
+![历史界面样例：标的深度研究（2026-09-07，V3）](../showcase/03_v3_stock_deep_research.png)
+
+图 9 历史界面样例：标的基本面、估值、行业和画像匹配信息的组织方式。
+
 ### 3.4 组合再平衡
 
 再平衡页面将目标结构与当前结构的差异转换为分步行动计划，并在每一步显示调整对象、权重变化和金额变化。
@@ -194,6 +228,10 @@ flowchart LR
 | 行动排序 | 按确定性规则形成分步行动 | 卖出、买入和顺序 |
 | 结果复核 | 重新计算组合暴露、集中度和风险状态 | 调整后结果与风险提示 |
 
+![历史界面样例：组合再平衡计划（2026-09-07，V3）](../showcase/04_v3_rebalancing_plan_stepper.png)
+
+图 10 历史界面样例：目标结构差异转化为分步行动的展示方式。
+
 ### 3.5 画像与持仓输入
 
 用户可以通过结构化表单、自然语言和图片导入完成画像与持仓输入。自然语言内容先形成类型化提案，持仓图片经过识别后进入字段校验和数值重算流程。
@@ -203,6 +241,10 @@ flowchart LR
 | 结构化画像 | `app/api/static/index.html` 的画像区域 | 风险问卷、画像维度和配置条件 |
 | 自然语言持仓 | `#copilot` 持仓入口 | 识别后进入字段校验与组合确认 |
 | 截图或文字导入 | `#portfolio` 与 `#copilot` 持仓入口 | 持仓快照、估值重算和后续分析 |
+
+| 历史界面样例：持仓输入（2026-09-07，V3） | 历史界面样例：风险画像配置（2026-09-07，V3） |
+| --- | --- |
+| ![历史界面样例：自然语言持仓输入](../showcase/05_v3_portfolio_input_modal.png) | ![历史界面样例：风险画像配置](../showcase/06_v3_user_profile_modal.png) |
 
 ### 3.6 研究与审计展示
 
@@ -216,27 +258,9 @@ flowchart LR
 
 Prism 采用模块化单体结构。接口、应用服务、领域计算、研究协同、数据提供方、持久化和静态工作台在同一应用中按职责协作，模块之间通过结构化接口和明确状态传递信息。
 
-```mermaid
-flowchart TD
-    UI[静态工作台与流式对话] --> API[FastAPI 接口层]
-    API --> SERVICE[投顾与专项应用服务]
-    SERVICE --> PROFILE[画像与用户上下文]
-    SERVICE --> RESEARCH[研究协同与证据流水线]
-    SERVICE --> FINANCE[组合与金融计算]
-    SERVICE --> GATES[风险与合规闸门]
-    SERVICE --> RECEIPT[建议组合与决策回执]
-    RESEARCH --> PROVIDER[数据提供方适配]
-    FINANCE --> PROFILE
-    GATES --> PROFILE
-    GATES --> RESEARCH
-    GATES --> FINANCE
-    RECEIPT --> STORE[决策事件与审计存储]
-    PROFILE --> STORE
-    API --> STORE
-    PROVIDER --> STORE
-```
-
 ![图 2 Prism 系统总体架构](figures/prism-figure-02-architecture.png)
+
+图 2承担模块关系说明；4.2 节用分层表解释目录、职责和输出，4.3 节单独说明一次请求的时序。三者分别对应架构关系、职责分工和交互过程。
 
 ### 4.2 分层职责
 
@@ -306,6 +330,10 @@ sequenceDiagram
 | 投顾对话 | `/api/v1/advisor/queries`、`/api/v1/copilot/chat` | 投顾查询、工具调用和流式对话 |
 | 解释与历史 | `/api/v1/advisor/explainability-runs`、`/api/v1/decision-events`、`/api/v1/advisor/recommendation-history` | 因果解释、决策事件和建议历史 |
 
+![历史界面样例：后端 API 结构与 Swagger（2026-09-07，V3）](../showcase/10_backend_api_architecture_swagger.png)
+
+图 11 历史界面样例：接口文档与投研接口分组的展示方式。当前接口路径以本节表格、`app/api/main.py` 和 `GET /api/docs` 为准。
+
 ### 4.6 结果状态
 
 系统将数据服务状态、证据质量状态和建议审查状态分别表示，评委可以从页面和接口结果中识别处理进度与结果性质。
@@ -336,20 +364,14 @@ sequenceDiagram
 
 #### 技术路线
 
-```mermaid
-flowchart LR
-    A[19 道风险问卷] --> B[8 个评估维度]
-    B --> C[score_questionnaire]
-    C --> D[QuestionnaireSnapshot]
-    D --> E[RiskProfile]
-    F[自然语言画像描述] --> G[类型化画像提案]
-    G --> H[冲突识别与用户确认]
-    H --> E
-    I[已确认行为事件] --> J[行为画像计算]
-    J --> K[画像复核结果]
-    E --> L[风险预算与配置边界]
-    E --> M[研究与建议上下文]
-```
+| 输入来源 | 确定性处理 | 结构化产物 | 评委可见结果 |
+| --- | --- | --- | --- |
+| 19 道正式风险问卷 | 校验题目完整性、顺序、选项范围和问卷版本；按 8 个维度计算分数 | `QuestionnaireSnapshot`、`RiskProfile` | 风险等级、维度分数、适当性状态和确认时间 |
+| 自然语言画像描述 | 提取类型化字段，记录原文摘要和输入指纹，与正式问卷逐维度比较 | `ProfileExtractionProposal`、`ProfileConflict` | 待确认差异、问卷值、提议值和用户选择 |
+| 已确认行为事件 | 统计交易次数、换手率、持仓集中度、行业集中度和权益仓位；数据不足时保留状态 | 行为画像、行为证据和复核结果 | 行为标签、数据充分性和风险复核 |
+| 已确认画像与组合 | 读取画像版本、用户归属和持仓快照，传给风险预算、配置和研究服务 | 研究上下文、配置范围和建议输入 | 画像条件如何影响研究范围与组合结果 |
+
+画像处理的关键规则是：正式问卷提供评分基础，自然语言提案需要经过用户确认，行为画像用于复核，三类信息均保留版本、时间和用户归属。任何未确认的提案都不能直接进入风险或组合计算。
 
 #### 工程实现
 
@@ -378,21 +400,18 @@ flowchart LR
 
 #### 技术路线
 
-```mermaid
-flowchart TD
-    Q[结构化投资意图] --> P[ResearchPlan]
-    P --> N1[市场研究节点]
-    P --> N2[行业研究节点]
-    P --> N3[股票研究节点]
-    P --> N4[基金与 ETF 研究节点]
-    P --> N5[可转债研究节点]
-    N1 --> V[研究结果聚合]
-    N2 --> V
-    N3 --> V
-    N4 --> V
-    N5 --> V
-    V --> E[证据验证与发现生成]
-```
+| 阶段 | 输入与依赖 | 执行内容 | 评委可观察输出 |
+| --- | --- | --- | --- |
+| 意图整理 | 用户问题、画像和组合上下文 | 识别研究主题、标的、期间和必需字段 | 结构化投资意图 |
+| 计划生成 | 结构化意图 | 中央协调模块生成有依赖关系的 `ResearchPlan` | 研究范围、节点清单和依赖关系 |
+| 专业节点 | 计划节点与数据提供方结果 | 按依赖执行市场、行业、股票、基金、ETF 和可转债研究 | 各节点状态、研究卡和问题对象 |
+| 结果验证 | 节点结果、主张和证据 | 归一化证据，检查来源、时间、字段和独立血缘 | 证据质量、交叉验证状态和研究发现 |
+
+研究执行保留节点状态、超时、取消和问题码；节点结果经过证据验证后才进入事实和发现，研究计划本身不直接生成建议。
+
+![历史界面样例：多维投研研究矩阵（2026-09-07，V1）](../showcase/11_v1_developer_research_matrix.png)
+
+图 12 历史界面样例：多维研究节点和证据追溯入口的展示方式。
 
 #### 工程实现
 
@@ -449,6 +468,10 @@ flowchart LR
 
 研究页面与解释页面可以从结论进入事实和来源，决策历史可以读取对应回执与事件。`tests/unit/test_evidence_contract.py`、`tests/unit/test_evidence_finding_bridge.py`、`tests/unit/test_research_cross_validation.py`、`tests/integration/test_phase8_evidence_finding_bridge.py`、`tests/integration/test_phase10_research_evidence_pipeline.py` 和 `tests/integration/test_phase12_recommendation_receipt.py` 覆盖证据、事实、发现、交叉验证和回执关系。
 
+![历史界面样例：因果归因与反事实分析（2026-09-07，V2）](../showcase/07_v2_advanced_explainability_dag.png)
+
+图 13 历史界面样例：解释关系、归因因素和反事实条件的展示方式。
+
 ### 5.4 确定性组合计算
 
 #### 问题场景
@@ -470,7 +493,7 @@ flowchart TD
     D --> E
     E --> F[集中度与行业分析]
     E --> G[风险预算]
-    F --> H[配置边界]
+    F --> H[配置范围]
     G --> H
     H --> I[目标结构与组合优化]
     I --> J[情景模拟]
@@ -505,11 +528,11 @@ HHI = Σ_g (E_g / V)² × 10000
 * `app/portfolio/exposure.py` 的 `calculate_exposure` 计算直接暴露与穿透暴露；
 * `app/risk/concentration.py` 的 `calculate_concentration` 计算分组集中度；
 * `app/risk/budget.py` 计算风险预算使用情况；
-* `app/allocation/` 生成资产、行业和标的的配置边界；
+* `app/allocation/` 生成资产、行业和标的的配置范围；
 * `app/optimization/` 与 `app/service/` 提供目标结构和组合优化；
 * `app/scenarios/custom_stress.py` 的 `calculate_custom_stress` 执行自定义情景计算；
 * `app/rebalancing/` 与 `app/service/` 生成再平衡行动并执行交易后复核；
-* 领域计算使用 `Decimal`，输入校验、组合守恒和边界条件由测试覆盖。
+* 领域计算使用 `Decimal`，输入校验、组合守恒和约束条件由测试覆盖。
 
 #### 展示结果与验证依据
 
@@ -534,19 +557,11 @@ Prism 在建议组合前执行两个独立闸门：
 
 #### 技术路线
 
-```mermaid
-flowchart LR
-    A[画像与组合] --> B[风险闸门]
-    C[研究证据与候选文本] --> D[合规闸门]
-    B --> E[决策资格裁决]
-    D --> E
-    E -->|PASS| F[建议组合与回执]
-    E -->|REVIEW_REQUIRED| G[复核结果与补充信息]
-    E -->|BLOCKED| H[安全问题与处理状态]
-    F --> I[决策事件]
-    G --> I
-    H --> I
-```
+| 检查单元 | 检查内容 | `PASS` | `REVIEW_REQUIRED` | `BLOCKED` |
+| --- | --- | --- | --- | --- |
+| 风险闸门 | 归属、画像、组合、暴露、集中度、风险预算和配置条件 | 风险条件完整且在允许范围内 | 数据不完整或需要补充确认 | 归属错误、输入篡改、关键风险条件失效 |
+| 合规闸门 | 研究引用、风险揭示、失效条件和禁止表述 | 引用闭合且披露完整 | 缺少披露或需要人工复核 | 出现禁止表述、引用断裂或安全问题 |
+| 资格裁决 | 两个闸门的组合状态 | 两者均为 `PASS`，生成建议和回执 | 任一闸门需要复核，返回补充清单 | 任一闸门阻断，停止建议组合 |
 
 #### 工程实现
 
@@ -602,6 +617,21 @@ flowchart LR
 
 运行状态页面展示当前数据模式、提供方能力、查询状态和结构化问题。评委可以从健康检查、运行能力和问财配置页面查看系统状态。相关测试覆盖提供方接口规则、恢复处理、运行模式和固定数据状态。
 
+### 5.7 数据真实性与缺失语义
+
+金融数据进入研究或组合计算前，需要同时保留内容状态、时间口径和来源关系。数据提供方状态、送达方式和证据质量分别记录，缓存或备用来源不会改写原始内容状态。
+
+| 检查维度 | 必须保留的内容 | 处理规则 | 评委可核验对象 |
+| --- | --- | --- | --- |
+| 来源归属 | 提供方、来源、记录标识、请求标识和请求指纹 | 每条记录都可以回到一次具体请求和来源 | ProviderRequest、ProviderRecord |
+| 时间口径 | as_of、observed_at、retrieved_at、period 和 units | 区分观察时间、获取时间、报告期间和单位 | ProviderRecord、Evidence |
+| 字段完整性 | required_fields、missing_fields 和问题对象 | 必需字段缺失时保留缺失状态，不写入默认数值 | ProviderResult、研究状态 |
+| 内容状态 | SUCCESS、PARTIAL、EMPTY、FAILED | 完整、部分、空结果和执行失败分别进入后续路径 | ProviderResult |
+| 证据质量 | evidence_id、lineage_id、质量状态和关联标识 | 只有来源闭合、字段有效且交叉验证通过的证据形成已验证事实 | Evidence、Fact、Finding |
+| 服务方式 | 直接请求、新鲜缓存、备用提供方和过期缓存 | 送达方式独立记录，过期缓存标记为 STALE | ProviderServingMode、Evidence |
+
+空结果保持为空结果，失败保持为失败状态，缺失字段不补写零值或推断值。研究运行没有完整结束时，暂时支持的主张进入复核，不生成已验证事实和发现；来源冲突保留双方证据并进入复核。
+
 ## 6. 典型业务闭环案例
 
 ### 6.1 案例目标
@@ -612,27 +642,16 @@ flowchart LR
 
 ### 6.2 业务处理流程
 
-```mermaid
-flowchart TD
-    A[用户提交画像与当前组合] --> B[确认风险与持仓上下文]
-    B --> C[生成投资研究意图]
-    C --> D[执行市场、行业与标的研究]
-    B --> E[计算组合暴露与集中度]
-    D --> F[建立证据、事实与发现]
-    E --> G[计算风险预算与配置边界]
-    F --> H[形成研究结论]
-    G --> H
-    H --> I[生成目标结构与情景结果]
-    I --> J[计算再平衡行动]
-    J --> K[风险闸门与合规闸门]
-    K --> L{建议资格}
-    L -->|通过| M[建议与决策回执]
-    L -->|复核| N[复核清单与补充信息]
-    L -->|阻断| O[安全问题与状态说明]
-    M --> P[历史事件与证据展开]
-    N --> P
-    O --> P
-```
+图 1已经说明全链路关系，本案例用阶段表突出输入、输出和评委判断点：
+
+| 阶段 | 本案例输入 | 关键处理 | 评委判断点 |
+| --- | --- | --- | --- |
+| 上下文确认 | 风险问卷、画像提案、持仓快照 | 校验归属、版本、字段和观察时间 | 结果确实绑定当前用户条件 |
+| 研究与验证 | “是否需要调整”的结构化意图 | 执行市场、行业和标的研究，形成证据、事实与发现 | 研究结论有来源和状态 |
+| 组合计算 | 持仓、基金成分、画像条件 | 计算暴露、集中度、风险预算和配置范围 | 数值能够复核，超限项能够定位 |
+| 方案比较 | 当前结构、目标结构和情景条件 | 生成目标结构、情景差异和再平衡行动 | 调整原因、金额和风险变化清晰 |
+| 资格审查 | 研究发现、计算结果和建议候选 | 执行风险与合规双闸门 | 通过、复核和阻断状态有明确依据 |
+| 结果回执 | 审查状态和关联标识 | 保存建议、决策事件和解释关系 | 结果能够回看和比较 |
 
 ### 6.3 处理阶段与输出
 
@@ -641,7 +660,7 @@ flowchart TD
 | 上下文确认 | 问卷、画像提案、持仓和组合信息 | 校验归属、版本、字段和观察时间 | 已确认画像与组合快照 |
 | 研究计划 | 自然语言问题和结构化意图 | 识别主题、标的和研究范围 | `ResearchPlan` |
 | 专业研究 | 研究节点与数据提供方结果 | 执行市场、行业、标的和资产研究 | 研究状态、证据和发现 |
-| 组合计算 | 持仓快照、成分快照和画像条件 | 计算暴露、集中度、风险预算和配置边界 | 组合报告、风险结果和目标结构 |
+| 组合计算 | 持仓快照、成分快照和画像条件 | 计算暴露、集中度、风险预算和配置范围 | 组合报告、风险结果和目标结构 |
 | 方案比较 | 当前组合、目标结构和情景条件 | 计算情景影响与调整差异 | 情景结果和再平衡计划 |
 | 资格审查 | 研究发现、计算结果和建议候选 | 执行风险与合规双闸门 | `PASS`、`REVIEW_REQUIRED` 或 `BLOCKED` |
 | 结果回执 | 审查结果和关联标识 | 组合建议、保存事件、生成解释入口 | 建议回执、决策事件和历史记录 |
@@ -673,11 +692,22 @@ flowchart TD
 | 评测看板 | 质量、规则和运行结果的集中展示 | `#evaluation-dashboard` |
 | API 文档 | 接口分组、请求响应和 OpenAPI 入口 | `GET /api/docs`、`app/api/main.py` |
 
+当前演示入口为 [Prism Pages 演示](https://prism.daoyezongzi.org/?pages=1)。现行静态页面会显示快照来源、用户上下文和处理状态，`tests/browser/test_pages_snapshot.mjs` 使用实际页面检查加载、导航、组合体检结果、同源资源和控制台错误。
+
+| 当前演示检查点 | 评委可观察内容 | 验证依据 |
+| --- | --- | --- |
+| 用户上下文 | 画像摘要中的 C5、持仓快照中的贵州茅台和用户归属 | `app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
+| 市场目录 | 行情页面中的上证指数 | `app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
+| 组合体检 | 组合体检接口返回 HTTP 200，并保留当前快照用户归属 | `app/api/static/pages-snapshot.js`、`tests/browser/test_pages_snapshot.mjs` |
+| 页面回放 | 浏览器通过静态快照读取接口结果，页面可以重复展示当前账户状态 | `tests/browser/test_pages_snapshot.mjs` |
+
+这些页面和验证路径表明当前静态页面具备可重复的评审路径；页面显示已保存的当前账户响应，具体运行状态见第 9.2 节。
+
 ### 7.2 自动化验证分层
 
 | 验证层级 | 代表文件 | 验证内容 |
 | --- | --- | --- |
-| 领域单元验证 | `tests/unit/test_profile_scoring.py`、`tests/unit/test_portfolio_exposure.py`、`tests/unit/test_risk_budget.py` | 画像评分、暴露、风险预算和边界计算 |
+| 领域单元验证 | `tests/unit/test_profile_scoring.py`、`tests/unit/test_portfolio_exposure.py`、`tests/unit/test_risk_budget.py` | 画像评分、暴露、风险预算和约束计算 |
 | 证据与建议验证 | `tests/unit/test_evidence_contract.py`、`tests/unit/test_research_cross_validation.py`、`tests/unit/test_decision_gates.py` | 来源关系、交叉验证、风险与合规状态 |
 | 研究协同验证 | `tests/unit/test_bounded_orchestration.py`、`tests/unit/test_specialist_matrix.py` | 研究计划、依赖关系、节点状态和专业矩阵 |
 | 接口集成验证 | `tests/integration/test_phase13_api.py`、`tests/integration/test_phase14_advisor_api.py`、`tests/integration/test_phase15_query_workbench.py` | HTTP 接口、投顾主链路和工作台 |
@@ -693,6 +723,16 @@ flowchart TD
 高级解释当前页面位于 `#advanced-explainability`，把用户画像约束、市场事实、风险预算和建议结果组织为可查看的因果关系。
 
 情景模拟当前页面位于 `#scenario-simulation`，将输入条件、原组合、调整后组合和风险变化放在同一视图中。
+
+![历史界面样例：情景压力测试（2026-09-07，V2）](../showcase/08_v2_scenario_simulation_diff.png)
+
+图 14 历史界面样例：基线组合与情景组合差异的展示方式。
+
+![历史界面样例：自动化评测看板（2026-09-07，V2）](../showcase/09_v2_evaluation_dashboard_scorecard.png)
+
+图 15 历史界面样例：质量指标、规则状态和运行结果的展示方式。
+
+以上两张图片属于历史界面样例。当前评测和情景页面的可见标记、源码位置及浏览器验证见 7.1 节。
 
 ### 7.4 验证执行方式
 
@@ -712,9 +752,9 @@ node --check app/api/static/app.js
 
 本次文档整理后的验证记录如下：
 
-* 上述 27 个相关测试文件在本次执行中全部通过；
+* 本次执行的 21 个领域单元测试文件全部通过；
 * `node --check app/api/static/app.js` 返回码为 0；
-* 文档中的 6 个本地技术图示引用和代码、测试路径均已检查存在。
+* 文档中的 6 个本地技术图示、11 个历史界面样例引用和代码、测试路径均已检查存在。
 
 ### 7.5 评审结果读取方式
 
@@ -735,11 +775,11 @@ Prism 将“回答问题”提升为“组织可验证的决策材料”。研�
 
 ### 8.2 语言交互与金融计算分工
 
-系统使用大语言模型处理自然语言意图、字段提取、研究协作和通俗化表达；确定性模块负责金额、权重、暴露、集中度、风险预算、配置边界、情景结果和建议资格。两类能力通过结构化对象连接，形成清晰的职责分工。
+系统使用大语言模型处理自然语言意图、字段提取、研究协作和通俗化表达；确定性模块负责金额、权重、暴露、集中度、风险预算、配置范围、情景结果和建议资格。两类能力通过结构化对象连接，形成清晰的职责分工。
 
 ### 8.3 从画像到行动的个性化闭环
 
-风险画像进入研究范围、风险预算、配置边界和建议复核；当前组合进入暴露、集中度、情景和再平衡计算；用户确认信息进入上下文记忆和决策事件。个性化结果贯穿研究、计算、展示和回溯。
+风险画像进入研究范围、风险预算、配置范围和建议复核；当前组合进入暴露、集中度、情景和再平衡计算；用户确认信息进入上下文记忆和决策事件。个性化结果贯穿研究、计算、展示和回溯。
 
 ### 8.4 面向专业场景的多模块协作
 
@@ -827,13 +867,16 @@ flowchart LR
 | `README.md` | 项目运行方式、核心能力和仓库入口 |
 | `docs/submission/technical-report.md` | 系统设计、接口、计算、风险和测试依据 |
 | `docs/submission/figures/` | 评审版技术图示 |
+| `docs/showcase/README.md`、`docs/showcase/*.png` | 界面样例和版本演进材料 |
 | `app/api/static/index.html` | 当前界面页面结构、页面锚点和入口 |
 | `app/api/static/app.js` | 当前界面状态与交互逻辑 |
+| `app/api/static/pages-snapshot.js`、`app/api/static/pages-snapshot.json` | 当前 Pages 演示的接口快照回放资源 |
 | `app/api/static/styles.css` | 当前界面基础样式 |
 | `app/api/static/prism-v2.css` | 当前界面视觉样式 |
 | `app/api/main.py` | FastAPI 应用、接口路径和应用组装 |
 | `app/contracts/` | 领域对象、证据对象和共享接口规则 |
 | `tests/` | 单元、集成、浏览器和场景验证 |
+| `tools/capture_pages_snapshot.mjs`、`tests/browser/test_pages_snapshot.mjs` | 当前接口快照生成与浏览器验证 |
 | `tools/` | 固定回放、负载、提供方和运行辅助工具 |
 
 ### 10.2 外部参考项目详细方案
@@ -882,5 +925,89 @@ flowchart LR
 | 个性化计算链路图 | `docs/submission/figures/prism-figure-05-personalization-chain.png` |
 | 风险与合规双闸门图 | `docs/submission/figures/prism-figure-06-decision-gates.png` |
 | 当前界面结构 | `app/api/static/index.html`、`app/api/static/app.js`、`app/api/static/styles.css`、`app/api/static/prism-v2.css` |
+| 当前 Pages 演示 | `https://prism.daoyezongzi.org/?pages=1`、`app/api/static/pages-snapshot.js`、`app/api/static/pages-snapshot.json`、`tests/browser/test_pages_snapshot.mjs` |
+| 历史界面样例 | `docs/showcase/README.md` 与 `docs/showcase/*.png`，图片时间为 2026-09-07 |
 | 当前接口实现 | `app/api/main.py` |
 | 当前技术设计依据 | `docs/submission/technical-report.md` |
+
+## 12. 架构决策、运行条件与后续工作
+
+### 12.1 关键架构决策
+
+以下决策来自当前实现、测试和 docs/adr/0001-modular-monolith.md，用于说明系统采用现有组织方式的原因：
+
+| 决策 | 当前实现 | 解决的评审问题 | 主要依据 | 对结果的影响 |
+| --- | --- | --- | --- | --- |
+| 模块化单体 | app/api、app/service、领域目录、app/providers 和 app/store 在同一进程协作 | 评委可以沿目录和接口查看完整链路 | docs/adr/0001-modular-monolith.md、app/api/main.py | 保持模块职责、依赖注入和本地启动路径 |
+| 结构化研究有向无环图 | ResearchPlan、节点状态、依赖门控和有界执行器 | 研究任务具有明确顺序、状态和故障位置 | app/orchestration/、app/service/specialist_matrix.py | 支持并行执行、超时传播、取消和固定回放 |
+| 证据优先 | Evidence → Fact → Finding → Recommendation 贯穿研究和回执 | 每项发现可以回到来源和验证状态 | app/contracts/evidence.py、app/research/ | 未闭合证据进入复核或阻断 |
+| 确定性金融计算 | 画像评分、暴露、穿透、集中度、风险预算、优化、情景和再平衡由 Python 服务计算 | 评委可以复核数值和阈值 | app/profile/、app/portfolio/、app/risk/、app/optimization/、app/scenarios/、app/rebalancing/ | 语言模型只处理语言输入和解释，不承担数值裁决 |
+| 数据提供方四态 | SUCCESS、PARTIAL、EMPTY、FAILED 与来源、指纹和问题对象绑定 | 空结果、部分数据和执行失败具有清晰含义 | app/providers/contracts.py、app/providers/ | 数据质量沿研究、证据和闸门链路传播 |
+| 双闸门与组合器重验 | 风险闸门、合规闸门和建议组合器分别检查输入、引用和披露 | 建议资格具有可见的检查条件 | app/gates/、app/recommendation/ | 任一关键条件未满足时不生成建议或回执 |
+| 用户归属与内容哈希 | 认证模式使用账户绑定 owner_id；开发模式使用 X-Owner-ID 做对象隔离；事件保存内容哈希 | 结果可以区分用户、版本和内容变化 | app/api/access.py、app/store/、app/gates/fingerprint.py | 支持隔离、幂等、漂移检查和历史追踪 |
+| 固定数据与真实数据分层 | MOCK 读取固定数据，LIVE 根据能力探测和正式数据规则运行 | 演示可重复，真实数据状态可单独核验 | app/runtime/、app/providers/runtime.py、app/api/static/ | 页面明确显示数据模式，固定示例不会冒充实时事实 |
+| 当前 Pages 快照发布 | pages-snapshot.js 拦截页面的 /api/ 请求并回放 pages-snapshot.json 中已保存的响应 | 公开页面可以展示当前账户数据 | app/api/static/pages-snapshot.js、app/api/static/pages-snapshot.json、LOG.md | 浏览器通过同源静态文件读取响应；响应中的 data_mode 和业务状态保持原值 |
+| 任务优先的静态工作台 | 原生 HTML、JavaScript、CSS 组织页面，工作流编辑使用 AntV X6 | 评委可以从任务入口进入结果和技术依据 | app/api/static/、package.json、tools/build_workflow.mjs | 页面与接口同源，现行资源可以直接发布和验证 |
+
+### 12.2 运行条件与能力状态
+
+| 运行维度 | 系统提供的能力 | 运行条件 | 当前状态表达 | 评委查看位置 |
+| --- | --- | --- | --- | --- |
+| 数据模式 | MOCK 固定数据、LIVE 真实提供方能力和操作级状态 | LIVE 需要凭据、能力探测和正式接口规则验证 | /api/v1/runtime/data-mode、能力矩阵 | 第 9.2 节、运行状态页面 |
+| 投资者输入 | 19 道问卷、画像提案、行为画像、持仓导入、图片识别和基金成分快照 | 输入需通过归属、版本、时间、字段和一致性校验 | 快照、草稿、确认状态和问题码 | 第 3.5、5.1 节 |
+| 研究服务 | 市场、行业、股票、基金、ETF、可转债研究、研究流水线和证据链 | 固定服务用于回放；实时路径按能力探测和数据状态处理 | 节点、运行、证据和发现状态 | 第 5.2、5.3、5.6 节 |
+| 组合分析 | 暴露、穿透、集中度、风险预算、配置范围、目标结构、情景和再平衡 | 持仓、报价、行业、现金和成分数据满足对应接口规则 | READY、REVIEW_REQUIRED、BLOCKED | 第 5.4 节、组合页面 |
+| 对话与模型 | 意图识别、工具调用、画像提案、流式回复和解释 | 远程模型需要配置；金融事实通过结构化服务获得 | 模型配置、工具结果和流式事件 | #copilot、app/llm/ |
+| 持久化 | SQLite 默认存储、可选 PostgreSQL、决策事件、记忆、账户和审计 | 数据目录、数据库连接、迁移和权限可用 | 版本、内容哈希、迁移记录和问题码 | app/store/、app/history/ |
+| 交易支持方式 | 再平衡金额、数量、费用、现金和交易后风险测算 | 输入有效，用户能够查看行动计划 | ADVISORY_ONLY | 第 3.4、5.4 节 |
+| 部署方式 | 本地回环服务、同源静态页面和真实 HTTP 只读观测 | 启动脚本、运行依赖、凭据和上游额度可用 | 健康状态、探测结果和提供方状态 | 第 9 章 |
+
+当前本地应用默认访问 127.0.0.1:8000，使用 data/private 保存数据库。Windows 默认使用 ProtectedSecretStore 保存受保护凭据。问财、扶摇、雅虎财经、港股资讯网和同花顺量化接口按照各自配置与协议提供数据；外部服务额度、数据留存、展示和再分发授权由部署环境单独确认。交易支持方式由行动计划和交易后风险测算提供。
+
+### 12.3 已知技术问题
+
+| 问题 | 当前状态 | 对评委判断的影响 | 后续核验方式 |
+| --- | --- | --- | --- |
+| 问财部分技能额度 | hithink-market-query 当前曾返回 401，运行状态记录 QUOTA_EXHAUSTED；其他能力按单项状态继续处理 | 依赖该技能的实时字段可能进入复核或失败状态 | 额度恢复后重新执行九项能力探测和财务复验 |
+| 实时研究服务覆盖 | 投顾、研究矩阵、股票、基金、可转债完整研究、预设情景和固定工作流仍保留固定服务路径 | LIVE 研究请求需要正式数据和来源证据 | 逐项接入真实服务，补充来源、权限和回放记录 |
+| 个股与基金扩展指标 | 个股历史估值分位、完整个股适当性和基金底层行业分类仍需补充 | 相关页面保留缺失字段和复核状态 | 补充有授权来源的历史指标与成分分类 |
+| 海外市场权限 | 同花顺量化接口和港美股权限需要单独核验 | 海外指数、因子和行业观察按可用来源展示 | 完成权限核验、覆盖范围测试和来源授权确认 |
+| 真实模型质量 | 画像提取、语义检索和对话质量依赖实际模型配置；有限规则路径已经提供 | 影响语言理解、摘要和排序体验 | 使用目标模型、固定问题集和人工复核评估 |
+| 外部授权与长期服务质量 | 上游额度、留存、展示授权和长期服务等级需要部署环境单独形成证据 | 影响实时数据运营和公开部署 | 补充授权文件、监控、压力测试和服务等级记录 |
+
+### 12.4 技术债务
+
+| 技术债务 | 当前表现 | 后续维护要求 |
+| --- | --- | --- |
+| 接口注册集中 | 大量路由和依赖组装集中在 app/api/main.py | 按领域整理路由模块，保持现有路径、响应模型和归属检查 |
+| 提供方接口并存 | FinancialProvider 结构化调用与行情、行业、因子专用方法同时存在 | 补充适配器转换层，保留专用数据能力的字段校验 |
+| 缓存为进程内结构 | 提供方缓存使用有界进程内结构 | 多进程运行时补充共享缓存、权限隔离、失效和指标记录 |
+| PostgreSQL 写入策略 | 适配器复用存储接口规则，写入使用数据库范围锁和比较交换 | 提升并发时补充连接池、事务观测和故障恢复压力测试 |
+| 本地认证与审计 | 本地账户、会话和访问审计已经提供 | 扩展多实例密钥管理、会话失效和审计查询能力 |
+| 静态资源构建 | 工作流和 Markdown 资源需要由构建工具生成后随应用发布 | 保持构建版本、第三方许可和资源完整性检查 |
+
+### 12.5 后续工作
+
+| 优先级 | 工作内容 | 当前基础 | 验收证据 |
+| --- | --- | --- | --- |
+| 高 | 恢复问财额度并扩大实时研究覆盖 | 已有九项技能清单、能力探测和四态结果 | 真实请求记录、来源证据、权限记录和回放结果 |
+| 高 | 建立真实 HTTP、外部数据服务和长期可用性记录 | 已有 tools/http_load_test.py、健康检查和本地观测 | 样本窗口、并发规模、错误分类、P95、外部服务状态和授权范围 |
+| 中 | 提升模型评测和语义记忆质量 | 已有固定问题路由、自然语言画像和来源检索 | 目标模型评测集、人工标注、提示注入测试和检索相关性报告 |
+| 中 | 扩展组合分析 | 已有确定性目标结构、压力分析和调仓闭环 | 流动性压力、历史回放、组合约束和性能评测 |
+| 中 | 完善个股、基金和海外研究指标 | 已有专项研究接口、数据提供方适配和状态传播 | 授权来源、时间口径、字段覆盖率和交叉验证结果 |
+| 低 | 支持多进程运行和共享缓存 | 已有依赖注入、PostgreSQL 适配和缓存配置 | 多实例部署、故障恢复、权限隔离和压力测试记录 |
+
+### 12.6 术语、代码与接口索引
+
+| 术语或对象 | 定义 | 主要实现位置 | 关键状态或结果 |
+| --- | --- | --- | --- |
+| QuestionnaireSnapshot | 19 道问卷的版本化确认快照 | app/profile/questionnaire.py、app/profile/contracts.py | 题目完整、版本、归属和确认时间 |
+| RiskProfile | 供风险和组合计算使用的投资者画像 | app/profile/contracts.py、app/profile/scoring.py | 风险分数、等级、限制条件和画像版本 |
+| PortfolioImportBundle | 时点持仓快照和可选成分快照组成的组合输入 | app/portfolio/contracts.py | COMPLETE、PARTIAL、EMPTY、FAILED |
+| ProviderResult | 数据提供方调用的统一结果对象 | app/providers/contracts.py | SUCCESS、PARTIAL、EMPTY、FAILED |
+| Evidence、Fact、Finding | 来源、事实和研究发现的连续对象 | app/contracts/evidence.py、app/research/ | 质量状态、来源、期间、血缘和引用 |
+| DecisionReceipt、DecisionEvent | 建议回执和可审计决策事件 | app/recommendation/、app/store/ | 闸门状态、规则版本、内容哈希和关联标识 |
+| PASS、REVIEW_REQUIRED、BLOCKED | 建议审查状态 | app/gates/、app/recommendation/ | 通过、复核或停止建议组合 |
+| ADVISORY_ONLY | 再平衡计算只提供决策支持 | app/service/portfolio_rebalancing.py | 生成行动计划，不调用交易接口 |
+
+接口入口可以从 GET /api/docs 查看 OpenAPI 定义；研究、组合、闸门、回执和历史接口的代表路径已经列在 4.5 节。评委阅读代码时可以先按本索引定位对象，再通过 7.2 节验证文件检查其行为。
