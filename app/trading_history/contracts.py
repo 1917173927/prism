@@ -117,7 +117,7 @@ class TradingStyleProfile(ContractModel):
     owner_id: NonEmptyStr
     profile_version: int = Field(ge=1)
     calculated_at: datetime
-    ruleset_version: Literal["trading-style-rules.v1"] = "trading-style-rules.v1"
+    ruleset_version: Literal["trading-style-rules.v1", "trading-style-rules.v2"] = "trading-style-rules.v2"
     status: TradingStyleStatus
     primary_style: NonEmptyStr | None = None
     confidence: Decimal = Field(ge=0, le=1)
@@ -129,10 +129,16 @@ class TradingStyleProfile(ContractModel):
     def validate_profile(self) -> Self:
         if self.calculated_at.tzinfo is None or self.calculated_at.utcoffset() is None:
             raise ValueError("calculated_at must be timezone-aware")
-        if self.status == TradingStyleStatus.INSUFFICIENT_DATA and self.primary_style is not None:
-            raise ValueError("insufficient data must not produce a style label")
-        if self.status != TradingStyleStatus.INSUFFICIENT_DATA and self.primary_style is None:
-            raise ValueError("usable data requires a style label")
+        if self.ruleset_version == "trading-style-rules.v1":
+            if self.status == TradingStyleStatus.INSUFFICIENT_DATA and self.primary_style is not None:
+                raise ValueError("v1 insufficient data must not produce a style label")
+            if self.status != TradingStyleStatus.INSUFFICIENT_DATA and self.primary_style is None:
+                raise ValueError("v1 usable data requires a style label")
+        elif self.metrics.trade_count == 0:
+            if self.status != TradingStyleStatus.INSUFFICIENT_DATA or self.primary_style is not None:
+                raise ValueError("v2 empty history must be insufficient and have no style label")
+        elif self.status == TradingStyleStatus.INSUFFICIENT_DATA or self.primary_style is None:
+            raise ValueError("v2 non-empty history requires a preliminary or calculated style label")
         if len(set(self.active_trade_ids)) != len(self.active_trade_ids):
             raise ValueError("active trade IDs must be unique")
         return self

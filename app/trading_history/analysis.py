@@ -153,7 +153,7 @@ def calculate_trading_style(
             if cumulative >= threshold:
                 median_holding = days
                 break
-    if len(active) < 10 or span < Decimal("30"):
+    if not active:
         status = TradingStyleStatus.INSUFFICIENT_DATA
         style = None
     else:
@@ -212,6 +212,7 @@ def calculate_trading_style(
         owner_id=owner_id,
         profile_version=profile_version,
         calculated_at=calculated_at,
+        ruleset_version="trading-style-rules.v2",
         status=status,
         primary_style=style,
         confidence=_q(confidence, "0.0001"),

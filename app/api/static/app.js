@@ -78,6 +78,8 @@
     tradeImportPreview: null,
     tradeRecords: [],
     tradeListCursor: null,
+    tradeTotal: 0,
+    hasTradeHistory: false,
     displayPolicy: null,
     questionnaireGate: "PENDING",
     questionnaireTemplate: null,
@@ -2844,24 +2846,45 @@
   function renderTradingStyleProfile(profile) {
     state.tradingStyleProfile = profile;
     const panel = byId("trading-style-summary-content");
+    const secondary = byId("trading-style-secondary");
+    const more = byId("trading-style-more");
     const status = byId("trading-style-status");
-    if (!panel || !status) return;
-    clear(panel);
+    if (!panel || !secondary || !more || !status) return;
+    clear(panel); clear(secondary);
     status.textContent = profile?.status || "INSUFFICIENT_DATA";
     status.className = `status-chip ${profile?.status === "CALCULATED" ? "ready" : profile?.status === "PRELIMINARY" ? "warning" : ""}`.trim();
     const metrics = profile?.metrics;
-    if (!metrics) {
-      const empty = document.createElement("div"); empty.className = "empty-state"; empty.textContent = "尚未形成交易风格结果。"; panel.append(empty); return;
+    const boundary = byId("trading-style-risk-boundary");
+    if (!metrics || Number(metrics.trade_count) === 0) {
+      const empty = document.createElement("div"); empty.className = "empty-state"; empty.textContent = "导入一笔交易后即可形成初步风格。"; panel.append(empty);
+      more.hidden = true; if (boundary) boundary.hidden = true; return;
     }
-    panel.append(
-      tradeMetricCard("主风格", profile.primary_style || "样本不足", `${tradeNumber(Number(profile.confidence) * 100, "%")} 置信度`),
+    const hero = document.createElement("div"); hero.className = "trading-style-hero";
+    const heroCopy = document.createElement("div");
+    const heroLabel = document.createElement("span"); heroLabel.textContent = "主风格";
+    const heroTitle = document.createElement("strong"); heroTitle.textContent = profile.primary_style || "待判断";
+    const maturity = profile.status === "CALCULATED" ? "正式判断" : "初步判断";
+    const heroMeta = document.createElement("p"); heroMeta.textContent = `${maturity} · ${metrics.trade_count} 笔 · ${tradeNumber(metrics.observed_span_days, " 天")} · ${tradeNumber(Number(profile.confidence) * 100, "%")} 置信度`;
+    heroCopy.append(heroLabel, heroTitle, heroMeta); hero.append(heroCopy); panel.append(hero);
+    const core = document.createElement("div"); core.className = "trading-style-metrics";
+    core.append(
       tradeMetricCard("月均交易", tradeNumber(metrics.trades_per_month, " 笔"), `${metrics.trade_count} 笔 · ${tradeNumber(metrics.observed_span_days, " 天")}`),
       tradeMetricCard("中位持有期", tradeNumber(metrics.median_holding_days, " 天"), `FIFO 配对覆盖 ${tradeNumber(Number(metrics.matched_sell_coverage) * 100, "%")}`),
       tradeMetricCard("单笔中位金额", metrics.median_trade_amount_cny == null ? "—" : `¥${tradeNumber(metrics.median_trade_amount_cny)}`, "按数量 × 成交价"),
+      tradeMetricCard("交易集中度", tradeNumber(metrics.top3_symbol_share_pct, "%"), `前三标的占比 · HHI ${tradeNumber(metrics.symbol_hhi)}`),
+    );
+    panel.append(core);
+    secondary.append(
       tradeMetricCard("标的 HHI", tradeNumber(metrics.symbol_hhi), `前三标的 ${tradeNumber(metrics.top3_symbol_share_pct, "%")}`),
       tradeMetricCard("90 日换手率", tradeNumber(metrics.turnover_90d_pct, "%"), metrics.turnover_90d_pct == null ? "缺少账户资产观测" : "成交额 ÷ 账户资产均值"),
     );
-    const boundary = byId("trading-style-risk-boundary");
+    if (profile.data_gaps?.length) {
+      const gap = document.createElement("article"); gap.className = "trading-style-note";
+      const label = document.createElement("strong"); label.textContent = "数据缺口";
+      const value = document.createElement("p"); value.textContent = profile.data_gaps.join("；");
+      gap.append(label, value); secondary.append(gap);
+    }
+    more.hidden = false;
     if (boundary) {
       clear(boundary);
       const questionnaire = state.profileSummary?.questionnaire_snapshot?.profile || null;
@@ -2869,17 +2892,24 @@
       const effective = state.profileSummary?.effective_profile || questionnaire;
       const title = document.createElement("div"); title.className = "callout-title"; title.textContent = "双轨风险边界";
       const copy = document.createElement("p");
-      if (!questionnaire) copy.textContent = "尚未形成正式问卷评级；交易记录仅用于描述行为风格。";
-      else if (!behavior?.behavior_risk_score) copy.textContent = `正式问卷 ${tradeNumber(questionnaire.risk_score, " 分")}；当前交易/快照证据不足，不调整正式等级。`;
-      else if (Number(behavior.behavior_risk_score) > Number(questionnaire.risk_score)) copy.textContent = `OVERBOUND：观察行为 ${tradeNumber(behavior.behavior_risk_score, " 分")} 高于问卷 ${tradeNumber(questionnaire.risk_score, " 分")}，正式等级不予上调。`;
-      else copy.textContent = `CALCULATED：问卷 ${tradeNumber(questionnaire.risk_score, " 分")}，观察行为 ${tradeNumber(behavior.behavior_risk_score, " 分")}，当前有效 ${tradeNumber(effective?.risk_score, " 分")}。`;
-      boundary.append(title, copy); boundary.hidden = false;
-    }
-    if (profile.data_gaps?.length) {
-      const gap = document.createElement("article"); gap.className = "trading-style-metric";
-      const label = document.createElement("span"); label.textContent = "数据缺口";
-      const value = document.createElement("small"); value.textContent = profile.data_gaps.join("；");
-      gap.append(label, value); panel.append(gap);
+      if (questionnaire && behavior?.behavior_risk_score != null) {
+        const overbound = Number(behavior.behavior_risk_score) > Number(questionnaire.risk_score);
+        title.textContent = overbound ? "OVERBOUND · 双轨风险边界" : "CALCULATED · 双轨风险边界";
+        copy.textContent = overbound
+          ? `观察行为 ${tradeNumber(behavior.behavior_risk_score, " 分")} 高于问卷 ${tradeNumber(questionnaire.risk_score, " 分")}，正式等级不予上调。`
+          : `问卷 ${tradeNumber(questionnaire.risk_score, " 分")}，观察行为 ${tradeNumber(behavior.behavior_risk_score, " 分")}，当前有效 ${tradeNumber(effective?.risk_score, " 分")}。`;
+        boundary.className = `doc-callout ${overbound ? "doc-callout-warning" : "doc-callout-info"}`;
+        boundary.append(title, copy); boundary.hidden = false;
+      } else {
+        boundary.hidden = true;
+        const note = document.createElement("article"); note.className = "trading-style-note";
+        const noteTitle = document.createElement("strong"); noteTitle.textContent = "正式风险等级";
+        const noteCopy = document.createElement("p");
+        noteCopy.textContent = questionnaire
+          ? `问卷 ${tradeNumber(questionnaire.risk_score, " 分")}；当前行为证据不参与正式等级调整。`
+          : "尚未形成正式问卷评级；交易记录仅用于描述行为风格。";
+        note.append(noteTitle, noteCopy); secondary.append(note);
+      }
     }
   }
 
@@ -2915,6 +2945,15 @@
       wrapper.append(select); fields.append(wrapper);
     });
     panel.hidden = false;
+    const mappedCount = Object.values(preview.suggested_mapping || {}).filter(Boolean).length;
+    byId("trade-mapping-summary").textContent = `字段映射 · 已自动匹配 ${mappedCount}/${TRADE_MAPPING_FIELDS.length}`;
+    const mappingDetails = byId("trade-mapping-details");
+    const requiredMissing = preview.rows.some((row) => {
+      const proposed = row.proposed || {};
+      return !proposed.traded_at || (!proposed.security_code && !proposed.security_name) || !proposed.side || !proposed.quantity || !proposed.price_cny;
+    });
+    mappingDetails.open = Boolean(preview.review_count || preview.rejected_count || requiredMissing);
+    mappingDetails.querySelector("summary")?.setAttribute("aria-expanded", String(mappingDetails.open));
     byId("trade-preview-count").textContent = `${preview.rows.length} 行 · PASS ${preview.accepted_count} · 待复核 ${preview.review_count}`;
     renderTradePreviewRows(preview.rows);
   }
@@ -3000,6 +3039,28 @@
         if (input) input.value = value || "";
       }
     });
+    const selectedCount = [...document.querySelectorAll("[data-trade-map]")].filter(select => select.value).length;
+    byId("trade-mapping-summary").textContent = `字段映射 · 已选择 ${selectedCount}/${TRADE_MAPPING_FIELDS.length}`;
+  }
+
+  function resetTradeImportWorkflow() {
+    state.tradeImportPreview = null;
+    const input = byId("trade-import-files"); if (input) input.value = "";
+    byId("trade-mapping-panel").hidden = true;
+    byId("trade-import-success").hidden = true;
+    byId("trade-import-status").textContent = "等待上传";
+    byId("trade-confirm-hint").textContent = "请逐行核对；存在阻断问题时不能确认。";
+    setTradeImportError(""); setTradeStep(1);
+    const workflow = byId("trade-import-workflow"); workflow.open = true;
+    workflow.querySelector("summary")?.setAttribute("aria-expanded", "true");
+    input?.focus();
+  }
+
+  function bindTradeDisclosure(id) {
+    const details = byId(id); if (!details) return;
+    const summary = details.querySelector(":scope > summary");
+    const sync = () => summary?.setAttribute("aria-expanded", String(details.open));
+    details.addEventListener("toggle", sync); sync();
   }
 
   function collectTradeConfirmRows() {
@@ -3051,6 +3112,14 @@
       const duplicateCount = Number(result.batch?.duplicate_count || 0);
       byId("trade-import-status").textContent = duplicateCount ? `CALCULATED · 排除 ${duplicateCount} 笔疑似重复` : "CALCULATED";
       if (duplicateCount) byId("trade-confirm-hint").textContent = `已按默认规则排除 ${duplicateCount} 笔精确或疑似重复交易。`;
+      const acceptedCount = Number(result.batch?.accepted_count || 0);
+      byId("trade-import-success-copy").textContent = duplicateCount
+        ? `已导入 ${acceptedCount} 笔，排除 ${duplicateCount} 笔疑似重复记录。`
+        : `已导入 ${acceptedCount} 笔交易记录。`;
+      byId("trade-import-success").hidden = false;
+      const workflow = byId("trade-import-workflow"); workflow.open = false;
+      workflow.querySelector("summary")?.setAttribute("aria-expanded", "false");
+      state.tradeImportPreview = null;
       await refreshTradeDependentProfiles(result.style_profile);
       await loadTradeRecords(true);
     } catch (error) { setTradeImportError(error.message); }
@@ -3090,7 +3159,13 @@
     if (!response.ok) throw await apiError(response);
     const result = await response.json();
     state.tradeRecords = reset ? result.items : [...state.tradeRecords, ...result.items]; state.tradeListCursor = result.next_cursor;
+    state.tradeTotal = result.total;
+    if (result.total > 0) state.hasTradeHistory = true;
     byId("trade-history-count").textContent = `${result.total} 笔`; renderTradeRecords();
+    if (reset && !state.tradeImportPreview && byId("trade-import-success").hidden) {
+      const workflow = byId("trade-import-workflow"); workflow.open = !state.hasTradeHistory;
+      workflow.querySelector("summary")?.setAttribute("aria-expanded", String(workflow.open));
+    }
   }
 
   function openTradeEdit(item) {
@@ -12798,9 +12873,11 @@
   byId("apply-trade-mapping")?.addEventListener("click", applyTradeMapping);
   byId("trade-sheet-selector")?.addEventListener("change", () => previewTradeImport());
   byId("confirm-trade-import")?.addEventListener("click", confirmTradeImport);
-  byId("refresh-trading-style")?.addEventListener("click", () => loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message)));
+  byId("continue-trade-import")?.addEventListener("click", resetTradeImportWorkflow);
   byId("apply-trade-filters")?.addEventListener("click", () => loadTradeRecords(true).catch(error => setTradeImportError(error.message)));
+  byId("trade-filter-security")?.addEventListener("keydown", (event) => { if (event.key === "Enter") loadTradeRecords(true).catch(error => setTradeImportError(error.message)); });
   byId("load-more-trades")?.addEventListener("click", () => loadTradeRecords(false).catch(error => setTradeImportError(error.message)));
+  ["trade-import-workflow", "trade-mapping-details", "trade-advanced-filters", "trading-style-more", "trade-boundary-details"].forEach(bindTradeDisclosure);
   byId("trade-edit-form")?.addEventListener("submit", saveTradeEdit);
   byId("trade-edit-cancel")?.addEventListener("click", () => byId("trade-edit-dialog").close());
   byId("theme-toggle")?.addEventListener("click", () => {

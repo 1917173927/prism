@@ -1518,7 +1518,7 @@ def create_app(
         owner_id: str = Depends(owner_dependency),
     ) -> TradingStyleLookupResponse:
         profile = active_store.get_latest_trading_style_profile(owner_id)
-        if profile is None:
+        if profile is None or profile.ruleset_version != "trading-style-rules.v2":
             profile = _recalculate_trading_style(owner_id)
         return TradingStyleLookupResponse(profile=profile)
 

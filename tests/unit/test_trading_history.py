@@ -11,6 +11,7 @@ from app.trading_history import (
     ImportParseError,
     TradeRecordStatus,
     TradeSide,
+    TradingStyleProfile,
     calculate_trading_style,
     preview_trade_files,
 )
@@ -40,10 +41,44 @@ def trade(index: int, *, side: TradeSide, quantity: str = "100") -> HistoricalTr
     )
 
 
-def test_style_requires_minimum_sample_and_is_deterministic() -> None:
-    insufficient = calculate_trading_style(OWNER, (trade(0, side=TradeSide.BUY),), calculated_at=NOW)
-    assert insufficient.status.value == "INSUFFICIENT_DATA"
-    assert insufficient.primary_style is None
+def test_style_labels_start_with_first_trade_and_are_deterministic() -> None:
+    empty = calculate_trading_style(OWNER, (), calculated_at=NOW)
+    assert empty.status.value == "INSUFFICIENT_DATA"
+    assert empty.primary_style is None
+
+    first_trade = calculate_trading_style(OWNER, (trade(0, side=TradeSide.BUY),), calculated_at=NOW)
+    assert first_trade.status.value == "PRELIMINARY"
+    assert first_trade.primary_style == "稳健均衡型"
+    assert first_trade.ruleset_version == "trading-style-rules.v2"
+
+    legacy_payload = first_trade.model_dump(mode="python") | {
+        "ruleset_version": "trading-style-rules.v1",
+        "status": "INSUFFICIENT_DATA",
+        "primary_style": None,
+    }
+    assert TradingStyleProfile.model_validate(legacy_payload).ruleset_version == "trading-style-rules.v1"
+
+    sample_rows = (
+        ("2026-09-09T09:25:00+08:00", TradeSide.BUY, "1700", "12.400"),
+        ("2026-09-09T13:14:00+08:00", TradeSide.BUY, "900", "12.200"),
+        ("2026-09-09T13:21:00+08:00", TradeSide.BUY, "900", "12.080"),
+        ("2026-09-10T09:30:00+08:00", TradeSide.SELL, "3500", "11.660"),
+        ("2026-09-10T10:05:00+08:00", TradeSide.BUY, "1200", "11.440"),
+        ("2026-09-14T10:42:00+08:00", TradeSide.SELL, "1000", "13.180"),
+        ("2026-09-14T10:43:00+08:00", TradeSide.SELL, "200", "13.180"),
+    )
+    seven = tuple(
+        trade(index, side=side, quantity=quantity).model_copy(update={
+            "traded_at": datetime.fromisoformat(traded_at),
+            "price_cny": Decimal(price),
+            "gross_amount_cny": Decimal(quantity) * Decimal(price),
+        })
+        for index, (traded_at, side, quantity, price) in enumerate(sample_rows)
+    )
+    seven_profile = calculate_trading_style(OWNER, seven, calculated_at=NOW)
+    assert seven_profile.status.value == "PRELIMINARY"
+    assert seven_profile.primary_style == "主动波段型"
+    assert seven_profile.confidence == Decimal("0.2742")
 
     records = tuple(
         trade(index, side=TradeSide.BUY if index < 25 else TradeSide.SELL)

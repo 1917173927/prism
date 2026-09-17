@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.api.main import create_app
 from app.profile.questionnaire import QUESTIONNAIRE_TEMPLATE
 from app.store import SQLiteDecisionEventStore
-from app.trading_history import TradeImportPreview
+from app.trading_history import TradeImportPreview, TradingStyleProfile
 
 
 NOW = datetime(2026, 9, 17, 8, tzinfo=UTC)
@@ -83,6 +83,19 @@ def test_preview_confirm_list_edit_withdraw_and_restore() -> None:
         assert behavior.behavior_risk_score is None
         assert behavior.effective_risk_score == Decimal(questionnaire.json()["snapshot"]["profile"]["risk_score"])
 
+        legacy = TradingStyleProfile.model_validate(body["style_profile"] | {
+            "profile_id": "trading-style:legacy-v1",
+            "profile_version": body["style_profile"]["profile_version"] + 1,
+            "ruleset_version": "trading-style-rules.v1",
+            "status": "INSUFFICIENT_DATA",
+            "primary_style": None,
+        })
+        store.save_trading_style_profile(legacy)
+        upgraded = client.get("/api/v1/advisor/trading-style/profile", headers=headers)
+        assert upgraded.status_code == 200
+        assert upgraded.json()["profile"]["ruleset_version"] == "trading-style-rules.v2"
+        assert upgraded.json()["profile"]["primary_style"] == body["style_profile"]["primary_style"]
+
         repeated = client.post("/api/v1/advisor/trading-history/imports", headers=headers, json=payload)
         assert repeated.status_code == 200
         assert repeated.json()["batch"]["batch_id"] == body["batch"]["batch_id"]
@@ -147,10 +160,27 @@ def test_trade_page_is_a_primary_navigation_workspace() -> None:
     assert 'id="trade-import-files"' in html
     assert 'id="trade-sheet-selector"' in html
     assert 'id="trade-history-rows"' in html
+    assert 'id="trade-mapping-details"' in html
+    assert 'id="trade-import-workflow"' in html
+    assert 'id="trade-import-success"' in html
+    assert 'id="continue-trade-import"' in html
+    assert 'id="trade-advanced-filters"' in html
+    assert 'id="trade-boundary-details"' in html
+    assert 'id="trading-style-more"' in html
+    assert 'id="refresh-trading-style"' not in html
+    mapping_start = html.index('id="trade-mapping-details"')
+    preview_start = html.index('class="trade-preview-heading"')
+    assert mapping_start < preview_start
+    assert "</details>" in html[mapping_start:preview_start]
     assert '"trading-style": "trading-style"' in script
     assert "function renderTradingStyleProfile(" in script
     assert "function previewTradeImport(" in script
+    assert "mappingDetails.open = Boolean(preview.review_count || preview.rejected_count || requiredMissing)" in script
+    assert "workflow.open = false" in script
+    assert "function resetTradeImportWorkflow(" in script
+    assert "workflow.open = !state.hasTradeHistory" in script
     assert ".trading-style-page" in styles
+    assert ".trading-style-hero" in styles
 
 
 def test_screenshot_preview_resolves_security_code_once_per_unique_name(monkeypatch) -> None:
