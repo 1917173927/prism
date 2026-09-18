@@ -26,20 +26,32 @@ let abortCount=0;
 const activeChatController={abort:()=>abortCount++};
 let chatContextRevision=0;
 const chatHistory=[{role:'user',content:'old'}];
+const chatSessions=[{id:'old-session',title:'旧对话',messages:[...chatHistory]}];
+let activeChatSessionId='old-session';
+const CHAT_SESSION_LIMIT=12;
+const CHAT_LEGACY_STORAGE_KEY='prism_copilot_chat_history_v2';
+const activeChatSession=()=>chatSessions.find(session=>session.id===activeChatSessionId)||null;
+const createChatSessionRecord=()=>({id:'new-session',title:'新对话',messages:[]});
 const storage=new Map([
   ['owner:chat','history'],
   ['owner:model','model-secret-reference'],
   ['owner:portfolio','portfolio-snapshot'],
 ]);
 const workspaceStorage={removeItem:key=>storage.delete(key)};
-const ownerStorageKey=key=>key==='prism_copilot_chat_history_v2'?'owner:chat':`owner:${key}`;
+const ownerStorageKey=key=>key===CHAT_LEGACY_STORAGE_KEY?'owner:chat':`owner:${key}`;
 const clear=node=>{node.children=[];};
 const renderChatWelcome=()=>byId('copilot-chat-messages').children.push('welcome');
+const renderActiveChatMessages=()=>{clear(byId('copilot-chat-messages'));renderChatWelcome();byId('copilot-chat-panel').style.display='block';};
+const renderChatSessionList=()=>{};
+const persistChatSessions=()=>{};
+const setAgentFeatureToolsCompact=()=>{};
 '''+function+r'''
 clearConversationContext();
 assert.equal(abortCount,1);
 assert.equal(chatContextRevision,1);
 assert.deepEqual(chatHistory,[]);
+assert.equal(chatSessions.length,2);
+assert.equal(activeChatSessionId,'new-session');
 assert.equal(storage.has('owner:chat'),false);
 assert.equal(storage.get('owner:model'),'model-secret-reference');
 assert.equal(storage.get('owner:portfolio'),'portfolio-snapshot');
@@ -66,6 +78,7 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
     function += "\n" + "\n".join(re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
                                   for name in [
                                       "createLinkedTimeoutController",
+                                      "completedHistoryForScope",
                                       "profileLevelText", "currentProfileTag", "activeProfileTag", "recordTruthTurnAlert",
                                   ])
     probe = r'''
@@ -94,7 +107,8 @@ const clearChatEmptyState=()=>{};
 const nodes=new Map();
 const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
 const document={createElement:()=>new Element()};
-const state={ownerId:'owner',selectedPersona:'custom-user'};
+const state={ownerId:'owner',selectedPersona:'custom-user',dataMode:'MOCK'};
+const accountAccessEnabled=false;
 const PERSONAS={}, DEFAULT_USER_PROFILE={}, llmConfig={}, chatHistory=[];
 let truthResult={revision:1,status:'LOCKED'};
 let truthFailure=null;
@@ -140,6 +154,15 @@ const fetch=async(url,options)=>{fetchCalls++;lastFetchOptions=options;return ne
  assert.deepEqual(body.history,[]);
  assert.match(byId('copilot-chat-messages').textContent,/通用回答/);
  assert.equal(chatHistory.filter(x=>x.role==='assistant').length,1);
+
+ wire='data: {"type":"token","delta":"追问回答"}\n\ndata: [DONE]\n\n'.replaceAll('\\n','\n');
+ await handleStreamingChat('那市净率呢');
+ const followUpBody=JSON.parse(lastFetchOptions.body);
+ assert.deepEqual(followUpBody.history,[
+   {role:'user',content:'不依赖持仓的一般问题'},
+   {role:'assistant',content:'通用回答'},
+ ]);
+ assert.equal(chatHistory.at(-1).content,'追问回答');
 
  for(const unavailableTruth of [null,'throw']){
   truthResult=unavailableTruth;truthFailure=unavailableTruth==='throw'?new Error('truth unavailable'):null;

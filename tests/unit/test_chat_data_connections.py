@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import create_app
-from app.llm.agent import CopilotAgent
+from app.llm.agent import CopilotAgent, CopilotMessage
+from app.llm.client import AsyncLLMClient
 from app.llm.prompts import COPILOT_TOOLS
 from app.providers.contracts import ProviderOperation, ProviderStatus
 from app.providers.fuyao import FuyaoProviderError
@@ -34,6 +35,46 @@ def test_live_or_personal_questions_still_require_tools(question):
 
 def test_compound_greeting_does_not_require_tools():
     assert not CopilotAgent._requires_grounded_tool("你好，你是谁，你能干什么")
+
+
+def test_general_follow_up_history_resolves_references_without_becoming_financial_fact():
+    class RecordingClient(AsyncLLMClient):
+        def __init__(self):
+            self.routed_messages = None
+            self.generated_messages = None
+
+        @property
+        def is_configured(self):
+            return True
+
+        async def requires_financial_tools(self, messages):
+            self.routed_messages = messages
+            return False
+
+        async def stream_chat(self, messages, **_kwargs):
+            self.generated_messages = messages
+            yield {"type": "content", "delta": "市净率用于观察价格与净资产的关系。"}
+
+    client = RecordingClient()
+    agent = CopilotAgent(llm_client=client)
+
+    async def collect():
+        return [chunk async for chunk in agent.stream_chat(
+            "那市净率呢",
+            history=[
+                CopilotMessage(role="user", content="什么是市盈率"),
+                CopilotMessage(role="assistant", content="市盈率用于观察价格与盈利的关系。"),
+            ],
+        )]
+
+    chunks = asyncio.run(collect())
+    assert [message["content"] for message in client.generated_messages[1:]] == [
+        "什么是市盈率",
+        "市盈率用于观察价格与盈利的关系。",
+        "那市净率呢",
+    ]
+    assert "历史消息仅用于理解指代和追问" in client.generated_messages[0]["content"]
+    assert any(chunk.get("delta") == "市净率用于观察价格与净资产的关系。" for chunk in chunks)
 
 
 def test_structured_financial_tool_is_exposed_and_validated():

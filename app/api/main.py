@@ -289,6 +289,11 @@ class LiveProviderQueryRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
+class CopilotHistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=8000)
+
+
 class CopilotChatApiRequest(BaseModel):
     message: str
     model_mode: Literal["AUTO", "LIVE", "MOCK"] = "AUTO"
@@ -299,11 +304,34 @@ class CopilotChatApiRequest(BaseModel):
     persona_id: str | None = "persona-zhang-r3"
     persona_info: dict[str, Any] | None = None
     portfolio_context: dict[str, Any] | None = None
-    history: list[dict[str, Any]] | None = None
+    history: list[CopilotHistoryMessage] | None = Field(default=None, max_length=6)
     stream: bool = True
     llm_config: dict[str, Any] | None = None
     session_truth_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]{1,100}$")
     session_truth_revision: int | None = Field(default=None, ge=1)
+
+
+def _mock_copilot_reply(request: CopilotChatApiRequest) -> str:
+    history = request.history or []
+    previous_question = next((item.content for item in reversed(history) if item.role == "user"), None)
+    if previous_question:
+        safe_previous = re.sub(r"\s+", " ", previous_question).replace("`", "'").replace("|", "／")[:80]
+        return (
+            "## 追问演示回复\n\n"
+            f"系统已读取本会话最近 **{len(history)} 条历史消息**，并将当前输入识别为连续追问。\n\n"
+            f"- 上一轮问题：`{safe_previous}`\n"
+            "- 上下文范围：仅限当前会话；画像与持仓仍以已锁定资料版本为准。\n"
+            "- 演示边界：MOCK 模式只验证历史传递和追问衔接，不生成证券判断或调仓数值。\n\n"
+            "正式分析请切换真实模型与数据接口。仅供演示参考，不构成投资建议。"
+        )
+    return (
+        "## 演示回复\n\n当前为 **AI 模拟模式**。\n\n"
+        "- 本轮已建立独立会话记录，可继续输入追问。\n"
+        "- 后续追问只读取本会话、同一资料版本的最近消息。\n"
+        "- 正式分析请切换真实接口并配置模型。\n\n"
+        "|项目|状态|\n|---|---|\n|模型调用|模拟数据|\n|投资结论|未生成|\n\n"
+        "仅供演示参考，不构成投资建议。"
+    )
 
 
 class CopilotParsePortfolioApiRequest(BaseModel):
@@ -3095,9 +3123,9 @@ def create_app(
         if scoped_owner is not None and req.owner_id is not None and scoped_owner != req.owner_id:
             raise StoreOwnerError("chat owner does not match owner scope")
         if not req.session_truth_id:
-            # An unlocked turn is general chat only.  Do not trust profile or
-            # portfolio claims supplied without a server-verified truth lock,
-            # including stale assistant history from an earlier snapshot.
+            # An unlocked turn is general chat only. Conversation history may
+            # resolve follow-up references, but it cannot establish profile,
+            # portfolio, quote or recommendation facts without a truth lock.
             req.profile_version = None
             req.behavior_profile_version = None
             req.portfolio_snapshot_id = None
@@ -3190,11 +3218,11 @@ def create_app(
                     yield "data: " + json.dumps({"type": "error", "message": "正式账户不启用 AI Mock 回复"}, ensure_ascii=False) + "\n\n"
                     yield "data: [DONE]\n\n"
                     return
-                payload = {"type": "token", "delta": "## 演示回复\n\n当前为 **AI 模拟模式**。\n\n- 可测试对话、持仓导入与页面联动。\n- 正式分析请切换真实接口并配置模型。\n\n|项目|状态|\n|---|---|\n|模型调用|模拟数据|\n|投资结论|未生成|\n\n仅供演示参考，不构成投资建议。"}
+                payload = {"type": "token", "delta": _mock_copilot_reply(req)}
                 yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
                 yield "data: [DONE]\n\n"
                 return
-            history_objs = [CopilotMessage(role=m.get("role", "user"), content=m.get("content", "")) for m in (req.history or [])]
+            history_objs = [CopilotMessage(role=message.role, content=message.content) for message in (req.history or [])]
             async with aclosing(copilot_agent.stream_chat(
                 user_message=req.message,
                 history=history_objs,

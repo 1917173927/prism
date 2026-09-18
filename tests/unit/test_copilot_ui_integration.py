@@ -312,8 +312,8 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
     assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
-    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260916-' in markup
-    assert '<script src="/static/app.js?v=20260916-' in markup
+    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260918-' in markup
+    assert '<script src="/static/app.js?v=20260918-' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
@@ -363,10 +363,10 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert 'setPipelineStepState(s2, "failed")' in script
     assert 'setPipelineStepState(s3, "skipped")' in script
     assert 'stepEl.classList.remove("pending", "active", "completed", "skipped", "failed")' in script
-    assert 'id="btn-clear-chat" class="clear-chat-btn" type="button" title="清除本机保存的对话历史并开始新对话">清空上下文</button>' in markup
+    assert 'id="btn-clear-chat" class="clear-chat-btn" type="button" title="保留当前记录并开始新对话">新对话</button>' in markup
     assert "function clearConversationContext()" in script
     assert "if (activeChatController) activeChatController.abort();" in script
-    assert 'workspaceStorage.removeItem(ownerStorageKey("prism_copilot_chat_history_v2"))' in script
+    assert 'workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY))' in script
     assert 'clearChatBtn.addEventListener("click", clearConversationContext)' in script
     assert "const CHAT_PRECHECK_TIMEOUT_MS = 8000;" in script
     assert "const CHAT_STREAM_IDLE_TIMEOUT_MS = 15000;" in script
@@ -377,6 +377,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     market_block = script[market_start:market_end]
     assert "buildMarketFeatureResultCard" in market_block
     assert 'window.location.hash = "market";' not in market_block
+
 
     assert "Agent home is defined here as a complete composition" in v2_styles
     for selector in (
@@ -416,6 +417,31 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
         "#15535e",
     ):
         assert legacy_teal not in v2_styles.lower()
+
+
+def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
+    markup = (STATIC / "index.html").read_text(encoding="utf-8")
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
+
+    for node_id in ("chat-history-title", "new-chat-session", "chat-session-list", "active-chat-title"):
+        assert f'id="{node_id}"' in markup
+    assert "暂无历史对话" in markup
+    assert "同一会话、同一资料版本" in markup
+    for token in (
+        'const CHAT_SESSIONS_STORAGE_KEY = "prism_copilot_chat_sessions_v1"',
+        "function renderChatSessionList()",
+        "function formatChatSessionTime(value)",
+        "function activateChatSession(sessionId)",
+        "function deleteChatSession(sessionId)",
+        "function completedHistoryForScope(contextScope)",
+        "history: completedHistoryForScope(contextScope)",
+        '`truth:workbench:${chatTruth.revision}`',
+        '!accountAccessEnabled && state.dataMode === "MOCK"',
+    ):
+        assert token in script
+    for selector in (".chat-history-panel", ".chat-session-item.is-active", ".chat-session-delete"):
+        assert selector in styles
 
 
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:

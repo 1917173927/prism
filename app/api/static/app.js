@@ -10149,6 +10149,12 @@
   }
 
   const chatHistory = [];
+  const chatSessions = [];
+  let activeChatSessionId = null;
+  const CHAT_SESSIONS_STORAGE_KEY = "prism_copilot_chat_sessions_v1";
+  const CHAT_LEGACY_STORAGE_KEY = "prism_copilot_chat_history_v2";
+  const CHAT_SESSION_LIMIT = 12;
+  const CHAT_MESSAGE_LIMIT = 40;
 
   const CONVERSATION_PROFILE_QUESTIONS = Object.freeze([
     {
@@ -10340,60 +10346,227 @@
     appendChatMessage("assistant", "画像补充已确认。后续回答会使用这些信息；正式风险测评等级没有提高。若信息与测评冲突，系统始终采用更保守的边界。");
   }
 
-  function loadCopilotChatHistory() {
+  function createChatSessionRecord(messages = [], title = "新对话") {
+    const now = new Date().toISOString();
+    const suffix = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return { id: `chat-${suffix}`, title, messages, created_at: now, updated_at: now };
+  }
+
+  function normalizeStoredChatMessage(message, legacy = false) {
+    if (!message || !["user", "assistant"].includes(message.role) || typeof message.content !== "string") return null;
+    const content = message.content.trim();
+    if (!content) return null;
+    const contextScope = typeof message.context_scope === "string" && message.context_scope
+      ? message.context_scope
+      : legacy ? "legacy" : "general";
+    return { role: message.role, content: content.slice(0, 8000), context_scope: contextScope };
+  }
+
+  function normalizeStoredChatSession(session) {
+    if (!session || typeof session.id !== "string" || !Array.isArray(session.messages)) return null;
+    const messages = session.messages
+      .map(message => normalizeStoredChatMessage(message))
+      .filter(Boolean)
+      .slice(-CHAT_MESSAGE_LIMIT);
+    return {
+      id: session.id,
+      title: typeof session.title === "string" && session.title.trim() ? session.title.trim().slice(0, 36) : "新对话",
+      messages,
+      created_at: session.created_at || new Date().toISOString(),
+      updated_at: session.updated_at || session.created_at || new Date().toISOString(),
+    };
+  }
+
+  function activeChatSession() {
+    return chatSessions.find(session => session.id === activeChatSessionId) || null;
+  }
+
+  function formatChatSessionTime(value) {
+    const timestamp = Date.parse(value || "");
+    if (!Number.isFinite(timestamp)) return "";
+    const date = new Date(timestamp);
+    const pad = number => String(number).padStart(2, "0");
+    const now = new Date();
+    if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()) {
+      return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+    return `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  function renderActiveChatMessages() {
+    const messagesContainer = byId("copilot-chat-messages");
+    if (!messagesContainer) return;
+    clear(messagesContainer);
+    if (!chatHistory.length) {
+      renderChatWelcome();
+    } else {
+      chatHistory.forEach(message => appendChatMessage(message.role, message.content));
+    }
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    const panel = byId("copilot-chat-panel");
+    if (panel) panel.style.display = "block";
+    const title = byId("active-chat-title");
+    if (title) title.textContent = activeChatSession()?.title || "投资研究会话";
+    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(chatHistory.length > 0);
+  }
+
+  function renderChatSessionList() {
+    const list = byId("chat-session-list");
+    if (!list) return;
+    clear(list);
+    const recorded = chatSessions;
+    if (!recorded.length) {
+      const empty = document.createElement("p");
+      empty.className = "chat-history-empty";
+      empty.textContent = "暂无历史对话";
+      list.append(empty);
+      return;
+    }
+    recorded.forEach(session => {
+      const item = document.createElement("div");
+      item.className = `chat-session-item${session.id === activeChatSessionId ? " is-active" : ""}`;
+      item.setAttribute("role", "listitem");
+      const select = document.createElement("button");
+      select.type = "button";
+      select.className = "chat-session-select";
+      select.setAttribute("aria-label", `打开对话：${session.title}`);
+      const label = document.createElement("strong");
+      label.textContent = session.title;
+      const rounds = document.createElement("small");
+      const answerCount = session.messages.filter(message => message.role === "assistant").length;
+      const updated = formatChatSessionTime(session.updated_at);
+      rounds.textContent = `${answerCount} 轮问答${updated ? ` · ${updated}` : ""}`;
+      select.append(label, rounds);
+      select.addEventListener("click", () => activateChatSession(session.id));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "chat-session-delete";
+      remove.textContent = "×";
+      remove.setAttribute("aria-label", `删除对话：${session.title}`);
+      remove.addEventListener("click", event => { event.stopPropagation(); deleteChatSession(session.id); });
+      item.append(select, remove);
+      list.append(item);
+    });
+  }
+
+  function persistChatSessions() {
     try {
-      const saved = workspaceStorage.getItem(ownerStorageKey("prism_copilot_chat_history_v2"));
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed) || parsed.length === 0) return;
-
-      const chatPanel = byId("copilot-chat-panel");
-      const messagesContainer = byId("copilot-chat-messages");
-      if (!messagesContainer) return;
-      clear(messagesContainer);
-
-      chatHistory.length = 0;
-      parsed.forEach(msg => {
-        chatHistory.push(msg);
-        const row = document.createElement("div");
-        row.className = `chat-msg ${msg.role}`;
-        const avatar = document.createElement("div");
-        avatar.className = "chat-avatar";
-        avatar.textContent = msg.role === "user" ? "你" : "P";
-        const bubble = document.createElement("div");
-        bubble.className = "chat-bubble";
-        if (msg.role === "assistant") renderAssistantMarkdown(bubble, msg.content); else bubble.textContent = msg.content;
-        row.append(avatar, bubble);
-        messagesContainer.append(row);
-      });
-
-      if (chatPanel) chatPanel.style.display = "block";
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
+      const payload = {
+        schema_version: "copilot-chat-sessions.v1",
+        active_session_id: activeChatSessionId,
+        sessions: chatSessions.slice(0, CHAT_SESSION_LIMIT),
+      };
+      workspaceStorage.setItem(ownerStorageKey(CHAT_SESSIONS_STORAGE_KEY), JSON.stringify(payload));
+      workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
     } catch (e) {}
   }
 
-  function saveCopilotChatHistory() {
+  function activateChatSession(sessionId) {
+    if (activeChatController) return;
+    const session = chatSessions.find(item => item.id === sessionId);
+    if (!session) return;
+    activeChatSessionId = session.id;
+    chatHistory.splice(0, chatHistory.length, ...session.messages);
+    renderActiveChatMessages();
+    renderChatSessionList();
+    persistChatSessions();
+  }
+
+  function deleteChatSession(sessionId) {
+    if (activeChatController) return;
+    const index = chatSessions.findIndex(session => session.id === sessionId);
+    if (index < 0) return;
+    const deletingActive = activeChatSessionId === sessionId;
+    chatSessions.splice(index, 1);
+    if (!chatSessions.length) chatSessions.push(createChatSessionRecord());
+    if (deletingActive) activeChatSessionId = chatSessions[0].id;
+    const active = activeChatSession();
+    chatHistory.splice(0, chatHistory.length, ...(active?.messages || []));
+    renderActiveChatMessages();
+    renderChatSessionList();
+    persistChatSessions();
+  }
+
+  function loadCopilotChatHistory() {
+    chatSessions.length = 0;
     try {
-      workspaceStorage.setItem(ownerStorageKey("prism_copilot_chat_history_v2"), JSON.stringify(chatHistory.slice(-20)));
+      const saved = workspaceStorage.getItem(ownerStorageKey(CHAT_SESSIONS_STORAGE_KEY));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.schema_version === "copilot-chat-sessions.v1" && Array.isArray(parsed.sessions)) {
+          parsed.sessions.map(normalizeStoredChatSession).filter(Boolean).slice(0, CHAT_SESSION_LIMIT).forEach(session => chatSessions.push(session));
+          activeChatSessionId = typeof parsed.active_session_id === "string" ? parsed.active_session_id : null;
+        }
+      }
+      if (!chatSessions.length) {
+        const legacy = workspaceStorage.getItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
+        const legacyMessages = legacy ? JSON.parse(legacy) : [];
+        if (Array.isArray(legacyMessages) && legacyMessages.length) {
+          const messages = legacyMessages.map(message => normalizeStoredChatMessage(message, true)).filter(Boolean);
+          chatSessions.push(createChatSessionRecord(messages.slice(-CHAT_MESSAGE_LIMIT), messages.find(message => message.role === "user")?.content.slice(0, 36) || "历史对话"));
+        }
+      }
     } catch (e) {}
+    if (!chatSessions.length) chatSessions.push(createChatSessionRecord());
+    if (!chatSessions.some(session => session.id === activeChatSessionId)) activeChatSessionId = chatSessions[0].id;
+    const active = activeChatSession();
+    chatHistory.splice(0, chatHistory.length, ...(active?.messages || []));
+    renderActiveChatMessages();
+    renderChatSessionList();
+    persistChatSessions();
+  }
+
+  function saveCopilotChatHistory() {
+    let session = activeChatSession();
+    if (!session) {
+      session = createChatSessionRecord();
+      chatSessions.unshift(session);
+      activeChatSessionId = session.id;
+    }
+    session.messages = chatHistory.slice(-CHAT_MESSAGE_LIMIT);
+    const firstQuestion = session.messages.find(message => message.role === "user")?.content;
+    if (firstQuestion && session.title === "新对话") session.title = firstQuestion.slice(0, 36);
+    session.updated_at = new Date().toISOString();
+    renderChatSessionList();
+    const title = byId("active-chat-title");
+    if (title) title.textContent = session.title;
+    persistChatSessions();
+  }
+
+  function completedHistoryForScope(contextScope) {
+    const currentTurnIndex = chatHistory.length - 1;
+    const scoped = chatHistory.slice(0, currentTurnIndex).filter(message => message.context_scope === contextScope);
+    let completedEnd = scoped.length;
+    while (completedEnd > 0 && scoped[completedEnd - 1].role !== "assistant") completedEnd -= 1;
+    return scoped.slice(0, completedEnd).slice(-6).map(message => ({ role: message.role, content: message.content }));
   }
 
   function clearConversationContext() {
     chatContextRevision += 1;
     if (activeChatController) activeChatController.abort();
+    const current = activeChatSession();
+    if (!current || current.messages.length > 0) {
+      for (let index = chatSessions.length - 1; index >= 0; index -= 1) {
+        if (chatSessions[index].messages.length === 0) chatSessions.splice(index, 1);
+      }
+      const session = createChatSessionRecord();
+      chatSessions.unshift(session);
+      activeChatSessionId = session.id;
+      if (chatSessions.length > CHAT_SESSION_LIMIT) chatSessions.length = CHAT_SESSION_LIMIT;
+    }
     chatHistory.length = 0;
-    workspaceStorage.removeItem(ownerStorageKey("prism_copilot_chat_history_v2"));
+    workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
     const input = byId("copilot-natural-input");
     if (input) input.value = "";
     const progress = byId("chat-send-progress");
     if (progress) { progress.hidden = false; progress.textContent = "理解问题 → 查询数据 → 核验依据 → 组织回答"; }
-    const msgs = byId("copilot-chat-messages");
-    if (msgs) { clear(msgs); renderChatWelcome(); }
     const output = byId("copilot-decision-output");
     if (output) clear(output);
-    const panel = byId("copilot-chat-panel");
-    if (panel) panel.style.display = "block";
+    renderActiveChatMessages();
+    renderChatSessionList();
+    persistChatSessions();
     if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(false);
   }
 
@@ -10566,7 +10739,8 @@
     messagesContainer.append(aiMsgRow);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-    chatHistory.push({ role: "user", content: query });
+    const contextScope = chatTruth?.revision ? `truth:workbench:${chatTruth.revision}` : "general";
+    chatHistory.push({ role: "user", content: query, context_scope: contextScope });
     saveCopilotChatHistory();
 
     const persona = PERSONAS[state.selectedPersona || "custom-user"] || DEFAULT_USER_PROFILE;
@@ -10578,7 +10752,9 @@
         signal,
         body: JSON.stringify({
           message: query,
-          model_mode: byId("chat-runtime-mode")?.value || "AUTO",
+          model_mode: !accountAccessEnabled && state.dataMode === "MOCK"
+            ? "MOCK"
+            : byId("chat-runtime-mode")?.value || "AUTO",
           session_truth_id: chatTruth?.revision ? "workbench" : null,
           session_truth_revision: chatTruth?.revision || null,
           owner_id: state.ownerId,
@@ -10594,7 +10770,7 @@
           } : null,
           // The current query is already passed as `message`; do not duplicate
           // the just-appended user turn in conversational history.
-          history: chatTruth ? chatHistory.slice(-7, -1) : [],
+          history: completedHistoryForScope(contextScope),
           stream: true,
           llm_config: llmConfig.apiKey ? {
             api_key: llmConfig.apiKey,
@@ -10786,7 +10962,7 @@
       cursor.remove();
       thinkingBox.style.display = "none";
       renderAssistantMarkdown(contentBox, fullText);
-      chatHistory.push({ role: "assistant", content: fullText });
+      chatHistory.push({ role: "assistant", content: fullText, context_scope: contextScope });
       saveCopilotChatHistory();
     } catch (err) {
       cursor.remove();
@@ -12936,6 +13112,8 @@
   if (clearChatBtn) {
     clearChatBtn.addEventListener("click", clearConversationContext);
   }
+  const newChatSessionBtn = byId("new-chat-session");
+  if (newChatSessionBtn) newChatSessionBtn.addEventListener("click", clearConversationContext);
 
   const conversationProfileBtn = byId("start-conversation-profile-update");
   if (conversationProfileBtn) conversationProfileBtn.addEventListener("click", startConversationProfileUpdate);
