@@ -295,7 +295,8 @@ class CopilotHistoryMessage(BaseModel):
 
 
 class CopilotChatApiRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=8000)
+    conversation_id: str | None = Field(default=None, pattern=r"^chat-[A-Za-z0-9_.-]{8,95}$")
     model_mode: Literal["AUTO", "LIVE", "MOCK"] = "AUTO"
     owner_id: str | None = None
     profile_version: int | None = None
@@ -309,6 +310,32 @@ class CopilotChatApiRequest(BaseModel):
     llm_config: dict[str, Any] | None = None
     session_truth_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]{1,100}$")
     session_truth_revision: int | None = Field(default=None, ge=1)
+
+
+class CopilotConversationCreateRequest(BaseModel):
+    title: str = Field(default="新对话", min_length=1, max_length=36)
+
+
+class CopilotConversationRenameRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=36)
+
+
+def _completed_conversation_history(
+    messages: list[dict[str, Any]], context_scope: str
+) -> list[CopilotHistoryMessage]:
+    pairs: list[CopilotHistoryMessage] = []
+    pending_user: CopilotHistoryMessage | None = None
+    for message in messages:
+        if message.get("status") != "COMPLETED" or message.get("context_scope") != context_scope:
+            continue
+        role = message.get("role")
+        content = message.get("content")
+        if role == "user" and isinstance(content, str) and content.strip():
+            pending_user = CopilotHistoryMessage(role="user", content=content[:8000])
+        elif role == "assistant" and pending_user is not None and isinstance(content, str) and content.strip():
+            pairs.extend((pending_user, CopilotHistoryMessage(role="assistant", content=content[:8000])))
+            pending_user = None
+    return pairs[-6:]
 
 
 def _mock_copilot_reply(request: CopilotChatApiRequest) -> str:
@@ -3109,6 +3136,57 @@ def create_app(
             return _error_response(409, "PREMISE_DRIFT", "当前前提已变化，不能用旧版本继续核验")
         return check_session_assertions(record, facts, req, owner_id=owner_id)
 
+    @api.get("/api/v1/copilot/conversations")
+    def list_copilot_conversations(
+        owner_id: str = Depends(owner_dependency),
+        limit: int = Query(default=20, ge=1, le=50),
+    ):
+        return {"items": active_store.list_chat_conversations(owner_id, limit=limit)}
+
+    @api.post("/api/v1/copilot/conversations", status_code=201)
+    def create_copilot_conversation(
+        req: CopilotConversationCreateRequest,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        return active_store.create_chat_conversation(
+            owner_id,
+            f"chat-{uuid4()}",
+            req.title,
+            active_clock().isoformat(),
+        )
+
+    @api.get("/api/v1/copilot/conversations/{conversation_id}")
+    def get_copilot_conversation(
+        conversation_id: str,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        conversation = active_store.get_chat_conversation(owner_id, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="conversation not found")
+        return conversation
+
+    @api.patch("/api/v1/copilot/conversations/{conversation_id}")
+    def rename_copilot_conversation(
+        conversation_id: str,
+        req: CopilotConversationRenameRequest,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        conversation = active_store.rename_chat_conversation(
+            owner_id, conversation_id, req.title, active_clock().isoformat()
+        )
+        if not conversation:
+            raise HTTPException(status_code=404, detail="conversation not found")
+        return conversation
+
+    @api.delete("/api/v1/copilot/conversations/{conversation_id}")
+    def delete_copilot_conversation(
+        conversation_id: str,
+        owner_id: str = Depends(owner_dependency),
+    ):
+        if not active_store.delete_chat_conversation(owner_id, conversation_id):
+            raise HTTPException(status_code=404, detail="conversation not found")
+        return {"deleted": True, "conversation_id": conversation_id}
+
     @api.post("/api/v1/copilot/chat")
     async def copilot_chat_endpoint(
         req: CopilotChatApiRequest,
@@ -3172,7 +3250,39 @@ def create_app(
         if req.model_mode != "MOCK" and not configured:
             return _error_response(409, "MODEL_NOT_CONFIGURED", "请在更多 → 模型设置中配置 API Key")
 
+        context_scope = (
+            f"truth:workbench:{req.session_truth_revision}"
+            if req.session_truth_id and req.session_truth_revision
+            else "general"
+        )
+        persisted_history: list[CopilotHistoryMessage] | None = None
+        if req.conversation_id:
+            if not scoped_owner:
+                raise StoreOwnerError("persistent chat requires an owner")
+            conversation = active_store.get_chat_conversation(scoped_owner, req.conversation_id)
+            if conversation is None:
+                raise HTTPException(status_code=404, detail="conversation not found")
+            persisted_history = _completed_conversation_history(
+                conversation["messages"], context_scope
+            )
+            req.history = persisted_history
+            active_store.append_chat_message(
+                scoped_owner,
+                req.conversation_id,
+                f"msg-{uuid4()}",
+                "user",
+                req.message,
+                context_scope,
+                active_clock().isoformat(),
+            )
+
         async def sse_generator():
+            if req.conversation_id:
+                yield "data: " + json.dumps({
+                    "type": "conversation",
+                    "conversation_id": req.conversation_id,
+                    "persisted": True,
+                }, ensure_ascii=False) + "\n\n"
             context_event = {
                 "type": "analysis_context",
                 "display_policy": stored_policy.model_dump(mode="json"),
@@ -3218,11 +3328,20 @@ def create_app(
                     yield "data: " + json.dumps({"type": "error", "message": "正式账户不启用 AI Mock 回复"}, ensure_ascii=False) + "\n\n"
                     yield "data: [DONE]\n\n"
                     return
-                payload = {"type": "token", "delta": _mock_copilot_reply(req)}
+                mock_reply = _mock_copilot_reply(req)
+                payload = {"type": "token", "delta": mock_reply}
                 yield "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+                if req.conversation_id and scoped_owner:
+                    active_store.append_chat_message(
+                        scoped_owner, req.conversation_id, f"msg-{uuid4()}",
+                        "assistant", mock_reply, context_scope, active_clock().isoformat(),
+                    )
                 yield "data: [DONE]\n\n"
                 return
-            history_objs = [CopilotMessage(role=message.role, content=message.content) for message in (req.history or [])]
+            history_source = persisted_history if persisted_history is not None else (req.history or [])
+            history_objs = [CopilotMessage(role=message.role, content=message.content) for message in history_source]
+            assistant_parts: list[str] = []
+            stream_failed = False
             async with aclosing(copilot_agent.stream_chat(
                 user_message=req.message,
                 history=history_objs,
@@ -3240,11 +3359,22 @@ def create_app(
                         except (StoreError, TruthInputRequired):
                             stable = False
                         if not stable:
+                            stream_failed = True
                             yield 'data: {"type":"error","message":"分析前提已变化，本次生成已停止，请重新确认"}\n\n'
                             yield "data: [DONE]\n\n"
                             return
+                    if chunk.get("type") == "token" and isinstance(chunk.get("delta"), str):
+                        assistant_parts.append(chunk["delta"])
+                    elif chunk.get("type") == "error":
+                        stream_failed = True
                     payload_str = json.dumps(chunk, ensure_ascii=False)
                     yield f"data: {payload_str}\n\n"
+            assistant_reply = "".join(assistant_parts).strip()
+            if req.conversation_id and scoped_owner and assistant_reply and not stream_failed:
+                active_store.append_chat_message(
+                    scoped_owner, req.conversation_id, f"msg-{uuid4()}",
+                    "assistant", assistant_reply, context_scope, active_clock().isoformat(),
+                )
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(

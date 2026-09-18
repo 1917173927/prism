@@ -137,6 +137,13 @@ class DecisionEventStore(Protocol):
 
     def save_user_preferences(self, owner_id: str, preferences: dict[str, Any]) -> dict[str, Any]: ...
 
+    def create_chat_conversation(self, owner_id: str, conversation_id: str, title: str, observed_at: str) -> dict[str, Any]: ...
+    def list_chat_conversations(self, owner_id: str, limit: int = 20) -> list[dict[str, Any]]: ...
+    def get_chat_conversation(self, owner_id: str, conversation_id: str) -> dict[str, Any] | None: ...
+    def rename_chat_conversation(self, owner_id: str, conversation_id: str, title: str, observed_at: str) -> dict[str, Any]: ...
+    def delete_chat_conversation(self, owner_id: str, conversation_id: str) -> bool: ...
+    def append_chat_message(self, owner_id: str, conversation_id: str, message_id: str, role: str, content: str, context_scope: str, observed_at: str) -> dict[str, Any]: ...
+
     def save_questionnaire_snapshot(
         self, snapshot: QuestionnaireSnapshot
     ) -> tuple[QuestionnaireSnapshot, bool]: ...
@@ -536,6 +543,162 @@ class SQLiteDecisionEventStore:
                 (owner_id, payload, digest, preferences["updated_at"]),
             )
         return preferences
+
+    @staticmethod
+    def _validate_chat_identity(value: str, label: str) -> str:
+        normalized = str(value).strip()
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{8,100}", normalized):
+            raise StoreError(f"invalid {label}")
+        return normalized
+
+    @staticmethod
+    def _normalize_chat_title(value: str) -> str:
+        normalized = re.sub(r"\s+", " ", str(value)).strip()
+        if not normalized:
+            return "新对话"
+        return normalized[:36]
+
+    def create_chat_conversation(
+        self, owner_id: str, conversation_id: str, title: str, observed_at: str
+    ) -> dict[str, Any]:
+        owner_id = _validate_owner(owner_id)
+        conversation_id = self._validate_chat_identity(conversation_id, "conversation ID")
+        title = self._normalize_chat_title(title)
+        with self._lock:
+            self._connection.execute(
+                "INSERT INTO copilot_conversations(conversation_id,owner_id,title,created_at,updated_at) VALUES (?,?,?,?,?)",
+                (conversation_id, owner_id, title, observed_at, observed_at),
+            )
+        return self.get_chat_conversation(owner_id, conversation_id) or {}
+
+    def list_chat_conversations(self, owner_id: str, limit: int = 20) -> list[dict[str, Any]]:
+        owner_id = _validate_owner(owner_id)
+        if type(limit) is not int or not 1 <= limit <= 50:
+            raise StoreError("invalid conversation limit")
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT c.*, COUNT(CASE WHEN m.role='assistant' THEN 1 END) AS answer_count, "
+                "COUNT(m.message_id) AS message_count "
+                "FROM copilot_conversations c LEFT JOIN copilot_messages m "
+                "ON m.conversation_id=c.conversation_id AND m.owner_id=c.owner_id "
+                "WHERE c.owner_id=? GROUP BY c.conversation_id,c.owner_id,c.title,c.created_at,c.updated_at "
+                "ORDER BY c.updated_at DESC,c.conversation_id DESC LIMIT ?",
+                (owner_id, limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_chat_conversation(self, owner_id: str, conversation_id: str) -> dict[str, Any] | None:
+        owner_id = _validate_owner(owner_id)
+        conversation_id = self._validate_chat_identity(conversation_id, "conversation ID")
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM copilot_conversations WHERE owner_id=? AND conversation_id=?",
+                (owner_id, conversation_id),
+            ).fetchone()
+            if row is None:
+                return None
+            messages = self._connection.execute(
+                "SELECT message_id,conversation_id,ordinal,role,content,status,context_scope,created_at "
+                "FROM copilot_messages WHERE owner_id=? AND conversation_id=? ORDER BY ordinal",
+                (owner_id, conversation_id),
+            ).fetchall()
+        result = dict(row)
+        result["messages"] = [dict(message) for message in messages]
+        result["answer_count"] = sum(message["role"] == "assistant" for message in result["messages"])
+        result["message_count"] = len(result["messages"])
+        return result
+
+    def rename_chat_conversation(
+        self, owner_id: str, conversation_id: str, title: str, observed_at: str
+    ) -> dict[str, Any]:
+        owner_id = _validate_owner(owner_id)
+        conversation_id = self._validate_chat_identity(conversation_id, "conversation ID")
+        title = self._normalize_chat_title(title)
+        with self._lock:
+            result = self._connection.execute(
+                "UPDATE copilot_conversations SET title=?,updated_at=? WHERE owner_id=? AND conversation_id=?",
+                (title, observed_at, owner_id, conversation_id),
+            )
+            if getattr(result, "rowcount", 1) == 0:
+                return {}
+        return self.get_chat_conversation(owner_id, conversation_id) or {}
+
+    def delete_chat_conversation(self, owner_id: str, conversation_id: str) -> bool:
+        owner_id = _validate_owner(owner_id)
+        conversation_id = self._validate_chat_identity(conversation_id, "conversation ID")
+        with self._lock:
+            existing = self._connection.execute(
+                "SELECT 1 FROM copilot_conversations WHERE owner_id=? AND conversation_id=?",
+                (owner_id, conversation_id),
+            ).fetchone()
+            if existing is None:
+                return False
+            self._connection.execute(
+                "DELETE FROM copilot_conversations WHERE owner_id=? AND conversation_id=?",
+                (owner_id, conversation_id),
+            )
+        return True
+
+    def append_chat_message(
+        self,
+        owner_id: str,
+        conversation_id: str,
+        message_id: str,
+        role: str,
+        content: str,
+        context_scope: str,
+        observed_at: str,
+    ) -> dict[str, Any]:
+        owner_id = _validate_owner(owner_id)
+        conversation_id = self._validate_chat_identity(conversation_id, "conversation ID")
+        message_id = self._validate_chat_identity(message_id, "message ID")
+        if role not in {"user", "assistant"}:
+            raise StoreError("invalid chat role")
+        normalized_content = str(content).strip()
+        if not normalized_content or len(normalized_content) > 20000:
+            raise StoreError("invalid chat content")
+        if not re.fullmatch(r"[A-Za-z0-9:_.-]{1,100}", str(context_scope)):
+            raise StoreError("invalid chat context scope")
+        with self._lock:
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                conversation = self._connection.execute(
+                    "SELECT title FROM copilot_conversations WHERE owner_id=? AND conversation_id=?",
+                    (owner_id, conversation_id),
+                ).fetchone()
+                if conversation is None:
+                    raise StoreOwnerError("chat conversation is outside owner scope")
+                row = self._connection.execute(
+                    "SELECT COALESCE(MAX(ordinal),0) AS ordinal FROM copilot_messages WHERE conversation_id=?",
+                    (conversation_id,),
+                ).fetchone()
+                ordinal = int(row["ordinal"]) + 1
+                self._connection.execute(
+                    "INSERT INTO copilot_messages(message_id,conversation_id,owner_id,ordinal,role,content,status,context_scope,created_at) "
+                    "VALUES (?,?,?,?,?,?, 'COMPLETED',?,?)",
+                    (message_id, conversation_id, owner_id, ordinal, role, normalized_content, context_scope, observed_at),
+                )
+                title = conversation["title"]
+                if role == "user" and title == "新对话" and ordinal == 1:
+                    title = self._normalize_chat_title(normalized_content)
+                self._connection.execute(
+                    "UPDATE copilot_conversations SET title=?,updated_at=? WHERE owner_id=? AND conversation_id=?",
+                    (title, observed_at, owner_id, conversation_id),
+                )
+                self._connection.execute("COMMIT")
+            except Exception:
+                self._connection.execute("ROLLBACK")
+                raise
+        return {
+            "message_id": message_id,
+            "conversation_id": conversation_id,
+            "ordinal": ordinal,
+            "role": role,
+            "content": normalized_content,
+            "status": "COMPLETED",
+            "context_scope": context_scope,
+            "created_at": observed_at,
+        }
 
     def _run_migrations(self) -> None:
         self._connection.execute(

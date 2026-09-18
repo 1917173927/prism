@@ -45,6 +45,8 @@ const renderActiveChatMessages=()=>{clear(byId('copilot-chat-messages'));renderC
 const renderChatSessionList=()=>{};
 const persistChatSessions=()=>{};
 const setAgentFeatureToolsCompact=()=>{};
+const setError=()=>{};
+const createPersistedChatSession=async()=>{const session={id:'new-session',title:'新对话',messages:[]};chatSessions.push(session);activeChatSessionId=session.id;};
 '''+function+r'''
 clearConversationContext();
 assert.equal(abortCount,1);
@@ -110,6 +112,9 @@ const document={createElement:()=>new Element()};
 const state={ownerId:'owner',selectedPersona:'custom-user',dataMode:'MOCK'};
 const accountAccessEnabled=false;
 const PERSONAS={}, DEFAULT_USER_PROFILE={}, llmConfig={}, chatHistory=[];
+let activeChatSessionId='chat-server-session';
+const createPersistedChatSession=async()=>{};
+const refreshPersistedChatSessions=async()=>{};
 let truthResult={revision:1,status:'LOCKED'};
 let truthFailure=null;
 const refreshSessionTruth=async()=>{if(truthFailure)throw truthFailure;return truthResult;};
