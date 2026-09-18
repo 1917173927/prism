@@ -1,6 +1,12 @@
 """Historical trade imports and deterministic trading-style analysis."""
 
 from .analysis import behavior_events_from_trades, calculate_trading_style
+from .insights import (
+    aggregate_trade_securities,
+    combine_security_insight,
+    guidance_for_profile,
+    normalize_trade_quote,
+)
 from .contracts import (
     HistoricalTradeRecord,
     TradeBatchListResponse,
@@ -15,7 +21,12 @@ from .contracts import (
     TradeRevisionRequest,
     TradeRecordStatus,
     TradeSide,
+    TradeStyleGuidanceItem,
+    TradeStyleInsightsResponse,
+    TradeStyleSecurityInsight,
     TradeUpdateRequest,
+    TradeSecurityHistorySummary,
+    TradeSecurityQuoteSnapshot,
     TradingStyleLookupResponse,
     TradingStyleProfile,
     TradingStyleStatus,
@@ -38,11 +49,20 @@ __all__ = [
     "TradeRevisionRequest",
     "TradeRecordStatus",
     "TradeSide",
+    "TradeStyleGuidanceItem",
+    "TradeStyleInsightsResponse",
+    "TradeStyleSecurityInsight",
     "TradeUpdateRequest",
+    "TradeSecurityHistorySummary",
+    "TradeSecurityQuoteSnapshot",
     "TradingStyleLookupResponse",
     "TradingStyleProfile",
     "TradingStyleStatus",
     "calculate_trading_style",
     "behavior_events_from_trades",
+    "aggregate_trade_securities",
+    "combine_security_insight",
+    "guidance_for_profile",
+    "normalize_trade_quote",
     "preview_trade_files",
 ]

@@ -8,12 +8,12 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style-insights">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260916-trading-style" defer></script>
+    <script src="/static/app.js?v=20260916-trading-style-insights" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -922,20 +922,46 @@
             <div>
               <span class="eyebrow">投资者画像 · 行为证据</span>
               <h2 id="trading-style-title">历史交易与交易风格</h2>
-              <p>导入成交记录，以确定性规则分析交易频率、持有期、成交规模与标的分散度。</p>
+              <p>导入成交记录，查看主要交易风格与关键行为习惯。</p>
             </div>
-            <span id="trading-style-status" class="status-chip">INSUFFICIENT_DATA</span>
           </div>
 
           <section class="surface trading-style-summary" aria-labelledby="trading-style-summary-title">
             <div class="market-section-heading">
-              <div><h3 id="trading-style-summary-title">交易风格摘要</h3><p>历史行为与正式风险测评采用双轨展示，行为证据不得提高适当性等级。</p></div>
-              <button id="refresh-trading-style" type="button" class="copilot-action-btn secondary">刷新结果</button>
+              <div><h3 id="trading-style-summary-title">交易风格摘要</h3><p>风格标签随有效交易自动更新，置信度用于说明判断成熟度。</p></div>
+              <span id="trading-style-status" class="status-chip">INSUFFICIENT_DATA</span>
             </div>
-            <div id="trading-style-summary-content" class="trading-style-metrics" aria-live="polite">
+            <div id="trading-style-summary-content" class="trading-style-overview" aria-live="polite">
               <div class="empty-state">尚未导入历史交易记录。</div>
             </div>
+            <details id="trading-style-more" class="trading-style-more">
+              <summary>更多指标与数据说明</summary>
+              <div id="trading-style-secondary" class="trading-style-secondary"></div>
+            </details>
             <div id="trading-style-risk-boundary" class="doc-callout doc-callout-info" hidden></div>
+          </section>
+
+          <section id="trade-style-insights" class="trade-style-insights" aria-label="交易风格建议与重点交易标的" hidden>
+            <article class="surface trade-guidance-card" aria-labelledby="trade-guidance-title">
+              <div class="market-section-heading">
+                <div><h3 id="trade-guidance-title">风格改进建议</h3><p id="trade-guidance-maturity">根据确定性风格规则生成。</p></div>
+                <span id="trade-guidance-status" class="status-chip">PRELIMINARY</span>
+              </div>
+              <ol id="trade-guidance-list" class="trade-guidance-list"></ol>
+              <p class="trade-guidance-disclaimer">仅用于改善交易纪律，不包含个股买卖方向，也不参与正式风险等级计算。</p>
+            </article>
+
+            <article class="surface trade-market-card" aria-labelledby="trade-market-title">
+              <div class="market-section-heading">
+                <div><h3 id="trade-market-title">重点交易标的</h3><p>按有效历史成交额排序，最多展示三只 A 股。</p></div>
+                <div class="trade-market-actions">
+                  <span id="trade-market-status" class="status-chip">等待行情</span>
+                  <button id="refresh-trade-market" type="button" class="copilot-action-btn secondary">刷新行情</button>
+                </div>
+              </div>
+              <div id="trade-market-message" class="notice" role="status" hidden></div>
+              <div id="trade-market-securities" class="trade-market-securities" aria-live="polite"></div>
+            </article>
           </section>
 
           <section class="surface trade-import-card" aria-labelledby="trade-import-title">
@@ -943,30 +969,44 @@
               <div><h3 id="trade-import-title">导入历史交易</h3><p>支持单个 CSV/XLSX，或最多 10 张 PNG/JPEG/WebP 截图；原始文件不会保存。</p></div>
               <span id="trade-import-status" class="cf-verdict cf-verdict-warning">等待上传</span>
             </div>
-            <ol class="trade-import-steps" aria-label="导入步骤">
-              <li class="active" data-trade-step="1"><strong>1</strong><span>上传文件</span></li>
-              <li data-trade-step="2"><strong>2</strong><span>映射与复核</span></li>
-              <li data-trade-step="3"><strong>3</strong><span>确认入账</span></li>
-            </ol>
-            <div class="trade-upload-row">
-              <input id="trade-import-files" type="file" accept=".csv,.xlsx,image/png,image/jpeg,image/webp" multiple>
-              <button id="preview-trade-import" type="button" class="copilot-action-btn primary">解析并预览</button>
-            </div>
-            <div id="trade-import-error" class="notice error" role="alert" hidden></div>
-            <div id="trade-mapping-panel" class="trade-mapping-panel" hidden>
-              <div class="market-section-heading"><div><h4>字段映射</h4><p>系统已建议表头映射；可调整后重新应用到预览行。</p></div><span id="trade-preview-count" class="status-chip"></span></div>
-              <label id="trade-sheet-field" hidden>工作表
-                <select id="trade-sheet-selector" aria-label="选择 XLSX 工作表"></select>
-              </label>
-              <div id="trade-mapping-fields" class="trade-mapping-grid"></div>
-              <button id="apply-trade-mapping" type="button" class="copilot-action-btn secondary">应用字段映射</button>
-              <div class="table-wrap trade-preview-table-wrap">
-                <table class="trade-preview-table"><thead><tr><th>状态</th><th>交易时间</th><th>代码</th><th>名称</th><th>方向</th><th>数量</th><th>价格</th><th>金额</th><th>问题</th></tr></thead><tbody id="trade-preview-rows"></tbody></table>
+            <details id="trade-import-workflow" class="trade-import-workflow" open>
+              <summary aria-expanded="true"><span>上传与复核</span><small>选择文件后核对识别结果</small></summary>
+              <div class="trade-import-workflow-body">
+                <ol class="trade-import-steps" aria-label="导入步骤">
+                  <li class="active" data-trade-step="1"><strong>1</strong><span>上传</span></li>
+                  <li data-trade-step="2"><strong>2</strong><span>核对</span></li>
+                  <li data-trade-step="3"><strong>3</strong><span>入账</span></li>
+                </ol>
+                <div class="trade-upload-row">
+                  <input id="trade-import-files" type="file" accept=".csv,.xlsx,image/png,image/jpeg,image/webp" multiple>
+                  <button id="preview-trade-import" type="button" class="copilot-action-btn primary">解析并预览</button>
+                </div>
+                <div id="trade-import-error" class="notice error" role="alert" hidden></div>
+                <div id="trade-mapping-panel" class="trade-mapping-panel" hidden>
+                  <details id="trade-mapping-details" class="trade-mapping-details">
+                    <summary aria-expanded="false"><span id="trade-mapping-summary">字段映射</span><small>需要时展开调整</small></summary>
+                    <div class="trade-mapping-body">
+                      <label id="trade-sheet-field" hidden>工作表
+                        <select id="trade-sheet-selector" aria-label="选择 XLSX 工作表"></select>
+                      </label>
+                      <div id="trade-mapping-fields" class="trade-mapping-grid"></div>
+                      <button id="apply-trade-mapping" type="button" class="copilot-action-btn secondary">应用字段映射</button>
+                    </div>
+                  </details>
+                  <div class="trade-preview-heading"><strong>逐行核对</strong><span id="trade-preview-count" class="status-chip"></span></div>
+                  <div class="table-wrap trade-preview-table-wrap">
+                    <table class="trade-preview-table"><thead><tr><th>状态</th><th>交易时间</th><th>代码</th><th>名称</th><th>方向</th><th>数量</th><th>价格</th><th>金额</th><th>问题</th></tr></thead><tbody id="trade-preview-rows"></tbody></table>
+                  </div>
+                  <div class="trade-import-actions">
+                    <span id="trade-confirm-hint">请逐行核对；存在阻断问题时不能确认。</span>
+                    <button id="confirm-trade-import" type="button" class="copilot-action-btn primary">确认导入有效记录</button>
+                  </div>
+                </div>
               </div>
-              <div class="trade-import-actions">
-                <span id="trade-confirm-hint">请逐行核对；存在阻断问题时不能确认。</span>
-                <button id="confirm-trade-import" type="button" class="copilot-action-btn primary">确认导入有效记录</button>
-              </div>
+            </details>
+            <div id="trade-import-success" class="trade-import-success" hidden role="status">
+              <span id="trade-import-success-copy">交易记录已导入。</span>
+              <button id="continue-trade-import" type="button" class="copilot-action-btn secondary">继续导入</button>
             </div>
           </section>
 
@@ -975,21 +1015,27 @@
               <div><h3 id="trade-history-title">交易明细</h3><p>编辑采用版本冲突保护；撤销记录不再参与任何计算，并可恢复。</p></div>
               <span id="trade-history-count" class="count-pill">0 笔</span>
             </div>
-            <div class="trade-history-filters">
+            <div class="trade-history-filter-bar">
               <input id="trade-filter-security" type="search" placeholder="证券代码或名称">
-              <select id="trade-filter-side"><option value="">全部方向</option><option value="BUY">买入</option><option value="SELL">卖出</option></select>
-              <select id="trade-filter-status"><option value="">全部状态</option><option value="ACTIVE">有效</option><option value="WITHDRAWN">已撤销</option></select>
-              <input id="trade-filter-from" type="date" aria-label="开始日期">
-              <input id="trade-filter-to" type="date" aria-label="结束日期">
               <button id="apply-trade-filters" type="button" class="copilot-action-btn secondary">筛选</button>
+              <details id="trade-advanced-filters" class="trade-advanced-filters">
+                <summary aria-expanded="false">高级筛选</summary>
+                <div class="trade-history-filters">
+                  <select id="trade-filter-side"><option value="">全部方向</option><option value="BUY">买入</option><option value="SELL">卖出</option></select>
+                  <select id="trade-filter-status"><option value="">全部状态</option><option value="ACTIVE">有效</option><option value="WITHDRAWN">已撤销</option></select>
+                  <input id="trade-filter-from" type="date" aria-label="开始日期">
+                  <input id="trade-filter-to" type="date" aria-label="结束日期">
+                </div>
+              </details>
             </div>
             <div class="table-wrap"><table><thead><tr><th>时间</th><th>证券</th><th>方向</th><th>数量</th><th>成交价</th><th>成交金额</th><th>版本/状态</th><th>操作</th></tr></thead><tbody id="trade-history-rows"><tr><td colspan="8" class="empty-state">暂无交易记录。</td></tr></tbody></table></div>
             <button id="load-more-trades" type="button" class="copilot-action-btn secondary" hidden>加载更多</button>
           </section>
 
-          <section class="doc-callout doc-callout-warning" aria-label="数据边界">
-            <div class="callout-content"><div class="callout-title">数据边界</div><p>未配对卖出不会参与持有期；缺少账户资产快照时不计算换手率。历史交易不会修改当前持仓，也不会触发真实交易。</p></div>
-          </section>
+          <details id="trade-boundary-details" class="doc-callout doc-callout-warning trade-boundary-details">
+            <summary aria-expanded="false">数据边界</summary>
+            <p>未配对卖出不会参与持有期；缺少账户资产快照时不计算换手率。历史交易不会修改当前持仓，也不会触发真实交易。</p>
+          </details>
         </section>
 
         <div id="global-error" class="notice error" role="alert" hidden></div>
