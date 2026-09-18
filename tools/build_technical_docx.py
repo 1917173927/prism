@@ -38,6 +38,7 @@ def field(paragraph, instruction):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--template', required=True)
+    parser.add_argument('--output', type=Path, default=TARGET)
     args = parser.parse_args()
     doc = Document(args.template)
     table_properties = deepcopy(doc.tables[0]._tbl.tblPr)
@@ -113,6 +114,7 @@ def main():
     target_paragraph = None
     references = False
     appendix = False
+    ordered_number = None
     while index < len(tokens):
         token = tokens[index]
         if token.type == 'heading_open':
@@ -141,6 +143,10 @@ def main():
             bullet = True
         elif token.type == 'bullet_list_close':
             bullet = False
+        elif token.type == 'ordered_list_open':
+            ordered_number = int(token.attrGet('start') or 1)
+        elif token.type == 'ordered_list_close':
+            ordered_number = None
         elif token.type == 'table_open':
             table = doc.add_table(rows=0, cols=0)
             table._tbl.remove(table._tbl.tblPr)
@@ -170,6 +176,11 @@ def main():
             target_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
             col += 1
         elif token.type == 'table_close':
+            if len(table.rows) <= 7:
+                for table_row in table.rows:
+                    for cell in table_row.cells:
+                        for paragraph in cell.paragraphs:
+                            paragraph.paragraph_format.keep_with_next = True
             table = None
             target_paragraph = None
         elif token.type == 'paragraph_open':
@@ -179,6 +190,9 @@ def main():
                     target_paragraph.paragraph_format.first_line_indent = Cm(0)
                     target_paragraph.paragraph_format.left_indent = Cm(0.6)
                     font(target_paragraph.add_run('• '))
+                elif ordered_number is not None:
+                    font(target_paragraph.add_run(f'{ordered_number}. '))
+                    ordered_number += 1
         elif token.type == 'inline':
             p = target_paragraph
             if p is None:
@@ -223,8 +237,8 @@ def main():
     doc.core_properties.title = 'Prism 个性化证券投顾智能体系统技术文档'
     doc.core_properties.author = 'Prism'
     doc.core_properties.subject = '系统设计 核心技术 创新与验证'
-    doc.save(TARGET)
-    print(TARGET)
+    doc.save(args.output)
+    print(args.output)
 
 
 if __name__ == '__main__':
