@@ -10572,7 +10572,7 @@
     cancel.className = "chat-session-edit-cancel";
     cancel.textContent = "取消";
     cancel.addEventListener("click", () => renderChatSessionList());
-    controls.append(save, cancel);
+    controls.append(cancel, save);
     form.append(input, controls);
     item.append(form);
 

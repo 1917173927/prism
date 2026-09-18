@@ -438,6 +438,7 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
         "function renameChatSession(sessionId, requestedTitle)",
         'input.setAttribute("aria-label", "修改对话名称")',
         'input.addEventListener("keydown", event => {',
+        "controls.append(cancel, save)",
         "function createPersistedChatSession(title",
         'fetch("/api/v1/copilot/conversations"',
         "conversation_id: activeChatSessionId",
