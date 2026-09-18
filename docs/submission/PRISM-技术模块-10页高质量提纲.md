@@ -56,17 +56,17 @@ flowchart LR
 
 | 资产 | 建议用途 | 使用方式 |
 |---|---|---|
-| `docs/submission/figures/prism-figure-02-architecture.png` | P1 架构关系参考 | 重新构图，不直接压缩整张长图 |
-| `docs/submission/figures/prism-figure-03-dependencies.png` | P3 平台依赖参考 | 提取 SkillHub、模型、存储与 PRISM 的依赖关系 |
-| `docs/submission/figures/prism-figure-04-research-dag.png` | P9 DAG 结构参考 | 重绘为少节点拓扑图 |
-| `docs/submission/figures/prism-figure-05-personalization-chain.png` | P5 个性化链路参考 | 提取画像到建议的主链路 |
-| `docs/submission/figures/prism-figure-06-decision-gates.png` | P1、P10 双闸门参考 | 保留独立输入与聚合关系 |
-| `docs/showcase/10_backend_api_architecture_swagger.png` | P2 工程证据 | 裁切接口分组和 OpenAPI 路由区域 |
-| `docs/showcase/01_v3_investor_workbench_overview.png` | P5 产品闭环证据 | 裁切画像、持仓和分析入口 |
-| `docs/showcase/full_workbench.png` | P6 多轮对话入口 | 裁切对话区和画像、持仓侧栏 |
-| `docs/showcase/04_v3_rebalancing_plan_stepper.png` | P7 再平衡证据 | 裁切 SELL、SELL、BUY 步骤与状态 |
-| `docs/showcase/06_v3_user_profile_modal.png` | P8 画像证据 | 裁切问卷维度或画像约束区域 |
-| `docs/showcase/07_v2_advanced_explainability_dag.png` | P9 研究调度证据 | 裁切 DAG 节点、依赖和状态 |
+| `E:\prism\docs\submission\figures\prism-figure-02-architecture.png` | P1 架构关系参考 | 重新构图，不直接压缩整张长图 |
+| `E:\prism\docs\submission\figures\prism-figure-03-dependencies.png` | P3 平台依赖参考 | 提取 SkillHub、模型、存储与 PRISM 的依赖关系 |
+| `E:\prism\docs\submission\figures\prism-figure-04-research-dag.png` | P9 DAG 结构参考 | 重绘为少节点拓扑图 |
+| `E:\prism\docs\submission\figures\prism-figure-05-personalization-chain.png` | P5 个性化链路参考 | 提取画像到建议的主链路 |
+| `E:\prism\docs\submission\figures\prism-figure-06-decision-gates.png` | P1、P10 双闸门参考 | 保留独立输入与聚合关系 |
+| `E:\prism\docs\showcase\10_backend_api_architecture_swagger.png` | P2 工程证据 | 裁切接口分组和 OpenAPI 路由区域 |
+| `E:\prism\docs\showcase\01_v3_investor_workbench_overview.png` | P5 产品闭环证据 | 裁切画像、持仓和分析入口 |
+| `E:\prism\docs\showcase\full_workbench.png` | P6 多轮对话入口 | 裁切对话区和画像、持仓侧栏 |
+| `E:\prism\docs\showcase\04_v3_rebalancing_plan_stepper.png` | P7 再平衡证据 | 裁切 SELL、SELL、BUY 步骤与状态 |
+| `E:\prism\docs\showcase\06_v3_user_profile_modal.png` | P8 画像证据 | 裁切问卷维度或画像约束区域 |
+| `E:\prism\docs\showcase\07_v2_advanced_explainability_dag.png` | P9 研究调度证据 | 裁切 DAG 节点、依赖和状态 |
 
 本章节无需生成式插画。现有技术图和真实页面截图能够提供更强的工程真实性。
 
@@ -128,10 +128,10 @@ flowchart LR
 
 | 证据 | 位置 | 证明内容 |
 |---|---|---|
-| 总体架构 | `docs/submission/competition-technical-solution.md` 第五章 | 模块化单体、分层与数据流 |
-| 主服务链路 | `app/service/advisor_query.py` | 画像、组合、研究、证据和闸门的端到端组合 |
-| 双闸门 | `app/gates/`、`app/recommendation/` | 建议资格与 DecisionReceipt |
-| 决策事件 | `app/api/main.py`、`app/store/` | DecisionEvent 保存与回放 |
+| 总体架构 | `E:\prism\docs\submission\competition-technical-solution.md` 第五章 | 模块化单体、分层与数据流 |
+| 主服务链路 | `E:\prism\app\service\advisor_query.py` | 画像、组合、研究、证据和闸门的端到端组合 |
+| 双闸门 | `E:\prism\app\gates\`、`E:\prism\app\recommendation\` | 建议资格与 DecisionReceipt |
+| 决策事件 | `E:\prism\app\api\main.py`、`E:\prism\app\store\` | DecisionEvent 保存与回放 |
 
 ### 答辩讲法
 
@@ -179,7 +179,7 @@ flowchart LR
 
 ### 工程截图
 
-- 文件：`docs/showcase/10_backend_api_architecture_swagger.png`
+- 文件：`E:\prism\docs\showcase\10_backend_api_architecture_swagger.png`
 - 裁切重点：接口分组、投顾对话、组合决策、记忆与审计路由。
 - 不展示浏览器地址栏和无关接口细节。
 
@@ -187,11 +187,11 @@ flowchart LR
 
 | 证据 | 位置 |
 |---|---|
-| Python、FastAPI、Pydantic 版本 | `pyproject.toml` |
-| 前端静态应用与 Hash 路由 | `app/api/static/` |
-| 工作流编辑器 | `tools/build_workflow.mjs`、`app/api/static/workflow-editor.src.js` |
+| Python、FastAPI、Pydantic 版本 | `E:\prism\pyproject.toml` |
+| 前端静态应用与 Hash 路由 | `E:\prism\app\api\static\` |
+| 工作流编辑器 | `E:\prism\tools\build_workflow.mjs`、`E:\prism\app\api\static\workflow-editor.src.js` |
 | SSE 对话 | `POST /api/v1/copilot/chat` |
-| OCR 持仓解析 | `app/llm/ocr_portfolio_parser.py` |
+| OCR 持仓解析 | `E:\prism\app\llm\ocr_portfolio_parser.py` |
 
 ### 答辩讲法
 
@@ -258,10 +258,10 @@ flowchart BT
 
 | 证据 | 位置 | 说明 |
 |---|---|---|
-| 九项 Skill 清单 | `app/providers/iwencai_skills.json` | 清单版本、技能标识、版本、路径和摘要 |
-| 官方适配器 | `app/providers/skillhub.py` | 请求路由、鉴权与结果映射 |
-| 四态协议 | `app/providers/contracts.py` | `SUCCESS / PARTIAL / EMPTY / FAILED` |
-| 默认注册 | `app/api/main.py` 中 `WencaiSkillHubProvider` | 当前应用默认提供方 |
+| 九项 Skill 清单 | `E:\prism\app\providers\iwencai_skills.json` | 清单版本、技能标识、版本、路径和摘要 |
+| 官方适配器 | `E:\prism\app\providers\skillhub.py` | 请求路由、鉴权与结果映射 |
+| 四态协议 | `E:\prism\app\providers\contracts.py` | `SUCCESS / PARTIAL / EMPTY / FAILED` |
+| 默认注册 | `E:\prism\app\api\main.py` 中 `WencaiSkillHubProvider` | 当前应用默认提供方 |
 
 ### 答辩讲法
 
@@ -306,10 +306,10 @@ flowchart BT
 
 | 证据 | 位置 |
 |---|---|
-| SQLite 默认路径与 PostgreSQL 切换 | `app/api/main.py`、`app/store/` |
-| SQLite WAL 与写入控制 | `app/store/sqlite.py` |
-| 本地凭据保护 | `app/security/`、相关 DPAPI 测试 |
-| 启动入口 | `start.bat`、`start_mac.sh` |
+| SQLite 默认路径与 PostgreSQL 切换 | `E:\prism\app\api\main.py`、`E:\prism\app\store\` |
+| SQLite WAL 与写入控制 | `E:\prism\app\store\sqlite.py` |
+| 本地凭据保护 | `E:\prism\app\security\`、相关 DPAPI 测试 |
+| 启动入口 | `E:\prism\start.bat`、`E:\prism\start_mac.sh` |
 
 ### 答辩讲法
 
@@ -358,7 +358,7 @@ flowchart BT
 
 ### 真实产品截图
 
-- 文件：`docs/showcase/01_v3_investor_workbench_overview.png`
+- 文件：`E:\prism\docs\showcase\01_v3_investor_workbench_overview.png`
 - 裁切重点：画像概览、持仓信息、分析任务入口和状态。
 - 截图放右下角，占页面约 28%，不得遮挡九步主链。
 
@@ -366,11 +366,11 @@ flowchart BT
 
 | 环节 | 代码或接口 |
 |---|---|
-| 画像 | `app/profile/`、`/api/v1/advisor/profile/*` |
-| 持仓 | `app/portfolio/`、`/api/v1/advisor/portfolio/*` |
+| 画像 | `E:\prism\app\profile\`、`/api/v1/advisor/profile/*` |
+| 持仓 | `E:\prism\app\portfolio\`、`/api/v1/advisor/portfolio/*` |
 | 工作流 | `POST /api/v1/advisor/workflow-runs` |
-| 投顾服务 | `app/service/advisor_query.py` |
-| 回执与事件 | `app/recommendation/`、`/api/v1/decision-events*` |
+| 投顾服务 | `E:\prism\app\service\advisor_query.py` |
+| 回执与事件 | `E:\prism\app\recommendation\`、`/api/v1/decision-events*` |
 
 ### 答辩讲法
 
@@ -430,7 +430,7 @@ flowchart LR
 
 ### 真实产品截图
 
-- 文件：`docs/showcase/full_workbench.png`
+- 文件：`E:\prism\docs\showcase\full_workbench.png`
 - 裁切重点：对话入口、画像与持仓速览、任务入口。
 - 截图旁标注：`对话入口共享同一画像与持仓上下文`
 
@@ -439,9 +439,9 @@ flowchart LR
 | 机制 | 位置 |
 |---|---|
 | 流式对话 | `POST /api/v1/copilot/chat` |
-| 会话事实与指纹 | `app/service/session_truth.py` |
+| 会话事实与指纹 | `E:\prism\app\service\session_truth.py` |
 | 结构化记忆 | `GET/POST /api/v1/advisor/context-memory` |
-| 历史只读检索 | `app/service/semantic_memory.py` |
+| 历史只读检索 | `E:\prism\app\service\semantic_memory.py` |
 | 同作用域最近消息 | `copilot_conversations`、`copilot_messages` 相关服务与测试 |
 
 ### 答辩讲法
@@ -486,7 +486,7 @@ flowchart LR
 
 ### 真实产品截图
 
-- 文件：`docs/showcase/04_v3_rebalancing_plan_stepper.png`
+- 文件：`E:\prism\docs\showcase\04_v3_rebalancing_plan_stepper.png`
 - 裁切重点：交易步骤、SELL / BUY 顺序、状态标签。
 - 截图下方写：`真实执行步骤示例：SELL、SELL、BUY`
 
@@ -500,10 +500,10 @@ flowchart LR
 
 | 证据 | 位置 |
 |---|---|
-| 再平衡服务 | `app/service/portfolio_rebalancing.py` |
-| 约束接口 | `app/rebalancing/contracts.py` |
+| 再平衡服务 | `E:\prism\app\service\portfolio_rebalancing.py` |
+| 约束接口 | `E:\prism\app\rebalancing\contracts.py` |
 | 接口 | `POST /api/v1/advisor/rebalancing-runs` |
-| 回归测试 | `tests/unit/test_portfolio_rebalancing.py` |
+| 回归测试 | `E:\prism\tests\unit\test_portfolio_rebalancing.py` |
 
 ### 答辩讲法
 
@@ -580,15 +580,15 @@ A1 与 A2 先按 lineage 合并，再与 B1 进行独立来源一致性验证。
 
 ### 真实产品截图
 
-- 文件：`docs/showcase/06_v3_user_profile_modal.png`
+- 文件：`E:\prism\docs\showcase\06_v3_user_profile_modal.png`
 - 作为左侧小型工程证据，裁切问卷或画像约束部分。
 
 ### 项目证据
 
-- `app/profile/`
-- `app/risk/budget.py`
-- `app/research/cross_validation.py`
-- `app/providers/contracts.py`
+- `E:\prism\app\profile\`
+- `E:\prism\app\risk\budget.py`
+- `E:\prism\app\research\cross_validation.py`
+- `E:\prism\app\providers\contracts.py`
 
 ### 答辩讲法
 
@@ -652,15 +652,15 @@ HHI = 10000 Σ(E_g / V)²
 
 ### 真实产品截图
 
-- 文件：`docs/showcase/07_v2_advanced_explainability_dag.png`
+- 文件：`E:\prism\docs\showcase\07_v2_advanced_explainability_dag.png`
 - 只截取 DAG 节点与状态，作为右半页背景证据或局部放大。
 
 ### 项目证据
 
-- `app/portfolio/exposure.py`
-- `app/risk/concentration.py`
-- `app/orchestration/contracts.py`
-- `app/orchestration/executor.py`
+- `E:\prism\app\portfolio\exposure.py`
+- `E:\prism\app\risk\concentration.py`
+- `E:\prism\app\orchestration\contracts.py`
+- `E:\prism\app\orchestration\executor.py`
 - `POST /api/v1/advisor/workflow-runs`
 
 ### 答辩讲法
@@ -733,10 +733,10 @@ HHI = 10000 Σ(E_g / V)²
 
 | 机制 | 位置 |
 |---|---|
-| 05 再平衡 | `app/service/portfolio_rebalancing.py`、`app/rebalancing/` |
-| 06 双闸门 | `app/gates/pipeline.py`、`app/recommendation/` |
-| 07 版本状态 | `app/service/session_truth.py`、前端上下文版本逻辑 |
-| 08 历史检索 | `app/service/semantic_memory.py`、`app/store/context.py` |
+| 05 再平衡 | `E:\prism\app\service\portfolio_rebalancing.py`、`E:\prism\app\rebalancing\` |
+| 06 双闸门 | `E:\prism\app\gates\pipeline.py`、`E:\prism\app\recommendation\` |
+| 07 版本状态 | `E:\prism\app\service\session_truth.py`、前端上下文版本逻辑 |
+| 08 历史检索 | `E:\prism\app\service\semantic_memory.py`、`E:\prism\app\store\context.py` |
 
 ### 答辩讲法
 
@@ -816,20 +816,20 @@ HHI = 10000 Σ(E_g / V)²
 
 ## 第五章 主要依据
 
-- `docs/submission/competition-technical-solution.md`
-- `docs/submission/technical-report.md`
-- `docs/submission/figures/`
-- `docs/showcase/`
-- `app/api/main.py`
-- `app/profile/`
-- `app/providers/`
-- `app/orchestration/`
-- `app/portfolio/`
-- `app/risk/`
-- `app/rebalancing/`
-- `app/service/`
-- `app/gates/`
-- `app/recommendation/`
-- `app/store/`
-- `tests/unit/`
-- `tests/integration/`
+- `E:\prism\docs\submission\competition-technical-solution.md`
+- `E:\prism\docs\submission\technical-report.md`
+- `E:\prism\docs\submission\figures\`
+- `E:\prism\docs\showcase\`
+- `E:\prism\app\api\main.py`
+- `E:\prism\app\profile\`
+- `E:\prism\app\providers\`
+- `E:\prism\app\orchestration\`
+- `E:\prism\app\portfolio\`
+- `E:\prism\app\risk\`
+- `E:\prism\app\rebalancing\`
+- `E:\prism\app\service\`
+- `E:\prism\app\gates\`
+- `E:\prism\app\recommendation\`
+- `E:\prism\app\store\`
+- `E:\prism\tests\unit\`
+- `E:\prism\tests\integration\`
