@@ -56,43 +56,48 @@ Prism 以个性化、可解释和可验证作为技术目标。个性化通过�
 
 图 2-1 展示各项能力之间的信息关系。具体请求按所需能力执行相应流程，查询单只股票行情可以直接返回行情结果。
 
+![用户问题与系统处理流程](figures/judge-01-processing-flow.png)
+
+<details>
+<summary>图示源文件</summary>
+
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","primaryTextColor":"#25313d","lineColor":"#7b8791","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","nodeSpacing":28,"rankSpacing":42}}}%%
-flowchart TD
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","primaryTextColor":"#25313d","lineColor":"#7b8791","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
+flowchart-elk TD
     subgraph INPUT[01 用户输入与确认]
+    direction TB
     A([用户问题与持仓资料]) --> B[确认投资者画像与组合]
     B --> C[识别分析目的]
     end
     subgraph ANALYSIS[02 研究与计算并行协作]
-    C --> D[专业研究与数据查询]
-    C --> E[组合分析与方案计算]
+    direction TB
+    M[已确认上下文与分析任务] --> D[专业研究与数据查询]
+    M --> E[组合分析与方案计算]
     D --> F[来源校验与研究发现]
-    B --> E
+    E --> K[组合报告与计算依据]
     end
     subgraph REVIEW[03 建议资格审查]
-    F --> G[风险与合规审查]
-    E --> G
-    G --> H{审查结果}
-    end
-    subgraph OUTPUT[04 用户可阅读的结果]
+    direction TB
+    G[研究发现与计算结果] --> N[风险与合规审查]
+    N --> H{审查结果}
     H -->|通过| I[建议与决策回执]
     H -->|需要复核或阻断| J[原因与补充事项]
-    E --> K[组合报告与计算依据]
-    I --> L([工作台展示与历史查询])
-    J --> L
-    K --> L
     end
+    INPUT --> ANALYSIS
+    ANALYSIS --> REVIEW
     classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
     classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
     classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
     classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
-    class A,B,C,L input
+    class A,B,C,M,G input
     class E,K compute
     class D,F,I evidence
-    class G,H,J review
+    class N,H,J review
 ```
 
-图 2-1 用户问题与系统处理流程
+</details>
+
+图 2-1 用户问题与系统处理流程。区域间箭头表示阶段衔接；组合报告、建议及复核事项均由工作台展示。
 
 ### 二、 方案组成
 
@@ -193,45 +198,56 @@ flowchart TD
 
 Prism 将一次分析组织为用户上下文、任务协调、专业处理、依据验证和结果呈现五个部分。画像决定计算所使用的风险条件；研究意图决定需要查询的主题；金融计算服务给出数值；风险与合规模块决定完整建议是否具备生成资格。
 
-图 4-1 按交互、任务、专业处理和结果四层组织。蓝色表示输入与任务，橙色表示金融计算，绿色表示研究与证据，金色表示审查；虚线表示记录关系。
+图 4-1 按交互、任务、专业处理和结果四个区域组织。蓝色表示输入与任务，橙色表示金融计算，绿色表示研究与证据，金色表示审查；虚线表示记录关系。
+
+![Prism 总体技术架构](figures/judge-02-architecture.png)
+
+<details>
+<summary>图示源文件</summary>
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"stepAfter","nodeSpacing":32,"rankSpacing":45}}}%%
-flowchart TD
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
+flowchart-elk TD
     subgraph UI[01 交互与用户上下文]
+    direction TB
     U([对话 · 问卷 · 持仓导入]) --> P[已确认画像与组合上下文]
     end
     subgraph TASK[02 任务组织]
-    P --> O[识别目的 · 生成计划 · 调度任务]
+    direction TB
+    O[识别目的] --> T[生成研究与计算计划]
+    T --> X[按任务依赖组织执行]
     end
     subgraph ENGINE[03 专业处理]
-    O --> R[专业研究<br/>市场 · 行业 · 证券]
-    O --> C[确定性金融计算<br/>暴露 · 风险 · 配置]
+    direction TB
     D[(数据服务<br/>问财 SkillHub 与其他来源)] --> R
     D --> C
+    R[专业研究<br/>市场 · 行业 · 证券]
+    C[确定性金融计算<br/>暴露 · 风险 · 配置]
     R --> E[依据验证<br/>来源 · 时间 · 交叉检查]
-    P --> C
+    C --> K[组合报告与计算依据]
     end
     subgraph RESULT[04 审查、展示与保存]
-    E --> G[独立风险与合规审查]
-    C --> G
-    C --> V([报告 · 研究卡 · 复核说明])
+    direction TB
+    G[独立风险与合规审查]
     G --> V
-    E -.-> S[(证据 · 版本 · 决策事件)]
-    G -.-> S
-    S --> V
+    V([建议 · 复核说明]) -.-> S[(证据 · 版本 · 决策事件)]
     end
+    UI --> TASK
+    TASK --> ENGINE
+    ENGINE --> RESULT
     classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
     classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
     classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
     classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
-    class U,P,O,V input
-    class C compute
+    class U,P,O,T,X,V input
+    class C,K compute
     class D,R,E,S evidence
     class G review
 ```
 
-图 4-1 Prism 总体技术架构
+</details>
+
+图 4-1 Prism 总体技术架构。区域间箭头表示任务处理阶段，区域内部表示对应的数据与处理关系。
 
 ### 二、 大语言模型与金融程序的职责
 
@@ -278,33 +294,44 @@ Prism 围绕“个人条件如何进入计算、研究依据如何通过验证�
 | 均衡型 | 35% | 45% | 40% | 20% |
 | 成长型 | 50% | 60% | 60% | 35% |
 
+![投资者画像参与组合计算](figures/judge-03-profile-calculation.png)
+
+<details>
+<summary>图示源文件</summary>
+
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","rankSpacing":42}}}%%
-flowchart TD
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
+flowchart-elk TD
     subgraph CONFIRM[01 确认个人条件]
+    direction TB
     A[正式问卷] --> B[确定性评分]
     C[自然语言描述] --> D[候选字段与差异确认]
     B --> E[已确认风险画像]
     D --> E
     end
     subgraph CALC[02 个人条件进入计算]
-    E --> F[风险预算<br/>按等级选择阈值]
+    direction TB
+    F[风险预算<br/>按等级选择阈值]
     G[(已确认持仓)] --> H[暴露与集中度]
-    F --> I{观察值与画像阈值比较}
+    F --> I{比较观察值<br/>与画像阈值}
     H --> I
     end
     subgraph USE[03 结果与后续应用]
-    I --> J[超限对象 · 超限幅度<br/>配置范围与风险复核]
-    E -.-> K[(保存画像版本)]
-    J -.-> K
+    direction TB
+    J[超限对象 · 超限幅度] --> L[配置范围与风险复核]
+    L -.-> K[(保存结果及关联画像版本)]
     end
+    CONFIRM --> CALC
+    CALC --> USE
     classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
     classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
     classDef result fill:#edf4e9,stroke:#658254,color:#34472b
     class A,C,D,E,G input
     class B,F,H,I compute
-    class J,K result
+    class J,K,L result
 ```
+
+</details>
 
 图 5-1 投资者画像参与组合计算的流程
 
@@ -323,24 +350,34 @@ flowchart TD
 | Finding | 对事实的结构化分析 | 事实引用、研究状态与冲突 | 为什么形成这项判断 |
 | Recommendation | 经过审查的建议 | 发现引用、画像约束与双重审查 | 建议适用于谁，在什么条件下有效 |
 
+![来源交叉验证与建议依据](figures/judge-04-evidence-validation.png)
+
+<details>
+<summary>图示源文件</summary>
+
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","rankSpacing":42}}}%%
-flowchart TD
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
+flowchart-elk TD
     subgraph SOURCE[01 证据进入]
+    direction TB
     A[(来源记录)] --> B[Evidence<br/>归一化与质量检查]
     end
     subgraph VALIDATE[02 来源交叉验证]
-    B --> C[匹配主体、指标、单位、期间]
+    direction TB
+    C[匹配主体与指标<br/>核对单位与期间]
     C --> L[按来源关联分组<br/>同源仅计一次]
-    L --> D{独立支持与冲突判定}
+    L --> D{独立支持<br/>与冲突判定}
     D -->|支持条件满足| E[Fact<br/>已验证事实]
     D -->|反对、冲突或不足| F[保留证据与验证状态<br/>说明待复核原因]
     end
     subgraph DECISION[03 依据进入建议]
-    E --> N[Finding<br/>带事实引用的研究发现]
+    direction TB
+    N[Finding<br/>带事实引用的研究发现]
     N --> G[风险与合规审查]
     G --> H[Recommendation<br/>建议与回执]
     end
+    SOURCE --> VALIDATE
+    VALIDATE -->|已验证事实| DECISION
     classDef source fill:#edf4fa,stroke:#49677d,color:#25313d
     classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
     classDef check fill:#fff5df,stroke:#ad8437,color:#654e20
@@ -350,6 +387,8 @@ flowchart TD
     class D,F,G check
     class H output
 ```
+
+</details>
 
 图 5-2 从原始数据到建议依据的处理流程
 
@@ -398,37 +437,47 @@ $$
 
 该算法把目标配置连接到具体数量和资金条件，每项调整均可追踪金额、费用与约束影响。证券市值与现金之和必须等于总资产；情景结果对应用户给定的冲击条件。
 
+![组合分析与再平衡计算](figures/judge-05-rebalancing.png)
+
+<details>
+<summary>图示源文件</summary>
+
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"stepAfter","rankSpacing":42}}}%%
-flowchart TD
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
+flowchart-elk TD
     subgraph BASE[01 计算输入与目标]
+    direction TB
     A[确认持仓与有效报价] --> B[直接暴露与基金成分穿透]
     B --> C[集中度与风险预算]
     C --> D[配置范围与目标结构]
     end
-    subgraph COMPUTE[02 两类方案计算]
-    D --> E[情景影响计算]
-    D --> F[目标金额转换为交易数量]
+    subgraph COMPUTE[02 数量与资金测算]
+    direction TB
+    F[目标金额转换为交易数量]
     F --> S[卖出测算<br/>计算资金与费用]
     S --> Q[买入测算<br/>预留现金后进行二分查找]
-    Q --> G{交易后现金与风险复核}
     end
     subgraph OUTPUT[03 输出与复核依据]
-    E --> H[情景影响与贡献来源]
+    direction TB
+    G{交易后现金与风险<br/>是否满足条件}
     G -->|条件满足| P[数量 · 费用 · 执行步骤]
     G -->|存在问题| R[复核原因与约束影响]
     end
+    BASE --> COMPUTE
+    COMPUTE --> OUTPUT
     classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
     classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
     classDef output fill:#edf4e9,stroke:#658254,color:#34472b
     classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
     class A,B,C,D input
-    class E,F,S,Q compute
-    class H,P output
+    class F,S,Q compute
+    class P output
     class G,R review
 ```
 
-图 5-3 组合分析与方案计算流程
+</details>
+
+图 5-3 组合分析与再平衡计算流程
 
 表 5-3 组合计算功能及输出
 
@@ -445,40 +494,51 @@ flowchart TD
 
 执行状态沿依赖关系传播，超时、取消和资料缺项保留原因。研究结果经证据验证后，与组合计算结果共同进入风险和合规审查。风险闸门检查画像、组合、证据、预算和配置的一致性；合规闸门检查候选文本、发现引用、披露与禁止表述。建议组合器重新校验输入，两个闸门均通过后生成回执。
 
+![专业协作与双重审查](figures/judge-06-decision-gates.png)
+
+<details>
+<summary>图示源文件</summary>
+
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","rankSpacing":40}}}%%
-flowchart TD
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
+flowchart-elk TD
     subgraph RESEARCH[01 研究执行与状态传播]
+    direction TB
     P[研究计划与依赖检查] --> N[专业节点按条件执行]
     N --> V[汇集结果并验证证据]
     N --> X[保留超时、取消与缺项状态]
     X --> V
     end
     subgraph GATES[02 独立双重审查]
-    V --> A[研究发现与组合计算结果]
-    Q[已确认组合的计算结果] --> A
+    direction TB
+    A[已验证研究发现<br/>与已确认组合计算结果]
     A --> B[风险闸门<br/>画像 · 组合 · 预算 · 证据]
     A --> C[合规闸门<br/>引用 · 披露 · 禁止表述]
     B --> D{聚合审查状态}
     C --> D
     end
     subgraph DECISION[03 结果与决策记录]
-    D -->|PASS| E[生成建议与决策回执]
-    D -->|REVIEW_REQUIRED| F[返回缺项与复核原因]
-    D -->|BLOCKED| G[终止建议生成]
+    direction TB
+    Z{建议资格} -->|PASS| E[生成建议与决策回执]
+    Z -->|REVIEW_REQUIRED| F[返回缺项与复核原因]
+    Z -->|BLOCKED| G[终止建议生成]
     E -.-> H[(记录决策事件)]
     F -.-> H
     G -.-> H
     end
+    RESEARCH --> GATES
+    GATES --> DECISION
     classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
     classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
     classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
     classDef blocked fill:#faeaea,stroke:#b96969,color:#793a3a
-    class P,N,A,Q input
+    class P,N,A input
     class V,E,H evidence
-    class X,B,C,D,F review
+    class X,B,C,D,F,Z review
     class G blocked
 ```
+
+</details>
 
 图 5-4 专业研究协作与风险合规审查流程
 
@@ -737,6 +797,8 @@ Pages 页面读取已保存的接口响应，适合展示相同时点的页面�
 工程结构、字段规则、部署方法和完整测试说明见[技术设计文档](technical-report.md)。本文技术图参考其中的处理链路、总体架构、个性化计算、研究编排与双闸门图，采用相同的蓝、橙、绿与金色分区，按业务含义组织阶段与节点。图 6-1 使用正式报告的金额，图 8-1 连接四项创新设计与应用价值。
 
 原有图示位于 `docs/submission/figures/`，包括处理链路、总体架构、模块依赖、研究编排、个性化计算和双闸门六幅图。第三章使用 `docs/showcase/` 中带 `20260917` 日期的五幅 Pages 截图。
+
+本文六幅流程图以同目录下的 `judge-` 前缀 PNG 展示，采用 Mermaid 与 ELK 布局生成，图下保留可展开的源文件。区域间箭头表示阶段衔接，区域内部连线表示数据与处理关系。
 
 ### 二、 实现模块与验证文件
 
