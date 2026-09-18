@@ -1,0 +1,76 @@
+#figure {
+  box-sizing: border-box;
+  padding: 38px 40px 28px;
+  background: #ffffff;
+  color: #203446;
+  font-family: "Microsoft YaHei", sans-serif;
+}
+.figure-header {
+  padding: 0 0 24px;
+  margin: 0 0 26px;
+  border-bottom: 2px solid #203446;
+}
+.figure-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  color: #74828e;
+  font-size: 11px;
+  letter-spacing: 1.8px;
+  margin-bottom: 12px;
+}
+.figure-title {
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.5;
+}
+.figure-subtitle {
+  margin-top: 8px;
+  color: #63717d;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.figure-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid #dfe5e9;
+  color: #77838e;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+#figure svg .cluster > rect {
+  fill: #f4f6f8 !important;
+  stroke: #e4e9ed !important;
+  stroke-width: 1px !important;
+  rx: 12px;
+  ry: 12px;
+}
+#figure svg .cluster-label {
+  font-weight: 700;
+  color: #203446;
+}
+#figure svg .node rect {
+  rx: 7px;
+  ry: 7px;
+  fill: #ffffff !important;
+  stroke-width: 1.25px !important;
+}
+#figure svg .nodeLabel {
+  font-weight: 500;
+  line-height: 1.6;
+}
+#figure svg .flowchart-link {
+  stroke: #71808c !important;
+  stroke-width: 1.5px !important;
+}
+#figure svg .edgeLabel {
+  font-size: 12px;
+}
+#figure svg .edgeLabel p {
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #ffffff !important;
+}
