@@ -400,8 +400,8 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
         assert selector in v2_styles
 
     for geometry in (
-        "grid-template-columns: 220px minmax(0, 1fr)",
-        "grid-template-columns: minmax(0, 1fr) 310px",
+        "grid-template-columns: 176px minmax(0, 1fr)",
+        "grid-template-columns: minmax(0, 1fr) 248px",
         "min-height: 260px",
         "border-radius: var(--radius-lg)",
         "box-shadow: none",
@@ -446,6 +446,9 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
         assert token in script
     for selector in (".chat-history-panel", ".chat-session-item.is-active", ".chat-session-delete"):
         assert selector in styles
+    assert "grid-template-columns: 224px minmax(0, 1fr);" in styles
+    assert "@container agent-workbench (max-width: 600px)" in styles
+    assert "min-height: 620px;" in styles
 
 
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
@@ -695,7 +698,7 @@ def test_feature_tools_share_the_conversation_column_beside_the_profile_rail() -
     profile_rail = markup.index('id="agent-profile-rail"', conversation)
     assert grid < workbench < feature_tools < conversation < profile_rail
     assert '</section>\n            </div>\n\n            <aside class="agent-profile-rail"' in markup
-    assert 'grid-template-columns: minmax(0, 1fr) 310px;' in styles
+    assert 'grid-template-columns: minmax(0, 1fr) 248px;' in styles
     assert '.agent-workbench-column > .agent-feature-tools { width: 100%; margin-bottom: 0; }' in styles
     assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation' in styles
     assert 'min-height: 260px;' in styles
