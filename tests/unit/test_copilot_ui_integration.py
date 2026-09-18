@@ -461,6 +461,7 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
     assert "grid-template-columns: 224px minmax(0, 1fr);" in styles
     assert "@container agent-workbench (max-width: 600px)" in styles
     assert "min-height: 620px;" in styles
+    assert "min-height: 22px;" in styles
 
 
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
