@@ -1,4 +1,4 @@
-# Prism 个性化证券投顾智能体系统技术方案
+# Prism 个性化证券投顾智能体系统技术文档
 
 参赛方向：基于同花顺问财 SkillHub 的个性化证券投顾智能体系统设计
 
@@ -57,22 +57,39 @@ Prism 以个性化、可解释和可验证作为技术目标。个性化通过�
 图 2-1 展示各项能力之间的信息关系。具体请求按所需能力执行相应流程，查询单只股票行情可以直接返回行情结果。
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","primaryTextColor":"#25313d","lineColor":"#7b8791","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","nodeSpacing":28,"rankSpacing":42}}}%%
 flowchart TD
-    A[用户问题与持仓资料] --> B[确认投资者画像与组合]
+    subgraph INPUT[01 用户输入与确认]
+    A([用户问题与持仓资料]) --> B[确认投资者画像与组合]
     B --> C[识别分析目的]
+    end
+    subgraph ANALYSIS[02 研究与计算并行协作]
     C --> D[专业研究与数据查询]
     C --> E[组合分析与方案计算]
     D --> F[来源校验与研究发现]
     B --> E
+    end
+    subgraph REVIEW[03 建议资格审查]
     F --> G[风险与合规审查]
     E --> G
     G --> H{审查结果}
+    end
+    subgraph OUTPUT[04 用户可阅读的结果]
     H -->|通过| I[建议与决策回执]
     H -->|需要复核或阻断| J[原因与补充事项]
     E --> K[组合报告与计算依据]
-    I --> L[工作台展示与历史查询]
+    I --> L([工作台展示与历史查询])
     J --> L
     K --> L
+    end
+    classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
+    classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
+    classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
+    classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
+    class A,B,C,L input
+    class E,K compute
+    class D,F,I evidence
+    class G,H,J review
 ```
 
 图 2-1 用户问题与系统处理流程
@@ -176,25 +193,42 @@ flowchart TD
 
 Prism 将一次分析组织为用户上下文、任务协调、专业处理、依据验证和结果呈现五个部分。画像决定计算所使用的风险条件；研究意图决定需要查询的主题；金融计算服务给出数值；风险与合规模块决定完整建议是否具备生成资格。
 
-图 4-1 中，纵向表示请求处理过程，数据与审计能力分别支撑查询和结果追踪。
+图 4-1 按交互、任务、专业处理和结果四层组织。蓝色表示输入与任务，橙色表示金融计算，绿色表示研究与证据，金色表示审查；虚线表示记录关系。
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"stepAfter","nodeSpacing":32,"rankSpacing":45}}}%%
 flowchart TD
-    U[交互入口：对话、问卷与持仓导入] --> P[已确认画像与组合上下文]
-    P --> O[任务协调：识别目的与生成计划]
-    O --> R[专业研究：市场、行业与证券]
-    O --> C[金融计算：暴露、风险与配置]
-    D[数据服务：问财 SkillHub 与其他来源] --> R
+    subgraph UI[01 交互与用户上下文]
+    U([对话 · 问卷 · 持仓导入]) --> P[已确认画像与组合上下文]
+    end
+    subgraph TASK[02 任务组织]
+    P --> O[识别目的 · 生成计划 · 调度任务]
+    end
+    subgraph ENGINE[03 专业处理]
+    O --> R[专业研究<br/>市场 · 行业 · 证券]
+    O --> C[确定性金融计算<br/>暴露 · 风险 · 配置]
+    D[(数据服务<br/>问财 SkillHub 与其他来源)] --> R
     D --> C
-    R --> E[依据验证：来源、时间与交叉检查]
+    R --> E[依据验证<br/>来源 · 时间 · 交叉检查]
     P --> C
+    end
+    subgraph RESULT[04 审查、展示与保存]
     E --> G[独立风险与合规审查]
     C --> G
-    C --> V[结果展示：报告、研究卡与复核说明]
+    C --> V([报告 · 研究卡 · 复核说明])
     G --> V
-    E --> S[记录：证据、版本与决策事件]
-    G --> S
+    E -.-> S[(证据 · 版本 · 决策事件)]
+    G -.-> S
     S --> V
+    end
+    classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
+    classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
+    classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
+    classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
+    class U,P,O,V input
+    class C compute
+    class D,R,E,S evidence
+    class G review
 ```
 
 图 4-1 Prism 总体技术架构
@@ -245,16 +279,31 @@ Prism 围绕“个人条件如何进入计算、研究依据如何通过验证�
 | 成长型 | 50% | 60% | 60% | 35% |
 
 ```mermaid
-flowchart LR
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","rankSpacing":42}}}%%
+flowchart TD
+    subgraph CONFIRM[01 确认个人条件]
     A[正式问卷] --> B[确定性评分]
     C[自然语言描述] --> D[候选字段与差异确认]
     B --> E[已确认风险画像]
     D --> E
-    E --> F[风险预算]
-    G[已确认持仓] --> H[暴露与集中度]
-    F --> I[配置范围与超限事项]
+    end
+    subgraph CALC[02 个人条件进入计算]
+    E --> F[风险预算<br/>按等级选择阈值]
+    G[(已确认持仓)] --> H[暴露与集中度]
+    F --> I{观察值与画像阈值比较}
     H --> I
-    I --> J[方案计算与风险复核]
+    end
+    subgraph USE[03 结果与后续应用]
+    I --> J[超限对象 · 超限幅度<br/>配置范围与风险复核]
+    E -.-> K[(保存画像版本)]
+    J -.-> K
+    end
+    classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
+    classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
+    classDef result fill:#edf4e9,stroke:#658254,color:#34472b
+    class A,C,D,E,G input
+    class B,F,H,I compute
+    class J,K result
 ```
 
 图 5-1 投资者画像参与组合计算的流程
@@ -275,14 +324,31 @@ flowchart LR
 | Recommendation | 经过审查的建议 | 发现引用、画像约束与双重审查 | 建议适用于谁，在什么条件下有效 |
 
 ```mermaid
-flowchart LR
-    A[来源记录] --> B[证据归一化]
-    B --> C[字段、时间与独立来源检查]
-    C --> D{验证条件是否满足}
-    D -->|满足| E[已验证事实与研究发现]
-    D -->|存在缺项或冲突| F[保留证据并要求复核]
-    E --> G[风险与合规审查]
-    G --> H[建议与回执]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","rankSpacing":42}}}%%
+flowchart TD
+    subgraph SOURCE[01 证据进入]
+    A[(来源记录)] --> B[Evidence<br/>归一化与质量检查]
+    end
+    subgraph VALIDATE[02 来源交叉验证]
+    B --> C[匹配主体、指标、单位、期间]
+    C --> L[按来源关联分组<br/>同源仅计一次]
+    L --> D{独立支持与冲突判定}
+    D -->|支持条件满足| E[Fact<br/>已验证事实]
+    D -->|反对、冲突或不足| F[保留证据与验证状态<br/>说明待复核原因]
+    end
+    subgraph DECISION[03 依据进入建议]
+    E --> N[Finding<br/>带事实引用的研究发现]
+    N --> G[风险与合规审查]
+    G --> H[Recommendation<br/>建议与回执]
+    end
+    classDef source fill:#edf4fa,stroke:#49677d,color:#25313d
+    classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
+    classDef check fill:#fff5df,stroke:#ad8437,color:#654e20
+    classDef output fill:#fcf0e9,stroke:#dc7958,color:#703e2b
+    class A,B source
+    class C,L,E,N evidence
+    class D,F,G check
+    class H output
 ```
 
 图 5-2 从原始数据到建议依据的处理流程
@@ -333,15 +399,33 @@ $$
 该算法把目标配置连接到具体数量和资金条件，每项调整均可追踪金额、费用与约束影响。证券市值与现金之和必须等于总资产；情景结果对应用户给定的冲击条件。
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"stepAfter","rankSpacing":42}}}%%
 flowchart TD
+    subgraph BASE[01 计算输入与目标]
     A[确认持仓与有效报价] --> B[直接暴露与基金成分穿透]
     B --> C[集中度与风险预算]
     C --> D[配置范围与目标结构]
+    end
+    subgraph COMPUTE[02 两类方案计算]
     D --> E[情景影响计算]
-    D --> F[数量、费用与现金测算]
-    F --> G[交易后风险复核]
-    E --> H[报告与方案说明]
-    G --> H
+    D --> F[目标金额转换为交易数量]
+    F --> S[卖出测算<br/>计算资金与费用]
+    S --> Q[买入测算<br/>预留现金后进行二分查找]
+    Q --> G{交易后现金与风险复核}
+    end
+    subgraph OUTPUT[03 输出与复核依据]
+    E --> H[情景影响与贡献来源]
+    G -->|条件满足| P[数量 · 费用 · 执行步骤]
+    G -->|存在问题| R[复核原因与约束影响]
+    end
+    classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
+    classDef compute fill:#fcf0e9,stroke:#dc7958,color:#703e2b
+    classDef output fill:#edf4e9,stroke:#658254,color:#34472b
+    classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
+    class A,B,C,D input
+    class E,F,S,Q compute
+    class H,P output
+    class G,R review
 ```
 
 图 5-3 组合分析与方案计算流程
@@ -362,23 +446,38 @@ flowchart TD
 执行状态沿依赖关系传播，超时、取消和资料缺项保留原因。研究结果经证据验证后，与组合计算结果共同进入风险和合规审查。风险闸门检查画像、组合、证据、预算和配置的一致性；合规闸门检查候选文本、发现引用、披露与禁止表述。建议组合器重新校验输入，两个闸门均通过后生成回执。
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"basis","rankSpacing":40}}}%%
 flowchart TD
+    subgraph RESEARCH[01 研究执行与状态传播]
     P[研究计划与依赖检查] --> N[专业节点按条件执行]
     N --> V[汇集结果并验证证据]
     N --> X[保留超时、取消与缺项状态]
     X --> V
+    end
+    subgraph GATES[02 独立双重审查]
     V --> A[研究发现与组合计算结果]
     Q[已确认组合的计算结果] --> A
-    A --> B[风险闸门]
-    A --> C[合规闸门]
+    A --> B[风险闸门<br/>画像 · 组合 · 预算 · 证据]
+    A --> C[合规闸门<br/>引用 · 披露 · 禁止表述]
     B --> D{聚合审查状态}
     C --> D
-    D -->|双重通过| E[生成建议与决策回执]
-    D -->|需要复核| F[返回缺项与复核原因]
-    D -->|阻断| G[终止建议生成]
-    E --> H[记录决策事件]
-    F --> H
-    G --> H
+    end
+    subgraph DECISION[03 结果与决策记录]
+    D -->|PASS| E[生成建议与决策回执]
+    D -->|REVIEW_REQUIRED| F[返回缺项与复核原因]
+    D -->|BLOCKED| G[终止建议生成]
+    E -.-> H[(记录决策事件)]
+    F -.-> H
+    G -.-> H
+    end
+    classDef input fill:#edf4fa,stroke:#49677d,color:#25313d
+    classDef evidence fill:#edf4e9,stroke:#658254,color:#34472b
+    classDef review fill:#fff5df,stroke:#ad8437,color:#654e20
+    classDef blocked fill:#faeaea,stroke:#b96969,color:#793a3a
+    class P,N,A,Q input
+    class V,E,H evidence
+    class X,B,C,D,F review
+    class G blocked
 ```
 
 图 5-4 专业研究协作与风险合规审查流程
@@ -414,6 +513,20 @@ flowchart TD
 | 恒瑞医药 | 1,500 | 43.13 | 64,695.00 | 4.56% |
 
 证券市值合计为 1,417,545.00 元，现金为 28,000.00 元，含现金总资产为 1,445,545.00 元。
+
+```mermaid
+%%{init: {"theme":"base","pie":{"textPosition":0.85},"themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","pie1":"#dd7958","pie2":"#49677d","pie3":"#7d9970","pie4":"#c7a15b","pie5":"#9a8eae","pie6":"#c8cdd0","pieStrokeColor":"#faf9f6","pieStrokeWidth":"2px","pieSectionTextColor":"#25313d","pieSectionTextSize":"14px","pieLegendTextColor":"#25313d"}}}%%
+pie showData
+    title 正式报告的总资产构成（元，含现金）
+    "贵州茅台" : 763650
+    "宁德时代" : 316360
+    "中芯国际" : 229720
+    "恒瑞医药" : 64695
+    "中国平安" : 43120
+    "现金" : 28000
+```
+
+图 6-1 案例总资产构成。图中采用含现金总资产口径，贵州茅台占比为 52.83%；表 6-1 采用证券持仓口径。
 
 ### 二、 计算过程与风险识别
 
@@ -544,6 +657,30 @@ Prism 的证据交叉验证同时考察内容、来源关系与支持条件。**
 * **数值证据**：第六章与第七章复核同一份正式报告的市值、比例及集中度，形成可重复的计算说明。
 * **流程证据**：专业节点、证据对象、闸门结果与决策事件记录研究和审查过程，具体实现及验证入口集中于附录。
 
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","primaryColor":"#edf4fa","primaryTextColor":"#25313d","secondaryColor":"#fcf0e9","tertiaryColor":"#edf4e9","cScale0":"#edf4fa","cScale1":"#fcf0e9","cScale2":"#edf4e9","cScale3":"#fff5df","cScale4":"#e4ecf2","cScaleLabel0":"#25313d","cScaleLabel1":"#703e2b","cScaleLabel2":"#34472b","cScaleLabel3":"#654e20","cScaleLabel4":"#25313d"}}}%%
+mindmap
+  root((Prism 技术贡献))
+    画像参与计算
+      风险约束映射算法
+      个人条件决定适用阈值
+      实际报告可比较
+    证据贯穿决策
+      来源交叉验证算法
+      同源去重与冲突识别
+      建议依据可追踪
+    金融结果可复算
+      受约束的再平衡算法
+      数量、费用与现金联算
+      调整结果可复核
+    协作受规则约束
+      DAG 依赖与状态传播
+      风险与合规独立审查
+      建议资格可检查
+```
+
+图 8-1 创新设计、算法方法与应用价值的对应关系
+
 <a id="chapter-9"></a>
 
 ## 第九章 工程保障与发展方向
@@ -597,7 +734,7 @@ Pages 页面读取已保存的接口响应，适合展示相同时点的页面�
 
 ### 一、 工程技术文档与图示依据
 
-工程结构、字段规则、部署方法和完整测试说明见[技术设计文档](technical-report.md)。本文图 2-1、图 4-1 和图 5-1 分别参考其中的处理链路、总体架构和个性化计算；图 5-4 结合研究编排与双闸门关系，按业务含义组织节点。
+工程结构、字段规则、部署方法和完整测试说明见[技术设计文档](technical-report.md)。本文技术图参考其中的处理链路、总体架构、个性化计算、研究编排与双闸门图，采用相同的蓝、橙、绿与金色分区，按业务含义组织阶段与节点。图 6-1 使用正式报告的金额，图 8-1 连接四项创新设计与应用价值。
 
 原有图示位于 `docs/submission/figures/`，包括处理链路、总体架构、模块依赖、研究编排、个性化计算和双闸门六幅图。第三章使用 `docs/showcase/` 中带 `20260917` 日期的五幅 Pages 截图。
 
