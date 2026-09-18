@@ -234,7 +234,7 @@ Prism 是面向同花顺 A18 赛题的个性化证券研究与决策支持工作
 | 文档 | 用途 |
 | --- | --- |
 | [Prism.md](Prism.md) | 项目目标、总体约束和产品工程规范 |
-| [项目技术文档](docs/submission/competition-technical-solution.md) | 面向评审的需求、功能展示、核心技术、组合案例与效果验证 |
+| [项目技术文档 Word](docs/submission/Prism-技术文档.docx) · [正文源文件](docs/submission/competition-technical-solution.md) | 面向评审的需求、功能展示、核心技术、论文引用、创新设计与组合验证 |
 | [技术设计文档](docs/submission/technical-report.md) | 当前模块、接口、数据规则、部署结构、测试方法和系统边界 |
 | [系统总体架构](docs/architecture.md) | 模块分层、运行流程和页面设计资料 |
 | [本地部署与数据维护](docs/local-deployment.md) | 账户、凭据、数据库、备份、真实 HTTP 观测和工作流维护 |
