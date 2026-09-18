@@ -1,0 +1,7 @@
+flowchart LR
+    A[确认历史持仓<br/>revision 1] --> C[数量保持 1000 股<br/>LOCKED]
+    A --> E[数量修改为 1100 股<br/>DRIFT_DETECTED]
+    C --> B[按当前前提校验<br/>PASS]
+    E --> F[沿用旧前提校验<br/>UNVERIFIED]
+    classDef focus fill:#fff1e3,stroke:#d97706,color:#202124;
+    class E,F focus;

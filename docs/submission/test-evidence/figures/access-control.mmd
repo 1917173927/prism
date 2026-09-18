@@ -1,0 +1,8 @@
+flowchart TD
+    A[受保护接口请求] --> B[登录与账户范围检查]
+    B --> C[未登录<br/>401]
+    B --> E[跨账户或越权<br/>403]
+    B --> G[研究条件不足<br/>409]
+    B --> H[问卷读取<br/>200]
+    classDef focus fill:#fff1e3,stroke:#d97706,color:#202124;
+    class C,E,G focus;
