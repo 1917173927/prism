@@ -175,9 +175,6 @@ class LocalAccessMiddleware(BaseHTTPMiddleware):
                 self.audit(account.owner_id, request.method, "/origin-denied", 403)
                 return JSONResponse({"error_code":"ORIGIN_DENIED"}, status_code=403)
             if request.url.path in (
-                "/api/v1/copilot/config",
-                "/api/v1/user/model-settings",
-                "/api/v1/user/model-settings/test",
                 "/api/v1/runtime/data-mode",
                 "/api/v1/runtime/wencai-settings",
                 "/api/v1/runtime/wencai-settings/test",

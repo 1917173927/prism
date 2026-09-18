@@ -1,5 +1,9 @@
 # TODO
 
+## 评审技术方案
+
+- [x] 参考四份项目方案与指定共享对话调整最新技术方案，统一章节及图表格式，将工程索引集中于附录，补充真实组合报告案例并完成数值与文档结构校验。
+
 > Updated: 2026-09-15
 
 当前执行清单：[剩余缺口实施与验收](docs/plans/2026-09-08-gap-closure.md)。用户已授权推进其余缺口，明确排除正式 PPT、视频和提交版测试报告；外部授权与生产 SLA 需独立验证。
@@ -10,6 +14,13 @@
 >
 > Historical baseline: P2 Phase 34–39 implemented. Current work: local deployment and incremental P3 gap closure; status below is item-specific.
 > External integrations and real model / SLA validation remain evidence-dependent.
+
+## GitHub Pages 前端展示
+
+- [x] 使用最新 `app/api/static/index.html` 与完整静态资源目录发布前端工作台，并通过 `.github/workflows/deploy-pages.yml` 自动更新。
+- [x] 从本机当前服务捕获实际账户响应，生成 `app/api/static/pages-snapshot.json`，公开页面只读取静态快照。
+- [x] 公开页面保留完整工作台导航与功能面板，未捕获的写入请求显示为只读快照不可用状态。
+- [x] 在 GitHub Pages 证书就绪后打开 `Enforce HTTPS`，并复核 `https://prism.daoyezongzi.org` 的证书状态。
 
 ## 本地部署缺口执行
 

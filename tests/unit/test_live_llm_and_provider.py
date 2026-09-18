@@ -20,6 +20,10 @@ from app.providers.live_wencai import LiveWencaiProvider
 from app.runtime.mode import DataMode
 
 
+def test_llm_config_defaults_to_deepseek_v4_flash() -> None:
+    assert LLMConfig().model == "deepseek-v4-flash"
+
+
 def test_real_stream_assembles_fragmented_tool_call(monkeypatch) -> None:
     """OpenAI-compatible streams split tool names and JSON across deltas."""
 

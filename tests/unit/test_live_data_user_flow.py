@@ -13,8 +13,11 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from app.runtime.mode import DataMode
+import httpx
+
+from app.runtime.mode import DataMode, reset_runtime_mode_controller
 from app.llm.ocr_portfolio_parser import recalculate_portfolio_values
+from app.providers.security_directory import OfficialSecurityDirectoryProvider
 
 
 def _report(tool, data, *, mode="LIVE"):
@@ -93,6 +96,51 @@ def test_text_holdings_preserve_explicit_live_price_and_cost(monkeypatch):
     assert result["total_value_cny"] == 340000
     assert result["positions"][0]["cost_price"] == 1350
     assert result["positions"][0]["price"] == 1400
+
+
+def test_text_holdings_resolve_exact_name_and_preserve_buying_cost() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "www.sse.com.cn":
+            return httpx.Response(200, text="function get_data(){return [];}")
+        return httpx.Response(200, json=[{
+            "metadata": {"tabkey": "tab1"},
+            "data": [{
+                "agdm": "002185",
+                "agjc": "<u>华天科技</u>",
+            }],
+        }])
+
+    directory = OfficialSecurityDirectoryProvider(transport=httpx.MockTransport(handler))
+
+    class MarketQuoteProvider:
+        async def get_quote(self, symbol: str) -> dict[str, object]:
+            assert symbol == "002185.SZ"
+            return {"symbol": symbol, "name": "华天科技", "price_cny": 16.97}
+
+    from fastapi.testclient import TestClient
+    from app.api.main import create_app
+
+    reset_runtime_mode_controller(DataMode.MOCK)
+    with TestClient(create_app(
+        market_provider=MarketQuoteProvider(),
+        security_directory_provider=directory,
+    )) as client:
+        response = client.post(
+            "/api/v1/copilot/parse-portfolio",
+            json={"text": "持有100股华天科技 买入成本15.3"},
+        )
+        assert response.status_code == 200
+        result = response.json()
+
+    assert result["status"] == "SUCCESS"
+    position = result["positions"][0]
+    assert position["asset_id"] == "002185.SZ"
+    assert position["quantity"] == 100
+    assert position["cost_price"] == 15.3
+    assert position["price"] == 16.97
+    assert position["market_value_cny"] == 1697.0
+
+    reset_runtime_mode_controller(DataMode.MOCK)
 
 
 @pytest.mark.parametrize("grouped", [True, False])

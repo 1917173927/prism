@@ -60,9 +60,12 @@ def test_local_demo_login_issues_an_http_only_session(client):
 def test_privileges_origin_and_audit_isolation(client):
     client.auth = ("alice", "local-test-password")
     assert client.put("/api/v1/runtime/data-mode", json={"mode":"MOCK"}).status_code == 403
-    assert client.put("/api/v1/user/model-settings", json={"api_key":"member-key"}).status_code == 403
-    assert client.post("/api/v1/user/model-settings/test").status_code == 403
-    assert client.delete("/api/v1/user/model-settings").status_code == 403
+    saved = client.put("/api/v1/user/model-settings", json={"api_key":"member-key"})
+    assert saved.status_code == 200
+    assert saved.json()["model"] == "deepseek-v4-flash"
+    assert client.post("/api/v1/copilot/config", json={"api_key":"compatibility-key"}).status_code == 200
+    assert client.delete("/api/v1/user/model-settings").status_code == 200
+    assert client.post("/api/v1/user/model-settings/test").status_code == 409
     assert client.post("/api/v1/portfolio/import", headers={"Origin":"https://other.invalid"}, json={}).status_code == 403
     assert client.post("/api/v1/copilot/chat", headers={"Sec-Fetch-Site":"cross-site"}, json={}).status_code == 403
     rows = client.get("/api/v1/access-audit").json()["items"]

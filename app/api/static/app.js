@@ -154,12 +154,11 @@
   }, ["ownerId", "selectedPersona", "profile", "behaviorProfile", "portfolio", "dataMode"]);
   const state = microStore.state;
   let authenticatedOwner = null;
-  let authenticatedAdmin = false;
   let accountAccessEnabled = false;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
-  async function refreshSessionTruth() {
+  async function refreshSessionTruth(signal) {
     const owner = state.ownerId;
-    const response = await fetch("/api/v1/advisor/session-truth", {headers:{"X-Owner-ID":owner}});
+    const response = await fetch("/api/v1/advisor/session-truth", {headers:{"X-Owner-ID":owner}, signal});
     if (!response.ok) throw await apiError(response);
     const result = await response.json();
     if (state.ownerId !== owner) return null;
@@ -10415,8 +10414,42 @@
     stepEl.classList.add(status);
   }
 
+  const CHAT_PRECHECK_TIMEOUT_MS = 8000;
+  const CHAT_STREAM_IDLE_TIMEOUT_MS = 15000;
   let activeChatController = null;
   let chatContextRevision = 0;
+
+  function createLinkedTimeoutController(parentSignal, timeoutMs) {
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    if (parentSignal) {
+      if (parentSignal.aborted) controller.abort();
+      else parentSignal.addEventListener("abort", onAbort, {once: true});
+    }
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return {
+      signal: controller.signal,
+      dispose() {
+        clearTimeout(timer);
+        parentSignal?.removeEventListener("abort", onAbort);
+      },
+    };
+  }
+
+  async function readChatStreamChunk(reader) {
+    let timer = null;
+    try {
+      return await Promise.race([
+        reader.read(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("模型响应超时，请稍后重新发送。")), CHAT_STREAM_IDLE_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timer !== null) clearTimeout(timer);
+    }
+  }
+
   async function handleStreamingChat(customQuery) {
     if (activeChatController) return;
     const controller = new AbortController();
@@ -10443,14 +10476,17 @@
     if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
     const chatOwner = state.ownerId;
     let chatTruth = null;
+    const truthRequest = createLinkedTimeoutController(signal, CHAT_PRECHECK_TIMEOUT_MS);
     try {
-      const currentTruth = await refreshSessionTruth();
+      const currentTruth = await refreshSessionTruth(truthRequest.signal);
       if (currentTruth?.revision && currentTruth.status === "LOCKED") chatTruth = currentTruth;
     } catch (error) {
       // A missing or stale portfolio/profile truth may not block ordinary chat.
       // Keeping chatTruth null prevents the backend from treating this turn as
       // personalized advice based on an unconfirmed snapshot.
       chatTruth = null;
+    } finally {
+      truthRequest.dispose();
     }
 
     if (signal.aborted) return;
@@ -10583,7 +10619,7 @@
 
       try {
       while (true) {
-        const { value, done } = await reader.read();
+        const { value, done } = await readChatStreamChunk(reader);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -10795,7 +10831,7 @@
     configured: false,
     connectionStatus: "NONE",
     baseUrl: "https://api.deepseek.com/v1",
-    model: "deepseek-chat",
+    model: "deepseek-v4-flash",
     provider: "deepseek",
   };
   let llmFormDirty = false;
@@ -10813,11 +10849,10 @@
   }
 
   function setLLMFormBusy(busy) {
-    const readOnly = accountAccessEnabled && !authenticatedAdmin;
     ["llm-provider-select", "llm-api-key-input", "llm-base-url-input", "llm-model-input",
       "btn-save-llm-config", "btn-clear-llm-config"].forEach(id => {
       const element = byId(id);
-      if (element) element.disabled = busy || readOnly;
+      if (element) element.disabled = busy;
     });
   }
 
@@ -10898,9 +10933,7 @@
     const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
     const status = byId("llm-config-status");
     status.style.display = "block";
-    const accessHint = accountAccessEnabled && !authenticatedAdmin
-      ? "该配置由管理员统一维护，当前账户只读使用。"
-      : "密钥不回显，留空保存会保留现有密钥。";
+    const accessHint = "密钥不回显，留空保存会保留现有密钥；后续保存会更新全局配置。";
     status.textContent = settings.is_configured ? `全局共享 · ${settings.model} · ${persistence}。${accessHint}` : `尚未配置全局模型服务 · ${persistence}。${accessHint}`;
     setLLMFormBusy(false);
     return settings;
@@ -11576,8 +11609,9 @@
     const color = name => css.getPropertyValue(name).trim();
     const chartHeight = 420 + (activeMarketIndicators.has("macd") ? 130 : 0) + (activeMarketIndicators.has("kdj") ? 130 : 0);
     container.style.height = `${chartHeight}px`;
+    const initialWidth = container.clientWidth;
     const chart = window.LightweightCharts.createChart(container, {
-      width: container.clientWidth, height: chartHeight,
+      width: initialWidth, height: chartHeight,
       layout: {background: {type: "solid", color: color("--surface")}, textColor: color("--text-secondary"),
         panes: {separatorColor: color("--border"), separatorHoverColor: color("--brand"), enableResize: true}},
       grid: {vertLines: {color: color("--border-subtle")}, horzLines: {color: color("--border-subtle")}},
@@ -11648,7 +11682,10 @@
     chart.timeScale().fitContent();
     marketChartResizeObserver = new ResizeObserver(entries => {
       const width = Math.floor(entries[0]?.contentRect.width || 0);
-      if (width > 0 && renderedMarketChart === chart) chart.applyOptions({width});
+      if (width > 0 && renderedMarketChart === chart) {
+        chart.applyOptions({width});
+        if (initialWidth === 0) chart.timeScale().fitContent();
+      }
     });
     marketChartResizeObserver.observe(container);
   }
@@ -12420,6 +12457,28 @@
     output.append(card);
   }
 
+  function buildMarketFeatureResultCard() {
+    const card = document.createElement("div");
+    card.className = "copilot-decision-card";
+    const heading = document.createElement("h3");
+    heading.textContent = "大盘分析已完成";
+    const summary = document.createElement("p");
+    summary.className = "research-boundary";
+    const index = selectedMarketIndex();
+    const status = byId("market-status")?.textContent || "行情已更新";
+    summary.textContent = `${index?.name || "当前指数"}：${status}。图表已更新，点击按钮后查看。`;
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "copilot-action-btn secondary";
+    action.textContent = "查看大盘图";
+    action.addEventListener("click", () => {
+      window.location.hash = "market";
+      syncNavigation("market");
+    });
+    card.append(heading, summary, action);
+    return card;
+  }
+
   function providerCellValue(value) {
     if (value == null || value === "") return "未提供";
     if (typeof value === "number") {
@@ -12654,8 +12713,8 @@
         renderMarketIndexCards();
         await loadMarketQuotes();
         await assessMarket();
-        window.location.hash = "market";
-        syncNavigation("market");
+        const output = agentFeatureOutput();
+        if (output) output.append(buildMarketFeatureResultCard());
         return;
       }
       if (id === "industry") {
@@ -12944,7 +13003,7 @@
       const modelInput = byId("llm-model-input");
       if (p === "deepseek") {
         if (urlInput) urlInput.value = "https://api.deepseek.com/v1";
-        if (modelInput) modelInput.value = "deepseek-chat";
+        if (modelInput) modelInput.value = "deepseek-v4-flash";
       } else if (p === "qwen") {
         if (urlInput) urlInput.value = "https://dashscope.aliyuncs.com/compatible-mode/v1";
         if (modelInput) modelInput.value = "qwen-plus";
@@ -13142,7 +13201,6 @@
     const context = await response.json();
     accountAccessEnabled = context.enabled === true;
     authenticatedOwner = context.enabled ? context.owner_id : null;
-    authenticatedAdmin = context.admin === true;
     if (context.enabled && !authenticatedOwner) throw new Error("账户身份无效");
     if (authenticatedOwner) {
       const mockOption = byId("chat-runtime-mode")?.querySelector('option[value="MOCK"]');

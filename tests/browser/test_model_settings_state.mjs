@@ -19,6 +19,8 @@ vm.runInContext(source.slice(start, end), context);
 const run = code => vm.runInContext(code, context);
 const settings = {is_configured: true, base_url: "https://api.deepseek.com/v1", model: "saved-model", persistence: "OS_PROTECTED"};
 
+assert.equal(run("llmConfig.model"), "deepseek-v4-flash", "DeepSeek 默认模型必须使用 deepseek-v4-flash");
+
 byId("llm-api-key-input").value = "unsaved-draft";
 run("updateLLMConfigUI()");
 assert.equal(byId("llm-api-key-input").value, "unsaved-draft", "status rendering must not erase input");

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
     <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style-insights">
     <script src="/static/dev-mode.js" defer></script>
+    <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
     <script src="/static/app.js?v=20260916-trading-style-insights" defer></script>
@@ -549,7 +550,7 @@
                 <span class="mode-status-indicator" aria-hidden="true"></span>
                 <span class="mode-label-text" id="global-data-mode-label">MOCK · 合成数据</span>
               </button>
-            </div><p class="source-mode-help">模型服务采用安装级全局配置；管理员保存一次后所有账户共享使用。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口。普通账户只能查看连接状态，不能读取或覆盖密钥。</p>
+            </div><p class="source-mode-help">模型服务采用安装级全局配置；已登录账户保存后所有账户共享使用。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口。已登录账户均可填写、修改和清除配置；密钥不会在浏览器中回显。</p>
 
                 <div style="margin-bottom:12px;">
                   <label for="llm-provider-select" style="font-size:12.5px; font-weight:600; display:block; margin-bottom:4px;">服务商预设：</label>
@@ -572,7 +573,7 @@
 
                 <div style="margin-bottom:14px;">
                   <label for="llm-model-input" style="font-size:12.5px; font-weight:600; display:block; margin-bottom:4px;">模型名称 (Model)：</label>
-                  <input type="text" id="llm-model-input" class="portfolio-textarea" style="height:38px; padding:6px 10px;" value="deepseek-chat" autocomplete="off">
+                  <input type="text" id="llm-model-input" class="portfolio-textarea" style="height:38px; padding:6px 10px;" value="deepseek-v4-flash" autocomplete="off">
                 </div>
 
                 <div class="modal-actions" style="gap:8px;">
@@ -583,7 +584,7 @@
                     <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存配置</span>
                   </button>
                 </div>
-                <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。清除或修改全局配置需要管理员权限。</p>
+                <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。当前配置为全局共享，后续保存会更新全局配置。</p>
                 <div id="llm-config-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>
             </div>

@@ -368,6 +368,15 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert "if (activeChatController) activeChatController.abort();" in script
     assert 'workspaceStorage.removeItem(ownerStorageKey("prism_copilot_chat_history_v2"))' in script
     assert 'clearChatBtn.addEventListener("click", clearConversationContext)' in script
+    assert "const CHAT_PRECHECK_TIMEOUT_MS = 8000;" in script
+    assert "const CHAT_STREAM_IDLE_TIMEOUT_MS = 15000;" in script
+    assert "async function readChatStreamChunk(reader)" in script
+    assert "refreshSessionTruth(truthRequest.signal)" in script
+    market_start = script.index('if (id === "market")')
+    market_end = script.index('if (id === "industry")', market_start)
+    market_block = script[market_start:market_end]
+    assert "buildMarketFeatureResultCard" in market_block
+    assert 'window.location.hash = "market";' not in market_block
 
     assert "Agent home is defined here as a complete composition" in v2_styles
     for selector in (
