@@ -1,16 +1,18 @@
 flowchart TD
-  user["用户问题与追问"] --> route["当前意图判定<br/>结合最近消息"]
-  recent["短期上下文<br/>最近 6 条历史消息"] --> route
+  user["用户问题与追问"] --> entry["请求入口<br/>有绑定：核验版本与事实<br/>无绑定：清除个性化资料"]
+  saved["历史记录<br/>选择 · 更新 · 确认"] --> profile["服务端当前画像与持仓"]
+  profile --> entry
+  entry -->|已有绑定校验失败| confirm["返回重新确认提示"]
+  entry -->|校验通过或未绑定| route["构建消息与判定工具需求<br/>采用最多 6 条已提交历史消息"]
   route -->|一般交流| general["概念解释与一般回答"]
-  route -->|金融事实或计算| lock["服务端前提校验<br/>画像版本 · 持仓快照 · 数据模式"]
-  profile["已确认画像与持仓"] --> lock
-  saved["长期历史记录<br/>显式保存 · 相关性检索"] -.->|用户选择并重新确认| profile
-  lock -->|版本有效| tools["工具或专业研究任务<br/>查询 · 证据 · 确定性计算"]
-  lock -->|版本变化| confirm["提示重新确认<br/>停止沿用旧前提"]
-  tools --> review["结构化建议审查<br/>证据引用 · 风险 · 合规"]
-  review --> result["报告与可追踪结果"]
-  tools --> grounded["聊天工具结果转述"]
+  route -->|金融资料查询| market["行情与资料工具<br/>允许无个人前提查询"]
+  route -->|个人组合问题| personal["持仓体检或调仓工具"]
+  personal -->|体检| health["有效前提：确定性体检<br/>缺少前提：提示确认资料"]
+  personal -->|调仓| guide["提示进入调仓计划"]
+  guide -.->|用户操作| plan["计划入口确认条件<br/>持仓 · 目标权重 · 换手约束<br/>执行确定性测算"]
+  market --> grounded["依据工具结果组织回答"]
+  health --> grounded
   classDef accent fill:#fff3e8,stroke:#e86f00,color:#202124,stroke-width:2px
   classDef base fill:#ffffff,stroke:#9aa1aa,color:#202124
-  class route,lock,tools,review accent
-  class user,recent,general,profile,saved,confirm,result,grounded base
+  class entry,route,personal,plan accent
+  class user,general,profile,saved,confirm,market,health,guide,grounded base
