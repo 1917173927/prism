@@ -434,7 +434,10 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
         "function formatChatSessionTime(value)",
         "function activateChatSession(sessionId)",
         "function deleteChatSession(sessionId)",
-        "function renameChatSession(sessionId)",
+        "function beginChatSessionRename(item, session)",
+        "function renameChatSession(sessionId, requestedTitle)",
+        'input.setAttribute("aria-label", "修改对话名称")',
+        'input.addEventListener("keydown", event => {',
         "function createPersistedChatSession(title",
         'fetch("/api/v1/copilot/conversations"',
         "conversation_id: activeChatSessionId",
@@ -444,7 +447,15 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
         '!accountAccessEnabled && state.dataMode === "MOCK"',
     ):
         assert token in script
-    for selector in (".chat-history-panel", ".chat-session-item.is-active", ".chat-session-delete"):
+    assert 'window.prompt("输入新的对话名称"' not in script
+    for selector in (
+        ".chat-history-panel",
+        ".chat-session-item.is-active",
+        ".chat-session-delete",
+        ".chat-session-item.is-editing",
+        ".chat-session-title-input",
+        ".chat-session-edit-save",
+    ):
         assert selector in styles
     assert "grid-template-columns: 224px minmax(0, 1fr);" in styles
     assert "@container agent-workbench (max-width: 600px)" in styles

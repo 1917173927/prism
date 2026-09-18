@@ -10448,11 +10448,11 @@
       const rename = document.createElement("button");
       rename.type = "button";
       rename.className = "chat-session-rename";
-      rename.textContent = "改";
+      rename.textContent = "编辑";
       rename.setAttribute("aria-label", `重命名对话：${session.title}`);
       rename.addEventListener("click", event => {
         event.stopPropagation();
-        renameChatSession(session.id).catch(error => setError(error.message));
+        beginChatSessionRename(item, session);
       });
       const remove = document.createElement("button");
       remove.type = "button";
@@ -10546,22 +10546,78 @@
     persistChatSessions();
   }
 
-  async function renameChatSession(sessionId) {
+  function beginChatSessionRename(item, session) {
+    if (activeChatController || !item || !session) return;
+    item.classList.add("is-editing");
+    clear(item);
+
+    const form = document.createElement("form");
+    form.className = "chat-session-edit-form";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "chat-session-title-input";
+    input.value = session.title;
+    input.maxLength = 36;
+    input.required = true;
+    input.setAttribute("aria-label", "修改对话名称");
+
+    const controls = document.createElement("span");
+    controls.className = "chat-session-edit-actions";
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "chat-session-edit-save";
+    save.textContent = "保存";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "chat-session-edit-cancel";
+    cancel.textContent = "取消";
+    cancel.addEventListener("click", () => renderChatSessionList());
+    controls.append(save, cancel);
+    form.append(input, controls);
+    item.append(form);
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      save.disabled = true;
+      cancel.disabled = true;
+      try {
+        const changed = await renameChatSession(session.id, input.value);
+        if (!changed) renderChatSessionList();
+      } catch (error) {
+        save.disabled = false;
+        cancel.disabled = false;
+        setError(error.message);
+      }
+    });
+    input.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      renderChatSessionList();
+    });
+    window.requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  }
+
+  async function renameChatSession(sessionId, requestedTitle) {
     if (activeChatController) return;
     const session = chatSessions.find(item => item.id === sessionId);
     if (!session) return;
-    const title = window.prompt("输入新的对话名称", session.title)?.trim();
-    if (!title || title === session.title) return;
+    const title = String(requestedTitle || "").trim().slice(0, 36);
+    if (!title || title === session.title) return false;
     const response = await fetch(`/api/v1/copilot/conversations/${encodeURIComponent(sessionId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
-      body: JSON.stringify({ title: title.slice(0, 36) }),
+      body: JSON.stringify({ title }),
     });
     if (!response.ok) throw await apiError(response);
     session.title = (await response.json()).title;
     renderChatSessionList();
     if (session.id === activeChatSessionId) byId("active-chat-title").textContent = session.title;
     persistChatSessions();
+    return true;
   }
 
   async function deleteChatSession(sessionId) {
