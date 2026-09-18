@@ -59,7 +59,7 @@ Prism 以个性化、可解释和可验证作为技术目标。个性化通过�
 ![用户问题与系统处理流程](figures/judge-01-processing-flow.png)
 
 <details>
-<summary>图示源文件</summary>
+<summary>详细处理关系（Mermaid）</summary>
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","primaryTextColor":"#25313d","lineColor":"#7b8791","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
@@ -198,12 +198,12 @@ flowchart-elk TD
 
 Prism 将一次分析组织为用户上下文、任务协调、专业处理、依据验证和结果呈现五个部分。画像决定计算所使用的风险条件；研究意图决定需要查询的主题；金融计算服务给出数值；风险与合规模块决定完整建议是否具备生成资格。
 
-图 4-1 按交互、任务、专业处理和结果四个区域组织。蓝色表示输入与任务，橙色表示金融计算，绿色表示研究与证据，金色表示审查；虚线表示记录关系。
+图 4-1 按交互与任务、研究与计算、验证与交付三个阶段组织。图中沿用前端的灰白橙配色，橙色突出核心处理模块；阶段箭头表示整体处理方向。具体的数据依赖和记录关系见图下的详细处理关系。
 
 ![Prism 总体技术架构](figures/judge-02-architecture.png)
 
 <details>
-<summary>图示源文件</summary>
+<summary>详细处理关系（Mermaid）</summary>
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
@@ -297,7 +297,7 @@ Prism 围绕“个人条件如何进入计算、研究依据如何通过验证�
 ![投资者画像参与组合计算](figures/judge-03-profile-calculation.png)
 
 <details>
-<summary>图示源文件</summary>
+<summary>详细处理关系（Mermaid）</summary>
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
@@ -353,7 +353,7 @@ flowchart-elk TD
 ![来源交叉验证与建议依据](figures/judge-04-evidence-validation.png)
 
 <details>
-<summary>图示源文件</summary>
+<summary>详细处理关系（Mermaid）</summary>
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
@@ -440,7 +440,7 @@ $$
 ![组合分析与再平衡计算](figures/judge-05-rebalancing.png)
 
 <details>
-<summary>图示源文件</summary>
+<summary>详细处理关系（Mermaid）</summary>
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
@@ -497,7 +497,7 @@ flowchart-elk TD
 ![专业协作与双重审查](figures/judge-06-decision-gates.png)
 
 <details>
-<summary>图示源文件</summary>
+<summary>详细处理关系（Mermaid）</summary>
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Microsoft YaHei, sans-serif","lineColor":"#74818b","edgeLabelBackground":"#faf9f6","clusterBkg":"#faf9f6","clusterBorder":"#dedbd2"},"flowchart":{"curve":"linear","nodeSpacing":36,"rankSpacing":48}}}%%
@@ -794,11 +794,11 @@ Pages 页面读取已保存的接口响应，适合展示相同时点的页面�
 
 ### 一、 工程技术文档与图示依据
 
-工程结构、字段规则、部署方法和完整测试说明见[技术设计文档](technical-report.md)。本文技术图参考其中的处理链路、总体架构、个性化计算、研究编排与双闸门图，采用相同的蓝、橙、绿与金色分区，按业务含义组织阶段与节点。图 6-1 使用正式报告的金额，图 8-1 连接四项创新设计与应用价值。
+工程结构、字段规则、部署方法和完整测试说明见[技术设计文档](technical-report.md)。本文技术图参考其中的处理链路、总体架构、个性化计算、研究编排与双闸门图，采用编号分区、模块色条与明确的标题层级，颜色延续前端的灰白橙风格。图 6-1 使用正式报告的金额，图 8-1 连接四项创新设计与应用价值。
 
 原有图示位于 `docs/submission/figures/`，包括处理链路、总体架构、模块依赖、研究编排、个性化计算和双闸门六幅图。第三章使用 `docs/showcase/` 中带 `20260917` 日期的五幅 Pages 截图。
 
-本文六幅流程图以同目录下的 `judge-` 前缀 PNG 展示，采用 Mermaid 与 ELK 布局生成，图下保留可展开的源文件。图题、阶段区域、节点卡片和连线采用统一样式，样式文件为 `docs/submission/figures/judge-diagrams.css`。区域间箭头表示阶段衔接，区域内部连线表示数据与处理关系。
+本文六幅技术图以同目录下的 `judge-` 前缀 PNG 展示，并提供同名 SVG 与 PDF。绘图程序为 `tools/render_judge_figures.py`，使用 Python 与 Matplotlib 生成。每幅图以三个阶段呈现处理逻辑，橙色强调核心处理，箭头表示阶段衔接；具体节点依赖、条件分支与记录关系保留在图下可展开的 Mermaid 中。
 
 ### 二、 实现模块与验证文件
 
