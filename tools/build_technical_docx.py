@@ -5,7 +5,7 @@ from copy import deepcopy
 
 from docx import Document
 from docx.shared import Cm, Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -199,10 +199,20 @@ def main():
                 raise ValueError(token.content)
             value = token.content
             if value.startswith('$$') and value.endswith('$$'):
-                math = etree.fromstring(convert(value[2:-2]).encode())
+                equation = value[2:-2]
+                numbered = re.fullmatch(r'(.*)\\qquad \((\d+-\d+)\)', equation)
+                if numbered:
+                    equation = numbered.group(1)
+                    p.paragraph_format.tab_stops.add_tab_stop(Cm(8.5), WD_TAB_ALIGNMENT.CENTER)
+                    p.paragraph_format.tab_stops.add_tab_stop(Cm(17), WD_TAB_ALIGNMENT.RIGHT)
+                    p.add_run('\t')
+                math = etree.fromstring(convert(equation).encode())
                 p._p.append(transform(math).getroot())
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                if numbered:
+                    font(p.add_run(f'\t({numbered.group(2)})'))
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT if numbered else WD_ALIGN_PARAGRAPH.CENTER
                 p.paragraph_format.first_line_indent = Cm(0)
+                p.paragraph_format.keep_with_next = True
             elif token.children and token.children[0].type == 'image':
                 file = SOURCE.parent / token.children[0].attrGet('src')
                 with Image.open(file) as img:
@@ -213,13 +223,6 @@ def main():
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 p.paragraph_format.keep_with_next = True
                 p.add_run().add_picture(str(file),width=Cm(draw_width))
-                previous = p._p.getprevious()
-                if previous is not None and previous.tag == qn('w:p'):
-                    properties = previous.find(qn('w:pPr'))
-                    if properties is None:
-                        properties = OxmlElement('w:pPr')
-                        previous.insert(0, properties)
-                    properties.append(OxmlElement('w:keepNext'))
             else:
                 size = 10 if table is not None else 12
                 if re.match(r'^[图表] [\dA]+-', value):
