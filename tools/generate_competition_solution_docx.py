@@ -17,7 +17,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs" / "submission" / "competition-technical-solution.md"
-OUTPUT = ROOT / "docs" / "submission" / "Prism个性化证券投顾智能体系统项目详细方案.docx"
+OUTPUT = ROOT / "docs" / "submission" / "Prism个性化证券投顾智能体系统项目详细方案-创新强化版.docx"
 FIGURES = ROOT / "docs" / "submission" / "figures"
 
 NAVY = "17365D"
@@ -36,6 +36,7 @@ FIGURE_MAP = {
 
 FLOW_LABELS = {
     "图 5-3": ["原始记录", "证据", "来源校验", "事实", "研究发现", "双闸门", "建议回执"],
+    "图 6-1": ["问卷持仓授权", "画像上下文", "能力路由", "证据研究", "组合计算", "双重审查", "回执复盘"],
 }
 
 TOC_ENTRIES = [
@@ -45,10 +46,10 @@ TOC_ENTRIES = [
     ("第四章  产品功能与应用展示", 9),
     ("第五章  技术方案", 14),
     ("第六章  创新亮点", 19),
-    ("第七章  系统验证与项目成果", 21),
-    ("第八章  落地模式与项目价值", 24),
-    ("第九章  风险控制与发展规划", 26),
-    ("附录  证据索引与实现说明", 28),
+    ("第七章  系统验证与项目成果", 23),
+    ("第八章  落地模式与项目价值", 26),
+    ("第九章  风险控制与发展规划", 28),
+    ("附录  证据索引与实现说明", 30),
 ]
 
 
@@ -102,6 +103,53 @@ def set_table_borders(table):
         tag.set(qn("w:sz"), "4")
         tag.set(qn("w:space"), "0")
         tag.set(qn("w:color"), LIGHT_BORDER)
+
+
+def set_table_geometry(table, widths_cm, indent_dxa):
+    """Persist fixed table, grid, and cell widths for stable cross-editor layout."""
+    width_twips = [int(round(Cm(width).twips)) for width in widths_cm]
+    total_twips = int(round(Cm(sum(widths_cm)).twips))
+    width_twips[-1] += total_twips - sum(width_twips)
+
+    tbl_pr = table._tbl.tblPr
+    tbl_w = tbl_pr.first_child_found_in("w:tblW")
+    if tbl_w is None:
+        tbl_w = OxmlElement("w:tblW")
+        tbl_pr.append(tbl_w)
+    tbl_w.set(qn("w:type"), "dxa")
+    tbl_w.set(qn("w:w"), str(total_twips))
+
+    tbl_ind = tbl_pr.first_child_found_in("w:tblInd")
+    if tbl_ind is None:
+        tbl_ind = OxmlElement("w:tblInd")
+        tbl_pr.append(tbl_ind)
+    tbl_ind.set(qn("w:type"), "dxa")
+    tbl_ind.set(qn("w:w"), str(indent_dxa))
+
+    layout = tbl_pr.first_child_found_in("w:tblLayout")
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        tbl_pr.append(layout)
+    layout.set(qn("w:type"), "fixed")
+
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
+
+    grid = table._tbl.tblGrid
+    for child in list(grid):
+        grid.remove(child)
+    for width in width_twips:
+        col = OxmlElement("w:gridCol")
+        col.set(qn("w:w"), str(width))
+        grid.append(col)
+
+    for row in table.rows:
+        for index, cell in enumerate(row.cells):
+            tc_w = cell._tc.get_or_add_tcPr().first_child_found_in("w:tcW")
+            if tc_w is None:
+                tc_w = OxmlElement("w:tcW")
+                cell._tc.get_or_add_tcPr().append(tc_w)
+            tc_w.set(qn("w:type"), "dxa")
+            tc_w.set(qn("w:w"), str(width_twips[index]))
 
 
 def set_repeat_table_header(row):
@@ -219,6 +267,7 @@ def add_table(doc, rows):
             numeric = bool(re.fullmatch(r"[\d,.%–\- 至]+", value.strip()))
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER if numeric or len(value) <= 14 else WD_ALIGN_PARAGRAPH.LEFT
             add_inline_markup(p, value, size=8.6)
+    set_table_geometry(table, widths, indent_dxa=110)
     after = doc.add_paragraph()
     after.paragraph_format.space_after = Pt(2)
 
@@ -252,6 +301,7 @@ def add_native_flow(doc, labels):
         p.paragraph_format.space_after = Pt(0)
         r = p.add_run(label + ("\n→" if i < len(labels) - 1 else ""))
         set_run_font(r, east_asia="黑体", latin="Arial", size=8.2, bold=True, color=NAVY)
+    set_table_geometry(table, [16.4 / len(labels)] * len(labels), indent_dxa=70)
     keep_paragraph_with_next(table.cell(0, 0).paragraphs[0])
 
 
@@ -353,6 +403,7 @@ def add_cover(doc):
             r = p.add_run(text)
             set_run_font(r, east_asia="黑体" if j == 0 else "宋体", size=10, bold=j == 0)
     set_table_borders(meta)
+    set_table_geometry(meta, [3.2, 10.8], indent_dxa=140)
 
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(34)
