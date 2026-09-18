@@ -1,19 +1,29 @@
 flowchart TD
-  entry["浏览器工作台<br/>index.html · Hash 路由"] --> view
-  subgraph view[页面与展示]
+  entry(["浏览器工作台 · 页面入口<br/>index.html / Hash 路由"]) --> view
+  subgraph view[01  用户交互]
     direction LR
     chat["AI 对话<br/>消息与工具进度"]
     account["画像与持仓<br/>问卷 · 导入 · 确认"]
     report["分析报告<br/>风险 · 配置 · 行情"]
     chat ~~~ account ~~~ report
   end
-  view --> state["app.js 状态与事件协调<br/>用户归属 · 画像版本 · 持仓快照"]
-  state --> render["展示组件<br/>Markdown · 图表 · 工作流视图"]
-  state --> api["请求与流式处理<br/>fetch · HTTP · SSE 事件解析"]
-  state --> history["会话消息保存<br/>账户隔离 · 最近消息"]
+  view --> state["app.js · 状态与事件协调<br/>用户归属 · 画像 · 持仓"]
+  subgraph interaction[02  状态保存与服务通信]
+    direction LR
+    history["会话消息<br/>账户隔离 · 最近消息"]
+    api["请求与流式处理<br/>fetch / HTTP / SSE"]
+  end
+  state --> history
+  state --> api
   api --> backend["FastAPI 接口<br/>结构化响应 · 状态 · 引用"]
-  backend --> render
-  classDef accent fill:#fff3e8,stroke:#e86f00,color:#202124,stroke-width:2px
-  classDef base fill:#ffffff,stroke:#9aa1aa,color:#202124
-  class entry,state,api accent
+  subgraph presentation[03  结果呈现]
+    render["展示组件<br/>Markdown · 图表<br/>工作流视图"]
+  end
+  state -.->|本地状态更新| presentation
+  backend -->|响应与事件| presentation
+  classDef accent fill:#fff1e3,stroke:#e86f00,color:#202124,stroke-width:1.6px
+  classDef base fill:#ffffff,stroke:#cbd0d6,color:#30343b
+  classDef dark fill:#292d34,stroke:#292d34,color:#ffffff
+  class entry dark
+  class state,api accent
   class chat,account,report,render,history,backend base

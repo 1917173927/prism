@@ -217,7 +217,7 @@ def main():
                 file = SOURCE.parent / token.children[0].attrGet('src')
                 with Image.open(file) as img:
                     width, height = img.size
-                max_height = 14 if 'judge-06' in file.name else (16 if 'judge-' in file.name else 17.5)
+                max_height = 21 if file.stem in {'frontend-framework', 'backend-framework', 'context-dataflow'} else (14 if 'judge-06' in file.name else (16 if 'judge-' in file.name else 17.5))
                 draw_width = min(17, max_height*width/height)
                 p.paragraph_format.first_line_indent = Cm(0)
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
