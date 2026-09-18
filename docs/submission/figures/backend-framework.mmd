@@ -1,0 +1,29 @@
+flowchart TD
+  access["接入层 · FastAPI / Uvicorn<br/>HTTP 与 SSE · 身份与用户归属 · Pydantic 校验"] --> services
+  subgraph services[应用服务层]
+    direction LR
+    dialogue["对话协调<br/>意图路由 · 工具调用"]
+    context["用户上下文<br/>画像 · 持仓 · 会话前提"]
+    research["研究执行<br/>专业任务 · DAG 调度"]
+    dialogue ~~~ context ~~~ research
+  end
+  services --> domain
+  subgraph domain[领域处理层]
+    direction LR
+    calc["确定性金融计算<br/>暴露 · 预算 · 再平衡"]
+    evidence["证据处理<br/>来源分组 · 事实与引用"]
+    gates["结果审查<br/>风险闸门 · 合规闸门"]
+    calc ~~~ evidence ~~~ gates
+  end
+  domain --> infrastructure
+  subgraph infrastructure[基础服务与存储]
+    direction LR
+    providers["外部服务适配<br/>LLM · 金融查询"]
+    storage["SQLite / 可选 PostgreSQL<br/>画像 · 快照 · 记忆 · 决策"]
+    imports["资料处理<br/>OpenPyXL · RapidOCR"]
+    providers ~~~ storage ~~~ imports
+  end
+  classDef accent fill:#fff3e8,stroke:#e86f00,color:#202124,stroke-width:2px
+  classDef base fill:#ffffff,stroke:#9aa1aa,color:#202124
+  class access,calc,evidence,gates accent
+  class dialogue,context,research,providers,storage,imports base

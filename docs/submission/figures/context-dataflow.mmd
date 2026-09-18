@@ -1,0 +1,16 @@
+flowchart TD
+  user["用户问题与追问"] --> route["当前意图判定<br/>结合最近消息"]
+  recent["短期上下文<br/>最近 6 条历史消息"] --> route
+  route -->|一般交流| general["概念解释与一般回答"]
+  route -->|金融事实或计算| lock["服务端前提校验<br/>画像版本 · 持仓快照 · 数据模式"]
+  profile["已确认画像与持仓"] --> lock
+  saved["长期历史记录<br/>显式保存 · 相关性检索"] -.->|用户选择并重新确认| profile
+  lock -->|版本有效| tools["工具或专业研究任务<br/>查询 · 证据 · 确定性计算"]
+  lock -->|版本变化| confirm["提示重新确认<br/>停止沿用旧前提"]
+  tools --> review["结构化建议审查<br/>证据引用 · 风险 · 合规"]
+  review --> result["报告与可追踪结果"]
+  tools --> grounded["聊天工具结果转述"]
+  classDef accent fill:#fff3e8,stroke:#e86f00,color:#202124,stroke-width:2px
+  classDef base fill:#ffffff,stroke:#9aa1aa,color:#202124
+  class route,lock,tools,review accent
+  class user,recent,general,profile,saved,confirm,result,grounded base
