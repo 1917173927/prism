@@ -1,0 +1,7 @@
+flowchart LR
+    A[当前用户<br/>结构化资料] --> B[100 次保存<br/>8 个工作线程]
+    B --> C[SQLite 创建 1 条记录]
+    C --> D[原用户读取<br/>内容一致]
+    C --> E[其他用户读取<br/>空值或空列表]
+    classDef focus fill:#fff1e3,stroke:#d97706,color:#202124;
+    class C,D,E focus;

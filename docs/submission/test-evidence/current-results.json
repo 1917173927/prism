@@ -1,0 +1,2041 @@
+{
+  "started_at": "2026-09-18T15:44:23.529940+00:00",
+  "ended_at": "2026-09-18T15:44:24.277592+00:00",
+  "git_commit": "d45d71fcffcfe313a71d3e006d6ccc4287c5fb0a",
+  "environment": {
+    "python": "3.12.14",
+    "os": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "packages": {
+      "pydantic": "2.13.5",
+      "fastapi": "0.141.1",
+      "pytest": "8.4.2"
+    }
+  },
+  "source_path": "app\\api\\static\\pages-snapshot.json",
+  "source_sha256": "8dfa7fe4d3c0fa73fe9473ac37d18cc9a1335e689a5e2140ef1f5087dd64650e",
+  "source_captured_at": "2026-09-17T10:08:50.644Z",
+  "source_generated_at": "2026-09-15T07:42:36.803891Z",
+  "tests": [
+    {
+      "id": "NUM-01",
+      "title": "五项市值逐项复算",
+      "expected": [
+        "316360.00",
+        "763650.00",
+        "229720.00",
+        "43120.00",
+        "64695.00"
+      ],
+      "actual": [
+        "316360.00",
+        "763650.00",
+        "229720.00",
+        "43120.00",
+        "64695.00"
+      ],
+      "status": "PASS",
+      "scope": "历史报告数值复核"
+    },
+    {
+      "id": "NUM-02",
+      "title": "证券和现金金额守恒",
+      "expected": "1445545.00",
+      "actual": "1445545.00",
+      "status": "PASS",
+      "scope": "历史报告数值复核"
+    },
+    {
+      "id": "NUM-03",
+      "title": "证券权重分母一致",
+      "expected": [
+        "22.32",
+        "53.87",
+        "16.21",
+        "3.04",
+        "4.56"
+      ],
+      "actual": [
+        "22.32",
+        "53.87",
+        "16.21",
+        "3.04",
+        "4.56"
+      ],
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "NUM-04",
+      "title": "证券集中度复算",
+      "expected": "3692.96",
+      "actual": "3692.96",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "NUM-05",
+      "title": "现金比例复核",
+      "expected": "1.94",
+      "actual": "1.94",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "NUM-06",
+      "title": "行业集中度复核",
+      "expected": "3555.39",
+      "actual": "3555.39",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "NUM-07",
+      "title": "组合问题保留",
+      "expected": "REVIEW_REQUIRED",
+      "actual": "REVIEW_REQUIRED",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "PRO-01",
+      "title": "画像改变单一资产上限",
+      "expected": [
+        "20",
+        "35",
+        "50"
+      ],
+      "actual": [
+        "20",
+        "35",
+        "50"
+      ],
+      "status": "PASS",
+      "scope": "历史持仓与明确变更的画像条件"
+    },
+    {
+      "id": "REB-01",
+      "title": "买入费用计算",
+      "expected": "5.04",
+      "actual": "5.04",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "REB-02",
+      "title": "卖出费用计算",
+      "expected": "7.04",
+      "actual": "7.04",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "REB-03",
+      "title": "确定性重复计算",
+      "expected": {
+        "schema_version": "portfolio-rebalancing-response.v1",
+        "request_id": "report-rebalancing",
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "status": "REVIEW_REQUIRED",
+        "metrics": {
+          "total_portfolio_value_cny": "1445545.00",
+          "total_turnover_pct": "37.80",
+          "total_buy_cny": "174654.00",
+          "total_sell_cny": "918079.00",
+          "net_cash_flow_cny": "742681.85",
+          "turnover_cap_breached": false,
+          "net_turnover_cost": "743.15",
+          "net_turnover_cost_pct": "0.07",
+          "cash_after_cny": "770681.85",
+          "cash_shortfall_cny": "0.00"
+        },
+        "actions": [
+          {
+            "asset_id": "300750.SZ",
+            "asset_name": "宁德时代",
+            "asset_type": "STOCK",
+            "current_weight_pct": "21.89",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "-13.13",
+            "current_value_cny": "316360.00",
+            "target_value_cny": "126544.00",
+            "cash_delta_cny": "-189816.00",
+            "action_type": "REDUCE",
+            "rationale": "当前权重 21.89% 高于目标 10.00%，建议减仓调优",
+            "shares": "600",
+            "current_price_cny": "316.36",
+            "stamp_duty": "94.91",
+            "transfer_fee": "1.90",
+            "commission": "47.45",
+            "total_fees_cny": "144.26",
+            "executable": true
+          },
+          {
+            "asset_id": "600519.SH",
+            "asset_name": "贵州茅台",
+            "asset_type": "STOCK",
+            "current_weight_pct": "52.83",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "-44.02",
+            "current_value_cny": "763650.00",
+            "target_value_cny": "127275.00",
+            "cash_delta_cny": "-636375.00",
+            "action_type": "REDUCE",
+            "rationale": "当前权重 52.83% 高于目标 10.00%，建议减仓调优",
+            "shares": "500",
+            "current_price_cny": "1272.75",
+            "stamp_duty": "318.19",
+            "transfer_fee": "6.36",
+            "commission": "159.09",
+            "total_fees_cny": "483.64",
+            "executable": true
+          },
+          {
+            "asset_id": "688981.SH",
+            "asset_name": "中芯国际",
+            "asset_type": "STOCK",
+            "current_weight_pct": "15.89",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "-6.36",
+            "current_value_cny": "229720.00",
+            "target_value_cny": "137832.00",
+            "cash_delta_cny": "-91888.00",
+            "action_type": "REDUCE",
+            "rationale": "当前权重 15.89% 高于目标 10.00%，建议减仓调优",
+            "shares": "800",
+            "current_price_cny": "114.86",
+            "stamp_duty": "45.94",
+            "transfer_fee": "0.92",
+            "commission": "22.97",
+            "total_fees_cny": "69.83",
+            "executable": true
+          },
+          {
+            "asset_id": "601318.SH",
+            "asset_name": "中国平安",
+            "asset_type": "STOCK",
+            "current_weight_pct": "2.98",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "6.71",
+            "current_value_cny": "43120.00",
+            "target_value_cny": "140140.00",
+            "cash_delta_cny": "97020.00",
+            "action_type": "BUY",
+            "rationale": "当前权重 2.98% 低于目标 10.00%，建议加仓补足",
+            "shares": "1800",
+            "current_price_cny": "53.90",
+            "stamp_duty": "0.00",
+            "transfer_fee": "0.97",
+            "commission": "24.26",
+            "total_fees_cny": "25.23",
+            "executable": true
+          },
+          {
+            "asset_id": "600276.SH",
+            "asset_name": "恒瑞医药",
+            "asset_type": "STOCK",
+            "current_weight_pct": "4.48",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "5.37",
+            "current_value_cny": "64695.00",
+            "target_value_cny": "142329.00",
+            "cash_delta_cny": "77634.00",
+            "action_type": "BUY",
+            "rationale": "当前权重 4.48% 低于目标 10.00%，建议加仓补足",
+            "shares": "1800",
+            "current_price_cny": "43.13",
+            "stamp_duty": "0.00",
+            "transfer_fee": "0.78",
+            "commission": "19.41",
+            "total_fees_cny": "20.19",
+            "executable": true
+          },
+          {
+            "asset_id": "CASH-CNY",
+            "asset_name": "可用现金",
+            "asset_type": "CASH",
+            "current_weight_pct": "1.94",
+            "target_weight_pct": "50.00",
+            "delta_weight_pct": "0.00",
+            "current_value_cny": "28000",
+            "target_value_cny": "722772.50",
+            "cash_delta_cny": "0.00",
+            "action_type": "HOLD",
+            "rationale": "现金不直接下单，实际余额由证券交易及费用决定",
+            "shares": "0",
+            "current_price_cny": null,
+            "stamp_duty": "0.00",
+            "transfer_fee": "0.00",
+            "commission": "0.00",
+            "total_fees_cny": "0.00",
+            "executable": true
+          }
+        ],
+        "execution_steps": [
+          {
+            "step_number": 1,
+            "action_type": "REDUCE",
+            "asset_id": "600519.SH",
+            "asset_name": "贵州茅台",
+            "amount_cny": "636375.00",
+            "liquidity_priority": 1,
+            "description": "优先卖出/减持 贵州茅台 释放现金 636375.00 CNY",
+            "shares": "500",
+            "total_fees_cny": "483.64"
+          },
+          {
+            "step_number": 2,
+            "action_type": "REDUCE",
+            "asset_id": "300750.SZ",
+            "asset_name": "宁德时代",
+            "amount_cny": "189816.00",
+            "liquidity_priority": 1,
+            "description": "优先卖出/减持 宁德时代 释放现金 189816.00 CNY",
+            "shares": "600",
+            "total_fees_cny": "144.26"
+          },
+          {
+            "step_number": 3,
+            "action_type": "REDUCE",
+            "asset_id": "688981.SH",
+            "asset_name": "中芯国际",
+            "amount_cny": "91888.00",
+            "liquidity_priority": 1,
+            "description": "优先卖出/减持 中芯国际 释放现金 91888.00 CNY",
+            "shares": "800",
+            "total_fees_cny": "69.83"
+          },
+          {
+            "step_number": 4,
+            "action_type": "BUY",
+            "asset_id": "601318.SH",
+            "asset_name": "中国平安",
+            "amount_cny": "97020.00",
+            "liquidity_priority": 2,
+            "description": "使用释放流动性买入/增持 中国平安 金额 97020.00 CNY",
+            "shares": "1800",
+            "total_fees_cny": "25.23"
+          },
+          {
+            "step_number": 5,
+            "action_type": "BUY",
+            "asset_id": "600276.SH",
+            "asset_name": "恒瑞医药",
+            "amount_cny": "77634.00",
+            "liquidity_priority": 2,
+            "description": "使用释放流动性买入/增持 恒瑞医药 金额 77634.00 CNY",
+            "shares": "1800",
+            "total_fees_cny": "20.19"
+          }
+        ],
+        "issues": [
+          "交易后完整体检未通过，尚有行业、集中度、现金或数据质量风险",
+          "交易后仍有资产或行业风险预算超限"
+        ],
+        "post_trade_health": {
+          "schema_version": "portfolio-health-response.v1",
+          "request_id": "post-trade:report-rebalancing",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "calculated_at": "2026-09-15T07:42:36.803891Z",
+          "status": "REVIEW_REQUIRED",
+          "source_exposure_status": "COMPLETE",
+          "total_market_value_cny": "1444801.85",
+          "sector_hhi": "3281.63",
+          "hhi_limit": "2500.00",
+          "hhi_verdict": "OVERBOUND",
+          "technology_weight_pct": "9.54",
+          "technology_limit_pct": "60",
+          "cash_weight_pct": "53.34",
+          "cash_minimum_pct": "5.00",
+          "has_breaches": true,
+          "evidence_count": 6,
+          "top_sector_key": "CASH",
+          "top_sector_name": "可用现金",
+          "top_sector_weight_pct": "53.34",
+          "sectors": [
+            {
+              "sector_key": "INDUSTRY:医药生物-化学制药-化学制剂",
+              "name": "医药生物-化学制药-化学制剂",
+              "weight_pct": "9.85",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-50.15",
+              "margin_pct_points": "50.15",
+              "verdict": "PASS",
+              "top_holdings": [
+                "恒瑞医药"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:金融-非银行金融-保险",
+              "name": "金融-非银行金融-保险",
+              "weight_pct": "9.70",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-50.30",
+              "margin_pct_points": "50.30",
+              "verdict": "PASS",
+              "top_holdings": [
+                "中国平安"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:电子设备-半导体-集成电路",
+              "name": "电子设备-半导体-集成电路",
+              "weight_pct": "9.54",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-50.46",
+              "margin_pct_points": "50.46",
+              "verdict": "PASS",
+              "top_holdings": [
+                "中芯国际"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:食品饮料-饮料-白酒",
+              "name": "食品饮料-饮料-白酒",
+              "weight_pct": "8.81",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-51.19",
+              "margin_pct_points": "51.19",
+              "verdict": "PASS",
+              "top_holdings": [
+                "贵州茅台"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:电气设备-电源设备-储能设备",
+              "name": "电气设备-电源设备-储能设备",
+              "weight_pct": "8.76",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-51.24",
+              "margin_pct_points": "51.24",
+              "verdict": "PASS",
+              "top_holdings": [
+                "宁德时代"
+              ]
+            },
+            {
+              "sector_key": "CASH",
+              "name": "可用现金",
+              "weight_pct": "53.34",
+              "limit_pct": "5.00",
+              "limit_operator": "MIN",
+              "difference_pct_points": "48.34",
+              "margin_pct_points": "48.34",
+              "verdict": "PASS",
+              "top_holdings": [
+                "可用现金"
+              ]
+            }
+          ],
+          "issues": [],
+          "calculation_steps": [
+            "calculate_exposure(portfolio)",
+            "aggregate provider industry labels without replacing source classifications",
+            "calculate sector HHI from closed weights",
+            "apply profile risk-budget and cash hard gates"
+          ]
+        },
+        "invalidation_conditions": [
+          "组合内任意资产价格变动超过 5.00%",
+          "宏观或行业风险预算上限调整",
+          "用户风险画像发生变更"
+        ],
+        "disclaimer": "调仓方案仅供决策参考（ADVISORY_ONLY），不构成自动交易或委托指令。"
+      },
+      "actual": {
+        "schema_version": "portfolio-rebalancing-response.v1",
+        "request_id": "report-rebalancing",
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "status": "REVIEW_REQUIRED",
+        "metrics": {
+          "total_portfolio_value_cny": "1445545.00",
+          "total_turnover_pct": "37.80",
+          "total_buy_cny": "174654.00",
+          "total_sell_cny": "918079.00",
+          "net_cash_flow_cny": "742681.85",
+          "turnover_cap_breached": false,
+          "net_turnover_cost": "743.15",
+          "net_turnover_cost_pct": "0.07",
+          "cash_after_cny": "770681.85",
+          "cash_shortfall_cny": "0.00"
+        },
+        "actions": [
+          {
+            "asset_id": "300750.SZ",
+            "asset_name": "宁德时代",
+            "asset_type": "STOCK",
+            "current_weight_pct": "21.89",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "-13.13",
+            "current_value_cny": "316360.00",
+            "target_value_cny": "126544.00",
+            "cash_delta_cny": "-189816.00",
+            "action_type": "REDUCE",
+            "rationale": "当前权重 21.89% 高于目标 10.00%，建议减仓调优",
+            "shares": "600",
+            "current_price_cny": "316.36",
+            "stamp_duty": "94.91",
+            "transfer_fee": "1.90",
+            "commission": "47.45",
+            "total_fees_cny": "144.26",
+            "executable": true
+          },
+          {
+            "asset_id": "600519.SH",
+            "asset_name": "贵州茅台",
+            "asset_type": "STOCK",
+            "current_weight_pct": "52.83",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "-44.02",
+            "current_value_cny": "763650.00",
+            "target_value_cny": "127275.00",
+            "cash_delta_cny": "-636375.00",
+            "action_type": "REDUCE",
+            "rationale": "当前权重 52.83% 高于目标 10.00%，建议减仓调优",
+            "shares": "500",
+            "current_price_cny": "1272.75",
+            "stamp_duty": "318.19",
+            "transfer_fee": "6.36",
+            "commission": "159.09",
+            "total_fees_cny": "483.64",
+            "executable": true
+          },
+          {
+            "asset_id": "688981.SH",
+            "asset_name": "中芯国际",
+            "asset_type": "STOCK",
+            "current_weight_pct": "15.89",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "-6.36",
+            "current_value_cny": "229720.00",
+            "target_value_cny": "137832.00",
+            "cash_delta_cny": "-91888.00",
+            "action_type": "REDUCE",
+            "rationale": "当前权重 15.89% 高于目标 10.00%，建议减仓调优",
+            "shares": "800",
+            "current_price_cny": "114.86",
+            "stamp_duty": "45.94",
+            "transfer_fee": "0.92",
+            "commission": "22.97",
+            "total_fees_cny": "69.83",
+            "executable": true
+          },
+          {
+            "asset_id": "601318.SH",
+            "asset_name": "中国平安",
+            "asset_type": "STOCK",
+            "current_weight_pct": "2.98",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "6.71",
+            "current_value_cny": "43120.00",
+            "target_value_cny": "140140.00",
+            "cash_delta_cny": "97020.00",
+            "action_type": "BUY",
+            "rationale": "当前权重 2.98% 低于目标 10.00%，建议加仓补足",
+            "shares": "1800",
+            "current_price_cny": "53.90",
+            "stamp_duty": "0.00",
+            "transfer_fee": "0.97",
+            "commission": "24.26",
+            "total_fees_cny": "25.23",
+            "executable": true
+          },
+          {
+            "asset_id": "600276.SH",
+            "asset_name": "恒瑞医药",
+            "asset_type": "STOCK",
+            "current_weight_pct": "4.48",
+            "target_weight_pct": "10.00",
+            "delta_weight_pct": "5.37",
+            "current_value_cny": "64695.00",
+            "target_value_cny": "142329.00",
+            "cash_delta_cny": "77634.00",
+            "action_type": "BUY",
+            "rationale": "当前权重 4.48% 低于目标 10.00%，建议加仓补足",
+            "shares": "1800",
+            "current_price_cny": "43.13",
+            "stamp_duty": "0.00",
+            "transfer_fee": "0.78",
+            "commission": "19.41",
+            "total_fees_cny": "20.19",
+            "executable": true
+          },
+          {
+            "asset_id": "CASH-CNY",
+            "asset_name": "可用现金",
+            "asset_type": "CASH",
+            "current_weight_pct": "1.94",
+            "target_weight_pct": "50.00",
+            "delta_weight_pct": "0.00",
+            "current_value_cny": "28000",
+            "target_value_cny": "722772.50",
+            "cash_delta_cny": "0.00",
+            "action_type": "HOLD",
+            "rationale": "现金不直接下单，实际余额由证券交易及费用决定",
+            "shares": "0",
+            "current_price_cny": null,
+            "stamp_duty": "0.00",
+            "transfer_fee": "0.00",
+            "commission": "0.00",
+            "total_fees_cny": "0.00",
+            "executable": true
+          }
+        ],
+        "execution_steps": [
+          {
+            "step_number": 1,
+            "action_type": "REDUCE",
+            "asset_id": "600519.SH",
+            "asset_name": "贵州茅台",
+            "amount_cny": "636375.00",
+            "liquidity_priority": 1,
+            "description": "优先卖出/减持 贵州茅台 释放现金 636375.00 CNY",
+            "shares": "500",
+            "total_fees_cny": "483.64"
+          },
+          {
+            "step_number": 2,
+            "action_type": "REDUCE",
+            "asset_id": "300750.SZ",
+            "asset_name": "宁德时代",
+            "amount_cny": "189816.00",
+            "liquidity_priority": 1,
+            "description": "优先卖出/减持 宁德时代 释放现金 189816.00 CNY",
+            "shares": "600",
+            "total_fees_cny": "144.26"
+          },
+          {
+            "step_number": 3,
+            "action_type": "REDUCE",
+            "asset_id": "688981.SH",
+            "asset_name": "中芯国际",
+            "amount_cny": "91888.00",
+            "liquidity_priority": 1,
+            "description": "优先卖出/减持 中芯国际 释放现金 91888.00 CNY",
+            "shares": "800",
+            "total_fees_cny": "69.83"
+          },
+          {
+            "step_number": 4,
+            "action_type": "BUY",
+            "asset_id": "601318.SH",
+            "asset_name": "中国平安",
+            "amount_cny": "97020.00",
+            "liquidity_priority": 2,
+            "description": "使用释放流动性买入/增持 中国平安 金额 97020.00 CNY",
+            "shares": "1800",
+            "total_fees_cny": "25.23"
+          },
+          {
+            "step_number": 5,
+            "action_type": "BUY",
+            "asset_id": "600276.SH",
+            "asset_name": "恒瑞医药",
+            "amount_cny": "77634.00",
+            "liquidity_priority": 2,
+            "description": "使用释放流动性买入/增持 恒瑞医药 金额 77634.00 CNY",
+            "shares": "1800",
+            "total_fees_cny": "20.19"
+          }
+        ],
+        "issues": [
+          "交易后完整体检未通过，尚有行业、集中度、现金或数据质量风险",
+          "交易后仍有资产或行业风险预算超限"
+        ],
+        "post_trade_health": {
+          "schema_version": "portfolio-health-response.v1",
+          "request_id": "post-trade:report-rebalancing",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "calculated_at": "2026-09-15T07:42:36.803891Z",
+          "status": "REVIEW_REQUIRED",
+          "source_exposure_status": "COMPLETE",
+          "total_market_value_cny": "1444801.85",
+          "sector_hhi": "3281.63",
+          "hhi_limit": "2500.00",
+          "hhi_verdict": "OVERBOUND",
+          "technology_weight_pct": "9.54",
+          "technology_limit_pct": "60",
+          "cash_weight_pct": "53.34",
+          "cash_minimum_pct": "5.00",
+          "has_breaches": true,
+          "evidence_count": 6,
+          "top_sector_key": "CASH",
+          "top_sector_name": "可用现金",
+          "top_sector_weight_pct": "53.34",
+          "sectors": [
+            {
+              "sector_key": "INDUSTRY:医药生物-化学制药-化学制剂",
+              "name": "医药生物-化学制药-化学制剂",
+              "weight_pct": "9.85",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-50.15",
+              "margin_pct_points": "50.15",
+              "verdict": "PASS",
+              "top_holdings": [
+                "恒瑞医药"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:金融-非银行金融-保险",
+              "name": "金融-非银行金融-保险",
+              "weight_pct": "9.70",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-50.30",
+              "margin_pct_points": "50.30",
+              "verdict": "PASS",
+              "top_holdings": [
+                "中国平安"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:电子设备-半导体-集成电路",
+              "name": "电子设备-半导体-集成电路",
+              "weight_pct": "9.54",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-50.46",
+              "margin_pct_points": "50.46",
+              "verdict": "PASS",
+              "top_holdings": [
+                "中芯国际"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:食品饮料-饮料-白酒",
+              "name": "食品饮料-饮料-白酒",
+              "weight_pct": "8.81",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-51.19",
+              "margin_pct_points": "51.19",
+              "verdict": "PASS",
+              "top_holdings": [
+                "贵州茅台"
+              ]
+            },
+            {
+              "sector_key": "INDUSTRY:电气设备-电源设备-储能设备",
+              "name": "电气设备-电源设备-储能设备",
+              "weight_pct": "8.76",
+              "limit_pct": "60",
+              "limit_operator": "MAX",
+              "difference_pct_points": "-51.24",
+              "margin_pct_points": "51.24",
+              "verdict": "PASS",
+              "top_holdings": [
+                "宁德时代"
+              ]
+            },
+            {
+              "sector_key": "CASH",
+              "name": "可用现金",
+              "weight_pct": "53.34",
+              "limit_pct": "5.00",
+              "limit_operator": "MIN",
+              "difference_pct_points": "48.34",
+              "margin_pct_points": "48.34",
+              "verdict": "PASS",
+              "top_holdings": [
+                "可用现金"
+              ]
+            }
+          ],
+          "issues": [],
+          "calculation_steps": [
+            "calculate_exposure(portfolio)",
+            "aggregate provider industry labels without replacing source classifications",
+            "calculate sector HHI from closed weights",
+            "apply profile risk-budget and cash hard gates"
+          ]
+        },
+        "invalidation_conditions": [
+          "组合内任意资产价格变动超过 5.00%",
+          "宏观或行业风险预算上限调整",
+          "用户风险画像发生变更"
+        ],
+        "disclaimer": "调仓方案仅供决策参考（ADVISORY_ONLY），不构成自动交易或委托指令。"
+      },
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "REB-04",
+      "title": "交易费用与现金守恒",
+      "expected": "770681.85",
+      "actual": "770681.85",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "REB-05",
+      "title": "整手数量约束",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "REB-06",
+      "title": "先卖出后买入",
+      "expected": [
+        1,
+        1,
+        1,
+        2,
+        2
+      ],
+      "actual": [
+        1,
+        1,
+        1,
+        2,
+        2
+      ],
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "REB-07",
+      "title": "扣费后现金非负",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-01",
+      "title": "未确认会话状态",
+      "expected": "NOT_LOCKED",
+      "actual": "NOT_LOCKED",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-02",
+      "title": "确认后会话状态",
+      "expected": "LOCKED",
+      "actual": "LOCKED",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-03",
+      "title": "数量变化触发检测",
+      "expected": [
+        "DRIFT_DETECTED",
+        [
+          "portfolio"
+        ]
+      ],
+      "actual": [
+        "DRIFT_DETECTED",
+        [
+          "portfolio"
+        ]
+      ],
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-04",
+      "title": "已确认数量校验",
+      "expected": "PASS",
+      "actual": "PASS",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-05",
+      "title": "版本不一致拒绝验证",
+      "expected": "UNVERIFIED",
+      "actual": "UNVERIFIED",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-06",
+      "title": "资料变化拒绝沿用旧前提",
+      "expected": "UNVERIFIED",
+      "actual": "UNVERIFIED",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-07",
+      "title": "并发修订冲突",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SEC-01",
+      "title": "其他用户不能读取会话",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SEC-02",
+      "title": "其他用户不能校验账户事实",
+      "expected": true,
+      "actual": true,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "SES-08",
+      "title": "指纹与字段顺序无关",
+      "expected": "c20984481be5e59e1732f3fd1344387e1a4890ed3923af75698374192111371b",
+      "actual": "c20984481be5e59e1732f3fd1344387e1a4890ed3923af75698374192111371b",
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "MEM-01",
+      "title": "重复保存只创建一条记忆",
+      "expected": 1,
+      "actual": 1,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "MEM-02",
+      "title": "记忆读取完整性",
+      "expected": {
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "questionnaire": {
+          "schema_version": "risk-questionnaire.v1",
+          "questionnaire_id": "questionnaire-full:d40cd542118bd3bae8d95170baeef2fe",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "answered_at": "2026-09-15T07:39:02.190000Z",
+          "loss_tolerance_score": 5,
+          "investment_horizon": "SHORT",
+          "liquidity_need": "MEDIUM",
+          "experience_level": "EXPERIENCED",
+          "return_expectation": "HIGH",
+          "max_drawdown_tolerance_pct": "35",
+          "expected_return_range": {
+            "minimum_pct": "8",
+            "maximum_pct": "25"
+          }
+        },
+        "profile": {
+          "schema_version": "risk-profile.v1",
+          "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "profile_version": 1,
+          "questionnaire_id": "questionnaire-full:d40cd542118bd3bae8d95170baeef2fe",
+          "extraction_id": null,
+          "created_at": "2026-09-15T07:39:02.190000Z",
+          "risk_score": "85.00",
+          "risk_level": "GROWTH",
+          "investment_horizon": "SHORT",
+          "liquidity_need": "MEDIUM",
+          "experience_level": "EXPERIENCED",
+          "return_expectation": "HIGH",
+          "max_drawdown_tolerance_pct": "35",
+          "expected_return_range": {
+            "minimum_pct": "8",
+            "maximum_pct": "25"
+          },
+          "asset_preferences": [],
+          "sector_preferences": [],
+          "exclusions": [],
+          "confidence": "1",
+          "conflicts": []
+        },
+        "portfolio": {
+          "schema_version": "portfolio-import-bundle.v1",
+          "bundle_id": "ocr-portfolio-usr-01f9f18ddf81440f80e6b97db526427d-a166c87fd0344353965960914e005bb6",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "created_at": "2026-09-15T07:42:36.803891Z",
+          "position_snapshot": {
+            "schema_version": "position-snapshot.v1",
+            "snapshot_id": "ocr-position-snapshot-usr-01f9f18ddf81440f80e6b97db526427d-a166c87fd0344353965960914e005bb6",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "as_of": "2026-09-15T07:42:36.803891Z",
+            "base_currency": "CNY",
+            "source": "user-confirmed OCR import",
+            "positions": [
+              {
+                "position_id": "ocr-position-1-300750",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "300750.SZ",
+                "asset_type": "STOCK",
+                "asset_name": "宁德时代",
+                "sector": "电气设备-电源设备-储能设备",
+                "quantity": "1000",
+                "market_value": "316360.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-2-600519",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "600519.SH",
+                "asset_type": "STOCK",
+                "asset_name": "贵州茅台",
+                "sector": "食品饮料-饮料-白酒",
+                "quantity": "600",
+                "market_value": "763650.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-3-688981",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "688981.SH",
+                "asset_type": "STOCK",
+                "asset_name": "中芯国际",
+                "sector": "电子设备-半导体-集成电路",
+                "quantity": "2000",
+                "market_value": "229720.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:36+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-4-601318",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "601318.SH",
+                "asset_type": "STOCK",
+                "asset_name": "中国平安",
+                "sector": "金融-非银行金融-保险",
+                "quantity": "800",
+                "market_value": "43120.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-5-600276",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "600276.SH",
+                "asset_type": "STOCK",
+                "asset_name": "恒瑞医药",
+                "sector": "医药生物-化学制药-化学制剂",
+                "quantity": "1500",
+                "market_value": "64695.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-cash-cny",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "CASH-CNY",
+                "asset_type": "CASH",
+                "asset_name": "可用现金",
+                "sector": "Cash",
+                "quantity": "28000",
+                "market_value": "28000",
+                "currency": "CNY",
+                "as_of": "2026-09-15T07:42:36.803891Z",
+                "source": "user-confirmed OCR import"
+              }
+            ]
+          },
+          "fund_holdings": []
+        },
+        "intent": null,
+        "plan": null,
+        "references": {
+          "research_matrix_id": null,
+          "research_run_id": null,
+          "research_scenario_id": null,
+          "stock_research_run_id": null,
+          "stock_research_scenario_id": null,
+          "fund_research_run_id": null,
+          "fund_research_scenario_id": null,
+          "convertible_bond_research_run_id": null,
+          "convertible_bond_research_scenario_id": null,
+          "optimization_request_id": null,
+          "optimization_scenario_id": null
+        },
+        "schema_version": "context-memory-record.v1",
+        "memory_id": "context-memory:32c6f19b1c380ac881b2d5f84cf9404b",
+        "source": "EXPLICIT_SAVE",
+        "saved_at": "2026-09-18T15:44:23.529940Z",
+        "content_hash": "3f2af2f2596378972c4908e44df09c2d8d45b01217d92041cf528d1ef4500bac"
+      },
+      "actual": {
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "questionnaire": {
+          "schema_version": "risk-questionnaire.v1",
+          "questionnaire_id": "questionnaire-full:d40cd542118bd3bae8d95170baeef2fe",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "answered_at": "2026-09-15T07:39:02.190000Z",
+          "loss_tolerance_score": 5,
+          "investment_horizon": "SHORT",
+          "liquidity_need": "MEDIUM",
+          "experience_level": "EXPERIENCED",
+          "return_expectation": "HIGH",
+          "max_drawdown_tolerance_pct": "35",
+          "expected_return_range": {
+            "minimum_pct": "8",
+            "maximum_pct": "25"
+          }
+        },
+        "profile": {
+          "schema_version": "risk-profile.v1",
+          "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "profile_version": 1,
+          "questionnaire_id": "questionnaire-full:d40cd542118bd3bae8d95170baeef2fe",
+          "extraction_id": null,
+          "created_at": "2026-09-15T07:39:02.190000Z",
+          "risk_score": "85.00",
+          "risk_level": "GROWTH",
+          "investment_horizon": "SHORT",
+          "liquidity_need": "MEDIUM",
+          "experience_level": "EXPERIENCED",
+          "return_expectation": "HIGH",
+          "max_drawdown_tolerance_pct": "35",
+          "expected_return_range": {
+            "minimum_pct": "8",
+            "maximum_pct": "25"
+          },
+          "asset_preferences": [],
+          "sector_preferences": [],
+          "exclusions": [],
+          "confidence": "1",
+          "conflicts": []
+        },
+        "portfolio": {
+          "schema_version": "portfolio-import-bundle.v1",
+          "bundle_id": "ocr-portfolio-usr-01f9f18ddf81440f80e6b97db526427d-a166c87fd0344353965960914e005bb6",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "created_at": "2026-09-15T07:42:36.803891Z",
+          "position_snapshot": {
+            "schema_version": "position-snapshot.v1",
+            "snapshot_id": "ocr-position-snapshot-usr-01f9f18ddf81440f80e6b97db526427d-a166c87fd0344353965960914e005bb6",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "as_of": "2026-09-15T07:42:36.803891Z",
+            "base_currency": "CNY",
+            "source": "user-confirmed OCR import",
+            "positions": [
+              {
+                "position_id": "ocr-position-1-300750",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "300750.SZ",
+                "asset_type": "STOCK",
+                "asset_name": "宁德时代",
+                "sector": "电气设备-电源设备-储能设备",
+                "quantity": "1000",
+                "market_value": "316360.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-2-600519",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "600519.SH",
+                "asset_type": "STOCK",
+                "asset_name": "贵州茅台",
+                "sector": "食品饮料-饮料-白酒",
+                "quantity": "600",
+                "market_value": "763650.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-3-688981",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "688981.SH",
+                "asset_type": "STOCK",
+                "asset_name": "中芯国际",
+                "sector": "电子设备-半导体-集成电路",
+                "quantity": "2000",
+                "market_value": "229720.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:36+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-4-601318",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "601318.SH",
+                "asset_type": "STOCK",
+                "asset_name": "中国平安",
+                "sector": "金融-非银行金融-保险",
+                "quantity": "800",
+                "market_value": "43120.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-5-600276",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "600276.SH",
+                "asset_type": "STOCK",
+                "asset_name": "恒瑞医药",
+                "sector": "医药生物-化学制药-化学制剂",
+                "quantity": "1500",
+                "market_value": "64695.00",
+                "currency": "CNY",
+                "as_of": "2026-09-15T15:42:35+08:00",
+                "source": "user-confirmed OCR import"
+              },
+              {
+                "position_id": "ocr-position-cash-cny",
+                "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+                "asset_id": "CASH-CNY",
+                "asset_type": "CASH",
+                "asset_name": "可用现金",
+                "sector": "Cash",
+                "quantity": "28000",
+                "market_value": "28000",
+                "currency": "CNY",
+                "as_of": "2026-09-15T07:42:36.803891Z",
+                "source": "user-confirmed OCR import"
+              }
+            ]
+          },
+          "fund_holdings": []
+        },
+        "intent": null,
+        "plan": null,
+        "references": {
+          "research_matrix_id": null,
+          "research_run_id": null,
+          "research_scenario_id": null,
+          "stock_research_run_id": null,
+          "stock_research_scenario_id": null,
+          "fund_research_run_id": null,
+          "fund_research_scenario_id": null,
+          "convertible_bond_research_run_id": null,
+          "convertible_bond_research_scenario_id": null,
+          "optimization_request_id": null,
+          "optimization_scenario_id": null
+        },
+        "schema_version": "context-memory-record.v1",
+        "memory_id": "context-memory:32c6f19b1c380ac881b2d5f84cf9404b",
+        "source": "EXPLICIT_SAVE",
+        "saved_at": "2026-09-18T15:44:23.529940Z",
+        "content_hash": "3f2af2f2596378972c4908e44df09c2d8d45b01217d92041cf528d1ef4500bac"
+      },
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "MEM-03",
+      "title": "其他用户无法读取记忆",
+      "expected": null,
+      "actual": null,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    },
+    {
+      "id": "MEM-04",
+      "title": "其他用户记忆列表为空",
+      "expected": 0,
+      "actual": 0,
+      "status": "PASS",
+      "scope": "确定性程序执行"
+    }
+  ],
+  "profile_comparison": [
+    {
+      "level": "CONSERVATIVE",
+      "score": "20",
+      "result": {
+        "schema_version": "risk-budget-assessment.v1",
+        "assessment_id": "risk-budget:6ea7b2baa9146cc5e0f0faa08f250fd0",
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+        "exposure_report_id": "exposure:592eb2a1c707af356d8e70967b2b0740",
+        "concentration_report_id": "concentration:45d9507d7e651415d6fe821d3a1202d0",
+        "assessed_at": "2026-09-15T07:42:36.803891Z",
+        "status": "REVIEW_REQUIRED",
+        "budget": {
+          "schema_version": "risk-budget.v1",
+          "budget_id": "risk-budget:profile-full:d40cd542118bd3bae8d95170baeef2fe:v1",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+          "profile_version": 1,
+          "risk_level": "CONSERVATIVE",
+          "max_single_asset_weight_pct": "20",
+          "max_sector_weight_pct": "30",
+          "max_technology_weight_pct": "25",
+          "max_unclassified_weight_pct": "10",
+          "max_drawdown_tolerance_pct": "35"
+        },
+        "breaches": [
+          {
+            "breach_id": "risk-budget:e138841700cd8a9d5368c5545689cf68",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "kind": "SINGLE_ASSET",
+            "target_id": "300750.SZ",
+            "observed_weight_pct": "21.89",
+            "limit_weight_pct": "20",
+            "excess_weight_pct": "1.89"
+          },
+          {
+            "breach_id": "risk-budget:ab4294dfc588048ff0c6e50e432c4fc8",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "kind": "SINGLE_ASSET",
+            "target_id": "600519.SH",
+            "observed_weight_pct": "52.83",
+            "limit_weight_pct": "20",
+            "excess_weight_pct": "32.83"
+          },
+          {
+            "breach_id": "risk-budget:7a4fc90aa262567a049eadfdac3e2f79",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "kind": "SECTOR",
+            "target_id": "食品饮料-饮料-白酒",
+            "observed_weight_pct": "52.83",
+            "limit_weight_pct": "30",
+            "excess_weight_pct": "22.83"
+          }
+        ],
+        "issues": []
+      }
+    },
+    {
+      "level": "BALANCED",
+      "score": "50",
+      "result": {
+        "schema_version": "risk-budget-assessment.v1",
+        "assessment_id": "risk-budget:6ea7b2baa9146cc5e0f0faa08f250fd0",
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+        "exposure_report_id": "exposure:592eb2a1c707af356d8e70967b2b0740",
+        "concentration_report_id": "concentration:45d9507d7e651415d6fe821d3a1202d0",
+        "assessed_at": "2026-09-15T07:42:36.803891Z",
+        "status": "REVIEW_REQUIRED",
+        "budget": {
+          "schema_version": "risk-budget.v1",
+          "budget_id": "risk-budget:profile-full:d40cd542118bd3bae8d95170baeef2fe:v1",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+          "profile_version": 1,
+          "risk_level": "BALANCED",
+          "max_single_asset_weight_pct": "35",
+          "max_sector_weight_pct": "45",
+          "max_technology_weight_pct": "40",
+          "max_unclassified_weight_pct": "20",
+          "max_drawdown_tolerance_pct": "35"
+        },
+        "breaches": [
+          {
+            "breach_id": "risk-budget:ab4294dfc588048ff0c6e50e432c4fc8",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "kind": "SINGLE_ASSET",
+            "target_id": "600519.SH",
+            "observed_weight_pct": "52.83",
+            "limit_weight_pct": "35",
+            "excess_weight_pct": "17.83"
+          },
+          {
+            "breach_id": "risk-budget:7a4fc90aa262567a049eadfdac3e2f79",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "kind": "SECTOR",
+            "target_id": "食品饮料-饮料-白酒",
+            "observed_weight_pct": "52.83",
+            "limit_weight_pct": "45",
+            "excess_weight_pct": "7.83"
+          }
+        ],
+        "issues": []
+      }
+    },
+    {
+      "level": "GROWTH",
+      "score": "85",
+      "result": {
+        "schema_version": "risk-budget-assessment.v1",
+        "assessment_id": "risk-budget:6ea7b2baa9146cc5e0f0faa08f250fd0",
+        "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+        "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+        "exposure_report_id": "exposure:592eb2a1c707af356d8e70967b2b0740",
+        "concentration_report_id": "concentration:45d9507d7e651415d6fe821d3a1202d0",
+        "assessed_at": "2026-09-15T07:42:36.803891Z",
+        "status": "REVIEW_REQUIRED",
+        "budget": {
+          "schema_version": "risk-budget.v1",
+          "budget_id": "risk-budget:profile-full:d40cd542118bd3bae8d95170baeef2fe:v1",
+          "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+          "profile_id": "profile-full:d40cd542118bd3bae8d95170baeef2fe",
+          "profile_version": 1,
+          "risk_level": "GROWTH",
+          "max_single_asset_weight_pct": "50",
+          "max_sector_weight_pct": "60",
+          "max_technology_weight_pct": "60",
+          "max_unclassified_weight_pct": "35",
+          "max_drawdown_tolerance_pct": "35"
+        },
+        "breaches": [
+          {
+            "breach_id": "risk-budget:ab4294dfc588048ff0c6e50e432c4fc8",
+            "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+            "kind": "SINGLE_ASSET",
+            "target_id": "600519.SH",
+            "observed_weight_pct": "52.83",
+            "limit_weight_pct": "50",
+            "excess_weight_pct": "2.83"
+          }
+        ],
+        "issues": []
+      }
+    }
+  ],
+  "health": {
+    "schema_version": "portfolio-health-response.v1",
+    "request_id": "report-health",
+    "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+    "calculated_at": "2026-09-15T07:42:36.803891Z",
+    "status": "REVIEW_REQUIRED",
+    "source_exposure_status": "COMPLETE",
+    "total_market_value_cny": "1445545.00",
+    "sector_hhi": "3555.39",
+    "hhi_limit": "2500.00",
+    "hhi_verdict": "OVERBOUND",
+    "technology_weight_pct": "15.89",
+    "technology_limit_pct": "60",
+    "cash_weight_pct": "1.94",
+    "cash_minimum_pct": "5.00",
+    "has_breaches": true,
+    "evidence_count": 6,
+    "top_sector_key": "INDUSTRY:食品饮料-饮料-白酒",
+    "top_sector_name": "食品饮料-饮料-白酒",
+    "top_sector_weight_pct": "52.83",
+    "sectors": [
+      {
+        "sector_key": "INDUSTRY:食品饮料-饮料-白酒",
+        "name": "食品饮料-饮料-白酒",
+        "weight_pct": "52.83",
+        "limit_pct": "60",
+        "limit_operator": "MAX",
+        "difference_pct_points": "-7.17",
+        "margin_pct_points": "7.17",
+        "verdict": "PASS",
+        "top_holdings": [
+          "贵州茅台"
+        ]
+      },
+      {
+        "sector_key": "INDUSTRY:电气设备-电源设备-储能设备",
+        "name": "电气设备-电源设备-储能设备",
+        "weight_pct": "21.89",
+        "limit_pct": "60",
+        "limit_operator": "MAX",
+        "difference_pct_points": "-38.11",
+        "margin_pct_points": "38.11",
+        "verdict": "PASS",
+        "top_holdings": [
+          "宁德时代"
+        ]
+      },
+      {
+        "sector_key": "INDUSTRY:电子设备-半导体-集成电路",
+        "name": "电子设备-半导体-集成电路",
+        "weight_pct": "15.89",
+        "limit_pct": "60",
+        "limit_operator": "MAX",
+        "difference_pct_points": "-44.11",
+        "margin_pct_points": "44.11",
+        "verdict": "PASS",
+        "top_holdings": [
+          "中芯国际"
+        ]
+      },
+      {
+        "sector_key": "INDUSTRY:医药生物-化学制药-化学制剂",
+        "name": "医药生物-化学制药-化学制剂",
+        "weight_pct": "4.48",
+        "limit_pct": "60",
+        "limit_operator": "MAX",
+        "difference_pct_points": "-55.52",
+        "margin_pct_points": "55.52",
+        "verdict": "PASS",
+        "top_holdings": [
+          "恒瑞医药"
+        ]
+      },
+      {
+        "sector_key": "INDUSTRY:金融-非银行金融-保险",
+        "name": "金融-非银行金融-保险",
+        "weight_pct": "2.98",
+        "limit_pct": "60",
+        "limit_operator": "MAX",
+        "difference_pct_points": "-57.02",
+        "margin_pct_points": "57.02",
+        "verdict": "PASS",
+        "top_holdings": [
+          "中国平安"
+        ]
+      },
+      {
+        "sector_key": "CASH",
+        "name": "可用现金",
+        "weight_pct": "1.94",
+        "limit_pct": "5.00",
+        "limit_operator": "MIN",
+        "difference_pct_points": "-3.06",
+        "margin_pct_points": "3.06",
+        "verdict": "OVERBOUND",
+        "top_holdings": [
+          "可用现金"
+        ]
+      }
+    ],
+    "issues": [],
+    "calculation_steps": [
+      "calculate_exposure(portfolio)",
+      "aggregate provider industry labels without replacing source classifications",
+      "calculate sector HHI from closed weights",
+      "apply profile risk-budget and cash hard gates"
+    ]
+  },
+  "rebalancing": {
+    "schema_version": "portfolio-rebalancing-response.v1",
+    "request_id": "report-rebalancing",
+    "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+    "status": "REVIEW_REQUIRED",
+    "metrics": {
+      "total_portfolio_value_cny": "1445545.00",
+      "total_turnover_pct": "37.80",
+      "total_buy_cny": "174654.00",
+      "total_sell_cny": "918079.00",
+      "net_cash_flow_cny": "742681.85",
+      "turnover_cap_breached": false,
+      "net_turnover_cost": "743.15",
+      "net_turnover_cost_pct": "0.07",
+      "cash_after_cny": "770681.85",
+      "cash_shortfall_cny": "0.00"
+    },
+    "actions": [
+      {
+        "asset_id": "300750.SZ",
+        "asset_name": "宁德时代",
+        "asset_type": "STOCK",
+        "current_weight_pct": "21.89",
+        "target_weight_pct": "10.00",
+        "delta_weight_pct": "-13.13",
+        "current_value_cny": "316360.00",
+        "target_value_cny": "126544.00",
+        "cash_delta_cny": "-189816.00",
+        "action_type": "REDUCE",
+        "rationale": "当前权重 21.89% 高于目标 10.00%，建议减仓调优",
+        "shares": "600",
+        "current_price_cny": "316.36",
+        "stamp_duty": "94.91",
+        "transfer_fee": "1.90",
+        "commission": "47.45",
+        "total_fees_cny": "144.26",
+        "executable": true
+      },
+      {
+        "asset_id": "600519.SH",
+        "asset_name": "贵州茅台",
+        "asset_type": "STOCK",
+        "current_weight_pct": "52.83",
+        "target_weight_pct": "10.00",
+        "delta_weight_pct": "-44.02",
+        "current_value_cny": "763650.00",
+        "target_value_cny": "127275.00",
+        "cash_delta_cny": "-636375.00",
+        "action_type": "REDUCE",
+        "rationale": "当前权重 52.83% 高于目标 10.00%，建议减仓调优",
+        "shares": "500",
+        "current_price_cny": "1272.75",
+        "stamp_duty": "318.19",
+        "transfer_fee": "6.36",
+        "commission": "159.09",
+        "total_fees_cny": "483.64",
+        "executable": true
+      },
+      {
+        "asset_id": "688981.SH",
+        "asset_name": "中芯国际",
+        "asset_type": "STOCK",
+        "current_weight_pct": "15.89",
+        "target_weight_pct": "10.00",
+        "delta_weight_pct": "-6.36",
+        "current_value_cny": "229720.00",
+        "target_value_cny": "137832.00",
+        "cash_delta_cny": "-91888.00",
+        "action_type": "REDUCE",
+        "rationale": "当前权重 15.89% 高于目标 10.00%，建议减仓调优",
+        "shares": "800",
+        "current_price_cny": "114.86",
+        "stamp_duty": "45.94",
+        "transfer_fee": "0.92",
+        "commission": "22.97",
+        "total_fees_cny": "69.83",
+        "executable": true
+      },
+      {
+        "asset_id": "601318.SH",
+        "asset_name": "中国平安",
+        "asset_type": "STOCK",
+        "current_weight_pct": "2.98",
+        "target_weight_pct": "10.00",
+        "delta_weight_pct": "6.71",
+        "current_value_cny": "43120.00",
+        "target_value_cny": "140140.00",
+        "cash_delta_cny": "97020.00",
+        "action_type": "BUY",
+        "rationale": "当前权重 2.98% 低于目标 10.00%，建议加仓补足",
+        "shares": "1800",
+        "current_price_cny": "53.90",
+        "stamp_duty": "0.00",
+        "transfer_fee": "0.97",
+        "commission": "24.26",
+        "total_fees_cny": "25.23",
+        "executable": true
+      },
+      {
+        "asset_id": "600276.SH",
+        "asset_name": "恒瑞医药",
+        "asset_type": "STOCK",
+        "current_weight_pct": "4.48",
+        "target_weight_pct": "10.00",
+        "delta_weight_pct": "5.37",
+        "current_value_cny": "64695.00",
+        "target_value_cny": "142329.00",
+        "cash_delta_cny": "77634.00",
+        "action_type": "BUY",
+        "rationale": "当前权重 4.48% 低于目标 10.00%，建议加仓补足",
+        "shares": "1800",
+        "current_price_cny": "43.13",
+        "stamp_duty": "0.00",
+        "transfer_fee": "0.78",
+        "commission": "19.41",
+        "total_fees_cny": "20.19",
+        "executable": true
+      },
+      {
+        "asset_id": "CASH-CNY",
+        "asset_name": "可用现金",
+        "asset_type": "CASH",
+        "current_weight_pct": "1.94",
+        "target_weight_pct": "50.00",
+        "delta_weight_pct": "0.00",
+        "current_value_cny": "28000",
+        "target_value_cny": "722772.50",
+        "cash_delta_cny": "0.00",
+        "action_type": "HOLD",
+        "rationale": "现金不直接下单，实际余额由证券交易及费用决定",
+        "shares": "0",
+        "current_price_cny": null,
+        "stamp_duty": "0.00",
+        "transfer_fee": "0.00",
+        "commission": "0.00",
+        "total_fees_cny": "0.00",
+        "executable": true
+      }
+    ],
+    "execution_steps": [
+      {
+        "step_number": 1,
+        "action_type": "REDUCE",
+        "asset_id": "600519.SH",
+        "asset_name": "贵州茅台",
+        "amount_cny": "636375.00",
+        "liquidity_priority": 1,
+        "description": "优先卖出/减持 贵州茅台 释放现金 636375.00 CNY",
+        "shares": "500",
+        "total_fees_cny": "483.64"
+      },
+      {
+        "step_number": 2,
+        "action_type": "REDUCE",
+        "asset_id": "300750.SZ",
+        "asset_name": "宁德时代",
+        "amount_cny": "189816.00",
+        "liquidity_priority": 1,
+        "description": "优先卖出/减持 宁德时代 释放现金 189816.00 CNY",
+        "shares": "600",
+        "total_fees_cny": "144.26"
+      },
+      {
+        "step_number": 3,
+        "action_type": "REDUCE",
+        "asset_id": "688981.SH",
+        "asset_name": "中芯国际",
+        "amount_cny": "91888.00",
+        "liquidity_priority": 1,
+        "description": "优先卖出/减持 中芯国际 释放现金 91888.00 CNY",
+        "shares": "800",
+        "total_fees_cny": "69.83"
+      },
+      {
+        "step_number": 4,
+        "action_type": "BUY",
+        "asset_id": "601318.SH",
+        "asset_name": "中国平安",
+        "amount_cny": "97020.00",
+        "liquidity_priority": 2,
+        "description": "使用释放流动性买入/增持 中国平安 金额 97020.00 CNY",
+        "shares": "1800",
+        "total_fees_cny": "25.23"
+      },
+      {
+        "step_number": 5,
+        "action_type": "BUY",
+        "asset_id": "600276.SH",
+        "asset_name": "恒瑞医药",
+        "amount_cny": "77634.00",
+        "liquidity_priority": 2,
+        "description": "使用释放流动性买入/增持 恒瑞医药 金额 77634.00 CNY",
+        "shares": "1800",
+        "total_fees_cny": "20.19"
+      }
+    ],
+    "issues": [
+      "交易后完整体检未通过，尚有行业、集中度、现金或数据质量风险",
+      "交易后仍有资产或行业风险预算超限"
+    ],
+    "post_trade_health": {
+      "schema_version": "portfolio-health-response.v1",
+      "request_id": "post-trade:report-rebalancing",
+      "owner_id": "usr-01f9f18ddf81440f80e6b97db526427d",
+      "calculated_at": "2026-09-15T07:42:36.803891Z",
+      "status": "REVIEW_REQUIRED",
+      "source_exposure_status": "COMPLETE",
+      "total_market_value_cny": "1444801.85",
+      "sector_hhi": "3281.63",
+      "hhi_limit": "2500.00",
+      "hhi_verdict": "OVERBOUND",
+      "technology_weight_pct": "9.54",
+      "technology_limit_pct": "60",
+      "cash_weight_pct": "53.34",
+      "cash_minimum_pct": "5.00",
+      "has_breaches": true,
+      "evidence_count": 6,
+      "top_sector_key": "CASH",
+      "top_sector_name": "可用现金",
+      "top_sector_weight_pct": "53.34",
+      "sectors": [
+        {
+          "sector_key": "INDUSTRY:医药生物-化学制药-化学制剂",
+          "name": "医药生物-化学制药-化学制剂",
+          "weight_pct": "9.85",
+          "limit_pct": "60",
+          "limit_operator": "MAX",
+          "difference_pct_points": "-50.15",
+          "margin_pct_points": "50.15",
+          "verdict": "PASS",
+          "top_holdings": [
+            "恒瑞医药"
+          ]
+        },
+        {
+          "sector_key": "INDUSTRY:金融-非银行金融-保险",
+          "name": "金融-非银行金融-保险",
+          "weight_pct": "9.70",
+          "limit_pct": "60",
+          "limit_operator": "MAX",
+          "difference_pct_points": "-50.30",
+          "margin_pct_points": "50.30",
+          "verdict": "PASS",
+          "top_holdings": [
+            "中国平安"
+          ]
+        },
+        {
+          "sector_key": "INDUSTRY:电子设备-半导体-集成电路",
+          "name": "电子设备-半导体-集成电路",
+          "weight_pct": "9.54",
+          "limit_pct": "60",
+          "limit_operator": "MAX",
+          "difference_pct_points": "-50.46",
+          "margin_pct_points": "50.46",
+          "verdict": "PASS",
+          "top_holdings": [
+            "中芯国际"
+          ]
+        },
+        {
+          "sector_key": "INDUSTRY:食品饮料-饮料-白酒",
+          "name": "食品饮料-饮料-白酒",
+          "weight_pct": "8.81",
+          "limit_pct": "60",
+          "limit_operator": "MAX",
+          "difference_pct_points": "-51.19",
+          "margin_pct_points": "51.19",
+          "verdict": "PASS",
+          "top_holdings": [
+            "贵州茅台"
+          ]
+        },
+        {
+          "sector_key": "INDUSTRY:电气设备-电源设备-储能设备",
+          "name": "电气设备-电源设备-储能设备",
+          "weight_pct": "8.76",
+          "limit_pct": "60",
+          "limit_operator": "MAX",
+          "difference_pct_points": "-51.24",
+          "margin_pct_points": "51.24",
+          "verdict": "PASS",
+          "top_holdings": [
+            "宁德时代"
+          ]
+        },
+        {
+          "sector_key": "CASH",
+          "name": "可用现金",
+          "weight_pct": "53.34",
+          "limit_pct": "5.00",
+          "limit_operator": "MIN",
+          "difference_pct_points": "48.34",
+          "margin_pct_points": "48.34",
+          "verdict": "PASS",
+          "top_holdings": [
+            "可用现金"
+          ]
+        }
+      ],
+      "issues": [],
+      "calculation_steps": [
+        "calculate_exposure(portfolio)",
+        "aggregate provider industry labels without replacing source classifications",
+        "calculate sector HHI from closed weights",
+        "apply profile risk-budget and cash hard gates"
+      ]
+    },
+    "invalidation_conditions": [
+      "组合内任意资产价格变动超过 5.00%",
+      "宏观或行业风险预算上限调整",
+      "用户风险画像发生变更"
+    ],
+    "disclaimer": "调仓方案仅供决策参考（ADVISORY_ONLY），不构成自动交易或委托指令。"
+  },
+  "local_calculation_timing": {
+    "iterations": 100,
+    "concurrency": 1,
+    "raw_ms": [
+      2.487599998858059,
+      3.5729000010178424,
+      2.361999999266118,
+      2.141599998140009,
+      2.8431999999156687,
+      3.6088999986532144,
+      2.423000001726905,
+      2.5777999981073663,
+      2.353400002903072,
+      1.820699999370845,
+      1.724499998090323,
+      2.5735999988683034,
+      2.5640999992901925,
+      2.161199998226948,
+      2.720299999054987,
+      2.6514999990467913,
+      2.678099997865502,
+      2.7355999991414137,
+      1.9637000004877336,
+      2.2884999998495914,
+      2.24779999916791,
+      2.707400002691429,
+      2.636299999721814,
+      2.638400001160335,
+      3.2165000011445954,
+      2.896800000598887,
+      3.3455000011599623,
+      3.061600000364706,
+      2.1105000014358666,
+      1.8792000009852927,
+      2.0225000007485505,
+      2.000399999815272,
+      2.9961000000184868,
+      2.196400000684662,
+      2.6773000026878435,
+      1.7618000019865576,
+      1.947100001416402,
+      2.0557000025291927,
+      2.2523000006913207,
+      3.5664999995788094,
+      2.1962999999232125,
+      2.0794000010937452,
+      1.750199997331947,
+      2.370799997152062,
+      2.1941999984846916,
+      2.7361000029486604,
+      1.8219000012322795,
+      3.240999998524785,
+      2.4782000000413973,
+      1.9170000014128163,
+      3.023699999175733,
+      3.4553000004962087,
+      3.4166000004915986,
+      3.204700002243044,
+      2.1974000010231975,
+      2.814899999066256,
+      2.2062000025471207,
+      2.1984000013617333,
+      2.9274000007717405,
+      2.0485000022745226,
+      1.7694999987725168,
+      2.0087000011699274,
+      1.8924999967566691,
+      2.4365999997826293,
+      4.380299997137627,
+      2.5083999971684534,
+      2.7725999971153215,
+      2.0320000003266614,
+      2.3123999999370426,
+      2.425099999527447,
+      3.5886999976355582,
+      2.2716000021318905,
+      2.463799999532057,
+      2.092599999741651,
+      3.867399998853216,
+      3.783899999689311,
+      2.780499999062158,
+      2.438399998936802,
+      3.2256000013148878,
+      1.9498000001476612,
+      2.8251000003365334,
+      2.0545000006677583,
+      1.890899999125395,
+      1.9281999993836507,
+      2.3449000000255182,
+      2.1200000010139775,
+      2.9914999977336265,
+      2.391800000623334,
+      2.809599998727208,
+      2.0886999991489574,
+      1.8607999991218094,
+      1.911600000312319,
+      2.2643999982392415,
+      2.633599997352576,
+      2.0463000000745524,
+      3.4137000002374407,
+      2.8467999982240144,
+      2.292100001795916,
+      1.781000002665678,
+      3.358699999807868
+    ],
+    "median_ms": 2.4074000011751195,
+    "p95_ms": 3.5736900008487282,
+    "max_ms": 4.380299997137627,
+    "scope": "本地再平衡函数重复计算，不含 HTTP、LLM 或外部查询"
+  },
+  "archived_routes": [
+    {
+      "route": "GET /api/health",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/behavior/profile",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/context-memory?limit=20",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/convertible-bond-research-template",
+      "status": 409
+    },
+    {
+      "route": "GET /api/v1/advisor/fund-research-template",
+      "status": 409
+    },
+    {
+      "route": "GET /api/v1/advisor/portfolio/current",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/portfolio/report",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/portfolio/summary",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/profile/questionnaire-template",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/profile/summary",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/query-template",
+      "status": 409
+    },
+    {
+      "route": "GET /api/v1/advisor/recommendation-history?limit=20",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/research-matrix-template",
+      "status": 409
+    },
+    {
+      "route": "GET /api/v1/advisor/scenario-simulation-template",
+      "status": 409
+    },
+    {
+      "route": "GET /api/v1/advisor/session-truth",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/advisor/stock-research-template",
+      "status": 409
+    },
+    {
+      "route": "GET /api/v1/auth/context",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/decision-events",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/market/analysis/CN/sse-composite?interval=1d",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/market/catalog",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/market/quotes/CN",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/runtime/data-mode",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/user/model-settings",
+      "status": 200
+    },
+    {
+      "route": "GET /api/v1/user/preferences",
+      "status": 200
+    },
+    {
+      "route": "POST /api/v1/advisor/portfolio-health",
+      "status": 200
+    },
+    {
+      "route": "POST /api/v1/advisor/portfolio/refresh",
+      "status": 200
+    }
+  ],
+  "boundaries": [
+    "历史快照来源和时点由文件记录，本次未重新验证外部行情。",
+    "画像条件比较与再平衡目标为明确指定的测试输入。",
+    "本次未替换任何外部服务响应。"
+  ]
+}

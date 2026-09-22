@@ -1,0 +1,231 @@
+{
+  "generated_at": "2026-09-18T15:47:01.352779+00:00",
+  "tests": [
+    {
+      "id": "HTTP-01",
+      "title": "未登录访问受保护接口",
+      "expected": 401,
+      "actual": 401,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-02",
+      "title": "真实本地账户注册",
+      "expected": 201,
+      "actual": 201,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-03",
+      "title": "登录后读取问卷",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-04",
+      "title": "伪造账户标识被拒绝",
+      "expected": 403,
+      "actual": 403,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-05",
+      "title": "跨站写入被拒绝",
+      "expected": 403,
+      "actual": 403,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-06",
+      "title": "普通账户不能修改服务配置",
+      "expected": 403,
+      "actual": 403,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-07-1",
+      "title": "query-template",
+      "expected": 409,
+      "actual": 409,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-07-2",
+      "title": "research-matrix-template",
+      "expected": 409,
+      "actual": 409,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-07-3",
+      "title": "stock-research-template",
+      "expected": 409,
+      "actual": 409,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-07-4",
+      "title": "fund-research-template",
+      "expected": 409,
+      "actual": 409,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-07-5",
+      "title": "convertible-bond-research-template",
+      "expected": 409,
+      "actual": 409,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-07-6",
+      "title": "scenario-simulation-template",
+      "expected": 409,
+      "actual": 409,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-08",
+      "title": "退出登录",
+      "expected": 200,
+      "actual": 200,
+      "status": "PASS"
+    },
+    {
+      "id": "HTTP-09",
+      "title": "退出后访问被拒绝",
+      "expected": 401,
+      "actual": 401,
+      "status": "PASS"
+    }
+  ],
+  "unavailable_routes": [
+    {
+      "endpoint": "query-template",
+      "response": {
+        "schema_version": "api-error.v1",
+        "status": "UNAVAILABLE",
+        "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+        "message": "投顾查询模板尚未接入真实研究服务；正式账户拒绝返回演示数据",
+        "actual_source": null,
+        "observed_at": null,
+        "missing_fields": [
+          "live_provider",
+          "complete_required_fields",
+          "independent_evidence"
+        ],
+        "failure_reason": "configured implementation is fixture-only"
+      }
+    },
+    {
+      "endpoint": "research-matrix-template",
+      "response": {
+        "schema_version": "api-error.v1",
+        "status": "UNAVAILABLE",
+        "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+        "message": "专家研究矩阵模板尚未接入真实研究服务；正式账户拒绝返回演示数据",
+        "actual_source": null,
+        "observed_at": null,
+        "missing_fields": [
+          "live_provider",
+          "complete_required_fields",
+          "independent_evidence"
+        ],
+        "failure_reason": "configured implementation is fixture-only"
+      }
+    },
+    {
+      "endpoint": "stock-research-template",
+      "response": {
+        "schema_version": "api-error.v1",
+        "status": "UNAVAILABLE",
+        "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+        "message": "股票研究模板尚未接入真实研究服务；正式账户拒绝返回演示数据",
+        "actual_source": null,
+        "observed_at": null,
+        "missing_fields": [
+          "live_provider",
+          "complete_required_fields",
+          "independent_evidence"
+        ],
+        "failure_reason": "configured implementation is fixture-only"
+      }
+    },
+    {
+      "endpoint": "fund-research-template",
+      "response": {
+        "schema_version": "api-error.v1",
+        "status": "UNAVAILABLE",
+        "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+        "message": "基金研究模板尚未接入真实研究服务；正式账户拒绝返回演示数据",
+        "actual_source": null,
+        "observed_at": null,
+        "missing_fields": [
+          "live_provider",
+          "complete_required_fields",
+          "independent_evidence"
+        ],
+        "failure_reason": "configured implementation is fixture-only"
+      }
+    },
+    {
+      "endpoint": "convertible-bond-research-template",
+      "response": {
+        "schema_version": "api-error.v1",
+        "status": "UNAVAILABLE",
+        "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+        "message": "可转债研究模板尚未接入真实研究服务；正式账户拒绝返回演示数据",
+        "actual_source": null,
+        "observed_at": null,
+        "missing_fields": [
+          "live_provider",
+          "complete_required_fields",
+          "independent_evidence"
+        ],
+        "failure_reason": "configured implementation is fixture-only"
+      }
+    },
+    {
+      "endpoint": "scenario-simulation-template",
+      "response": {
+        "schema_version": "api-error.v1",
+        "status": "UNAVAILABLE",
+        "error_code": "LIVE_RESEARCH_NOT_AVAILABLE",
+        "message": "情景模拟模板尚未接入真实研究服务；正式账户拒绝返回演示数据",
+        "actual_source": null,
+        "observed_at": null,
+        "missing_fields": [
+          "live_provider",
+          "complete_required_fields",
+          "independent_evidence"
+        ],
+        "failure_reason": "configured implementation is fixture-only"
+      }
+    }
+  ],
+  "performance": {
+    "transport": "HTTP_NETWORK",
+    "started_at": "2026-09-18T15:46:38.456735+00:00",
+    "ended_at": "2026-09-18T15:47:01.023967+00:00",
+    "duration_seconds": 22.568,
+    "concurrency": 100,
+    "requests": 1000,
+    "completed": 1000,
+    "failed": 0,
+    "status_counts": {
+      "200": 1000
+    },
+    "error_counts": {},
+    "sample_success_pct": 100.0,
+    "latency_ms": {
+      "p50": 1679.267,
+      "p95": 6018.757,
+      "p99": 9088.207
+    },
+    "success_latency_p95_ms": 6018.757,
+    "sla_verified": false,
+    "boundary": "Finite read-only HTTP sample; provider/business coverage depends on the selected route. No long-term availability claim."
+  },
+  "scope": "真实 TCP HTTP，独立 SQLite，单个已登录账户，问卷读取接口，100 并发任务及 1000 请求，不含模型和金融查询。"
+}
