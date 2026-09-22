@@ -8,12 +8,12 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260916-trading-style-insights">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260918-short-rename-buttons">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260916-trading-style-insights" defer></script>
+    <script src="/static/app.js?v=20260918-compact-chat-rename" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -346,14 +346,29 @@
           </section>
 
             <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
+              <aside class="chat-history-panel" aria-labelledby="chat-history-title">
+                <header class="chat-history-head">
+                  <div>
+                    <span class="eyebrow">会话记录</span>
+                    <h3 id="chat-history-title">历史对话</h3>
+                  </div>
+                  <button id="new-chat-session" type="button">新对话</button>
+                </header>
+                <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
+                  <p class="chat-history-empty">暂无历史对话</p>
+                </div>
+                <p class="chat-history-boundary">记录按当前账户保存在本机浏览器；每次追问仅使用同一会话、同一资料版本的最近消息。</p>
+              </aside>
+
+              <div class="conversation-main">
               <div class="copilot-chat-stream-panel" id="copilot-chat-panel">
                 <header class="chat-panel-header conversation-head">
                   <div class="chat-panel-title">
                     <span class="chat-agent-glyph" aria-hidden="true">P</span>
-                    <strong>投资研究会话</strong>
+                    <strong id="active-chat-title">投资研究会话</strong>
                     <span class="chat-model-badge dev-only" id="chat-model-badge">内置分析引擎</span>
                   </div>
-                  <button id="btn-clear-chat" class="clear-chat-btn" type="button" title="清除本机保存的对话历史并开始新对话">清空上下文</button>
+                  <button id="btn-clear-chat" class="clear-chat-btn" type="button" title="保留当前记录并开始新对话">新对话</button>
                 </header>
                 <div class="copilot-chat-messages" id="copilot-chat-messages" aria-live="polite">
                   <div class="agent-empty-state" data-chat-empty-state>
@@ -385,6 +400,7 @@
               </div>
 
               <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
+              </div>
             </section>
             </div>
 

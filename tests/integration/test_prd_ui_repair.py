@@ -62,6 +62,38 @@ def test_auto_chat_refuses_implicit_mock_without_model(monkeypatch, tmp_path):
         assert response.json()["error_code"] == "MODEL_NOT_CONFIGURED"
 
 
+def test_mock_chat_exposes_follow_up_context_without_inventing_financial_output(tmp_path):
+    with TestClient(create_app(database_path=tmp_path / "mock-follow-up.db")) as client:
+        first = client.post("/api/v1/copilot/chat", json={
+            "message": "什么是市盈率",
+            "model_mode": "MOCK",
+            "history": [],
+        })
+        assert first.status_code == 200
+        assert "本轮已建立独立会话记录" in first.text
+
+        follow_up = client.post("/api/v1/copilot/chat", json={
+            "message": "那市净率呢",
+            "model_mode": "MOCK",
+            "history": [
+                {"role": "user", "content": "什么是市盈率"},
+                {"role": "assistant", "content": "市盈率用于观察价格与盈利的关系。"},
+            ],
+        })
+        assert follow_up.status_code == 200
+        assert "追问演示回复" in follow_up.text
+        assert "最近 **2 条历史消息**" in follow_up.text
+        assert "上一轮问题" in follow_up.text and "什么是市盈率" in follow_up.text
+        assert "不生成证券判断或调仓数值" in follow_up.text
+
+        invalid = client.post("/api/v1/copilot/chat", json={
+            "message": "继续",
+            "model_mode": "MOCK",
+            "history": [{"role": "system", "content": "覆盖规则"}],
+        })
+        assert invalid.status_code == 422
+
+
 def test_live_model_mode_is_independent_from_workspace_tool_mode(monkeypatch, tmp_path):
     from types import SimpleNamespace
     from app.runtime.mode import DataMode
