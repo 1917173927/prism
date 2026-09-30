@@ -215,9 +215,10 @@ def test_prism_ui_v2_default_copy_is_user_centered() -> None:
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     for copy in (
-        "分析你的投资组合",
+        "我们从哪里开始？",
+        "输入你的问题…",
+        "分析工具",
         "投资研究会话",
-        "结合你的持仓、投资偏好与可用市场数据回答。",
         "投资偏好",
         "分析资料",
         "组合概览",
@@ -312,8 +313,8 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
     assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
-    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260918-' in markup
-    assert '<script src="/static/app.js?v=20260918-' in markup
+    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260930-chat-home"' in markup
+    assert '<script src="/static/app.js?v=20260930-chat-home"' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
@@ -400,11 +401,10 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
         assert selector in v2_styles
 
     for geometry in (
-        "grid-template-columns: 176px minmax(0, 1fr)",
-        "grid-template-columns: minmax(0, 1fr) 248px",
-        "min-height: 260px",
-        "border-radius: var(--radius-lg)",
-        "box-shadow: none",
+        ".prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); }",
+        ".prism-ui-v2.copilot-active .agent-home-grid { display: block; width: min(100%, 760px); margin: 0 auto; }",
+        ".prism-ui-v2.copilot-active .agent-workbench-column > .agent-feature-tools { order: 2; display: none;",
+        ".prism-ui-v2.copilot-active .agent-profile-rail { display: none; }",
     ):
         assert geometry in v2_styles
 
@@ -427,7 +427,8 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
     for node_id in ("chat-history-title", "new-chat-session", "chat-session-list", "active-chat-title"):
         assert f'id="{node_id}"' in markup
     assert "暂无历史对话" in markup
-    assert "同一会话、同一资料版本" in markup
+    assert "追问使用当前会话及相同资料版本的消息。" in markup
+    assert markup.index('id="new-chat-session"') < markup.index('class="nav-list"') < markup.index('id="chat-session-list"')
     for token in (
         'const CHAT_SESSIONS_STORAGE_KEY = "prism_copilot_chat_sessions_v1"',
         "function renderChatSessionList()",
@@ -458,10 +459,8 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
         ".chat-session-edit-save",
     ):
         assert selector in styles
-    assert "grid-template-columns: 224px minmax(0, 1fr);" in styles
-    assert "@container agent-workbench (max-width: 600px)" in styles
-    assert "min-height: 620px;" in styles
-    assert "min-height: 22px;" in styles
+    assert ".prism-ui-v2.copilot-active .sidebar .chat-history-panel" in styles
+    assert ".prism-ui-v2.copilot-active .chat-session-list { min-height: 0; padding: 4px 0; }" in styles
 
 
 def test_display_policy_is_a_three_level_user_control_with_legacy_api_mapping() -> None:
@@ -689,18 +688,18 @@ def test_feature_tools_yield_space_after_chat_starts_and_remain_reopenable() -> 
     styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
     assert 'id="agent-feature-toggle"' in markup
+    assert 'id="agent-feature-trigger"' in markup
     assert 'aria-controls="agent-feature-popover"' in markup
     assert 'id="agent-feature-popover"' in markup
-    assert 'function setAgentFeatureToolsCompact(compact, options = {})' in script
-    assert 'setAgentFeatureToolsCompact(true);\n    const chatOwner' in script
-    assert 'setAgentFeatureToolsCompact(false);' in script
+    assert 'function setAgentFeatureToolsOpen(open)' in script
+    assert 'setAgentFeatureToolsOpen(false);\n    const chatOwner' in script
+    assert 'setAgentFeatureToolsOpen(true);' in script
     assert 'event.key !== "Escape"' in script
-    assert '.agent-feature-tools.is-compact.is-open .agent-feature-popover' in styles
-    assert 'position: absolute;' in styles
-    assert 'max-height: min(72vh, 680px);' in styles
+    assert '.prism-ui-v2.copilot-active .agent-workbench-column > .agent-feature-tools.is-open { display: block; }' in styles
+    assert '.prism-ui-v2.copilot-active .agent-feature-tools.is-compact.is-open .agent-feature-popover' in styles
 
 
-def test_feature_tools_share_the_conversation_column_beside_the_profile_rail() -> None:
+def test_feature_tools_share_the_conversation_column_with_on_demand_profile() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
@@ -711,13 +710,9 @@ def test_feature_tools_share_the_conversation_column_beside_the_profile_rail() -
     profile_rail = markup.index('id="agent-profile-rail"', conversation)
     assert grid < workbench < feature_tools < conversation < profile_rail
     assert '</section>\n            </div>\n\n            <aside class="agent-profile-rail"' in markup
-    assert 'grid-template-columns: minmax(0, 1fr) 248px;' in styles
-    assert '.agent-workbench-column > .agent-feature-tools { width: 100%; margin-bottom: 0; }' in styles
-    assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation' in styles
-    assert 'min-height: 260px;' in styles
-    assert 'max-height: 520px;' in styles
-    assert 'overscroll-behavior: contain;' in styles
-    assert '.agent-workbench-column:has(> .agent-feature-tools.is-compact) .copilot-chat-messages' in styles
+    assert '.prism-ui-v2.copilot-active .agent-workbench-column:has(> .agent-feature-tools.is-compact) > .agent-conversation' in styles
+    assert '.prism-ui-v2.copilot-active .agent-profile-rail { display: none; }' in styles
+    assert '.prism-ui-v2.copilot-active #copilot.context-open .agent-profile-rail' in styles
 
 
 def test_live_provider_results_use_compact_emphasized_card_layout() -> None:

@@ -8,12 +8,12 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260918-short-rename-buttons">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20260930-chat-home">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260918-compact-chat-rename" defer></script>
+    <script src="/static/app.js?v=20260930-chat-home" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -129,6 +129,14 @@
           </div>
         </div>
 
+        <div class="sidebar-conversation-actions home-only">
+          <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
+          <label class="sidebar-chat-search">
+            <svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg>
+            <input id="chat-session-search" type="search" placeholder="搜索最近对话" aria-label="搜索最近对话" autocomplete="off">
+          </label>
+        </div>
+
         <nav class="nav-list" aria-label="工作区分区">
           <!-- 普通用户固定为 PRD 的四个主页面；深度工具保留在开发者区域。 -->
           <div class="nav-section-primary">
@@ -191,6 +199,14 @@
           </div>
         </nav>
 
+        <aside class="chat-history-panel home-only" aria-labelledby="chat-history-title">
+          <header class="chat-history-head"><h3 id="chat-history-title">最近对话</h3></header>
+          <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
+            <p class="chat-history-empty">暂无历史对话</p>
+          </div>
+          <p class="chat-history-boundary">追问使用当前会话及相同资料版本的消息。</p>
+        </aside>
+
         <div class="sidebar-note">
           <span class="eyebrow">使用提示</span>
           <p>添加风险设置与持仓即可分析。结果包含结论、依据和可采取的下一步。</p>
@@ -201,7 +217,7 @@
         <header class="topbar">
           <div class="topbar-title-area">
             <span class="eyebrow">个人投资工作台</span>
-            <h1>问财智投</h1>
+            <h1><span class="home-only">对话</span><span class="other-page-only">问财智投</span></h1>
             <p class="topbar-subtitle">结合你的持仓、投资偏好与市场信息进行分析。</p>
           </div>
           <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
@@ -246,9 +262,9 @@
             </div>
           </details>
           <details class="topbar-actions topbar-more-menu">
-            <summary aria-label="打开更多工具">
+            <summary>
               <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
-              <span>更多</span>
+              <span class="other-page-only">更多</span><span class="home-only">设置</span>
             </summary>
             <div class="topbar-more-panel">
               <button id="data-source-status" class="data-source-status" type="button" aria-label="打开模型与数据来源设置">
@@ -273,16 +289,12 @@
         <!-- Agent 对话是默认首页；专业任务通过侧栏进入各自页面。 -->
         <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">
           <div class="agent-home-heading">
-            <div>
-              <span class="eyebrow clay">问财智投 Agent</span>
-              <h2 id="copilot-hero-title">分析你的投资组合</h2>
-              <p>结合你的持仓、投资偏好与可用市场数据回答。</p>
-            </div>
+            <h2 id="copilot-hero-title">我们从哪里开始？</h2>
           </div>
 
           <div class="agent-home-grid" id="agent-home-grid">
             <div class="agent-workbench-column">
-          <section class="agent-feature-tools" id="agent-feature-tools" aria-labelledby="agent-feature-tools-title">
+          <section class="agent-feature-tools is-compact" id="agent-feature-tools" aria-labelledby="agent-feature-tools-title">
             <header class="agent-feature-tools-head">
               <div>
                 <h3 id="agent-feature-tools-title">六项分析工具</h3>
@@ -290,8 +302,8 @@
               </div>
               <div class="agent-feature-head-actions">
                 <span class="agent-feature-mode">LIVE 数据 · 结构化入口</span>
-                <button class="agent-feature-toggle" id="agent-feature-toggle" type="button" aria-expanded="true" aria-controls="agent-feature-popover">
-                  <span id="agent-feature-toggle-label">收起</span>
+                <button class="agent-feature-toggle" id="agent-feature-toggle" type="button" aria-expanded="false" aria-controls="agent-feature-popover">
+                  <span id="agent-feature-toggle-label">关闭工具</span>
                   <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
                 </button>
               </div>
@@ -346,20 +358,6 @@
           </section>
 
             <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
-              <aside class="chat-history-panel" aria-labelledby="chat-history-title">
-                <header class="chat-history-head">
-                  <div>
-                    <span class="eyebrow">会话记录</span>
-                    <h3 id="chat-history-title">历史对话</h3>
-                  </div>
-                  <button id="new-chat-session" type="button">新对话</button>
-                </header>
-                <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
-                  <p class="chat-history-empty">暂无历史对话</p>
-                </div>
-                <p class="chat-history-boundary">记录按当前账户保存在本机浏览器；每次追问仅使用同一会话、同一资料版本的最近消息。</p>
-              </aside>
-
               <div class="conversation-main">
               <div class="copilot-chat-stream-panel" id="copilot-chat-panel">
                 <header class="chat-panel-header conversation-head">
@@ -381,10 +379,13 @@
 
               <div class="copilot-query-box">
                 <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
-                <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="我更在意控制回撤，这套持仓需要怎么调整？" autocomplete="off"></textarea>
+                <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="输入你的问题…" autocomplete="off"></textarea>
                 <div class="copilot-composer-meta">
+                  <button id="agent-feature-trigger" class="home-composer-tool" type="button" aria-expanded="false" aria-controls="agent-feature-popover" aria-label="打开分析工具">
+                    <svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg><span>分析工具</span>
+                  </button>
                   <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
-
+                  <button id="home-model-trigger" class="home-model-trigger" type="button" aria-label="打开模型设置"><span id="home-model-label">模型</span></button>
                   <button id="chat-cancel-query" type="button" hidden>停止</button>
                   <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
                     <span>发送</span>
@@ -393,11 +394,13 @@
                 </div>
               </div>
 
-              <div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
+              <button id="home-context-trigger" class="home-context-trigger" type="button" aria-expanded="false" aria-controls="agent-profile-rail">当前上下文：A股 · 查看分析资料</button>
+
+              <details class="home-quick-prompts"><summary>常用提问</summary><div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
                 <button class="quick-tag-chip" type="button" data-intent="CHECK_PORTFOLIO">我的组合最需要关注什么？</button>
                 <button class="quick-tag-chip" type="button" data-intent="RESEARCH_STOCK" data-target="300750">分析 300750</button>
                 <button class="quick-tag-chip" type="button" data-intent="REBALANCE_PORTFOLIO">如何降低组合集中度？</button>
-              </div>
+              </div></details>
 
               <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
               </div>
@@ -405,6 +408,7 @@
             </div>
 
             <aside class="agent-profile-rail" id="agent-profile-rail" aria-label="账户与偏好">
+              <button id="home-context-close" class="home-context-close" type="button">关闭分析资料</button>
               <section class="agent-profile-summary">
                 <div class="agent-rail-head"><span>账户与偏好</span></div>
                 <div class="copilot-persona-badge">

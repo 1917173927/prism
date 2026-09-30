@@ -165,6 +165,8 @@
     sessionTruthState = {...result, owner};
     const labels = {LOCKED:"分析资料已更新", NOT_LOCKED:"可以更新分析资料", DRIFT_DETECTED:"持仓或风险设置已变化", INPUT_REQUIRED:"请先添加风险设置和持仓"};
     byId("session-truth-status").textContent = labels[result.status] || "分析资料需要更新";
+    const homeContext = byId("home-context-trigger");
+    if (homeContext) homeContext.textContent = `当前上下文：A股 · ${labels[result.status] || "分析资料需要更新"}`;
     byId("confirm-session-truth").textContent = "更新分析资料";
     return result;
   }
@@ -7014,6 +7016,12 @@
     const isTradingStyle = (requestedId === "trading-style");
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
+    document.body.classList.toggle("copilot-active", isCopilot);
+    if (!isCopilot) {
+      copilotSec?.classList.remove("context-open");
+      byId("home-context-trigger")?.setAttribute("aria-expanded", "false");
+      setAgentFeatureToolsOpen(false);
+    }
 
     if (copilotSec) copilotSec.hidden = !isCopilot;
     if (overviewSec) overviewSec.hidden = !isOverview;
@@ -8169,7 +8177,7 @@
   }
 
   function handleCopilotIntent(intent, target) {
-    setAgentFeatureToolsCompact(true);
+    setAgentFeatureToolsOpen(false);
     if (intent === "CHECK_PORTFOLIO") {
       runCopilotHealthCheck();
     } else if (intent === "RESEARCH_STOCK") {
@@ -10226,7 +10234,7 @@
   }
 
   function startConversationProfileUpdate() {
-    setAgentFeatureToolsCompact(true);
+    setAgentFeatureToolsOpen(false);
     state.conversationProfileDraft = {};
     state.conversationProfileStep = 0;
     renderConversationProfileQuestion();
@@ -10412,18 +10420,19 @@
     if (panel) panel.style.display = "block";
     const title = byId("active-chat-title");
     if (title) title.textContent = activeChatSession()?.title || "投资研究会话";
-    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(chatHistory.length > 0);
+    setAgentFeatureToolsOpen(false);
   }
 
   function renderChatSessionList() {
     const list = byId("chat-session-list");
     if (!list) return;
     clear(list);
-    const recorded = chatSessions;
+    const search = byId("chat-session-search")?.value.trim().toLocaleLowerCase("zh-CN") || "";
+    const recorded = search ? chatSessions.filter(session => session.title.toLocaleLowerCase("zh-CN").includes(search)) : chatSessions;
     if (!recorded.length) {
       const empty = document.createElement("p");
       empty.className = "chat-history-empty";
-      empty.textContent = "暂无历史对话";
+      empty.textContent = search ? "没有匹配的最近对话" : "暂无历史对话";
       list.append(empty);
       return;
     }
@@ -10727,13 +10736,13 @@
     chatHistory.length = 0;
     workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
     const input = byId("copilot-natural-input");
-    if (input) input.value = "";
+    if (input) { input.value = ""; input.focus(); }
     const progress = byId("chat-send-progress");
     if (progress) { progress.hidden = false; progress.textContent = "理解问题 → 查询数据 → 核验依据 → 组织回答"; }
     const output = byId("copilot-decision-output");
     if (output) clear(output);
     renderActiveChatMessages();
-    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(false);
+    setAgentFeatureToolsOpen(false);
     void createPersistedChatSession().catch(error => setError(error.message));
   }
 
@@ -10814,7 +10823,7 @@
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
     if (!activeChatSessionId) await createPersistedChatSession();
-    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
+    setAgentFeatureToolsOpen(false);
     const chatOwner = state.ownerId;
     let chatTruth = null;
     const truthRequest = createLinkedTimeoutController(signal, CHAT_PRECHECK_TIMEOUT_MS);
@@ -11161,7 +11170,7 @@
       return;
     }
     setError("");
-    if (typeof setAgentFeatureToolsCompact === "function") setAgentFeatureToolsCompact(true);
+    setAgentFeatureToolsOpen(false);
     const directStock = q.match(/^个股分析[：:]\s*(\d{6}(?:\.(?:SH|SZ|BJ))?)\s*$/i);
     if (directStock) {
       if (input) input.value = "";
@@ -11207,6 +11216,8 @@
     const dot = byId("llm-config-status-dot");
     const label = byId("llm-config-btn-label");
     const badge = byId("chat-model-badge");
+    const homeModelLabel = byId("home-model-label");
+    if (homeModelLabel) homeModelLabel.textContent = llmConfig.configured ? llmConfig.model : "模型设置";
 
     if (llmConfig.configured && llmConfig.connectionStatus === "CONNECTED") {
       if (dot) dot.textContent = "●";
@@ -12642,7 +12653,6 @@
     },
   });
   let activeAgentFeature = null;
-  let agentFeatureToolsCompact = false;
   let agentFeaturePopoverOpen = false;
 
   function renderAgentFeatureToolsState() {
@@ -12650,28 +12660,26 @@
     const popover = byId("agent-feature-popover");
     const toggle = byId("agent-feature-toggle");
     const label = byId("agent-feature-toggle-label");
+    const trigger = byId("agent-feature-trigger");
     if (!tools || !popover || !toggle || !label) return;
-    const expanded = !agentFeatureToolsCompact || agentFeaturePopoverOpen;
-    tools.classList.toggle("is-compact", agentFeatureToolsCompact);
-    tools.classList.toggle("is-open", agentFeatureToolsCompact && agentFeaturePopoverOpen);
+    const expanded = agentFeaturePopoverOpen;
+    tools.classList.add("is-compact");
+    tools.classList.toggle("is-open", expanded);
     popover.setAttribute("aria-hidden", String(!expanded));
     toggle.setAttribute("aria-expanded", String(expanded));
-    label.textContent = !agentFeatureToolsCompact ? "收起" : agentFeaturePopoverOpen ? "关闭工具" : "展开工具";
+    label.textContent = "关闭工具";
+    trigger?.setAttribute("aria-expanded", String(expanded));
+    trigger?.setAttribute("aria-label", expanded ? "关闭分析工具" : "打开分析工具");
   }
 
-  function setAgentFeatureToolsCompact(compact, options = {}) {
-    agentFeatureToolsCompact = compact;
-    agentFeaturePopoverOpen = compact && options.open === true;
-    if (compact && !agentFeaturePopoverOpen && activeAgentFeature) closeAgentFeatureConfig();
+  function setAgentFeatureToolsOpen(open) {
+    agentFeaturePopoverOpen = open;
+    if (!agentFeaturePopoverOpen && activeAgentFeature) closeAgentFeatureConfig();
     renderAgentFeatureToolsState();
   }
 
   function toggleAgentFeatureTools() {
-    if (!agentFeatureToolsCompact) {
-      setAgentFeatureToolsCompact(true);
-      return;
-    }
-    setAgentFeatureToolsCompact(true, {open: !agentFeaturePopoverOpen});
+    setAgentFeatureToolsOpen(!agentFeaturePopoverOpen);
   }
 
   function currentFeatureStock() {
@@ -12747,7 +12755,7 @@
   function openAgentFeatureConfig(id) {
     const definition = AGENT_FEATURES[id];
     if (!definition) return;
-    if (agentFeatureToolsCompact) setAgentFeatureToolsCompact(true, {open: true});
+    setAgentFeatureToolsOpen(true);
     activeAgentFeature = id;
     document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", String(button.dataset.featureId === id)));
     byId("agent-feature-config-title").textContent = definition.title;
@@ -13107,16 +13115,17 @@
   }
 
   document.querySelectorAll("[data-feature-id]").forEach(button => button.addEventListener("click", () => openAgentFeatureConfig(button.dataset.featureId)));
+  byId("agent-feature-trigger")?.addEventListener("click", toggleAgentFeatureTools);
   byId("agent-feature-toggle")?.addEventListener("click", toggleAgentFeatureTools);
   byId("agent-feature-config-close")?.addEventListener("click", closeAgentFeatureConfig);
   document.addEventListener("click", event => {
-    if (!agentFeatureToolsCompact || !agentFeaturePopoverOpen) return;
-    if (!byId("agent-feature-tools")?.contains(event.target)) setAgentFeatureToolsCompact(true);
+    if (!agentFeaturePopoverOpen) return;
+    if (!byId("agent-feature-tools")?.contains(event.target) && !byId("agent-feature-trigger")?.contains(event.target)) setAgentFeatureToolsOpen(false);
   });
   document.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || !agentFeatureToolsCompact || !agentFeaturePopoverOpen) return;
-    setAgentFeatureToolsCompact(true);
-    byId("agent-feature-toggle")?.focus();
+    if (event.key !== "Escape" || !agentFeaturePopoverOpen) return;
+    setAgentFeatureToolsOpen(false);
+    byId("agent-feature-trigger")?.focus();
   });
   byId("agent-feature-config")?.addEventListener("submit", async event => {
     event.preventDefault();
@@ -13125,7 +13134,7 @@
     const values = featureValues();
     syncAgentFeaturePrompt();
     if (byId("agent-feature-start").disabled) return;
-    setAgentFeatureToolsCompact(true);
+    setAgentFeatureToolsOpen(false);
     await runConfiguredAgentFeature(featureId, values);
   });
   const dismissWelcome = () => {
@@ -13284,6 +13293,34 @@
   }
   const newChatSessionBtn = byId("new-chat-session");
   if (newChatSessionBtn) newChatSessionBtn.addEventListener("click", clearConversationContext);
+  byId("chat-session-search")?.addEventListener("input", renderChatSessionList);
+  byId("home-model-trigger")?.addEventListener("click", openLLMConfigModal);
+  const homeContextTrigger = byId("home-context-trigger");
+  function closeHomeContext() {
+    byId("copilot")?.classList.remove("context-open");
+    homeContextTrigger?.setAttribute("aria-expanded", "false");
+  }
+  homeContextTrigger?.addEventListener("click", () => {
+    const copilot = byId("copilot");
+    const expanded = !copilot.classList.contains("context-open");
+    copilot.classList.toggle("context-open", expanded);
+    homeContextTrigger.setAttribute("aria-expanded", String(expanded));
+    if (expanded) refreshSessionTruth().catch(error => setError(error.message));
+  });
+  byId("home-context-close")?.addEventListener("click", () => {
+    closeHomeContext();
+    homeContextTrigger?.focus();
+  });
+  document.addEventListener("click", event => {
+    if (!byId("copilot")?.classList.contains("context-open")) return;
+    if (byId("agent-profile-rail")?.contains(event.target) || homeContextTrigger?.contains(event.target)) return;
+    closeHomeContext();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !byId("copilot")?.classList.contains("context-open")) return;
+    closeHomeContext();
+    homeContextTrigger?.focus();
+  });
 
   const conversationProfileBtn = byId("start-conversation-profile-update");
   if (conversationProfileBtn) conversationProfileBtn.addEventListener("click", startConversationProfileUpdate);
@@ -13578,6 +13615,7 @@
     loadUserProfile();
     switchPersona("custom-user");
     await loadCopilotChatHistory();
+    refreshSessionTruth().catch(error => setError(error.message));
     loadModelSettings().catch(error => setError(error.message));
     initPortfolioModalTabs();
   }

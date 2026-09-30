@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
-import path from "node:path";
 import puppeteer from "puppeteer-core";
 
 const baseUrl = process.env.PRISM_TEST_BASE_URL || "http://127.0.0.1:8017";
-const outputDir = path.resolve("output/agent-home");
-await fs.mkdir(outputDir, { recursive: true });
 const executablePath = process.env.PRISM_TEST_BROWSER || (
   process.platform === "win32"
     ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
@@ -42,7 +38,6 @@ try {
   assert.equal(await page.$eval("#profile", (node) => node.hidden), true);
   await page.evaluate(() => { window.location.hash = "profile"; });
   await page.waitForSelector("#profile:not([hidden])");
-  await page.screenshot({ path: path.join(outputDir, "first-entry-questionnaire.png"), fullPage: true });
 
   const confirmationStatus = await page.evaluate(async () => {
     const ownerId = "demo-owner";
@@ -70,14 +65,14 @@ try {
   await page.waitForSelector("body:not(.questionnaire-pending):not(.questionnaire-required)");
   await page.waitForSelector("#copilot:not([hidden])");
   assert.equal(await page.$$("#copilot .copilot-task-card").then((nodes) => nodes.length), 0);
-  const widths = await page.$eval("#agent-home-grid", (grid) => {
-    const [conversation, rail] = grid.children;
-    return {
-      conversation: conversation.getBoundingClientRect().width,
-      rail: rail.getBoundingClientRect().width,
-    };
-  });
-  assert.ok(widths.conversation > widths.rail * 2.2, JSON.stringify(widths));
+  const widths = await page.evaluate(() => ({
+    composer: document.querySelector(".copilot-query-box").getBoundingClientRect().width,
+    tools: getComputedStyle(document.querySelector("#agent-feature-tools")).display,
+    profile: getComputedStyle(document.querySelector("#agent-profile-rail")).display,
+  }));
+  assert.ok(widths.composer >= 600 && widths.composer <= 760, JSON.stringify(widths));
+  assert.equal(widths.tools, "none");
+  assert.equal(widths.profile, "none");
 
   await page.evaluate(() => { window.location.hash = "profile"; });
   await page.waitForSelector("#profile:not([hidden]) .profile-result-identity h4");
@@ -88,6 +83,7 @@ try {
   await page.evaluate(() => { window.location.hash = "copilot"; });
   await page.waitForSelector("#copilot:not([hidden])");
 
+  await page.click("#home-context-trigger");
   await page.click("#start-conversation-profile-update");
   for (let step = 0; step < 4; step += 1) {
     await page.waitForSelector(".conversation-profile-card .conversation-profile-options button");
@@ -100,17 +96,15 @@ try {
   await confirmationButtons[0].click();
   await page.waitForFunction(() => localStorage.getItem("prism_conversation_profile_v1") !== null);
   assert.match(await page.$eval("#behavior-profile-content", (node) => node.textContent), /对话补充/);
-  await page.screenshot({ path: path.join(outputDir, "agent-home-desktop.png"), fullPage: true });
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("#copilot:not([hidden])");
-  assert.equal(await page.$eval("#agent-home-grid", (node) => getComputedStyle(node).gridTemplateColumns.split(" ").length), 1);
   assert.equal(await page.$eval("#copilot-natural-input", (node) => node.getBoundingClientRect().width <= innerWidth), true);
-  await page.screenshot({ path: path.join(outputDir, "agent-home-mobile.png"), fullPage: true });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
 
   assert.deepEqual(consoleErrors, []);
-  process.stdout.write(`Browser checks passed. Screenshots: ${outputDir}\n`);
+  process.stdout.write("Browser checks passed.\n");
 } finally {
   await browser.close();
 }
