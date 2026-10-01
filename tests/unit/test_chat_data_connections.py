@@ -341,7 +341,7 @@ def test_direct_provider_endpoint_rejects_invalid_convertible_code(subject):
             raise AssertionError("invalid convertible code must not reach provider")
 
     with TestClient(create_app(wencai_provider=Wencai())) as client:
-        response = client.post("/api/v1/runtime/provider-query", json={
+        response = client.post("/api/v1/runtime/provider-query", headers={"X-Owner-ID": "test-owner"}, json={
             "request_id": "invalid-convertible-code",
             "operation": "CONVERTIBLE_BOND_DATA",
             "subject": subject,
@@ -377,7 +377,7 @@ def test_direct_provider_success_recovers_after_previous_runtime_failure():
             )
 
     with TestClient(create_app(wencai_provider=Wencai())) as client:
-        response = client.post("/api/v1/runtime/provider-query", json={
+        response = client.post("/api/v1/runtime/provider-query", headers={"X-Owner-ID": "test-owner"}, json={
             "request_id": "recover-market-route",
             "operation": "MARKET_DATA",
             "subject": "上证指数 最新价",

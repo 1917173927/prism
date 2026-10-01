@@ -47,6 +47,18 @@ class UnavailableYahooProvider:
     is_configured = False
 
 
+def test_market_analysis_missing_quote_time_is_unavailable():
+    class MissingTime(AnalysisProvider):
+        async def get_index_quote(self, code):
+            return {"symbol": code, "source": "time missing"}
+
+    with TestClient(create_app(market_provider=MissingTime(), yahoo_finance_provider=UnavailableYahooProvider())) as client:
+        response = client.get("/api/v1/market/analysis/CN/sse-composite", headers={"X-Owner-ID": "test-owner"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "REVIEW_REQUIRED"
+    assert not response.json()["research_metrics"]
+
+
 class UnavailableEtNetProvider:
     is_configured = False
 

@@ -134,6 +134,10 @@ def test_unlocked_chat_strips_unverified_personal_context(monkeypatch, tmp_path)
 
         stream_chat = staticmethod(fake_stream_chat)
 
+        def with_owner(self, owner_id, **kwargs):
+            captured["authorized_owner"] = owner_id
+            return self
+
     monkeypatch.setattr(api_main, "get_runtime_mode_controller", lambda: SimpleNamespace(mode=DataMode.LIVE))
     monkeypatch.setattr(api_main, "CopilotAgent", FakeCopilotAgent)
     with TestClient(create_app(database_path=tmp_path / "unlocked-chat.db")) as client:

@@ -12,6 +12,7 @@ Adheres strictly to the architectural requirements:
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 import json
 import logging
@@ -65,6 +66,7 @@ class WencaiSkillHubProvider(FinancialProvider):
         api_key: str | None = None,
         base_url: str | None = None,
         timeout_seconds: float = 8.0,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         manifest = load_iwencai_skill_manifest()
         self._name = name
@@ -82,6 +84,29 @@ class WencaiSkillHubProvider(FinancialProvider):
         self._timeout_seconds = min(max(timeout_seconds, 0.001), 30.0)
         self._skills = tuple(manifest["skills"])
         self._registry = None
+        self._shared_client = client
+        self._owns_shared_client = False
+
+    async def start_http(self) -> None:
+        """Opt into application-scoped connection reuse on its running loop."""
+        if self._shared_client is None:
+            self._shared_client = httpx.AsyncClient(timeout=self._timeout_seconds,
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=32))
+            self._owns_shared_client = True
+
+    async def aclose(self) -> None:
+        if self._owns_shared_client and self._shared_client is not None:
+            await self._shared_client.aclose()
+            self._shared_client = None
+            self._owns_shared_client = False
+
+    @asynccontextmanager
+    async def _client(self):
+        if self._shared_client is not None:
+            yield self._shared_client
+        else:
+            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+                yield client
 
     def bind_registry(self, registry) -> None:
         """Apply persistent global capability availability to ordinary calls."""
@@ -103,6 +128,10 @@ class WencaiSkillHubProvider(FinancialProvider):
     @property
     def installed_skills(self) -> tuple[dict[str, Any], ...]:
         """Return non-secret project-bundled Skill metadata."""
+        if self._registry is not None:
+            fields = ("name", "skill_id", "version", "endpoint", "operation", "channel", "package_sha256")
+            return tuple({key: row[key] for key in fields if row.get(key) is not None}
+                         for row in self._registry.list() if row["status"] == "INSTALLED" and row["enabled"])
         return tuple(dict(skill) for skill in self._skills)
 
     def configure(self, *, api_key: str, base_url: str | None = None) -> None:
@@ -148,7 +177,12 @@ class WencaiSkillHubProvider(FinancialProvider):
             result = await self.execute(ProviderRequest(
                 request_id=f"wencai-probe-{secrets.token_hex(8)}",
                 operation=ProviderOperation(skill["operation"]),
-                subject=query_by_skill[skill["skill_id"]],
+                subject=query_by_skill.get(skill["skill_id"], {
+                    "MARKET_DATA": "贵州茅台最新价", "COMPANY_DATA": "贵州茅台营业收入",
+                    "INDUSTRY_DATA": "白酒行业市盈率", "MACRO_DATA": "中国最新CPI同比",
+                    "FUND_DATA": "沪深300ETF最新净值", "CONVERTIBLE_BOND_DATA": "可转债价格低于130元",
+                    "SEARCH_NEWS": "贵州茅台最新公告", "SEARCH_REPORTS": "贵州茅台最新研报",
+                }[skill["operation"]]),
                 parameters=parameters,
             ))
             fields = dict(result.records[0].fields) if result.records else {}
@@ -167,7 +201,7 @@ class WencaiSkillHubProvider(FinancialProvider):
                 "error_code": result.issues[0].code.value if result.issues else None,
             }
 
-        return tuple(await asyncio.gather(*(probe(skill) for skill in self._skills)))
+        return tuple(await asyncio.gather(*(probe(skill) for skill in self.installed_skills)))
 
     async def execute(self, request: ProviderRequest, *, skill: dict[str, Any] | None = None) -> ProviderResult:
         """Execute request against official SkillHub endpoint.
@@ -246,7 +280,7 @@ class WencaiSkillHubProvider(FinancialProvider):
             }
 
         try:
-            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            async with self._client() as client:
                 headers = {
                     "Authorization": f"Bearer {self._api_key}",
                     "Content-Type": "application/json",
@@ -332,8 +366,8 @@ class WencaiSkillHubProvider(FinancialProvider):
                         "source": "iwencai.com / SkillHub (Official Live)",
                         "retrieved_at": datetime.now(UTC).isoformat(),
                         "summary": upstream_summary or f"问财查询完成：{query}",
-                        "sentiment": data.get("sentiment", "NEUTRAL"),
-                        "confidence": str(data.get("confidence", "1.0")),
+                        "sentiment": data.get("sentiment"),
+                        "confidence": str(data["confidence"]) if data.get("confidence") is not None else None,
                         "items": raw_items,
                         "columns": data.get("columns", []),
                         "row_count": data.get("row_count", len(raw_items)),
@@ -349,7 +383,7 @@ class WencaiSkillHubProvider(FinancialProvider):
 
                     # Check required fields
                     missing_required = tuple(
-                        field for field in request.required_fields if field not in record_payload
+                        field for field in request.required_fields if record_payload.get(field) is None
                     )
                     status = (
                         ProviderStatus.PARTIAL if missing_required else ProviderStatus.SUCCESS

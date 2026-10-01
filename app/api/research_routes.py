@@ -1,12 +1,17 @@
 """Research platform routes with server-owned user and administration boundaries."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.service.skill_registry import SkillMetadata, SkillRegistry, SkillUnavailable
+from app.service.live_research import (LiveResearchRequest, ResearchRunNotFound, ResearchAsOfError,
+                                       build_live_research_request, live_research_templates)
+from app.service.research_runtime import ResearchCapacityError
 from app.store.sqlite import StoreConflictError
 
 
@@ -31,6 +36,14 @@ class SkillSelectionRequest(BaseModel):
 class RevisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_revision: int = Field(ge=1)
+
+
+class TemplateRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template_id: str = Field(min_length=1, max_length=100)
+    subject: str = Field(min_length=1, max_length=30)
+    budget_seconds: float = Field(default=60, gt=0, le=60)
+    as_of: datetime | None = None
 
 
 def create_research_router(*, store, provider, owner_dependency, auth_enabled=False,
@@ -85,5 +98,54 @@ def create_research_router(*, store, provider, owner_dependency, auth_enabled=Fa
         @router.get("/research/runtime")
         def runtime_status(owner_id=Depends(owner_dependency)):
             return runtime.snapshot()
+
+        @router.get("/runtime/research-metrics")
+        def administration_runtime_status(owner_id=Depends(administrator)):
+            return runtime.snapshot()
+
+    if live_service is not None:
+        def research_error(code, message):
+            return JSONResponse(status_code=422, content={"schema_version": "api-error.v1", "error_code": code,
+                                                         "detail": code, "message": message})
+
+        @router.get("/research/templates")
+        def get_live_templates(owner_id=Depends(owner_dependency)):
+            return {"items": live_research_templates()}
+
+        @router.post("/research/runs/from-template", status_code=202)
+        async def create_from_template(body: TemplateRunRequest, owner_id=Depends(owner_dependency)):
+            try:
+                request = build_live_research_request(body.template_id, body.subject,
+                                                     budget_seconds=body.budget_seconds, as_of=body.as_of)
+                return live_service.submit(owner_id, request)
+            except ResearchAsOfError:
+                return research_error("RESEARCH_AS_OF_FUTURE", "研究截止时间不得晚于服务当前时间")
+            except ValueError:
+                return research_error("RESEARCH_TEMPLATE_INVALID", "研究模板、标的代码或截止时间无效")
+            except ResearchCapacityError:
+                raise HTTPException(429, detail="RESEARCH_CAPACITY") from None
+
+        @router.post("/research/runs", status_code=202)
+        async def create_live_run(body: LiveResearchRequest, owner_id=Depends(owner_dependency)):
+            try:
+                return live_service.submit(owner_id, body)
+            except ResearchCapacityError:
+                raise HTTPException(429, detail="RESEARCH_CAPACITY") from None
+            except ResearchAsOfError:
+                return research_error("RESEARCH_AS_OF_FUTURE", "研究截止时间不得晚于服务当前时间")
+
+        @router.get("/research/runs/{run_id}")
+        def get_live_run(run_id: str, owner_id=Depends(owner_dependency)):
+            try:
+                return live_service.get(owner_id, run_id)
+            except ResearchRunNotFound:
+                raise HTTPException(404, detail="RESEARCH_RUN_NOT_FOUND") from None
+
+        @router.delete("/research/runs/{run_id}")
+        async def cancel_live_run(run_id: str, owner_id=Depends(owner_dependency)):
+            try:
+                return await live_service.cancel(owner_id, run_id)
+            except ResearchRunNotFound:
+                raise HTTPException(404, detail="RESEARCH_RUN_NOT_FOUND") from None
 
     return router

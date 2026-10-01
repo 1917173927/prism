@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.research_routes import create_research_router
-from app.providers.contracts import ProviderRequest
+from app.providers.contracts import ProviderRequest, ProviderResult, ProviderRecord
+from app.providers.fingerprint import compute_request_fingerprint
 from app.providers.skillhub import WencaiSkillHubProvider, load_iwencai_skill_manifest
 from app.service.skill_registry import SkillMetadata, SkillRegistry, SkillUnavailable
 from app.store.sqlite import SQLiteDecisionEventStore, StoreConflictError
@@ -97,3 +98,26 @@ def test_registry_routes_require_admin_and_bind_selection_to_owner(store):
         assert response.status_code == 200
         assert any(row["skill_id"] == "hithink-market-query" and not row["callable"]
                    for row in client.get("/api/v1/skills").json()["items"])
+
+
+@pytest.mark.parametrize("items,passed", [
+    ([], False), ([{}], False), (["connected"], False),
+    ([{"price": None}], False), ([{"price": ""}], False),
+    ([{"price": 0}], True), ([{"price": "123.45"}], True),
+])
+def test_probe_requires_observed_row_contract(store, items, passed):
+    registry = SkillRegistry(store)
+    metadata = SkillMetadata.model_validate(dict(load_iwencai_skill_manifest()["skills"][3], version="1.1.0"))
+    registry.install(metadata)
+
+    class ProbeProvider:
+        async def execute(self, request, *, skill):
+            return ProviderResult(request_id=request.request_id,
+                request_fingerprint=compute_request_fingerprint(request), provider="probe-only",
+                status="SUCCESS", retrieved_at=registry.clock(),
+                records=(ProviderRecord(source="controlled probe", fields={"items": items}),))
+
+    result = asyncio.run(registry.probe(metadata.skill_id, metadata.version,
+        expected_revision=1, provider=ProbeProvider()))
+    assert result["status"] == ("PASS" if passed else "FAILED")
+    assert registry.get(metadata.skill_id, metadata.version)["status"] == ("INSTALLED" if passed else "PENDING")

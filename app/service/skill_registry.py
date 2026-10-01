@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from contextvars import ContextVar
 import json
 from typing import Callable, Literal
 
@@ -197,6 +198,7 @@ class SkillRegistry:
 
     def scoped_provider(self, provider, owner_id: str):
         registry = self
+        captured = ContextVar("prism_skill_snapshot", default=None)
 
         class ScopedProvider:
             def __getattr__(self, name):
@@ -206,10 +208,17 @@ class SkillRegistry:
             def name(self):
                 return provider.name
 
+            @property
+            def captured_skill(self):
+                snapshot = captured.get()
+                return dict(snapshot) if snapshot is not None else None
+
             async def execute(self, request: ProviderRequest) -> ProviderResult:
                 try:
                     metadata = registry.resolve(request, owner_id)
+                    captured.set(metadata.model_dump(mode="json", exclude_none=True))
                 except SkillUnavailable:
+                    captured.set(None)
                     return ProviderResult(request_id=request.request_id,
                         request_fingerprint=compute_request_fingerprint(request), provider=provider.name,
                         status="FAILED", retrieved_at=registry.clock(),
@@ -238,9 +247,17 @@ class SkillRegistry:
         request = ProviderRequest(request_id=f"skill-probe:{skill_id}:{version}",
                                   operation=metadata.operation, subject=queries[metadata.operation.value], parameters=parameters)
         result = await provider.execute(request, skill=metadata.model_dump(mode="json", exclude_none=True))
+        # A connection or a non-empty scalar response cannot validate the
+        # reviewed adapter's row contract. Zero is an eligible observed value.
+        def valid_rows(items):
+            return isinstance(items, (tuple, list)) and bool(items) and all(
+                isinstance(item, dict) and bool(item) and any(
+                    value is not None and value != "" for value in item.values()
+                ) for item in items
+            )
+
         passed = result.status.value in {"SUCCESS", "PARTIAL"} and any(
-            isinstance(record.fields.get("items"), (tuple, list)) and any(record.fields["items"])
-            for record in result.records)
+            valid_rows(record.fields.get("items")) for record in result.records)
         if passed:
             row = self.update(skill_id, version, action="verified", expected_revision=expected_revision)
         return {"status": "PASS" if passed else "FAILED", "skill": row,

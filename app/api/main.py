@@ -24,6 +24,13 @@ from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, Workfl
 from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
 from app.api.research_routes import create_research_router
+from app.api.algorithm_routes import create_algorithm_router
+from app.service.research_runtime import ResearchRuntime
+from app.service.live_research import LiveResearchService
+from app.service.research_facts import ResearchFactRepository, ResearchFactNotFound
+from app.service.knowledge import KnowledgeService
+from app.service.knowledge_crawler import KnowledgeCrawler
+from app.api.knowledge_routes import create_knowledge_router
 from app.service.live_stock_analysis import (
     AnalysisStatus,
     build_live_stock_analysis,
@@ -798,7 +805,7 @@ def create_app(
         """Verify all installed SkillHub routes and persist only a full pass."""
         nonlocal wencai_setting_state
         results = await active_wencai_provider.probe_installed_skills()
-        passed = all(
+        passed = bool(results) and all(
             row["status"] in {"SUCCESS", "PARTIAL"}
             and row.get("record_count", 0) > 0
             and row.get("item_count", 0) > 0
@@ -970,8 +977,18 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         try:
+            for provider in (active_wencai_provider, active_live_finance):
+                if hasattr(provider, "start_http"):
+                    await provider.start_http()
+            await knowledge_crawler.start()
             yield
         finally:
+            await knowledge_crawler.close()
+            await live_research_service.aclose()
+            await research_runtime.aclose()
+            for provider in (active_wencai_provider, active_live_finance):
+                if hasattr(provider, "aclose"):
+                    await provider.aclose()
             if owned_store:
                 active_store.close()
 
@@ -1134,8 +1151,44 @@ def create_app(
     if hasattr(active_wencai_provider, "bind_registry"):
         active_wencai_provider.bind_registry(skill_registry)
     api.state.skill_registry = skill_registry
+    research_runtime = ResearchRuntime(provider_limit=int(os.getenv("PRISM_RESEARCH_PROVIDER_LIMIT", "100")),
+        model_limit=int(os.getenv("PRISM_RESEARCH_MODEL_LIMIT", "8")))
+    research_facts = ResearchFactRepository(active_store, clock=active_clock)
+
+    def research_input_versions(owner_id):
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+        portfolio = active_store.get_current_portfolio(owner_id, "LIVE")
+        return {"questionnaire_snapshot": snapshot.snapshot_id if snapshot else "UNAVAILABLE",
+                "portfolio_sha256": fingerprint(portfolio) if portfolio else "UNAVAILABLE"}
+
+    live_research_service = LiveResearchService(provider=active_wencai_provider, registry=skill_registry,
+        runtime=research_runtime, clock=active_clock, facts=research_facts, input_versions=research_input_versions)
+    api.state.research_facts = research_facts
+    api.state.research_runtime = research_runtime
+    api.state.live_research_service = live_research_service
     api.include_router(create_research_router(store=active_store, provider=active_wencai_provider,
-        owner_dependency=owner_dependency, auth_enabled=access_enabled, clock=active_clock, registry=skill_registry))
+        owner_dependency=owner_dependency, auth_enabled=access_enabled, clock=active_clock, registry=skill_registry,
+        runtime=research_runtime, live_service=live_research_service))
+    knowledge_service = KnowledgeService(active_store, clock=active_clock)
+    knowledge_crawler = KnowledgeCrawler(knowledge_service)
+    api.state.knowledge_service = knowledge_service
+    api.state.knowledge_crawler = knowledge_crawler
+    api.include_router(create_knowledge_router(knowledge_service, owner_dependency, crawler=knowledge_crawler, auth_enabled=access_enabled))
+    api.include_router(create_algorithm_router(owner_dependency))
+
+    @api.get("/api/v1/research/facts/{fact_id}", tags=["research-facts"])
+    def research_fact(fact_id: str, owner_id: str = Depends(owner_dependency)):
+        try:
+            return research_facts.get(owner_id, fact_id)
+        except ResearchFactNotFound:
+            raise HTTPException(404) from None
+
+    @api.get("/api/v1/research/snapshots/{snapshot_id}", tags=["research-facts"])
+    def research_snapshot(snapshot_id: str, owner_id: str = Depends(owner_dependency)):
+        try:
+            return research_facts.get_snapshot(owner_id, snapshot_id)
+        except ResearchFactNotFound:
+            raise HTTPException(404) from None
 
     @api.get("/", include_in_schema=False)
     def workbench() -> FileResponse:
@@ -1961,6 +2014,9 @@ def create_app(
             )
 
         try:
+            quote_observed_at = datetime.fromisoformat(str(quote.get("observed_at", "")).replace("Z", "+00:00"))
+            if quote_observed_at.tzinfo is None:
+                raise ValueError("index observation time requires timezone")
             daily_bars = [MarketBar.model_validate(row).model_dump() for row in daily_bars]
             if any(date.fromisoformat(row["time"]) > end_time.date() for row in daily_bars):
                 raise ValueError("future daily bars are ineligible")
@@ -1968,7 +2024,7 @@ def create_app(
         except (ValueError, ArithmeticError):
             return MarketAnalysisResponse(market=selected.market, index_id=selected.index_id, name=selected.name,
                 symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
-                precision=selected.precision, interval=interval, status="REVIEW_REQUIRED", source="指数历史数据日期或价格无效")
+                precision=selected.precision, interval=interval, status="REVIEW_REQUIRED", source="指数观察时点、历史日期或价格缺失或无效")
         bars = aggregate_monthly(daily_bars) if interval == "1M" else daily_bars
         # A fallback provider can return a valid shorter history. Preserve it,
         # but expose that the requested ten-year monthly window is incomplete.
@@ -2024,7 +2080,7 @@ def create_app(
             symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
             precision=selected.precision, interval=interval, status="CALCULATED",
             source=str(quote.get("source", "Yahoo Finance行情")), history_status=history_status,
-            observed_at=datetime.fromisoformat(quote["observed_at"]),
+            observed_at=quote_observed_at,
             price=latest, change=change, change_pct=change_pct, bars=bars,
             volume=volume_summary(bars), indicators=technical_indicators(bars), factors=factors,
             research_metrics=metrics, input_snapshot_id=next(iter(metrics.values())).snapshot_id,
@@ -3366,7 +3422,7 @@ def create_app(
             history_objs = [CopilotMessage(role=message.role, content=message.content) for message in history_source]
             assistant_parts: list[str] = []
             stream_failed = False
-            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry).stream_chat(
+            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry, knowledge_service=knowledge_service).stream_chat(
                 user_message=req.message,
                 history=history_objs,
                 persona_info=req.persona_info,
@@ -4114,6 +4170,7 @@ def create_app(
     @api.post("/api/v1/runtime/provider-query")
     async def execute_live_provider_query(
         request: LiveProviderQueryRequest,
+        owner_id: str = Depends(owner_dependency),
     ) -> JSONResponse:
         """Expose the verified provider contract for read-only research tools."""
         controller = get_runtime_mode_controller()
