@@ -1,0 +1,22 @@
+{
+  "schema_version": "research-postgres-verification.v1",
+  "status": "BLOCKED",
+  "reason": "NO_ACCESSIBLE_POSTGRES_SERVER_AND_NO_EXPLICIT_TEST_DSN",
+  "discovery": {
+    "path_commands_found": false,
+    "windows_postgres_service_found": false,
+    "program_files_postgres_directory_found": false,
+    "workspace_portable_binary_found": false,
+    "temp_download_binary_found": false,
+    "test_dsn_configured": false,
+    "limits": "One unrelated temporary directory was unreadable; this is a scoped discovery result, not a claim that no PostgreSQL binary exists anywhere."
+  },
+  "new_regression_tests": {
+    "file": "tests/integration/test_research_postgres.py",
+    "passed": 0,
+    "skipped": 3,
+    "reason": "real PostgreSQL test DSN not configured"
+  },
+  "validated_postgres_migrations": false,
+  "installed_server": false
+}

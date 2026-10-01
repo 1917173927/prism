@@ -1,0 +1,93 @@
+{
+  "schema_version": "research-evidence-manifest.v1",
+  "code_commit": "fa8fa30",
+  "scope": "Acceptance evidence only; model caches, raw private documents and preexisting work directories excluded",
+  "hash_encoding": "Exact repository bytes; UTF-8 JSON uses LF as declared by .gitattributes; screenshots use original binary bytes",
+  "files": [
+    {
+      "path": "docs/submission/test-evidence/research-automated-verification-20261001.json",
+      "bytes": 1238,
+      "sha256": "1136b90f11538af29e7508d217f55525a4e78a8b8253c7f3a48cbd4c81a7ac5f"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-crawler-live-20261001.json",
+      "bytes": 2697,
+      "sha256": "c1771f8215a47ddafb6af86e8678e2b99b8ba50423e224ced1956344423b4aab"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-knowledge-comparison-20261001.json",
+      "bytes": 644,
+      "sha256": "8d45386999746814ad7ba3d08b89984ff680f305da7ac52452e7e880fb834a38"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-knowledge-hybrid-20261001.json",
+      "bytes": 30163,
+      "sha256": "390bda16cdd8446de7f32bac7af9c6c0facef23571c36b3463c99387d56dccf0"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-knowledge-keyword-20261001.json",
+      "bytes": 30165,
+      "sha256": "d95b16f8c0b17f61d8130ec36cafc7724db742779f97b757e1a9b4b9d3db9aa9"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-pages-deployment-20261001.json",
+      "bytes": 809,
+      "sha256": "10cadc03427337133d26452f85153ee45bb7a722c7080aa992bbbdff976f24e6"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-postgres-verification-20261001.json",
+      "bytes": 837,
+      "sha256": "ee57bcc42ed27c533baf88873c57bb9cbc0b961162411d0cd5dec839406216eb"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-retained-history-20261001.json",
+      "bytes": 34434,
+      "sha256": "a63113ac73bf936847f1a3d1a3fe5246f39cd150fc349657f4dfb067e57af914"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-service-load-controlled-20261001.json",
+      "bytes": 1126838,
+      "sha256": "3593cd3dff976c9c838af2b035d74c44d1a199462e29137ecbdee244c936388b"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-service-load-real-20261001.json",
+      "bytes": 162231,
+      "sha256": "499f05e9d76416e78a8f7bcdec457ad7b439978aa3e1365fe8914cd02ad64d9c"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/live-research-1440.png",
+      "bytes": 93952,
+      "sha256": "07bd4e7001898b0df9b7590b6d8ab52769efe8bae658cd141326b88c73807e2b"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/live-research-390.png",
+      "bytes": 107896,
+      "sha256": "9bd26924f11baf56eff53288ebbad99e05557d846cd71b95fc2c4a1a7be1c72e"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-algorithms-1440.png",
+      "bytes": 145725,
+      "sha256": "e94c2c5234660db9cdf9d16c48bc66c58d1c9552dadc0dfcdcd02791f01c8ea0"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-algorithms-390.png",
+      "bytes": 95083,
+      "sha256": "51d27cbaed1135ab28d929975610703c46556c5f12b7795da19b3b479608eab9"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-knowledge-1440.png",
+      "bytes": 121071,
+      "sha256": "d3e40dedda0a4f649810d87fdc81bad15413993f2e07a15934870a949a21da5a"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-knowledge-390.png",
+      "bytes": 130133,
+      "sha256": "c4ed187e98e651b61d891493e5ad99660c81d8d084a1232eabeee0af0930553d"
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/summary.json",
+      "bytes": 3928,
+      "sha256": "bc8193c0cbcca44501288c496e4f2b901cdf8a9114da29ed15cbcadcf795261e"
+    }
+  ]
+}
