@@ -2402,6 +2402,7 @@
   }
 
   function renderProfileSummary(summary, options = {}) {
+    byId("profile")?.classList.toggle("questionnaire-preview-visible", options.preview === true);
     const panel = byId("profile-summary-content");
     if (!panel) return;
     clear(panel);
@@ -6719,6 +6720,7 @@
     system: "system",
     advisor: "system",
     profile: "profile",
+    "skill-store": "skills",
     "research-tracks": "system",
     "context-memory": "system",
     "evaluation-dashboard": "system",
@@ -6986,6 +6988,15 @@
     }
   }
 
+  const RESEARCH_SUBPAGES = Object.freeze({
+    "profile-results": "profile", "profile-questionnaire": "profile", "profile-preferences": "profile",
+    "holdings-management": "overview", "holdings-report": "overview",
+    "market-quotes": "market", "market-risk": "market", "market-sectors": "market",
+  });
+  const navigationScrollPositions = new Map();
+  let activeNavigationRoute = null;
+  let navigationScrollFrame = null;
+
   function syncNavigation(targetId = window.location.hash.replace(/^#/, "")) {
     const aliases = {
       workbench: "copilot",
@@ -6994,7 +7005,13 @@
       system: "evaluation-dashboard",
       "expert-workspace-grid": "stock-research",
     };
-    let requestedId = aliases[targetId] || targetId || "copilot";
+    const legacySubpages = {profile: state.questionnaireGate === "COMPLETE" ? "profile-results" : "profile-questionnaire", overview: "holdings-report", portfolio: "holdings-management", market: "market-quotes"};
+    const routeId = legacySubpages[targetId] || aliases[targetId] || targetId || "copilot";
+    let requestedId = RESEARCH_SUBPAGES[routeId] || routeId;
+    const routeChanged = activeNavigationRoute !== routeId;
+    if (routeChanged && activeNavigationRoute) navigationScrollPositions.set(activeNavigationRoute, window.scrollY);
+    activeNavigationRoute = routeId;
+    if (routeChanged && navigationScrollFrame) cancelAnimationFrame(navigationScrollFrame);
     let domain = DOMAIN_MAP[requestedId] || "copilot";
     if (domain === "system" && !document.body.classList.contains("dev-mode")) {
       requestedId = "copilot";
@@ -7006,12 +7023,14 @@
     const overviewSec = byId("overview");
     const marketSec = byId("market");
     const tradingStyleSec = byId("trading-style");
+    const skillStoreSec = byId("skill-store");
     const expertSec = byId("expert-workspace-grid");
     const pageTabs = byId("workspace-page-tabs");
 
     const isOverview = (requestedId === "overview");
     const isMarket = (requestedId === "market");
     const isTradingStyle = (requestedId === "trading-style");
+    const isSkillStore = requestedId === "skill-store";
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
 
@@ -7019,8 +7038,18 @@
     if (overviewSec) overviewSec.hidden = !isOverview;
     if (marketSec) marketSec.hidden = !isMarket;
     if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
+    if (skillStoreSec) skillStoreSec.hidden = !isSkillStore;
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
-    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle;
+    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle || isSkillStore;
+    for (const section of [overviewSec, marketSec, byId("profile")]) {
+      if (!section) continue;
+      section.dataset.activeSubpage = routeId;
+      section.querySelectorAll("[data-subpage]").forEach(node => {
+        node.classList.toggle("research-subpage-hidden", node.dataset.subpage !== routeId);
+      });
+    }
+    const preferenceLevel = byId("profile-answer-detail");
+    if (preferenceLevel) preferenceLevel.value = String(byId("ai-trust-score")?.value || 50);
 
     setExpertMode(isWorkspacePanel);
 
@@ -7036,7 +7065,7 @@
       [...pageTabs.querySelectorAll("a[data-domain]")].forEach((link) => {
         const visible = link.dataset.domain === domain;
         link.hidden = !visible;
-        const selected = visible && link.getAttribute("href") === `#${requestedId}`;
+        const selected = visible && link.getAttribute("href") === `#${routeId}`;
         link.classList.toggle("active", selected);
         if (selected) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
@@ -7058,17 +7087,13 @@
 
     if (isOverview) {
       renderOverviewWorkspace();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (isMarket) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (isTradingStyle) {
       loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (isCopilot) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (isWorkspacePanel) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
+    if (routeChanged) navigationScrollFrame = requestAnimationFrame(() => {
+      window.scrollTo({top: navigationScrollPositions.get(routeId) || 0, behavior: "instant"});
+      navigationScrollFrame = null;
+    });
 
     if (requestedId === "evaluation-dashboard") {
       loadEvaluationSummary();
@@ -7091,6 +7116,7 @@
       research: "#stock-research",
       decisions: "#recommendation-history",
       profile: "#profile",
+      skills: "#skill-store",
     };
     const target = items.find((item) => item.getAttribute("href") === (primaryByDomain[domain] || `#${requestedId}`))
       || items.find((item) => item.getAttribute("href") === `#${requestedId}`)
@@ -7110,6 +7136,13 @@
     });
     window.addEventListener("hashchange", () => syncNavigation());
     syncNavigation();
+    byId("profile-save-detail")?.addEventListener("click", async () => {
+      const status = byId("profile-preference-status");
+      byId("ai-trust-score").value = byId("profile-answer-detail").value;
+      try { await saveDisplayPolicy(); status.textContent = "解释偏好已保存"; }
+      catch (error) { status.textContent = error.message || "保存失败，请重试。"; }
+    });
+    byId("profile-theme-toggle")?.addEventListener("click", () => saveThemePreference(document.body.classList.contains("prism-theme-dark") ? "LIGHT" : "DARK"));
   }
 
   async function loadUserPreferences() {

@@ -84,7 +84,13 @@ body.prism-ui-v2 {
 
 .prism-ui-v2 .brand strong { color: var(--text-primary); font-size: 15px; line-height: 1.25; }
 .prism-ui-v2 .brand span:not(.brand-mark) { color: var(--text-muted); font-size: 10px; }
-.prism-ui-v2 .nav-list { display: grid; gap: 3px; }
+.prism-ui-v2 .nav-list { display: grid; gap: 3px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.prism-ui-v2 .sidebar > .brand, .prism-ui-v2 .sidebar > .sidebar-note { flex-shrink: 0; }
+.prism-ui-v2 .research-subpage-hidden { display: none !important; }
+.prism-ui-v2 #profile[data-active-subpage="profile-questionnaire"].questionnaire-preview-visible .profile-summary-section { display: block !important; }
+.prism-ui-v2 .research-preference-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.prism-ui-v2 .research-preference-actions label { display: grid; gap: 5px; }
+.prism-ui-v2 .research-preference-actions select { min-width: 120px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); background: var(--surface); }
 .prism-ui-v2 .nav-section-primary { display: grid; gap: 3px; }
 .prism-ui-v2 .nav-item,
 .prism-ui-v2 .nav-section-primary .nav-item,
