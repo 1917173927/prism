@@ -80,7 +80,8 @@ node tests/browser/test_research_ui_evidence.mjs
 | PostgreSQL | 设置专用PRISM_TEST_POSTGRES_DSN，执行tests/integration/test_research_postgres.py | 创建独立测试schema，finally删除 | 只使用测试数据库，保留迁移／回滚结果 |
 | 公开来源 | python -m tools.verify_research_public_sources | 新建私有验证SQLite，输出output/research/crawler-live.json | 单轮有限公开来源，遵守间隔及大小约束 |
 | 真实负载 | 配额与合同恢复后，在支持版本下执行load工具的--mode real --repeats 3 | 临时测试事实库；报告保留完整节点 | 遇额度、授权或权限错误即停止，不能重复消耗耗尽额度 |
-| Pages | origin仓库启用GitHub Actions构建Pages | 既有静态工作流 | 推送成功与发布成功分别验证 |
 | 人工金融门槛 | 真实资料逐原子声明标注及≥100问冻结 | 新增独立验收证据 | 数值100%、无依据≤1%、引用支持≥95%、Recall≥90%、错误拒答≤5% |
 
 外部验收未通过时状态保留BLOCKED。引用存在性、逐字定位及金融真实性分别记录；零分母返回N/A。最新状态见[2026年10月1日验收报告](submission/research-platform-acceptance-20261001.md)。
+
+2026年10月1日用户撤销Pages发布。自动发布工作流已删除，代码推送只负责Git归档；历史静态快照保留用于回归，不再要求公开页面发布。

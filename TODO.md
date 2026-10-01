@@ -15,7 +15,7 @@
 - [ ] S8 外部验收：真实25/50/100各三轮，受支持Python与完整原始观察值，上游额度及字段质量恢复。
 - [ ] S8 外部验收：真实五因子与多资产协方差输入、PostgreSQL迁移及回滚。
 - [ ] S8 外部验收：人工金融事实与引用支持门槛；默认混合检索维持关闭。
-- [ ] S8 外部验收：origin仓库Pages启用Actions构建并发布成功；目前配置步骤Not Found。
+- [x] 按用户续指令删除Pages自动发布工作流，撤销Pages发布验收。
 
 每阶段完成相关验证后提交并推送origin/main；外部验收阻塞独立记录。
 
@@ -62,9 +62,9 @@
 > Historical baseline: P2 Phase 34–39 implemented. Current work: local deployment and incremental P3 gap closure; status below is item-specific.
 > External integrations and real model / SLA validation remain evidence-dependent.
 
-## GitHub Pages 前端展示
+## GitHub Pages 前端展示（历史记录，2026-10-01已撤销发布）
 
-- [x] 使用最新 `app/api/static/index.html` 与完整静态资源目录发布前端工作台，并通过 `.github/workflows/deploy-pages.yml` 自动更新。
+- [x] 历史曾使用静态工作台发布；2026-10-01依用户指令删除自动发布工作流，后续提交不发布Pages。
 - [x] 从本机当前服务捕获实际账户响应，生成 `app/api/static/pages-snapshot.json`，公开页面只读取静态快照。
 - [x] 公开页面保留完整工作台导航与功能面板，未捕获的写入请求显示为只读快照不可用状态。
 - [x] 在 GitHub Pages 证书就绪后打开 `Enforce HTTPS`，并复核 `https://prism.daoyezongzi.org` 的证书状态。
