@@ -1,0 +1,34 @@
+{
+  "schema_version": "research-quality-review.v1",
+  "dataset_id": "non-financial-operation-demo.v1",
+  "corpus_kind": "SYNTHETIC_FROZEN",
+  "frozen_at": "2026-10-01T00:00:00Z",
+  "reviewer": "",
+  "items": [
+    {
+      "id": "library-hours",
+      "scenario": "MISSING",
+      "question": "示例阅览室工作日几点开放？周日是否开放？",
+      "answer": "示例阅览室工作日 09:00 开放，周日开放。此回答故意包含一项无依据声明，供练习标注。",
+      "source_documents": [{"id": "notice-1", "title": "合成操作资料：阅览室通知", "source_url": "", "published_at": "2026-09-01T00:00:00Z", "text": "本资料仅用于练习。示例阅览室工作日 09:00 至 17:00 开放。本通知未说明周末安排。"}],
+      "retrieved_evidence_ids": ["notice-1"],
+      "relevant_evidence_ids": null,
+      "atomic_claims": [
+        {"id": "opening-time", "text": "示例阅览室工作日 09:00 开放。", "citation_ids": ["notice-1"], "critical_financial_numeric": false, "assessment": {}},
+        {"id": "sunday", "text": "示例阅览室周日开放。", "citation_ids": ["notice-1"], "critical_financial_numeric": false, "assessment": {}}
+      ],
+      "annotation": {}
+    },
+    {
+      "id": "missing-weekend",
+      "scenario": "MISSING",
+      "question": "仅根据这份通知，周六几点开放？",
+      "answer": "通知没有提供周六安排，无法根据现有资料确定开放时间。",
+      "source_documents": [{"id": "notice-1", "title": "合成操作资料：阅览室通知", "source_url": "", "published_at": "2026-09-01T00:00:00Z", "text": "本资料仅用于练习。示例阅览室工作日 09:00 至 17:00 开放。本通知未说明周末安排。"}],
+      "retrieved_evidence_ids": [],
+      "relevant_evidence_ids": null,
+      "atomic_claims": [{"id": "missing-arrangement", "text": "通知未提供周六安排。", "citation_ids": ["notice-1"], "critical_financial_numeric": false, "assessment": {}}],
+      "annotation": {}
+    }
+  ]
+}

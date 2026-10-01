@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>人工研究质量标注</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#152236;font:15px/1.65 system-ui,sans-serif}main{max-width:1120px;margin:24px auto;padding:0 16px}h1{font-size:28px}section,article{background:white;border:1px solid #d4dde7;border-radius:8px;padding:20px;margin:16px 0}label{display:block;margin:12px 0}input,select,textarea,button{font:inherit;max-width:100%;padding:8px;border:1px solid #aebdcc;border-radius:4px}input,textarea{width:100%}input[type=file]{width:auto}textarea{min-height:90px}button{background:#fff;cursor:pointer}button:disabled{opacity:.5;cursor:default}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}pre,blockquote{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7f9;padding:12px;margin:10px 0}#message{border-left:4px solid #b97600;padding:12px;background:#fff4df}.tag{font-size:12px;background:#edf1f5;padding:3px 7px;border-radius:4px}.meta{font-size:13px;color:#526279;overflow-wrap:anywhere}a{color:#175ea8}.danger{color:#923c14}details>summary{cursor:pointer}#workspace[hidden]{display:none}@media(max-width:600px){.grid{grid-template-columns:1fr}main{margin:12px auto}section,article{padding:14px}}
+</style></head><body><main>
+<h1>人工研究质量标注</h1>
+<p>对照冻结原文逐题标注。此页在浏览器内处理 JSON，不请求模型、金融数据或写入服务器。标注不会自动保存；离开前请导出。原文存在或引用定位正确不等于声明受到支持。</p>
+<p id="message" role="status">尚未导入评测包。未标注、空分母及合成语料均不能用于通过真实金融质量门槛。</p>
+<section><div class="row"><label>导入评测 JSON（最多 8 MiB）<input id="import-file" type="file" accept=".json,application/json"></label><button id="export-json" disabled>导出当前标注 JSON</button></div>
+<p><a href="/static/research-quality-review-demo.json" download>下载非金融操作示例</a> · <a href="/static/research-quality-review-real-template.json" download>下载真实资料空模板</a></p>
+<p class="meta">操作顺序：下载或准备评测包 → 导入 → 填写标注者 → 逐题核对原文与原子声明 → 导出 → 使用汇总工具计算指标。待核验回答必须来自留存的真实模型输出或明确的操作示例，工具不会生成答案。</p></section>
+<div id="workspace" hidden><section><div id="dataset-meta" class="meta"></div><label>标注者标识<input id="reviewer" placeholder="填写姓名或审计编号"></label><div class="row"><button id="previous">上一题</button><select id="item-selector" aria-label="选择题目"></select><button id="next">下一题</button><span id="progress" class="tag"></span></div></section>
+<section id="question"></section><section id="documents"></section><section id="claims"></section><section id="question-labels"></section></div>
+<section><h2>汇总与验收边界</h2><pre>.venv\Scripts\python.exe tools/summarize_research_quality_review.py --input 标注文件.json --output 汇总文件.json</pre><p>比例统计同时保留分子、完整分母和缺标注数量。缺标注时不计算该项通过结果；分母为零显示 N/A。真实金融门槛要求至少100题，覆盖正常、缺失、过期、冲突、隔离、注入六场景，每题具有场景标识、真实冻结资料及完整人工标注，且至少一项关键金融数值有独立已核验参考值。小样本不能通过；单次人工标注仍不证明开放世界零幻觉或构成上线审批。</p></section>
+</main><script src="/static/research-quality-review.js"></script></body></html>

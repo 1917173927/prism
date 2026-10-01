@@ -107,3 +107,13 @@ node tests/browser/test_research_ui_evidence.mjs
 ```
 
 助手只向子进程注入解密的连接配置，不打印密码或DSN。默认数据库验收覆盖迁移001—021、回滚、CAS、全文索引、文献更正删除及事实原文哈希；13项真实PostgreSQL验证通过，见[安装证据](submission/test-evidence/research-postgres-installed-20261001.json)。
+
+### 二、 人工质量操作
+
+应用入口为`/static/research-quality-review.html`，独立静态预览地址为`http://127.0.0.1:8023/static/research-quality-review.html`。导入、逐题标注、导出后使用`tools/summarize_research_quality_review.py`汇总；真实门槛要求至少100问、六场景、完整人工标签和非零关键金融数值分母。具体操作及真实评测包字段见[标注指南](research-quality-review-guide.md)，额度与三项算法数据清单见[续验收说明](submission/research-platform-followup-20261001.md)。
+
+独立预览停止或重启Windows后，可在另一个终端启动（不导入应用或调用金融服务）：
+
+```powershell
+.\.venv\Scripts\python.exe -m http.server 8023 --bind 127.0.0.1 --directory app/api
+```

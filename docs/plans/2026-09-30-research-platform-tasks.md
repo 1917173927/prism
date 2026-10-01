@@ -375,3 +375,9 @@ S8准入自审修正每用户限制：200仅计算等待任务，不包括活动
 PostgreSQL17.11已安装并监听127.0.0.1:55432，应用与测试库及角色独立，密码由当前Windows账户DPAPI加密保存。迁移001—021、回滚、隔离、全文、CAS及事实原始载荷13项真实验证通过；启停和重复初始化通过。原“缺少PostgreSQL环境”阻塞已关闭，既有SQLite未切换或搬迁，见[运行说明](../research-platform-operations.md)及[安装证据](../submission/test-evidence/research-postgres-installed-20261001.json)。
 
 LIVE补读取响应明确提供的列单位、中文带时区观察时间及报告期，51项定向回归通过；没有元数据仍保持部分结果。不会以获取时刻代替观察时刻或默认填写人民币单位。
+
+### 三、 人工入口及数据操作
+
+人工入口为`/static/research-quality-review.html`，配有非金融操作样例、真实空模板及离线汇总；至少100题、六场景、缺标注、零分母及合成门控13项单测和三视口浏览器交互通过。人工真实标签仍待用户或复核人员操作。问财具体额度与数据来源清单见[续验收说明](../submission/research-platform-followup-20261001.md)，操作见[人工评测指南](../research-quality-review-guide.md)。
+
+最终全量1068通过、1跳过、0失败，已包含真实PostgreSQL；剩余跳过为默认未开启的本地模型专项。安装及LIVE适配已推送`5dd6ffc`。此续验收结论取代初次交付中的数据库缺环境和Pages外部发布要求，其余真实输入／配额／人工标签仍独立跟踪。

@@ -1,0 +1,20 @@
+{
+  "schema_version": "research-quality-review.v1",
+  "dataset_id": "replace-with-real-frozen-dataset-id",
+  "corpus_kind": "REAL_CORPUS",
+  "frozen_at": null,
+  "reviewer": "",
+  "items": [
+    {
+      "id": "real-question-1",
+      "scenario": "NORMAL",
+      "question": "",
+      "answer": "",
+      "source_documents": [{"id": "real-document-1", "title": "", "source_url": "", "published_at": null, "text": ""}],
+      "retrieved_evidence_ids": [],
+      "relevant_evidence_ids": null,
+      "atomic_claims": [{"id": "real-claim-1", "text": "", "citation_ids": ["real-document-1"], "critical_financial_numeric": true, "assessment": {}}],
+      "annotation": {}
+    }
+  ]
+}
