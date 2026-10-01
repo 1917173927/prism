@@ -9,11 +9,13 @@
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
     <link rel="stylesheet" href="/static/prism-v2.css?v=20260918-short-rename-buttons">
+    <link rel="stylesheet" href="/static/research-platform.css?v=20261001">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
     <script src="/static/app.js?v=20260918-compact-chat-rename" defer></script>
+    <script src="/static/research-platform.js?v=20261001" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -929,6 +931,13 @@
             </div>
             <div id="market-crosshair-info" class="market-crosshair-info" aria-live="polite">移动十字线查看日期、价格与量能</div>
             <div id="market-kline" aria-label="指数行情图"></div>
+          </section>
+          <section class="surface research-metrics-section" data-subpage="market-risk" aria-labelledby="research-metrics-title">
+            <div class="market-section-heading"><div><h3 id="research-metrics-title">收益与风险指标</h3><p>日频确定性计算；切换月 K 线不会改变指标计算频率。</p></div><span id="research-metrics-status" class="status-chip">等待查询</span></div>
+            <div id="research-metric-cards" class="research-metric-grid" aria-live="polite"><p class="empty-state">更新指数行情后展示指标、来源及计算窗口。</p></div>
+            <div id="research-metric-chart" aria-label="研究指标时间序列"></div>
+            <p id="research-metric-chart-meta" class="research-data-meta"></p>
+            <div class="doc-callout doc-callout-info"><p>成交量与成交额用于市场活跃度观察；数据单位未核验时不作跨来源比较。上述指标不识别真实散户人数或主力资金流。</p></div>
           </section>
           <section class="surface portfolio-detail-card market-factor-section" data-subpage="market-risk">
             <div class="market-section-heading"><div><h3>宏观因子联动</h3><p>同期相关性不代表因果关系。</p></div><span class="status-chip">20 / 60 期</span></div>

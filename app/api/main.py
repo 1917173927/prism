@@ -22,6 +22,8 @@ from app.service.natural_profile import NaturalProfileRequest, NaturalProfileErr
 from app.service.session_truth import TruthConfirmation, TruthInputRequired, current_facts, truth_status, fingerprint, SessionAssertionsRequest, check_session_assertions
 from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
 from app.service.semantic_memory import search_context_memories
+from app.service.skill_registry import SkillRegistry
+from app.api.research_routes import create_research_router
 from app.service.live_stock_analysis import (
     AnalysisStatus,
     build_live_stock_analysis,
@@ -52,6 +54,8 @@ from app.api.contracts import (
     MarketAnalysisResponse,
     MarketCatalogItem,
     MarketQuoteCard,
+    MarketBar,
+    IndustryObservationResponse,
     ProfileSummaryResponse,
     QuestionnaireConfirmationRequest,
     QuestionnaireConfirmationResponse,
@@ -77,6 +81,7 @@ from app.market_analysis import (
     technical_indicators,
     volume_summary,
 )
+from app.market_research import research_metrics
 from app.providers.ifind_quant import IFindQuantError, IFindQuantProvider
 from app.providers.etnet import EtNetError, EtNetProvider
 from app.providers.yahoo_finance import YahooFinanceError, YahooFinanceProvider
@@ -1125,6 +1130,13 @@ def create_app(
     ) -> str:
         return _owner_id_from_header(x_owner_id)
 
+    skill_registry = SkillRegistry(active_store, clock=active_clock)
+    if hasattr(active_wencai_provider, "bind_registry"):
+        active_wencai_provider.bind_registry(skill_registry)
+    api.state.skill_registry = skill_registry
+    api.include_router(create_research_router(store=active_store, provider=active_wencai_provider,
+        owner_dependency=owner_dependency, auth_enabled=access_enabled, clock=active_clock, registry=skill_registry))
+
     @api.get("/", include_in_schema=False)
     def workbench() -> FileResponse:
         return FileResponse(_STATIC_DIR / "index.html", media_type="text/html", headers={"Cache-Control": "no-cache"})
@@ -1835,7 +1847,7 @@ def create_app(
     industry_cache: dict[str, Any] = {}
     industry_lock = asyncio.Lock()
 
-    @api.get("/api/v1/market/industries")
+    @api.get("/api/v1/market/industries", response_model=IndustryObservationResponse)
     async def get_market_industries(owner_id: str = Depends(owner_dependency)):
         from time import monotonic
         if not active_live_finance.is_configured:
@@ -1847,8 +1859,10 @@ def create_app(
                 rows = await active_live_finance.get_industry_observations()
             except FuyaoProviderError as exc:
                 return {"status": "REVIEW_REQUIRED", "rows": [], "message": exc.safe_message}
-            result = {"status": "CALCULATED" if rows and all(r["status"] == "CALCULATED" for r in rows) else "REVIEW_REQUIRED",
-                      "rows": rows, "source": "同花顺金融数据 · 行业指数日线", "message": "固定观察行业的 1、5、20 个交易日涨跌幅；不代表全市场排名。"}
+            observed = sum(all(row.get(key) is not None for key in ("day_pct", "five_day_pct", "twenty_day_pct")) for row in rows)
+            result = {"status": "CALCULATED" if rows and observed == len(rows) else "REVIEW_REQUIRED",
+                      "rows": rows, "observed_count": observed, "coverage_pct": Decimal(observed) / Decimal(12) * 100,
+                      "retrieved_at": active_clock(), "source": "同花顺金融数据 · 行业指数日线", "message": "固定观察行业的 1、5、20 个交易日涨跌幅；不代表全市场排名。"}
             industry_cache.update(result=result, expires=monotonic() + 60)
             return result
 
@@ -1946,6 +1960,15 @@ def create_app(
                 source="公开行情未返回可验证的指数行情（权限、非正式接口或代码不可用）",
             )
 
+        try:
+            daily_bars = [MarketBar.model_validate(row).model_dump() for row in daily_bars]
+            if any(date.fromisoformat(row["time"]) > end_time.date() for row in daily_bars):
+                raise ValueError("future daily bars are ineligible")
+            metrics = research_metrics(daily_bars, source=str(quote.get("source") or "行情来源待核查"), subject=selected.symbol)
+        except (ValueError, ArithmeticError):
+            return MarketAnalysisResponse(market=selected.market, index_id=selected.index_id, name=selected.name,
+                symbol=selected.symbol, currency=selected.currency, timezone=selected.timezone,
+                precision=selected.precision, interval=interval, status="REVIEW_REQUIRED", source="指数历史数据日期或价格无效")
         bars = aggregate_monthly(daily_bars) if interval == "1M" else daily_bars
         # A fallback provider can return a valid shorter history. Preserve it,
         # but expose that the requested ten-year monthly window is incomplete.
@@ -2004,6 +2027,7 @@ def create_app(
             observed_at=datetime.fromisoformat(quote["observed_at"]),
             price=latest, change=change, change_pct=change_pct, bars=bars,
             volume=volume_summary(bars), indicators=technical_indicators(bars), factors=factors,
+            research_metrics=metrics, input_snapshot_id=next(iter(metrics.values())).snapshot_id,
         )
 
     @api.get("/api/v1/market-assessments/{index_name}", response_model=MarketAssessmentResponse)
@@ -3342,7 +3366,7 @@ def create_app(
             history_objs = [CopilotMessage(role=message.role, content=message.content) for message in history_source]
             assistant_parts: list[str] = []
             stream_failed = False
-            async with aclosing(copilot_agent.stream_chat(
+            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry).stream_chat(
                 user_message=req.message,
                 history=history_objs,
                 persona_info=req.persona_info,
@@ -4126,7 +4150,7 @@ def create_app(
             required_fields=request.required_fields,
             parameters=request.parameters,
         )
-        result = await active_wencai_provider.execute(provider_request)
+        result = await skill_registry.scoped_provider(active_wencai_provider, owner_id).execute(provider_request)
         if result.status == ProviderStatus.FAILED:
             error_code = result.issues[0].code.value if result.issues else "PROVIDER_FAILED"
             await controller.record_wencai_failure(error_code)

@@ -7270,6 +7270,7 @@
     marketAbortController?.abort();
     marketAbortController = new AbortController();
     status.textContent = "正在读取";
+    document.dispatchEvent(new CustomEvent("prism:market-analysis", {detail: {status: "LOADING"}}));
     byId("market-kline").replaceChildren();
     result.textContent = "正在读取可验证行情与研判状态…";
     try {
@@ -7290,11 +7291,13 @@
       result.append(heading, detail, audit);
       renderIndexCandles(data);
       renderMarketFactors(data.factors || []);
+      document.dispatchEvent(new CustomEvent("prism:market-analysis", {detail: {data}}));
     } catch (error) {
       if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
       if (error.name === "AbortError") return;
       status.textContent = "REVIEW_REQUIRED";
       result.textContent = error.message || "市场数据暂不可用。";
+      document.dispatchEvent(new CustomEvent("prism:market-analysis", {detail: {status: "UNAVAILABLE", message: result.textContent}}));
     }
   }
 
@@ -12101,10 +12104,10 @@
       const response = await fetch("/api/v1/market/industries", {headers: {"X-Owner-ID": state.ownerId}});
       if (!response.ok) throw await apiError(response);
       const data = await response.json(); output.replaceChildren();
-      const note = document.createElement("p"); note.textContent = [data.source, data.message].filter(Boolean).join(" · "); output.append(note);
+      const note = document.createElement("p"); note.textContent = [data.source, data.message, data.coverage_pct == null ? null : `固定观察集 ${data.observed_count}/${data.requested_count} · 覆盖率 ${data.coverage_pct}%`, data.retrieved_at, data.method_version].filter(Boolean).join(" · "); output.append(note);
       const table = document.createElement("table"), header = document.createElement("tr");
       ["行业", "1 日", "5 日", "20 日", "观察日期"].forEach(label => { const th = document.createElement("th"); th.textContent = label; header.append(th); }); table.append(header);
-      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.append(td); }); table.append(tr); });
+      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach((value, index) => { const td = document.createElement("td"); td.textContent = value; if (index > 0 && index < 4 && value !== "—") td.className = Number(value.slice(0, -1)) >= 0 ? "research-heat-up" : "research-heat-down"; tr.append(td); }); table.append(tr); });
       output.append(table);
     } catch (error) { output.textContent = error.message; }
     finally { button.disabled = false; }

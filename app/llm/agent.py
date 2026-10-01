@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import copy
 import json
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -77,6 +78,16 @@ class CopilotAgent:
         self.market_quote_provider = market_quote_provider
         self.security_directory_provider = security_directory_provider
         self.on_wencai_failure = on_wencai_failure
+
+    def with_owner(self, owner_id: str, *, registry=None, knowledge_service=None):
+        """Clone request bindings without mutating the shared agent or providers."""
+        scoped = copy(self)
+        scoped.authorized_owner = owner_id
+        scoped.knowledge_service = knowledge_service
+        if registry is not None:
+            scoped.skillhub_provider = registry.scoped_provider(self.skillhub_provider, owner_id)
+            scoped.wencai_provider = scoped.skillhub_provider
+        return scoped
 
     async def stream_chat(
         self,

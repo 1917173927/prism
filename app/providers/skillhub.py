@@ -47,8 +47,12 @@ def load_iwencai_skill_manifest() -> dict[str, Any]:
     if document.get("schema_version") != "prism-iwencai-skills.v1":
         raise ValueError("unsupported Wencai skill manifest")
     skills = document.get("skills")
-    if not isinstance(skills, list) or len(skills) != 9:
-        raise ValueError("Wencai skill manifest must contain nine skills")
+    if not isinstance(skills, list) or not skills:
+        raise ValueError("Wencai skill manifest must contain reviewed skills")
+    if any(not isinstance(row, dict) or not row.get("skill_id") for row in skills):
+        raise ValueError("Wencai skill manifest entries require an identity")
+    if len({row["skill_id"] for row in skills}) != len(skills):
+        raise ValueError("Wencai skill identities must be unique")
     return document
 
 
@@ -77,6 +81,11 @@ class WencaiSkillHubProvider(FinancialProvider):
         ).rstrip("/")
         self._timeout_seconds = min(max(timeout_seconds, 0.001), 30.0)
         self._skills = tuple(manifest["skills"])
+        self._registry = None
+
+    def bind_registry(self, registry) -> None:
+        """Apply persistent global capability availability to ordinary calls."""
+        self._registry = registry
 
     @property
     def name(self) -> NonEmptyStr:
@@ -103,6 +112,8 @@ class WencaiSkillHubProvider(FinancialProvider):
             self._base_url = base_url.strip().rstrip("/")
 
     def _skill_for(self, request: ProviderRequest) -> dict[str, Any]:
+        if self._registry is not None:
+            return self._registry.resolve(request).model_dump(mode="json", exclude_none=True)
         channel = str(request.parameters.get("channel", "announcement")).lower()
         for skill in self._skills:
             if skill["operation"] != request.operation.value:
@@ -158,7 +169,7 @@ class WencaiSkillHubProvider(FinancialProvider):
 
         return tuple(await asyncio.gather(*(probe(skill) for skill in self._skills)))
 
-    async def execute(self, request: ProviderRequest) -> ProviderResult:
+    async def execute(self, request: ProviderRequest, *, skill: dict[str, Any] | None = None) -> ProviderResult:
         """Execute request against official SkillHub endpoint.
 
         Returns 4-state ProviderResult without silent fallback to mock.
@@ -196,7 +207,7 @@ class WencaiSkillHubProvider(FinancialProvider):
         except (TypeError, ValueError):
             result_limit = 10
         try:
-            skill = self._skill_for(request)
+            skill = dict(skill) if skill is not None else self._skill_for(request)
         except ValueError as exc:
             return ProviderResult(
                 request_id=request.request_id,
