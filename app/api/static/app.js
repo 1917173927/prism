@@ -2915,6 +2915,10 @@
       meta.textContent = `${dataMode === "MOCK" ? "示例快照" : "行情观察"}：${tradeDateTime(quote.observed_at)} · ${quote.source}`;
       card.append(meta);
     }
+    if (/^\d{6}(?:\.(?:SH|SZ|BJ))?$/i.test(history.security_code || "")) {
+      const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = "进入个股研究";
+      research.addEventListener("click", () => openLiveResearchSubject(history.security_code)); card.append(research);
+    }
     return card;
   }
 
@@ -6721,6 +6725,9 @@
     advisor: "system",
     profile: "profile",
     "skill-store": "skills",
+    "research-knowledge": "knowledge",
+    "live-research": "live-research",
+    "research-algorithms": "algorithms",
     "research-tracks": "system",
     "context-memory": "system",
     "evaluation-dashboard": "system",
@@ -6982,9 +6989,11 @@
     }
     byId("questionnaire-welcome")?.close();
 
-    if (wasPending && (!window.location.hash || window.location.hash === "#profile")) {
+    if (wasPending && !window.location.hash) {
       window.history.replaceState(null, "", "#copilot");
       syncNavigation("copilot");
+    } else if (wasPending && window.location.hash === "#profile") {
+      syncNavigation("profile-results");
     }
   }
 
@@ -7039,8 +7048,12 @@
     if (marketSec) marketSec.hidden = !isMarket;
     if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
     if (skillStoreSec) skillStoreSec.hidden = !isSkillStore;
+    const isResearchTool = ["research-knowledge", "live-research", "research-algorithms"].includes(requestedId);
+    for (const id of ["research-knowledge", "live-research", "research-algorithms"]) {
+      if (byId(id)) byId(id).hidden = requestedId !== id;
+    }
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
-    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle || isSkillStore;
+    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle || isSkillStore || isResearchTool;
     for (const section of [overviewSec, marketSec, byId("profile")]) {
       if (!section) continue;
       section.dataset.activeSubpage = routeId;
@@ -8269,7 +8282,8 @@
     label.className = "drilldown-label";
     label.textContent = "想了解更多依据？";
     row.append(label);
-    links.forEach(l => {
+    const destinations = [{href: "#holdings-report", text: "组合详细报告"}, {href: "#live-research", text: "LIVE 研究与证据"}, {href: "#research-knowledge", text: "资料原文与引用"}];
+    [...links, ...destinations.filter(item => !links.some(link => link.href === item.href))].forEach(l => {
       const a = document.createElement("a");
       a.href = l.href;
       a.className = "drilldown-btn";
@@ -9717,6 +9731,9 @@
     deepHead.append(createSvgIcon("icon-activity", "prism-icon"), document.createTextNode(" 正在并行补齐五年财务、估值、动态证据和账户适配…"));
     deep.append(deepHead);
     body.append(deep);
+    const openReport = document.createElement("button"); openReport.type = "button"; openReport.className = "copilot-action-btn secondary"; openReport.textContent = "在研究页查看详细报告";
+    openReport.addEventListener("click", () => { document.dispatchEvent(new CustomEvent("prism:stock-report-open", {detail: {content: deep, subject: quote.symbol}})); window.location.hash = "live-research"; });
+    body.append(openReport);
     card.append(banner, body);
     return card;
   }
@@ -12107,10 +12124,20 @@
       const note = document.createElement("p"); note.textContent = [data.source, data.message, data.coverage_pct == null ? null : `固定观察集 ${data.observed_count}/${data.requested_count} · 覆盖率 ${data.coverage_pct}%`, data.retrieved_at, data.method_version].filter(Boolean).join(" · "); output.append(note);
       const table = document.createElement("table"), header = document.createElement("tr");
       ["行业", "1 日", "5 日", "20 日", "观察日期"].forEach(label => { const th = document.createElement("th"); th.textContent = label; header.append(th); }); table.append(header);
-      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach((value, index) => { const td = document.createElement("td"); td.textContent = value; if (index > 0 && index < 4 && value !== "—") td.className = Number(value.slice(0, -1)) >= 0 ? "research-heat-up" : "research-heat-down"; tr.append(td); }); table.append(tr); });
+      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach((value, index) => { const td = document.createElement("td"); if (index === 0) { const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = value; research.title = "进入该行业的 LIVE 研究"; research.addEventListener("click", () => openLiveResearchSubject(row.name, "INDUSTRY_DATA", ["pe"], `${row.name}行业市盈率`)); td.append(research); } else td.textContent = value; if (index > 0 && index < 4 && value !== "—") td.className = Number(value.slice(0, -1)) >= 0 ? "research-heat-up" : "research-heat-down"; tr.append(td); }); table.append(tr); });
       output.append(table);
     } catch (error) { output.textContent = error.message; }
     finally { button.disabled = false; }
+  });
+
+  function openLiveResearchSubject(subject, operation = "MARKET_DATA", requiredFields = ["price"], query = null) {
+    document.dispatchEvent(new CustomEvent("prism:research-open", {detail: {subject, operation, required_fields: requiredFields, query}}));
+    window.location.hash = "live-research";
+  }
+  byId("market-stock-research-open")?.addEventListener("click", () => {
+    const code = byId("market-stock-research-code").value.trim().toUpperCase();
+    if (!/^\d{6}(?:\.(?:SH|SZ|BJ))?$/.test(code)) { setError("请填写六位 A 股证券代码，可附 .SH、.SZ 或 .BJ。"); return; }
+    openLiveResearchSubject(code);
   });
 
   function renderAssistantMarkdown(target, content) {
@@ -12568,7 +12595,12 @@
           await replacePortfolioRows(draft.positions.filter(p => p.asset_id !== row.asset_id), draft.cash_cny);
         } catch (error) { setError(error.message); remove.disabled = false; }
       });
-      actions.append(diagnose, remove); tr.append(actions); body.append(tr);
+      actions.append(diagnose, remove);
+      if (row.asset_type === "STOCK") {
+        const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = "个股研究";
+        research.addEventListener("click", () => openLiveResearchSubject(row.asset_id)); actions.append(research);
+      }
+      tr.append(actions); body.append(tr);
     });
     try {
       await refreshPortfolioReport(owner, mode);

@@ -13,6 +13,11 @@ try {
   target.searchParams.set("pages", "1");
   await page.goto(target.href, {waitUntil: "networkidle0"});
   await page.waitForFunction(() => !document.body.classList.contains("questionnaire-pending"));
+  target.hash = "profile";
+  await page.goto(target.href, {waitUntil: "networkidle0"});
+  await page.reload({waitUntil: "networkidle0"});
+  await page.waitForFunction(() => !document.body.classList.contains("questionnaire-pending") && document.querySelector("#profile").dataset.activeSubpage === "profile-results");
+  assert.equal(await page.evaluate(() => window.location.hash), "#profile", "Completed questionnaire must retain explicit old profile route on reload");
   const routes = {
     "profile-results": "profile", "profile-questionnaire": "profile", "profile-preferences": "profile",
     "holdings-management": "overview", "holdings-report": "overview",

@@ -8,7 +8,7 @@ from functools import partial
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.service.knowledge import MAX_UPLOAD_BYTES, KnowledgeDocumentInput, KnowledgeSearchInput
+from app.service.knowledge import MAX_UPLOAD_BYTES, KnowledgeClaimInput, KnowledgeDocumentInput, KnowledgeSearchInput
 from app.service.knowledge_crawler import KnowledgeSourceInput
 from app.store.sqlite import StoreConflictError, StoreCorruptError, StoreOwnerError
 
@@ -16,6 +16,12 @@ from app.store.sqlite import StoreConflictError, StoreCorruptError, StoreOwnerEr
 class CitationCheckInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     citations: list[dict] = Field(max_length=30)
+    as_of: str | None = None
+
+
+class ClaimCheckInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    claims: list[KnowledgeClaimInput] = Field(min_length=1, max_length=30)
     as_of: str | None = None
 
 
@@ -80,6 +86,10 @@ def create_knowledge_router(service, owner_dependency, *, crawler=None, auth_ena
     @router.post("/citations/check")
     async def citations(body: CitationCheckInput, owner_id: str = Depends(owner_dependency)):
         return await run(service.verify_citations, owner_id, body.citations, as_of=body.as_of)
+
+    @router.post("/claims/check")
+    async def claims(body: ClaimCheckInput, owner_id: str = Depends(owner_dependency)):
+        return await run(service.check_claims, owner_id, body.claims, as_of=body.as_of)
 
     @router.post("/indexes/rebuild")
     async def rebuild(request: Request, owner_id: str = Depends(owner_dependency)):

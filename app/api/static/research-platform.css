@@ -27,5 +27,24 @@
 .prism-ui-v2 .research-detail-list { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 8px; font-size: 12px; }
 .prism-ui-v2 .research-detail-list dd { margin: 0; overflow-wrap: anywhere; }
 .prism-ui-v2 .research-skill-import textarea { width: 100%; padding: 12px; margin: 12px 0; color: var(--text-primary); border: 1px solid var(--border); border-radius: 7px; background: var(--surface-subtle); font-family: var(--mono); }
+.prism-ui-v2 .research-tool-section { margin-bottom: 20px; padding: 22px; min-width: 0; }
+.prism-ui-v2 .research-tool-section > h3 { margin-top: 0; }
+.prism-ui-v2 .research-form-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 14px; margin: 18px 0; }
+.prism-ui-v2 .research-form-field { display: grid; gap: 6px; margin-bottom: 12px; min-width: 0; font-size: 12px; }
+.prism-ui-v2 .research-form-field :is(input,select,textarea), .prism-ui-v2 #research-node-editor :is(input,select) { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); background: var(--surface); }
+.prism-ui-v2 .research-form-field textarea { font: 12px/1.7 var(--mono); }
+.prism-ui-v2 .research-original-text { overflow: auto; max-height: 560px; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-subtle); font: 12px/1.7 var(--mono); }
+.prism-ui-v2 .research-result-card { margin: 16px 0; padding: 18px; border: 1px solid var(--border); border-radius: 8px; }
+.prism-ui-v2 .research-result-card h4 { margin: 0 0 10px; }
+.prism-ui-v2 .research-result-card blockquote { margin: 14px 0; padding: 12px; white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid var(--border); background: var(--surface-subtle); }
+.prism-ui-v2 .research-table-wrap { max-width: 100%; min-width: 0; margin: 14px 0; overflow-x: auto; }
+.prism-ui-v2 .research-table-wrap table { width: 100%; border-collapse: collapse; }
+.prism-ui-v2 .research-table-wrap :is(th,td) { padding: 10px; text-align: left; border-bottom: 1px solid var(--border-subtle); font-size: 12px; }
+.prism-ui-v2 #research-node-editor table { min-width: 1040px; }
+.prism-ui-v2 #algorithm-matrix td { white-space: nowrap; font-family: var(--mono); }
+.prism-ui-v2 .research-matrix-positive { color: var(--market-up); }
+.prism-ui-v2 .research-matrix-negative { color: var(--market-down); }
+.prism-ui-v2 #algorithm-chart { width: 100%; min-width: 0; }
+@media(max-width:600px) { .prism-ui-v2 .research-tool-section { padding: 14px; } .prism-ui-v2 .research-form-grid { grid-template-columns: minmax(0,1fr); } .prism-ui-v2 .research-result-card { padding: 12px; } }
 @media(max-width:700px) { .prism-ui-v2 .research-store-layout { grid-template-columns: minmax(0,1fr); } .prism-ui-v2 .research-store-categories { flex-direction: row; flex-wrap: wrap; } .prism-ui-v2 .research-store-shell { padding: 14px; } .prism-ui-v2 .research-skill-grid { grid-template-columns: minmax(0,1fr); } }
 @media(max-width:600px) { .prism-ui-v2 .research-metrics-section { padding: 14px; } .prism-ui-v2 .research-metric-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }

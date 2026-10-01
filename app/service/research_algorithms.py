@@ -6,14 +6,15 @@ the papers' portfolio allocation experiments. Returns use decimal fractions.
 from __future__ import annotations
 
 import calendar
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 from hashlib import sha256
 import json
 import math
 from typing import Literal
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictFloat, model_validator
 
 
 class AlgorithmInput(BaseModel):
@@ -31,7 +32,7 @@ class AlgorithmInput(BaseModel):
 class ReturnPoint(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     time: date
-    value: float
+    value: StrictFloat
 
 
 class RegimeInput(AlgorithmInput):
@@ -55,15 +56,15 @@ class AnnualFundamental(BaseModel):
     formation_year: int = Field(ge=1991, le=2200)
     fiscal_year: int
     published_at: datetime
-    market_cap_december: float | None = None
-    market_cap_june: float | None = None
-    book_equity: float | None = None
-    revenue: float | None = None
-    cost_of_goods_sold: float | None = None
-    selling_general_administrative: float | None = None
-    interest_expense: float | None = None
-    total_assets: float | None = None
-    prior_total_assets: float | None = None
+    market_cap_december: StrictFloat | None = None
+    market_cap_june: StrictFloat | None = None
+    book_equity: StrictFloat | None = None
+    revenue: StrictFloat | None = None
+    cost_of_goods_sold: StrictFloat | None = None
+    selling_general_administrative: StrictFloat | None = None
+    interest_expense: StrictFloat | None = None
+    total_assets: StrictFloat | None = None
+    prior_total_assets: StrictFloat | None = None
 
     @model_validator(mode="after")
     def timestamp(self):
@@ -75,14 +76,14 @@ class AnnualFundamental(BaseModel):
 class MonthlySecurityReturn(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     security_id: str = Field(min_length=1)
-    total_return: float = Field(ge=-1)
-    beginning_market_cap: float = Field(gt=0)
+    total_return: StrictFloat = Field(ge=-1)
+    beginning_market_cap: StrictFloat = Field(gt=0)
 
 
 class FactorMonth(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
-    risk_free_return: float | None = None
+    risk_free_return: StrictFloat | None = Field(default=None, ge=-1)
     securities: list[MonthlySecurityReturn] = Field(max_length=10000)
 
 
@@ -91,6 +92,7 @@ class FiveFactorInput(AlgorithmInput):
     months: list[FactorMonth] = Field(max_length=600)
     universe_id: str = Field(min_length=1, max_length=200)
     universe_complete: bool = False
+    monetary_unit: Literal["CNY"] | None = None
 
 
 def _result(request, method, *, reason=None, **values):
@@ -112,9 +114,14 @@ def _returns(points, cutoff):
     return np.array([point.value for point in points], dtype=float)
 
 
+def _closed_day(as_of):
+    local = as_of.astimezone(ZoneInfo("Asia/Shanghai"))
+    return local.date() if local.time() >= time(15) else local.date()-timedelta(days=1)
+
+
 def regime_probabilities(request: RegimeInput):
     request = RegimeInput.model_validate(request.model_dump())
-    values = _returns(request.returns, request.as_of.date())
+    values = _returns(request.returns, _closed_day(request.as_of))
     if len(values) < request.training_size:
         return _result(request, "gaussian-hmm-2state-ashare.v1", reason="INSUFFICIENT_RETURNS", required=request.training_size)
     train = values[:request.training_size]
@@ -184,7 +191,7 @@ def constant_correlation_shrinkage(request: CovarianceInput):
         return _result(request, "ledoit-wolf-constant-correlation.v1", reason="INSUFFICIENT_ASSETS")
     maps = {}
     for name in names:
-        _returns(request.series[name], request.as_of.date())
+        _returns(request.series[name], _closed_day(request.as_of))
         maps[name] = {point.time: point.value for point in request.series[name]}
     dates = sorted(set.intersection(*(set(row) for row in maps.values())))
     if len(dates) < 60:
@@ -227,6 +234,8 @@ def constant_correlation_shrinkage(request: CovarianceInput):
 def five_factors(request: FiveFactorInput):
     request = FiveFactorInput.model_validate(request.model_dump())
     method = "fama-french-5-ashare-2x3.v1"
+    if request.monetary_unit is None:
+        return _result(request, method, reason="MONETARY_UNIT_MISSING", missing_fields=["monetary_unit"])
     months = [row.month for row in request.months]
     if not months or months != sorted(set(months)):
         return _result(request, method, reason="MONTHS_MUST_BE_NONEMPTY_SORTED_UNIQUE")
@@ -241,7 +250,7 @@ def five_factors(request: FiveFactorInput):
     for month in request.months:
         year, number = map(int, month.month.split("-"))
         month_end = date(year, number, calendar.monthrange(year, number)[1])
-        if month_end > request.as_of.date():
+        if month_end > _closed_day(request.as_of):
             return _result(request, method, reason="FUTURE_MONTH_RETURN")
         if month.risk_free_return is None:
             return _result(request, method, reason="RISK_FREE_RETURN_MISSING", month=month.month)
@@ -251,7 +260,7 @@ def five_factors(request: FiveFactorInput):
             eligible = []
             cutoff = date(formation, 6, 30)
             for row in entries:
-                if row.fiscal_year != formation-1 or row.published_at.date() > cutoff or row.published_at > request.as_of:
+                if row.fiscal_year != formation-1 or row.published_at.astimezone(ZoneInfo("Asia/Shanghai")).date() > cutoff or row.published_at > request.as_of:
                     return _result(request, method, reason="FINANCIAL_POINT_IN_TIME_INVALID", security_id=row.security_id)
                 required = ("market_cap_december", "market_cap_june", "book_equity", "revenue", "cost_of_goods_sold",
                             "selling_general_administrative", "interest_expense", "total_assets", "prior_total_assets")

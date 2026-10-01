@@ -228,3 +228,74 @@ def test_crawler_configuration_api_requires_admin_and_keeps_allowlist(knowledge)
         assert client.put("/api/v1/research/knowledge/sources/my-feed", json=body).status_code == 200
         assert client.get("/api/v1/research/knowledge/sources").json()["items"][0]["source_id"] == "my-feed"
         assert client.put("/api/v1/research/knowledge/sources/bad", json={**body, "url": "https://127.0.0.1/"}).status_code == 422
+
+
+def atomic_claim(reference, *, kind="EXACT_QUOTE", text=None, identity="claim-1"):
+    return {"claim_id": identity, "type": kind, "text": reference["quote"] if text is None else text, "citation": reference}
+
+
+def test_exact_quote_claim_has_location_support_without_financial_verification(knowledge):
+    knowledge.ingest("alice", document())
+    reference = citation(knowledge)
+    claim = knowledge.check_claims("alice", [atomic_claim(reference)])["results"][0]
+    assert claim["status"] == "SUPPORTED_EXACT_QUOTE"
+    assert claim["claim_support"] == "SUPPORTED_EXACT_QUOTE"
+    assert claim["financial_verified"] is False
+    assert claim["claim_id"] == "claim-1"
+    assert claim["reference"]["revision"] == 1
+    location = knowledge.verify_citations("alice", [reference])
+    assert location["status"] == "PASS"
+    assert location["claim_support"] == "NOT_EVALUATED"
+    assert location["financial_verified"] is False
+    assert location["results"][0]["claim_support"] == "NOT_EVALUATED"
+
+
+@pytest.mark.parametrize("kind", ["EXACT_QUOTE", "PARAPHRASE", "FINANCIAL"])
+def test_valid_citation_does_not_support_an_unrelated_atomic_claim(knowledge, kind):
+    knowledge.ingest("alice", document())
+    reference = citation(knowledge)
+    result = knowledge.check_claims("alice", [atomic_claim(reference, kind=kind, text="该证券下一交易日必然盈利。")])
+    assert result["status"] == "UNSUPPORTED"
+    assert result["results"][0]["reason"] == "CLAIM_TEXT_DIFFERS_FROM_VERIFIED_QUOTE"
+    assert result["results"][0]["financial_verified"] is False
+    assert result["results"][0]["citation_location"]["status"] == "PASS"
+
+
+@pytest.mark.parametrize("kind,reason", [("PARAPHRASE", "PARAPHRASE_ENTAILMENT_NOT_EVALUATED"), ("FINANCIAL", "FINANCIAL_TRUTH_REQUIRES_STRUCTURED_FACT_VERIFICATION")])
+def test_paraphrase_and_financial_types_never_certify_truth_from_exact_location(knowledge, kind, reason):
+    knowledge.ingest("alice", document())
+    result = knowledge.check_claims("alice", [atomic_claim(citation(knowledge), kind=kind)])
+    assert result["status"] == "UNVERIFIED"
+    assert result["results"][0]["reason"] == reason
+    assert result["financial_verified"] is False
+
+
+def test_atomic_claim_owner_time_and_revision_gate(knowledge):
+    saved = knowledge.ingest("alice", document())
+    reference = citation(knowledge)
+    claims = [atomic_claim(reference)]
+    assert knowledge.check_claims("bob", claims)["results"][0]["reason"] == "DOCUMENT_UNAVAILABLE"
+    assert knowledge.check_claims("alice", claims, as_of="2026-09-01T00:00:00+00:00")["results"][0]["reason"] == "FUTURE_PUBLICATION"
+    knowledge.ingest("alice", document(text="波动率方法修订后不能引用旧版。", expected_revision=1))
+    assert knowledge.check_claims("alice", claims)["results"][0]["reason"] == "DOCUMENT_VERSION_CHANGED"
+    changed = atomic_claim(citation(knowledge))
+    knowledge.delete("alice", saved["document_id"], expected_revision=2)
+    assert knowledge.check_claims("alice", [changed])["results"][0]["reason"] == "DOCUMENT_UNAVAILABLE"
+
+
+def test_atomic_claim_api_has_strict_types_and_authenticated_owner(knowledge):
+    knowledge.ingest("alice", document())
+    reference = citation(knowledge)
+    app = FastAPI()
+    def owner(x_owner_id: str = Header("alice")):
+        return x_owner_id
+    app.include_router(create_knowledge_router(knowledge, owner))
+    with TestClient(app) as client:
+        endpoint = "/api/v1/research/knowledge/claims/check"
+        body = {"claims": [atomic_claim(reference)]}
+        assert client.post(endpoint, json=body).json()["results"][0]["status"] == "SUPPORTED_EXACT_QUOTE"
+        assert client.post(endpoint, json=body, headers={"X-Owner-ID": "bob"}).json()["results"][0]["status"] == "UNVERIFIED"
+        assert client.post(endpoint, json={**body, "owner_id": "alice"}).status_code == 422
+        assert client.post(endpoint, json={"claims": [atomic_claim(reference, kind="AUTOMATIC_FINANCIAL_VERIFIED")]}).status_code == 422
+        assert client.post(endpoint, json={"claims": [atomic_claim(reference), atomic_claim(reference)]}).status_code == 422
+        assert client.post(endpoint, json={"claims": []}).status_code == 422

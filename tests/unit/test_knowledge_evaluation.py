@@ -21,4 +21,3 @@ def test_frozen_hundred_questions_report_retrieval_without_invented_human_metric
     assert result["critical_numeric_consistency"]["status"] == "N/A"
     assert result["truncated_question_count"] == 0
     assert compare_reports(result, result)["retrieval_gate"] == "UNVERIFIED"
-

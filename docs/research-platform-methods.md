@@ -4,7 +4,7 @@
 
 ### 一、 通用约束
 
-所有计算输入必须声明来源及带时区的 `as_of`。金融收益使用小数比例，基础行情图表使用百分数，两者不得混用。算法返回输入摘要、方法版本和失败原因；自行上传的来源标签仅表示用户声明，不证明来源独立性。
+所有计算输入必须声明来源及带时区的 `as_of`。日收益截至上海时间已收盘日期；15:00之前不得使用当日日收盘收益。财务公告时点也按上海日期核对重组边界。金融收益使用小数比例，基础行情图表使用百分数，两者不得混用。算法返回输入摘要、方法版本和失败原因；自行上传的来源标签仅表示用户声明，不证明来源独立性。
 
 | 输入领域 | 字段 | 固定口径 | 阻断条件 |
 | --- | --- | --- | --- |
@@ -28,6 +28,7 @@
 | 字段组 | 必需字段 | 单位与期间 | 使用时点 |
 | --- | --- | --- | --- |
 | 标的与历史集合 | security_id、formation_year、universe_id | 明确输入集合 | 每年7月重组 |
+| 金额单位声明 | monetary_unit | A股导入必须声明CNY；金额字段采用相同倍率 | 缺单位返回不可计算 |
 | 财务与披露 | fiscal_year、published_at、book_equity、revenue、cost_of_goods_sold、selling_general_administrative、interest_expense | 同一币种；前一财年 | 6月末之前已公告 |
 | 规模与资产 | market_cap_december、market_cap_june、total_assets、prior_total_assets | 同一币种；规模值大于0 | 12月、6月和对应财年 |
 | 月收益 | month、risk_free_return、securities | 小数收益；证券含total_return与beginning_market_cap | 不晚于as_of |

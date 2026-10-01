@@ -87,6 +87,23 @@ class KnowledgeSearchInput(BaseModel):
     limit: int = Field(default=10, ge=1, le=10)
 
 
+class KnowledgeCitationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    document_id: str = Field(pattern=r"^knowledge:[0-9a-f]{32}$")
+    chunk_id: str = Field(pattern=r"^chunk:[0-9a-f]{32}$")
+    revision: int = Field(ge=1)
+    content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    quote: str = Field(min_length=1, max_length=4000)
+
+
+class KnowledgeClaimInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    claim_id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.:-]+$")
+    type: Literal["EXACT_QUOTE", "PARAPHRASE", "FINANCIAL"]
+    text: str = Field(min_length=1, max_length=4000)
+    citation: KnowledgeCitationInput
+
+
 def _split_chunks(request: KnowledgeDocumentInput) -> list[dict]:
     chunks = []
     paragraph = 0
@@ -430,9 +447,54 @@ class KnowledgeService:
                         reason = "QUOTE_NOT_SUPPORTED"
                     else:
                         reason = "EXACT_QUOTE_SUPPORTED"
-            results.append({"status": "PASS" if reason == "EXACT_QUOTE_SUPPORTED" else "UNVERIFIED", "reason": reason})
+            results.append({"status": "PASS" if reason == "EXACT_QUOTE_SUPPORTED" else "UNVERIFIED", "reason": reason,
+                            "claim_support": "NOT_EVALUATED", "financial_verified": False})
         return {"status": "PASS" if results and all(item["status"] == "PASS" for item in results) else "UNVERIFIED",
-                "scope": "EXACT_ATTRIBUTED_QUOTES_ONLY_NOT_FINANCIAL_TRUTH", "results": results}
+                "scope": "EXACT_ATTRIBUTED_QUOTES_ONLY_NOT_FINANCIAL_TRUTH", "claim_support": "NOT_EVALUATED",
+                "financial_verified": False, "results": results}
+
+    def check_claims(self, owner_id: str, claims: list[dict | KnowledgeClaimInput], *, as_of=None) -> dict:
+        """Gate atomic statements without arithmetic or semantic-entailment guesses.
+
+        A supported attributed quotation certifies its exact location only.
+        Paraphrases require a separate support assessment; financial statements
+        require independent structured observations and deterministic checks.
+        """
+        _owner(owner_id)
+        if not isinstance(claims, list) or not 1 <= len(claims) <= 30:
+            raise ValueError("between 1 and 30 atomic claims are required")
+        parsed = [KnowledgeClaimInput.model_validate(item.model_dump() if isinstance(item, KnowledgeClaimInput) else item) for item in claims]
+        if len({item.claim_id for item in parsed}) != len(parsed):
+            raise ValueError("claim identities must be unique")
+        results = []
+        for claim in parsed:
+            citation = claim.citation.model_dump()
+            location = self.verify_citations(owner_id, [citation], as_of=as_of)["results"][0]
+            support, status = "NOT_EVALUATED", "UNVERIFIED"
+            if location["status"] != "PASS":
+                reason = location["reason"]
+                if reason == "QUOTE_NOT_SUPPORTED":
+                    support, status = "UNSUPPORTED", "UNSUPPORTED"
+            elif claim.text != claim.citation.quote:
+                # A valid reference attached to an unrelated sentence is not a
+                # support result. Do not infer entailment from matching words.
+                reason = "CLAIM_TEXT_DIFFERS_FROM_VERIFIED_QUOTE"
+                support, status = "UNSUPPORTED", "UNSUPPORTED"
+            elif claim.type == "EXACT_QUOTE":
+                reason = "EXACT_ATTRIBUTED_QUOTE_LOCATED"
+                support, status = "SUPPORTED_EXACT_QUOTE", "SUPPORTED_EXACT_QUOTE"
+            elif claim.type == "PARAPHRASE":
+                reason = "PARAPHRASE_ENTAILMENT_NOT_EVALUATED"
+            else:
+                reason = "FINANCIAL_TRUTH_REQUIRES_STRUCTURED_FACT_VERIFICATION"
+            results.append({"claim_id": claim.claim_id, "type": claim.type, "status": status, "reason": reason,
+                            "claim_support": support, "financial_verified": False,
+                            "reference": claim.citation.model_dump(exclude={"quote"}), "citation_location": location})
+        states = {item["status"] for item in results}
+        return {"schema_version": "knowledge-claims-check.v1",
+                "status": "SUPPORTED_EXACT_QUOTES" if states == {"SUPPORTED_EXACT_QUOTE"} else "UNSUPPORTED" if "UNSUPPORTED" in states else "UNVERIFIED",
+                "scope": "ATOMIC_ATTRIBUTED_QUOTATIONS_ONLY_NO_FINANCIAL_OR_GENERAL_ENTAILMENT_CERTIFICATION",
+                "financial_verified": False, "results": results}
 
     def rebuild_embeddings(self, owner_id: str, *, admin=False) -> dict:
         _owner(owner_id)

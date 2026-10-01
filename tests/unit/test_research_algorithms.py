@@ -54,6 +54,25 @@ def test_covariance_missing_alignment_and_degenerate():
         CovarianceInput(**BASE, series={"a": points([float("nan")])})
 
 
+def test_daily_close_and_financial_publication_use_shanghai_cutoff():
+    request = RegimeInput(source="closing returns", as_of="2026-10-01T06:59:00Z",
+                         returns=[{"time": "2026-10-01", "value": .01}])
+    with pytest.raises(ValueError, match="future"):
+        regime_probabilities(request)
+    body = factor_request()
+    body["fundamentals"][0]["published_at"] = "2025-06-30T16:00:00Z"
+    assert five_factors(FiveFactorInput(**body))["reason"] == "FINANCIAL_POINT_IN_TIME_INVALID"
+
+
+def test_boolean_values_are_not_financial_numbers():
+    with pytest.raises(ValidationError):
+        RegimeInput(**BASE, returns=[{"time": "2024-01-01", "value": True}])
+    body = factor_request()
+    body["fundamentals"][0]["book_equity"] = False
+    with pytest.raises(ValidationError):
+        FiveFactorInput(**body)
+
+
 def factor_request():
     # Independent six portfolios, duplicated characteristics in small/big groups.
     annual, returns = [], []
@@ -67,7 +86,7 @@ def factor_request():
                 "selling_general_administrative": 0, "interest_expense": 0,
                 "total_assets": characteristic*100, "prior_total_assets": 100})
             returns.append({"security_id": identity, "total_return": ret+(size-1)*.03, "beginning_market_cap": size*100})
-    return {**BASE, "fundamentals": annual, "months": [{"month": "2025-07", "risk_free_return": .001, "securities": returns}], "universe_id": "six benchmark stocks"}
+    return {**BASE, "monetary_unit": "CNY", "fundamentals": annual, "months": [{"month": "2025-07", "risk_free_return": .001, "securities": returns}], "universe_id": "six benchmark stocks"}
 
 
 def test_factor_independent_six_portfolio_benchmark():
@@ -82,13 +101,14 @@ def test_factor_independent_six_portfolio_benchmark():
     assert actual["scope"] == "INPUT_UNIVERSE"
 
 
-@pytest.mark.parametrize("change,reason", [("publication", "FINANCIAL_POINT_IN_TIME_INVALID"), ("rf", "RISK_FREE_RETURN_MISSING"), ("return", "FORMATION_MEMBER_RETURN_MISSING"), ("field", "FUNDAMENTAL_FIELDS_MISSING")])
+@pytest.mark.parametrize("change,reason", [("publication", "FINANCIAL_POINT_IN_TIME_INVALID"), ("rf", "RISK_FREE_RETURN_MISSING"), ("return", "FORMATION_MEMBER_RETURN_MISSING"), ("field", "FUNDAMENTAL_FIELDS_MISSING"), ("unit", "MONETARY_UNIT_MISSING")])
 def test_factor_fail_closed(change, reason):
     body = factor_request()
     if change == "publication": body["fundamentals"][0]["published_at"] = "2025-07-01T00:00:00Z"
     if change == "rf": body["months"][0]["risk_free_return"] = None
     if change == "return": body["months"][0]["securities"].pop()
     if change == "field": body["fundamentals"][0]["interest_expense"] = None
+    if change == "unit": body.pop("monetary_unit")
     assert five_factors(FiveFactorInput(**body))["reason"] == reason
 
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 from datetime import UTC, datetime
 import os
 from pathlib import Path
@@ -39,9 +40,19 @@ def main():
 
         class BrowserProbe(WencaiSkillHubProvider):
             async def execute(self, request, **kwargs):
-                return ProviderResult(request_id=request.request_id, request_fingerprint=compute_request_fingerprint(request), provider=self.name, status="SUCCESS", retrieved_at=datetime.now(UTC), records=(ProviderRecord(source="isolated browser-test stub", fields={"items": [{"name": "test observation"}]}),))
+                if "browser-slow" in request.subject:
+                    await asyncio.sleep(5)
+                return ProviderResult(request_id=request.request_id, request_fingerprint=compute_request_fingerprint(request), provider=self.name, status="SUCCESS", retrieved_at=datetime.now(UTC), records=(ProviderRecord(source="isolated browser-test stub; not real financial evidence", fields={"items": [{"symbol": "600519", "price": "123.45", "units": {"price": "CNY"}, "observed_at": datetime.now(UTC).isoformat()}]}),))
 
         application = create_app(database_path=Path(temporary) / "browser.sqlite3", auth_enabled=False, market_provider=NoMarket(), yahoo_finance_provider=Unavailable(), etnet_provider=Unavailable(), wencai_provider=BrowserProbe())
+        class NoEmbedding:
+            model_id = "isolated-browser-test"
+            revision = "1"
+
+            def encode(self, texts, **kwargs):
+                raise RuntimeError("local model intentionally absent in browser tests")
+
+        application.state.knowledge_service.embedder = NoEmbedding()
         uvicorn.run(application, host="127.0.0.1", port=args.port, log_level="warning")
 
 
