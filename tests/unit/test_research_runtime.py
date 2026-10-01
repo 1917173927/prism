@@ -95,14 +95,43 @@ def test_owner_limit_and_close_cancel_all_pending_and_running_work():
     async def scenario():
         runtime = ResearchRuntime(global_limit=1, per_owner_limit=2)
         release = asyncio.Event()
-        tasks = [asyncio.create_task(runtime.run("alice", release.wait)) for _ in range(2)]
+        tasks = [asyncio.create_task(runtime.run("alice", release.wait)) for _ in range(3)]
         await asyncio.sleep(0)
+        assert runtime.snapshot()["active"] == 1
+        assert runtime.snapshot()["waiting"] == 2
         with pytest.raises(ResearchCapacityError):
             await runtime.run("alice", release.wait)
         await runtime.aclose()
         assert all(task.done() for task in tasks)
         assert runtime.snapshot()["active"] == runtime.snapshot()["waiting"] == 0
         assert runtime.snapshot()["closed"]
+    asyncio.run(scenario())
+
+
+def test_default_owner_queue_allows_100_active_plus_200_waiting():
+    async def scenario():
+        runtime = ResearchRuntime()
+        release = asyncio.Event()
+        tasks = [asyncio.create_task(runtime.run("alice", release.wait)) for _ in range(300)]
+        await asyncio.sleep(0)
+        assert runtime.snapshot()["active"] == 100
+        assert runtime.snapshot()["waiting"] == 200
+        with pytest.raises(ResearchCapacityError):
+            await runtime.run("alice", release.wait)
+        # Other owners can use the remaining global waiting capacity.
+        bob = asyncio.create_task(runtime.run("bob", release.wait))
+        await asyncio.sleep(0)
+        assert runtime.snapshot()["waiting"] == 201
+        tasks[100].cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await tasks[100]
+        replacement = asyncio.create_task(runtime.run("alice", release.wait))
+        await asyncio.sleep(0)
+        assert runtime.snapshot()["waiting"] == 201
+        release.set()
+        await asyncio.gather(*tasks[:100], *tasks[101:], bob, replacement)
+        assert runtime.snapshot()["active"] == runtime.snapshot()["waiting"] == 0
+        await runtime.aclose()
     asyncio.run(scenario())
 
 

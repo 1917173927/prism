@@ -42,7 +42,6 @@ class ResearchRuntime:
         self.model_limit = model_limit
         self._queues = defaultdict(deque)
         self._owners = deque()
-        self._owner_counts = defaultdict(int)
         self._reserved = 0
         self._active = 0
         self._peak = 0
@@ -68,6 +67,7 @@ class ResearchRuntime:
         return {"scope": "SINGLE_PROCESS", "global_limit": self.global_limit,
                 "activity_unit": "RESEARCH_RUN", "metrics_semantics": "research-run-outcomes.v2",
                 "queue_limit": self.queue_limit, "per_owner_limit": self.per_owner_limit,
+                "per_owner_limit_scope": "WAITING_RESEARCH_RUNS",
                 "provider_limit": self.provider_limit, "model_limit": self.model_limit,
                 "upstream_quota_verified": False,
                 "budget_seconds": self.budget_seconds, "active": self._active,
@@ -108,12 +108,11 @@ class ResearchRuntime:
         budget = self.budget_seconds if budget_seconds is None else min(budget_seconds, self.budget_seconds)
         if budget <= 0:
             raise TimeoutError("research deadline expired")
-        if self._owner_counts.get(owner_id, 0) >= self.per_owner_limit or (
+        if len(self._queues.get(owner_id, ())) >= self.per_owner_limit or (
             self._reserved >= self.global_limit and self._waiting() >= self.queue_limit
         ):
             self._rejected += 1
             raise ResearchCapacityError("research capacity is exhausted")
-        self._owner_counts[owner_id] += 1
         entry = _Waiting(owner_id, asyncio.get_running_loop().create_future())
         if owner_id not in self._queues:
             self._owners.append(owner_id)
@@ -164,9 +163,6 @@ class ResearchRuntime:
                 self._reserved -= 1
             else:
                 self._remove_waiter(entry)
-            self._owner_counts[owner_id] -= 1
-            if self._owner_counts[owner_id] == 0:
-                del self._owner_counts[owner_id]
             self._tasks.discard(task)
             self._drain()
 
