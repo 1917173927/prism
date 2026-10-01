@@ -102,6 +102,18 @@ _ALIASES = {"price": ("price", "最新价", "现价"), "revenue": ("revenue", "�
             "net_profit": ("net_profit", "净利润"), "pe": ("pe", "市盈率"),
             "nav": ("nav", "单位净值"), "value": ("value",)}
 _SYMBOL_FIELDS = ("symbol", "code", "股票代码", "证券代码", "thscode")
+_OBSERVATION_FIELDS = ("observed_at", "最新价时间", "行情时间", "更新时间", "数据时间")
+
+
+def _explicit_observation_time(row):
+    for field in _OBSERVATION_FIELDS:
+        if row.get(field) not in (None, ""):
+            try:
+                parsed = datetime.fromisoformat(str(row[field]).replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo is not None and parsed.utcoffset() is not None else None
+            except ValueError:
+                return None
+    return None
 
 
 def _safe_text(value):
@@ -161,6 +173,9 @@ def normalize_live_observations(node: LiveResearchNode, result: ProviderResult, 
         raise ValueError("observation cutoff must include a timezone")
     temporal_errors = set()
     for record in result.records:
+        columns = record.fields.get("columns")
+        column_metadata = {column["key"]: column for column in columns
+                           if isinstance(column, dict) and isinstance(column.get("key"), str)} if isinstance(columns, (list, tuple)) else {}
         items = record.fields.get("items")
         rows = items if isinstance(items, (list, tuple)) else (record.fields,)
         for row in rows:
@@ -184,18 +199,16 @@ def normalize_live_observations(node: LiveResearchNode, result: ProviderResult, 
                     row_units = row.get("units")
                     if unit is None and isinstance(row_units, dict):
                         unit = _safe_text(row_units.get(key) or row_units.get(metric))
+                    metadata = column_metadata.get(key, {})
+                    if unit is None:
+                        unit = _safe_text(metadata.get("unit"))
                     period = _safe_text(record.period)
                     key_period = re.search(r"\[(\d{8})\]", key)
                     if period is None and key_period:
                         period = key_period.group(1)
-                    observed_at = record.observed_at
-                    if observed_at is None and row.get("observed_at"):
-                        try:
-                            parsed = datetime.fromisoformat(str(row["observed_at"]).replace("Z", "+00:00"))
-                            if parsed.tzinfo is not None and parsed.utcoffset() is not None:
-                                observed_at = parsed
-                        except ValueError:
-                            pass
+                    if period is None:
+                        period = _safe_text(metadata.get("period") or row.get("period") or row.get("report_period") or row.get("报告期"))
+                    observed_at = record.observed_at or _explicit_observation_time(row)
                     source = _safe_text(record.source)
                     if source is None:
                         missing.add("source")

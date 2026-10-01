@@ -2,15 +2,19 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 import os
+import json
 from uuid import uuid4
 
 import pytest
 
-from app.providers.contracts import ProviderRequest
+from app.providers.contracts import ProviderRequest, ProviderRecord, ProviderResult
+from app.providers.fingerprint import compute_request_fingerprint
+from app.service.live_research import LiveResearchNode, normalize_live_observations
+from app.service.research_facts import ResearchFactRepository, ResearchFactNotFound
 from app.service.knowledge import KnowledgeDocumentInput, KnowledgeService
 from app.service.skill_registry import SkillRegistry
 from app.store.postgres import PostgresDecisionEventStore
-from app.store.sqlite import StoreConflictError, _MIGRATION_DIR
+from app.store.sqlite import StoreConflictError, StoreCorruptError, _MIGRATION_DIR
 
 NOW = datetime(2026, 10, 1, tzinfo=UTC)
 
@@ -49,7 +53,7 @@ def test_new_migrations_and_postgres_fulltext_owner_time_filter(postgres_dsn):
     try:
         versions = {row["version"] for row in store._connection.execute("SELECT version FROM schema_migrations").fetchall()}
         assert versions == {int(path.name.split("_", 1)[0]) for path in _MIGRATION_DIR.glob("*.sql")}
-        assert {18, 19, 20}.issubset(versions)
+        assert {18, 19, 20, 21}.issubset(versions)
         service = KnowledgeService(store, clock=lambda: NOW, embedder=DisabledEmbedder())
         assert service.fulltext_backend == "POSTGRES_TSVECTOR_BIGRAM"
         saved = service.ingest("alice", document())
@@ -106,3 +110,36 @@ def test_postgres_skill_selection_cas_across_independent_connections(postgres_ds
     finally:
         for store in stores:
             store.close()
+
+
+def test_postgres_fact_payload_roundtrip_restart_owner_and_tamper(postgres_dsn):
+    store = PostgresDecisionEventStore(postgres_dsn)
+    node = LiveResearchNode(node_id="quote", operation="MARKET_DATA", subject="600519", required_fields=("price",))
+    request = ProviderRequest(request_id="postgres-fact", operation="MARKET_DATA", subject="600519")
+    result = ProviderResult(request_id=request.request_id, request_fingerprint=compute_request_fingerprint(request),
+        provider="storage-validation-provider", status="SUCCESS", retrieved_at=NOW,
+        records=(ProviderRecord(source="controlled PostgreSQL roundtrip input; not real market evidence",
+            observed_at=NOW, units={"price": "CNY"}, fields={"items": [{"股票代码": "600519", "最新价": "12.30"}]}),))
+    try:
+        saved = ResearchFactRepository(store).save_node(owner_id="alice", run_id="pg-run", node_id="quote",
+            request_payload=node.model_dump(mode="json"), provider_result=result,
+            normalized=normalize_live_observations(node, result, cutoff=NOW), input_versions={"portfolio_revision": 1})
+    finally:
+        store.close()
+    store = PostgresDecisionEventStore(postgres_dsn)
+    try:
+        repository = ResearchFactRepository(store)
+        fact = repository.get("alice", saved["fact_refs"][0])
+        assert fact["value"] == "12.30" and fact["unit"] == "CNY" and not fact["verified"]
+        assert repository.get_snapshot("alice", saved["snapshot_id"])["response_hash"] == saved["response_hash"]
+        archived = store._connection.execute("SELECT response_json FROM research_fact_payloads WHERE snapshot_id=?",
+                                             (saved["snapshot_id"],)).fetchone()
+        assert json.loads(archived["response_json"])["request_id"] == request.request_id
+        with pytest.raises(ResearchFactNotFound):
+            repository.get("bob", saved["fact_refs"][0])
+        store._connection.execute("UPDATE research_fact_payloads SET response_json=? WHERE snapshot_id=?",
+                                  ("{}", saved["snapshot_id"]))
+        with pytest.raises(StoreCorruptError):
+            repository.get("alice", saved["fact_refs"][0])
+    finally:
+        store.close()

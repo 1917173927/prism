@@ -56,6 +56,61 @@ def test_explicit_units_and_times_keep_origin_and_single_source_unverified():
     assert normalized["observations"][0]["verification_status"] == "SINGLE_SOURCE_UNVERIFIED"
 
 
+@pytest.mark.parametrize("time_field", ["最新价时间", "行情时间", "更新时间", "数据时间"])
+def test_skillhub_column_metadata_and_aware_chinese_observation_alias(time_field):
+    response = result(rows=[{"股票代码": "600519", "最新价": "123.50",
+                            time_field: "2026-09-30T15:00:00+08:00"}])
+    response = response.model_copy(update={"records": (response.records[0].model_copy(update={
+        "fields": {**response.records[0].fields, "columns": [{"key": "最新价", "unit": "元"}]}}),)})
+    normalized = normalize_live_observations(node(), response, cutoff=NOW)
+    assert normalized["status"] == "SUCCESS"
+    assert normalized["observations"][0]["unit"] == "元"
+    assert normalized["observations"][0]["observed_at"] == "2026-09-30T15:00:00+08:00"
+    assert normalized["observations"][0]["verification_status"] == "SINGLE_SOURCE_UNVERIFIED"
+
+
+@pytest.mark.parametrize("time_value,expected", [(None, "PARTIAL"), ("2026-09-30 15:00:00", "PARTIAL"),
+                                              ("invalid", "PARTIAL"), ("2026-10-02T15:00:00+08:00", "FAILED")])
+def test_skillhub_alias_never_invents_timezone_or_replaces_future_observation(time_value, expected):
+    response = result(rows=[{"股票代码": "600519", "最新价": "123.50", "行情时间": time_value}],
+                      units={"price": "CNY"})
+    normalized = normalize_live_observations(node(), response, cutoff=NOW)
+    assert normalized["status"] == expected
+    if expected == "PARTIAL":
+        assert normalized["observations"][0]["observed_at"] is None
+        assert "price.observed_at" in normalized["missing_fields"]
+    else:
+        assert normalized["observations"] == []
+        assert "FUTURE_OBSERVATION" in normalized["error_codes"]
+
+
+def test_skillhub_financial_metadata_preserves_explicit_units_and_report_period():
+    spec = LiveResearchNode(node_id="finance", operation="COMPANY_DATA", subject="600519", required_fields=("revenue",))
+    response = result(rows=[{"股票代码": "600519", "营业收入": "100.0", "报告期": "2025-Q4",
+                            "更新时间": "2026-04-01T08:00:00+08:00"}])
+    response = response.model_copy(update={"records": (response.records[0].model_copy(update={
+        "fields": {**response.records[0].fields, "columns": [{"key": "营业收入", "unit": "万元"}]}}),)})
+    normalized = normalize_live_observations(spec, response, cutoff=NOW)
+    assert normalized["status"] == "SUCCESS"
+    assert normalized["observations"][0]["unit"] == "万元"
+    assert normalized["observations"][0]["period"] == "2025-Q4"
+    assert normalized["observations"][0]["value"] == "100.0"
+    future_response = response.model_copy(update={"records": (response.records[0].model_copy(update={
+        "observed_at": datetime(2025, 11, 1, tzinfo=UTC)}),)})
+    future = normalize_live_observations(spec, future_response, cutoff=datetime(2025, 12, 1, tzinfo=UTC))
+    assert future["observations"] == []
+    assert "FUTURE_REPORTING_PERIOD" in future["error_codes"]
+
+
+def test_skillhub_column_units_require_exact_field_match():
+    response = result(observed_at=NOW)
+    response = response.model_copy(update={"records": (response.records[0].model_copy(update={
+        "fields": {**response.records[0].fields, "columns": [{"key": "营业收入", "unit": "万元"}]}}),)})
+    normalized = normalize_live_observations(node(), response, cutoff=NOW)
+    assert normalized["status"] == "PARTIAL"
+    assert normalized["observations"][0]["unit"] is None
+
+
 def test_financial_periods_are_not_merged_or_replaced_by_retrieval_time():
     spec = LiveResearchNode(node_id="finance", operation="COMPANY_DATA", subject="600519", required_fields=("revenue",))
     normalized = normalize_live_observations(spec, result(rows=[{"股票代码": "600519",
