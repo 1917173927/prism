@@ -7,7 +7,7 @@
 - [x] 冻结100道真实资料问题，覆盖六场景，完成关键词与本地E5混合检索实际对照。
 - [x] 按用户明确接受的Agent口径完成两名代理逐声明复核、页面导出保存与确定性汇总；两模式PASS_AGENT_LABELS_ONLY。
 - [x] 修复长网址手机溢出，增加可见只读JSON导出路径，实际导出内容与原回答、召回及标签逐项比对通过。
-- [x] 含真实PostgreSQL全量1087通过、1跳过；两模式Recall@10均100%且无提升，生产混合保持关闭。证据见docs/submission/research-quality-agent-review-20261003.md。
+- [x] 含真实PostgreSQL全量1087通过、1跳过；两模式Recall@10均100%且无提升，生产混合保持关闭。证据见docs/submission/research-quality-agent-review-20261003.md。 阶段已推送`cf7502b`、`41f452f`。
 
 
 ## 2026-10-01 研究平台实施
