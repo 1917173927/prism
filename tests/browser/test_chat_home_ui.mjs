@@ -77,7 +77,8 @@ try {
   assert.equal(conversationCreateCount(), 0);
   assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 0);
   assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
-  assert.equal(await page.$eval("#chat-session-search", node => node.getAttribute("placeholder")), null);
+  assert.equal(await page.$eval("#chat-session-search", node => node.getAttribute("placeholder")), "搜索对话");
+  assert.equal(await page.$eval("#chat-session-search", node => node.matches(":placeholder-shown")), true);
   const home = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).getBoundingClientRect();
     const visible = selector => getComputedStyle(document.querySelector(selector)).display !== "none";
@@ -377,6 +378,7 @@ try {
   await page.waitForFunction(value => document.querySelector("#chat-session-list")?.textContent.includes(value), {}, title);
   await checkHistoryEditLayout();
   await page.type("#chat-session-search", title);
+  assert.equal(await page.$eval("#chat-session-search", node => node.matches(":placeholder-shown")), false);
   assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 1);
   await page.waitForFunction(value => document.querySelector("#active-chat-title")?.textContent === value, {}, title);
   const loadedStatus = await page.evaluate(async (id, ownerId) => {
@@ -395,6 +397,7 @@ try {
   assert.equal(conversationCreateCount(), 1);
   assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
   assert.equal(await page.$$("#copilot-chat-messages .chat-msg").then(nodes => nodes.length), 0);
+  assert.equal(await page.$eval("#chat-session-search", node => node.matches(":placeholder-shown")), true);
 
   await page.click("#agent-feature-trigger");
   await page.waitForSelector("#agent-feature-tools.is-open");
