@@ -58,6 +58,15 @@ def test_real_empty_execution_abstains_without_invented_values():
     assert report["recall_at_10"] is None
 
 
+def test_resolved_numeric_reference_cannot_retain_conflicting_vintage_marker():
+    frozen = cases()
+    frozen["documents"][0]["numeric_fields"][0].update(
+        reference_revision="SAME_VINTAGE_REFERENCE_V2",
+        reference_version_relation="LATER_REVISED_VALUE_NOT_VALID_AS_SAME_VINTAGE_EXPECTATION")
+    with pytest.raises(ValueError, match="contradictory revision marker"):
+        validate_frozen(frozen)
+
+
 @pytest.mark.parametrize("mutation", ["hash", "answers", "unknown_document", "duplicate", "naive_time"])
 def test_frozen_integrity_or_gold_boundary_failures_are_blocked(mutation):
     frozen = deepcopy(cases())

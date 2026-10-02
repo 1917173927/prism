@@ -12,6 +12,8 @@
 .venv\Scripts\python.exe tools/summarize_research_quality_review.py --input review.json --output output/research-quality-summary.json
 ```
 
+浏览器没有保存动态下载文件时，点击“显示导出 JSON”，全选复制只读区域并保存为 UTF-8 `.json` 文件。该区域是生成时的快照；修改标注后须重新生成。下载提示本身不证明文件已保存。
+
 ### 二、 真实评测包准备
 
 | 字段 | 内容 | 责任 | 缺失后果 |
@@ -25,6 +27,19 @@
 | `critical_financial_numeric` | 是否含关键金融数值，必须为布尔值 | 金融复核人员 | 不得通过修改标志回避分母 |
 
 使用真实资料空模板替换空字段，复制题目或声明对象以扩展。每个关键金融数值声明只对应一个字段、单位及时点；多项数值必须拆为多条原子声明，以保证计数分母准确。原文按真实文档片段定义证据标识；每题标注相关证据不超过10项。引用标识必须对应题目中的原文标识。历史问题的原文和回答需在冻结前预先核查时点，不得用最新公告回填历史依据。真实回答、召回记录和关键数值参考值应从留存记录取得，禁止用合成数据替代。
+
+### 三、 已完成的 Agent 评测包
+
+2026年10月3日，用户明确选择“用agent的口径来确认”。以下100题包已完成真实资料执行、两名Agent逐声明复核、页面导入和实际导出内容保存；无需再从空模板重复完成本次代办。其来源保持`AGENT_ASSISTED`。
+
+| 交付物 | 文件 | 当前结果 | 使用方式 |
+| --- | --- | --- | --- |
+| 完整验收 | [Agent评测报告](submission/research-quality-agent-review-20261003.md) | 六场景、实际执行及统计依据 | 先查看范围和限制 |
+| 关键词标注 | [keyword-review.json](submission/test-evidence/research-quality-20261003/keyword-review.json) | 100题、1367声明、1028数值 | 直接导入页面复查 |
+| 混合检索标注 | [hybrid-review.json](submission/test-evidence/research-quality-20261003/hybrid-review.json) | 100题、1956声明、1440数值 | 直接导入页面复查 |
+| 汇总 | [关键词](submission/test-evidence/research-quality-20261003/keyword-summary.json)、[混合](submission/test-evidence/research-quality-20261003/hybrid-summary.json) | PASS_AGENT_LABELS_ONLY | 保留分母及Agent身份 |
+
+本机当前入口为[评测页面](http://127.0.0.1:8023/static/research-quality-review.html)。其他机器仍按第1章启动本地服务。此次实际回答由既有资料工具及原文摘录器产生，不包含真实模型规划；两个模式Recall@10均为100%，混合没有提升，默认开关保持关闭。真实人工复核和更广范围的金融质量验收继续单独记录。
 
 ## 第2章 标注与汇总边界
 

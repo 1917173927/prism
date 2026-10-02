@@ -1,0 +1,121 @@
+{
+  "schema_version": "research-quality-archive.v1",
+  "generated_at": "2026-10-02T17:06:34.776905+00:00",
+  "source_dataset_id": "prism-real-macro-bank-100.20261003.v3",
+  "source_frozen_at": "2026-10-02T16:37:25.281955+00:00",
+  "frozen_input_path": "eval_cases/research/real_macro_bank_100.json",
+  "frozen_raw_byte_sha256": "5d25680176ffca70ef37aa1c0da0ad2ee0816d33a1ae2b4158a31fa2254c3892",
+  "frozen_canonical_compact_sha256": "1e266dd16ef1070a94412394bc5d53fc160dbb174828edc5a62b168d6c75e48c",
+  "raw_byte_policy": "Exact on-disk bytes are retained using scoped .gitattributes -text rules; archive hashes are not normalized-text hashes.",
+  "canonical_compact_policy": "JSON ensure_ascii=False, sort_keys=True, separators=(comma,colon), UTF8. Summaries use their separately declared noncompact canonical input hash.",
+  "original_text_digest_policy": "CRLF_TO_LF_ONLY, no universal-newline conversion or other text normalization. Raw original byte digest is separate.",
+  "review_method": "AGENT_ASSISTED",
+  "accepted_delivery_standard": "User selected Agent confirmation; no human impersonation.",
+  "human_signoff": false,
+  "production_hybrid_enabled": false,
+  "production_default_reason": "Both modes Recall@10=1.0, denominator68; hybrid does not improve keyword baseline.",
+  "scenarios": {
+    "NORMAL": 52,
+    "MISSING": 12,
+    "STALE": 12,
+    "CONFLICT": 8,
+    "ISOLATION": 8,
+    "INJECTION": 8
+  },
+  "source_count": 11,
+  "original_extracts": 22,
+  "controlled_private_copies": 8,
+  "distinct_numeric_fields": 72,
+  "embedding": {
+    "model": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "real_model_executed": true,
+    "files_private_cache_not_git": true
+  },
+  "execution_scope": "EXISTING_DOCUMENT_TOOL_AND_GROUNDED_EXTRACTOR_NO_LLM_PLANNER",
+  "latency_scope": "Warm local query only; excludes initial model loading, ingestion and index construction; no remote financial Provider or LLM planner calls.",
+  "source_cache_manifest": "source-cache-manifest.json",
+  "independent_audits_archive": "independent-audits.zip",
+  "independent_audit_member_raw_byte_sha256": {
+    "keyword-review.json": "fc710ea03a01d50e9c882c1c94ff3f952d45d2045d6620d71326e147d5ff7802",
+    "hybrid-review.json": "3dfb2af4a4f38fe8563911de6e700388fe63df8789092f7643c1d97e2a8f3847",
+    "audit-keyword-first50-v3.json": "132e4f785dedc0dce7d198099960ae61e915a18ba772e403a0817a48b3860b1e",
+    "audit-keyword-last50-v3.json": "1ddb4a34eaeeb6f9fd75f6f25bd72b0bb5ac99ddc7045e3d9e1c0aac8c4a5e32",
+    "audit-hybrid-first50-v3.json": "eea51932732afe8b768feec865e518c495d226e39ad0bea437dea7fd029cd712",
+    "audit-hybrid-last50-v3.json": "4920a4a9a2bf9c268e602045a102824ae4dfed00371e47319ab3798d6df0f51c",
+    "alignment-hybrid-v2-v3-first50.json": "db4546f05e38b0b8c2d4cbfc951d5d3be705d6a53fc8ef0e96fbf7253e9ae411",
+    "alignment-keyword-v2-v3-first50.json": "05cd1c1bd733319b47ee3df21b4511624bb810aceb984808ad2b11cda9e438a1"
+  },
+  "archive_files": {
+    "browser-proof.json": {
+      "bytes": 2326,
+      "raw_byte_sha256": "7df319f5dfd5e6913f2fa8f121cdf55ae54dc3784da75f850096f67663f829ec"
+    },
+    "hybrid-execution.json": {
+      "bytes": 984440,
+      "raw_byte_sha256": "d94af5f72b2e43c05aa5176f6c08a5a0ea79030859b93b1889eb58e3f7575f93"
+    },
+    "hybrid-review.json": {
+      "bytes": 5952789,
+      "raw_byte_sha256": "a1cd27943cb9e6ba5883a20410bb634fb8fa06d31ad6ebd78fcbeccc5ca6942e"
+    },
+    "hybrid-summary.json": {
+      "bytes": 2821,
+      "raw_byte_sha256": "52f30f84d72fbb3098feae412b982e41afcc02b745850054321df8ae97059a23"
+    },
+    "icbc-announcement-table-page3.png": {
+      "bytes": 301122,
+      "raw_byte_sha256": "28474ffe38d3d911cc995832be299c4e8ab55e4664a06ce9e60b4a60bbdd491c"
+    },
+    "icbc-annual-report-table-page11.png": {
+      "bytes": 146907,
+      "raw_byte_sha256": "648f9eb42c1fecdcc775d9b5dae30101fcf94fad061b40095cff76ff12217b92"
+    },
+    "independent-audits.zip": {
+      "bytes": 1079219,
+      "raw_byte_sha256": "49712a9978e253008d0695ce6898e0a922085449e456c8ffd95f9abb6b214c73"
+    },
+    "independent-source-findings-v3.json": {
+      "bytes": 78394,
+      "raw_byte_sha256": "a328518842d8c0d54e46e38d88239c2c177d0734fb7325854d967f1ccbf4ea91"
+    },
+    "keyword-execution.json": {
+      "bytes": 690302,
+      "raw_byte_sha256": "192a6d24b2a1793788e724d4a8d1269de65488e9f0f233afef4f3fabfb129412"
+    },
+    "keyword-review.json": {
+      "bytes": 4252046,
+      "raw_byte_sha256": "2b83f2f7dd5c38035c2c90bae56e153c27e21e87f3282c75aaa865c6731ffbee"
+    },
+    "keyword-summary.json": {
+      "bytes": 2822,
+      "raw_byte_sha256": "a271cb68bd05197e893abc0e1ae6289628f684ba254cfad2933dbd0a82507fb1"
+    },
+    "nbs-final-newspaper-page1.png": {
+      "bytes": 1346459,
+      "raw_byte_sha256": "12a929c5e3ccee5f24879265d92864bc7d3a33ed7bd02177d8bb46cad9bddc6d"
+    },
+    "publication-authenticity-checks-v2.json": {
+      "bytes": 6577,
+      "raw_byte_sha256": "0f0408507ce72da770068b86ceb90f1ea9d193a787038cdf4d74d7a29ec82044"
+    },
+    "review-agent-100.png": {
+      "bytes": 68224,
+      "raw_byte_sha256": "8e44742014f92592af00afada8eab17816bd0442507364ee3f0e7046d5b81f3d"
+    },
+    "review-agent-export.png": {
+      "bytes": 92394,
+      "raw_byte_sha256": "3c04abe77b7a48fde79905d2b2a566c8cc5163eb44a8a32ea5eae324d3759bb4"
+    },
+    "source-cache-manifest.json": {
+      "bytes": 7447,
+      "raw_byte_sha256": "1fff03702e61e5229ed1ced6fd25fa5f6e37f499e48e77b4fd13cce6ce6208c2"
+    },
+    "verification.json": {
+      "bytes": 1133,
+      "raw_byte_sha256": "dee35b8ecdac0a594c43bf447ab334476e33df82fcc5b2b0cd34d24e05166725"
+    }
+  },
+  "foundation_commit_already_pushed": "cf7502b",
+  "final_archival_commit": "See LOG.md and repository Git history; a manifest cannot contain its own eventual commit hash."
+}

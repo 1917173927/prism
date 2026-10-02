@@ -325,6 +325,7 @@ git diff --check
 | [研究平台验收报告](docs/submission/research-platform-acceptance-20261001.md) | 自动化、真实数据、负载、检索及外部阻塞证据 |
 | [研究平台续验收与操作](docs/submission/research-platform-followup-20261001.md) | PostgreSQL安装、问财额度、真实算法输入来源及Pages撤销 |
 | [人工质量评测指南](docs/research-quality-review-guide.md) | 独立标注页面、真实语料、逐声明依据及汇总门槛 |
+| [100题Agent质量评测](docs/submission/research-quality-agent-review-20261003.md) | 真实原文、实际检索回答、独立代理标注与页面导出；不包含真实模型规划 |
 | [ADR-0001](docs/adr/0001-modular-monolith.md) | 模块化单体架构决策 |
 | [TODO](TODO.md) · [LOG](LOG.md) | 当前任务与验证记录 |
 

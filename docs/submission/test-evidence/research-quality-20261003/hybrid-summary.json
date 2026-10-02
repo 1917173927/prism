@@ -1,0 +1,89 @@
+{
+  "schema_version": "research-quality-summary.v1",
+  "dataset_id": "prism-real-macro-bank-100.20261003.v3.hybrid",
+  "corpus_kind": "REAL_CORPUS",
+  "input_hash": "8bf6fb1288d74ac392587623201410cb1fe9bcc10eee4eee930f8b1bad59d721",
+  "reviewer": "evaluation_audit + /root/review_provenance (Agent)",
+  "review_method": "AGENT_ASSISTED",
+  "review_provenance_blockers": [],
+  "human_label_gate_passed": false,
+  "question_count": 100,
+  "atomic_claim_count": 1956,
+  "sample_coverage": {
+    "minimum_questions": 100,
+    "question_count": 100,
+    "required_scenarios": [
+      "CONFLICT",
+      "INJECTION",
+      "ISOLATION",
+      "MISSING",
+      "NORMAL",
+      "STALE"
+    ],
+    "observed_scenarios": [
+      "CONFLICT",
+      "INJECTION",
+      "ISOLATION",
+      "MISSING",
+      "NORMAL",
+      "STALE"
+    ],
+    "missing_scenarios": [],
+    "unassigned_question_count": 0,
+    "blockers": []
+  },
+  "metrics": {
+    "unsupported_atomic_fact_rate": {
+      "numerator": 0,
+      "denominator": 1956,
+      "missing_annotations": 0,
+      "value": 0.0,
+      "status": "CALCULATED"
+    },
+    "citation_support_rate": {
+      "numerator": 1924,
+      "denominator": 1924,
+      "missing_annotations": 0,
+      "value": 1.0,
+      "status": "CALCULATED"
+    },
+    "critical_numeric_consistency": {
+      "numerator": 1440,
+      "denominator": 1440,
+      "missing_annotations": 0,
+      "value": 1.0,
+      "status": "CALCULATED"
+    },
+    "recall_at_10": {
+      "denominator": 68,
+      "missing_annotations": 0,
+      "value": 1.0,
+      "status": "CALCULATED"
+    },
+    "wrong_refusal_rate": {
+      "numerator": 0,
+      "denominator": 66,
+      "missing_annotations": 0,
+      "value": 0.0,
+      "status": "CALCULATED"
+    },
+    "isolation_time_errors": {
+      "events": 0,
+      "question_count": 100,
+      "missing_annotations": 0
+    }
+  },
+  "pending_annotations": [],
+  "input_completeness_errors": [],
+  "financial_gate": "PASS_AGENT_LABELS_ONLY",
+  "thresholds": {
+    "minimum_questions": 100,
+    "critical_numeric_consistency": 1,
+    "unsupported_atomic_fact_rate_max": 0.01,
+    "citation_support_rate_min": 0.95,
+    "recall_at_10_min": 0.9,
+    "wrong_refusal_rate_max": 0.05,
+    "isolation_time_errors_max": 0
+  },
+  "limitations": "标签统计不自动证明来源真实、声明分解完整或冻结样本代表性。HUMAN与AGENT_ASSISTED按评测包显式来源分别报告；Agent辅助标注不能构成人工签署，缺少来源或UNREVIEWED阻断通过。至少100题且覆盖正常/缺失/过期/冲突/隔离/注入，缺少场景标识阻断门槛。PASS_HUMAN_LABELS_ONLY及PASS_AGENT_LABELS_ONLY均不构成上线审批。合成操作样例不能通过真实金融门槛。"
+}

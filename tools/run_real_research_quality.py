@@ -55,6 +55,9 @@ def validate_frozen(frozen):
             raise ValueError("frozen original extract hash mismatch")
         if not item.get("provenance", {}).get("raw_sha256"):
             raise ValueError("original downloaded source hash is required")
+        for field in item.get("numeric_fields", []):
+            if str(field.get("reference_revision", "")).startswith("SAME_VINTAGE") and str(field.get("reference_version_relation", "")).startswith("LATER_REVISED"):
+                raise ValueError("resolved same-vintage reference retains a contradictory revision marker")
     for item in frozen["questions"]:
         if "answer" in item or "assessment" in item:
             raise ValueError("questions must be frozen before answers or review")

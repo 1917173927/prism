@@ -84,15 +84,21 @@
       $("dataset-meta").textContent = `${pack.dataset_id} · ${pack.corpus_kind} · 冻结时点 ${pack.frozen_at || "未冻结"} · ${pack.items.length} 题 · 标注来源 ${pack.review_method}（${REVIEW_METHODS[pack.review_method]}）`;
       $("reviewer-label").textContent = pack.review_method === "HUMAN" ? "人工标注者标识" : pack.review_method === "AGENT_ASSISTED" ? "Agent 辅助标注者标识（不构成人工签署）" : "标注者标识（来源未完成，不构成人工签署）";
       $("reviewer").value = pack.reviewer || ""; $("item-selector").replaceChildren(); pack.items.forEach((item, index) => {const option = node("option", `${index + 1}. ${item.id}`); option.value = String(index); $("item-selector").append(option);});
-      $("workspace").hidden = false; $("export-json").disabled = false; render(); $("message").textContent = `已导入，标注来源为 ${pack.review_method}。导出保留此来源，修改标注者不会将 Agent 辅助标注升级为人工签署；所有空标签保持未标注。`;
+      $("workspace").hidden = false; $("export-json").disabled = false; $("show-export").disabled = false; $("export-preview").hidden = true; $("export-content").value = ""; render(); $("message").textContent = `已导入，标注来源为 ${pack.review_method}。导出保留此来源，修改标注者不会将 Agent 辅助标注升级为人工签署；所有空标签保持未标注。`;
     } catch (error) {$("message").textContent = `未导入：${error.message}`;}
   });
   $("reviewer").addEventListener("input", event => {pack.reviewer = event.target.value.trim();});
   $("item-selector").addEventListener("change", event => {current = Number(event.target.value); render();});
   $("previous").addEventListener("click", () => {current--; render();}); $("next").addEventListener("click", () => {current++; render();});
+  function exportText() {pack.reviewed_at = new Date().toISOString(); return JSON.stringify(pack, null, 2) + "\n";}
+  $("show-export").addEventListener("click", () => {
+    $("export-content").value = exportText(); $("export-preview").hidden = false;
+    $("export-time").textContent = `快照生成时间：${pack.reviewed_at}`;
+    $("message").textContent = "已生成导出内容，可复制并保存为 JSON 文件。请确认保存后再离开，并运行汇总工具。";
+  });
   $("export-json").addEventListener("click", () => {
-    pack.reviewed_at = new Date().toISOString(); const url = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2) + "\n"], {type: "application/json"}));
+    const url = URL.createObjectURL(new Blob([exportText()], {type: "application/json"}));
     const link = node("a"); link.href = url; link.download = `quality-review-${pack.dataset_id.replace(/[^A-Za-z0-9_.-]/g, "_")}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    $("message").textContent = "已导出当前标注。导出不代表标注完整或金融门槛通过；请运行汇总工具。";
+    $("message").textContent = "已请求下载当前标注，请确认文件已保存。导出不代表标注完整或金融门槛通过；请运行汇总工具。";
   });
 })();

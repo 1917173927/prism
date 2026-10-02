@@ -1,0 +1,170 @@
+[
+  {
+    "source_id": "nbs-2024-economic-release",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-economic-release.html",
+    "raw_byte_sha256": "1ea97704f279604434d7fb191e290e2f47eaeb1a2342a901af752467ee1ab59f",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2024-economic-release",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-economic-release.txt",
+    "raw_byte_sha256": "a6e2171e92425255958356dd62aa8fd9646ac00477c540dc136a3a50ffea7370",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2024-statistical-bulletin",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-statistical-bulletin.html",
+    "raw_byte_sha256": "3e732426d3cbdb84b13168a3fa2daa7aa30663e05d7247e090abd4506aa03e39",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2024-statistical-bulletin",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-statistical-bulletin.txt",
+    "raw_byte_sha256": "8892fb592e2008159da3b69d247d494f6b89044184502fbdc72db8449e02b722",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2023-economic-release",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-economic-release.html",
+    "raw_byte_sha256": "5bba9682471839c6e2b53e749b09f8d823be6c4395eb96c5aff5443b3df202a4",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2023-economic-release",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-economic-release.txt",
+    "raw_byte_sha256": "c4490e2411c52922f130002b82919ffcd88e378022dbe9a0c353fba3e571e44d",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2023-statistical-bulletin",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-statistical-bulletin.html",
+    "raw_byte_sha256": "4a089ed4e868f32735f8dc6d3eea69924c3bc4ad5b9e915a8e3a8221c1db16b7",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2023-statistical-bulletin",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-statistical-bulletin.txt",
+    "raw_byte_sha256": "8f9b9ee6667db7a37b2c2741113eca06b549f26167364071ecc96709d831ea23",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2023-gdp-revision",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-gdp-revision.html",
+    "raw_byte_sha256": "f9c4156adf85665740265522b87ef7d7e82010751355743f14834db6082af1ce",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2023-gdp-revision",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-gdp-revision.txt",
+    "raw_byte_sha256": "0084ce7b33fb65cde128e535686bca8901b398d355b3610f33d26d1049b57b7b",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2024-gdp-final",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-gdp-final.html",
+    "raw_byte_sha256": "b6b6b5c74b9e044818a92eb3eec356fbcd9215c9649f760db9b91eb2a282233e",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2024-gdp-final",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-gdp-final.txt",
+    "raw_byte_sha256": "4a835fc4625d52192d6dfa30c8d60aaaf661e318d5311fbe19681ebdf7bc4bc5",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "icbc-2024-results-announcement",
+    "kind": "pdf_path",
+    "path": "data/private/research-quality/20261003/icbc-2024-results-announcement.pdf",
+    "raw_byte_sha256": "6f2a8718fcac12e99c70b79cc9a7702436898fdb853c2c4541725ff06afcfee0",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "icbc-2024-results-announcement",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/icbc-2024-results-announcement.txt",
+    "raw_byte_sha256": "42a5a0deb3c8b85e2c2f596fcde180cf27cd9e878ee5b704aba052bbc178cc1a",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "icbc-2024-annual-report",
+    "kind": "pdf_path",
+    "path": "data/private/research-quality/20261003/icbc-2024-annual-report.pdf",
+    "raw_byte_sha256": "8f7b4faf9787252cf2a93c834ff71c1deb4b644315c98222653b0689a1d92e8f",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "icbc-2024-annual-report",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/icbc-2024-annual-report.txt",
+    "raw_byte_sha256": "336448674556dffe152a605c19b9469179905d44794a3366fc0ce57271c5071d",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2023-revision-qa",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-revision-qa.txt",
+    "raw_byte_sha256": "b2260e19ea24d5e8aa881235a15bf6c7a8b74a2c34652b31d3397e72042440cd",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2024-final-newspaper",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-final-newspaper.txt",
+    "raw_byte_sha256": "29952643a477370bf54a915501c9c806ad2c39e8cf2cae624bd955230971607f",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "nbs-2024-retail-same-vintage",
+    "kind": "html_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-retail-same-vintage.html",
+    "raw_byte_sha256": "bc34cc7a181f59cbdce1ccd963d940ecb166787b30947b2309a6b8a7107c328e",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2024-retail-same-vintage",
+    "kind": "text_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-retail-same-vintage.txt",
+    "raw_byte_sha256": "da47d8ba1fed611c8602bcd2bd9630d26213802f0b803f700f5c5d325e22a825",
+    "text_digest_policy": "CRLF_TO_LF_ONLY_NO_OTHER_NORMALIZATION"
+  },
+  {
+    "source_id": "icbc-2024-results-announcement",
+    "kind": "pages_path",
+    "path": "data/private/research-quality/20261003/icbc-2024-results-announcement-pages.json",
+    "raw_byte_sha256": "5f6473b1788e6b4c2390420719490eb5aaced7773d0304094c0ba4aa38010687",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "icbc-2024-annual-report",
+    "kind": "pages_path",
+    "path": "data/private/research-quality/20261003/icbc-2024-annual-report-pages.json",
+    "raw_byte_sha256": "35756939e95ff4465fa1eaf6f47e5c6bcf0f2994712c13571fe293586a830d19",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2023-revision-qa",
+    "kind": "raw_path",
+    "path": "data/private/research-quality/20261003/nbs-2023-revision-qa.html",
+    "raw_byte_sha256": "5163b3936ec13af2b0929edff174990df8e7d04be60b0b5b339e8b57a844d1a1",
+    "text_digest_policy": null
+  },
+  {
+    "source_id": "nbs-2024-final-newspaper",
+    "kind": "raw_path",
+    "path": "data/private/research-quality/20261003/nbs-2024-final-newspaper.pdf",
+    "raw_byte_sha256": "f6c435def4a0f926c9539f687b26e39e134bff4b4343c2727a3db57633ab79a6",
+    "text_digest_policy": null
+  }
+]
