@@ -15,14 +15,22 @@ const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 try {
   const page = await browser.newPage();
+  const apiRequests = [];
   const apiResponses = [];
   const pageErrors = [];
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/api/v1/")) apiRequests.push({method: request.method(), path});
+  });
   page.on("response", response => {
     if (new URL(response.url()).pathname.startsWith("/api/v1/")) {
       apiResponses.push({method: response.request().method(), path: new URL(response.url()).pathname, status: response.status()});
     }
   });
   page.on("pageerror", error => pageErrors.push(error.message));
+  const isModelSettingsRead = response => response.request().method() === "GET"
+    && new URL(response.url()).pathname === "/api/v1/user/model-settings";
+  let historyStartup = page.waitForResponse(isModelSettingsRead, {timeout: 60000});
   await page.setViewport({width: 1440, height: 900});
   await page.goto(baseUrl, {waitUntil: "domcontentloaded"});
   if (new URL(page.url()).pathname === "/login") {
@@ -40,6 +48,7 @@ try {
   });
   assert.equal(session.enabled, true);
   const ownerId = session.owner_id;
+  assert.equal((await historyStartup).status(), 200);
 
   if (await page.$eval("body", body => body.classList.contains("questionnaire-required"))) {
     const status = await page.evaluate(async ownerId => {
@@ -56,11 +65,19 @@ try {
       return response.status;
     }, ownerId);
     assert.equal(status, 200);
+    historyStartup = page.waitForResponse(isModelSettingsRead);
     await page.reload({waitUntil: "domcontentloaded"});
     await page.waitForSelector("body:not(.questionnaire-pending):not(.questionnaire-required)");
   }
 
   await page.waitForSelector("body.copilot-active #copilot:not([hidden])");
+  assert.equal((await historyStartup).status(), 200);
+  const conversationCreateCount = () => apiRequests.filter(request => request.method === "POST"
+    && request.path === "/api/v1/copilot/conversations").length;
+  assert.equal(conversationCreateCount(), 0);
+  assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 0);
+  assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
+  assert.equal(await page.$eval("#chat-session-search", node => node.getAttribute("placeholder")), null);
   const home = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).getBoundingClientRect();
     const visible = selector => getComputedStyle(document.querySelector(selector)).display !== "none";
@@ -99,18 +116,62 @@ try {
   assert.equal(home.contextInsideConversation, false);
   assert.equal(await page.$eval("#home-model-label", node => node.textContent), "API 配置");
 
+  const suggestions = await page.$eval("#copilot-quick-tags", node => {
+    const prompt = node.querySelector(".quick-tag-chip");
+    const style = getComputedStyle(prompt);
+    return {count: node.querySelectorAll("li").length, text: prompt.textContent,
+      top: node.getBoundingClientRect().top, borderWidth: style.borderWidth,
+      background: style.backgroundColor, radius: style.borderRadius, collapsible: Boolean(node.closest("details"))};
+  });
+  assert.equal(suggestions.count, 3);
+  assert.equal(suggestions.borderWidth, "0px");
+  assert.equal(suggestions.background, "rgba(0, 0, 0, 0)");
+  assert.equal(suggestions.radius, "0px");
+  assert.equal(suggestions.collapsible, false);
+  assert.ok(suggestions.top > await page.$eval(".copilot-query-box", node => node.getBoundingClientRect().bottom));
+  await page.click("#copilot-quick-tags .quick-tag-chip");
+  assert.equal(await page.$eval("#copilot-natural-input", node => node.value), suggestions.text);
+  assert.equal(await page.$eval(".copilot-query-box", node => node.getBoundingClientRect().top), home.inputTop);
+  assert.equal(conversationCreateCount(), 0);
+  assert.equal(apiRequests.some(request => request.path === "/api/v1/copilot/chat"), false);
+  await page.$eval("#copilot-natural-input", node => { node.value = ""; });
+
   await page.click("#home-history-hide");
+  await page.waitForFunction(() => {
+    const left = document.querySelector(".main").getBoundingClientRect().left;
+    return left > 0 && left < 248;
+  });
+  assert.equal(await page.$eval(".sidebar", node => node.inert), true);
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".sidebar")).visibility === "hidden"
+    && document.querySelector(".main").getBoundingClientRect().left === 0);
   const collapsed = await page.evaluate(() => ({
-    sidebarDisplay: getComputedStyle(document.querySelector(".sidebar")).display,
-    sidebarWidth: document.querySelector(".sidebar").getBoundingClientRect().width,
+    sidebarVisibility: getComputedStyle(document.querySelector(".sidebar")).visibility,
+    sidebarRight: document.querySelector(".sidebar").getBoundingClientRect().right,
     mainLeft: document.querySelector(".main").getBoundingClientRect().left,
     headerWidth: document.querySelector("#home-navigation").getBoundingClientRect().width,
   }));
-  assert.equal(collapsed.sidebarDisplay, "none");
-  assert.equal(collapsed.sidebarWidth, 0);
+  assert.equal(collapsed.sidebarVisibility, "hidden");
+  assert.equal(collapsed.sidebarRight, 0);
   assert.equal(collapsed.mainLeft, 0);
   assert.equal(collapsed.headerWidth, 1440);
   await page.click("#home-history-show");
+  await page.waitForFunction(() => {
+    const left = document.querySelector(".main").getBoundingClientRect().left;
+    return left > 0 && left < 248;
+  });
+  await page.waitForFunction(() => document.querySelector(".main").getBoundingClientRect().left === 248);
+  assert.equal(await page.$eval(".sidebar", node => node.inert), false);
+  await page.evaluate(() => {
+    document.querySelector("#home-history-hide").click();
+    document.querySelector("#home-history-show").click();
+  });
+  await page.waitForFunction(() => document.querySelector(".main").getBoundingClientRect().left === 248);
+  await page.emulateMediaFeatures([{name: "prefers-reduced-motion", value: "reduce"}]);
+  await page.click("#home-history-hide");
+  assert.equal(await page.$eval(".sidebar", node => node.getAnimations().length), 0);
+  assert.equal(await page.$eval(".main", node => node.getBoundingClientRect().left), 0);
+  await page.click("#home-history-show");
+  await page.emulateMediaFeatures([{name: "prefers-reduced-motion", value: "no-preference"}]);
 
   async function checkMenuGeometry(selector) {
     const geometry = await page.evaluate(selector => {
@@ -194,15 +255,70 @@ try {
     assert.equal(await page.$eval("#home-upload-file", node => node.hidden), true);
   }
 
-  const initialCount = await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length);
-  const [createdResponse] = await Promise.all([
+  await page.type("#chat-session-search", "未发送的草稿");
+  await page.click("#new-chat-session");
+  await page.type("#copilot-natural-input", "尚未发送的问题");
+  await page.click("#new-chat-session");
+  assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
+  assert.equal(await page.$eval("#copilot-natural-input", node => node.value), "");
+  assert.equal(conversationCreateCount(), 0);
+  assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 0);
+  await page.click("#copilot-submit-query");
+  assert.equal(conversationCreateCount(), 0);
+  assert.equal(apiRequests.some(request => request.path === "/api/v1/copilot/chat"), false);
+
+  const question = "请用一句话说明你的用途。";
+  async function checkChatResponse(response, conversationId) {
+    const request = JSON.parse(response.request().postData());
+    assert.notEqual(request.model_mode, "MOCK");
+    assert.equal(request.message, question);
+    assert.equal(request.conversation_id, conversationId);
+    if (response.status() === 409) {
+      assert.equal((await response.json()).error_code, "MODEL_NOT_CONFIGURED");
+      await page.waitForFunction(() => document.querySelector("#copilot-chat-messages").textContent.includes("API Key"));
+    } else assert.equal(response.status(), 200);
+    await page.waitForSelector("#copilot-submit-query:not([disabled])", {timeout: 60000});
+  }
+  await page.type("#copilot-natural-input", question);
+  const [createdResponse, firstChatResponse] = await Promise.all([
     page.waitForResponse(response => response.request().method() === "POST"
       && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
-    page.click("#new-chat-session"),
+    page.waitForResponse(response => response.request().method() === "POST"
+      && new URL(response.url()).pathname === "/api/v1/copilot/chat", {timeout: 30000}),
+    page.click("#copilot-submit-query"),
   ]);
   assert.equal(createdResponse.status(), 201);
   const created = await createdResponse.json();
-  await page.waitForFunction(count => document.querySelectorAll("#chat-session-list .chat-session-item").length === Math.min(count + 1, 50), {}, initialCount);
+  assert.equal(created.title, question);
+  await checkChatResponse(firstChatResponse, created.conversation_id);
+  assert.equal(conversationCreateCount(), 1);
+  await page.type("#copilot-natural-input", question);
+  const [secondChatResponse] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST"
+      && new URL(response.url()).pathname === "/api/v1/copilot/chat", {timeout: 30000}),
+    page.click("#copilot-submit-query"),
+  ]);
+  await checkChatResponse(secondChatResponse, created.conversation_id);
+  assert.equal(conversationCreateCount(), 1);
+  await page.waitForFunction(() => document.querySelectorAll("#chat-session-list .chat-session-item").length === 1);
+  await page.click("#new-chat-session");
+  assert.equal(conversationCreateCount(), 1);
+  assert.equal(await page.$$("#chat-session-list .chat-session-item.is-active").then(nodes => nodes.length), 0);
+  historyStartup = page.waitForResponse(isModelSettingsRead);
+  await page.reload({waitUntil: "domcontentloaded"});
+  await page.waitForSelector("body.copilot-active #copilot:not([hidden])");
+  assert.equal((await historyStartup).status(), 200);
+  assert.equal(conversationCreateCount(), 1);
+  assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 1);
+  const selectedRow = await page.$("#chat-session-list .chat-session-item");
+  await Promise.all([
+    page.waitForResponse(response => response.request().method() === "GET"
+      && new URL(response.url()).pathname === `/api/v1/copilot/conversations/${created.conversation_id}`),
+    page.click("#chat-session-list .chat-session-select"),
+  ]);
+  await page.waitForFunction(node => !node.isConnected, {}, selectedRow);
+  await selectedRow.dispose();
+  await page.waitForSelector("#chat-session-list .chat-session-item.is-active");
   const title = `首页接口核对-${Date.now()}`;
   await page.click("#chat-session-list .chat-session-item:first-child .chat-session-rename");
   await page.waitForSelector("#chat-session-list .chat-session-title-input");
@@ -225,7 +341,9 @@ try {
   assert.equal(removedResponse.status(), 200);
   assert.equal(new URL(removedResponse.url()).pathname, `/api/v1/copilot/conversations/${created.conversation_id}`);
   await page.waitForFunction(() => document.querySelectorAll("#chat-session-list .chat-session-item").length === 0);
-  await page.$eval("#chat-session-search", node => { node.value = ""; node.dispatchEvent(new Event("input", {bubbles: true})); });
+  assert.equal(conversationCreateCount(), 1);
+  assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
+  assert.equal(await page.$$("#copilot-chat-messages .chat-msg").then(nodes => nodes.length), 0);
 
   await page.click("#agent-feature-trigger");
   await page.waitForSelector("#agent-feature-tools.is-open");
@@ -247,29 +365,24 @@ try {
   }
 
   await page.setViewport({width: 390, height: 844});
-  await page.waitForFunction(() => document.body.classList.contains("home-history-collapsed"));
+  await page.waitForFunction(() => document.body.classList.contains("home-history-collapsed")
+    && getComputedStyle(document.querySelector(".sidebar")).visibility === "hidden");
   const mobile = await page.evaluate(() => ({
     inputWidth: document.querySelector(".copilot-query-box").getBoundingClientRect().width,
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
-    sidebarVisible: getComputedStyle(document.querySelector(".sidebar")).display !== "none",
+    sidebarVisible: getComputedStyle(document.querySelector(".sidebar")).visibility !== "hidden",
+    promptsBottom: document.querySelector("#copilot-quick-tags").getBoundingClientRect().bottom,
   }));
   assert.ok(mobile.inputWidth <= 390, JSON.stringify(mobile));
   assert.equal(mobile.horizontalOverflow, false);
   assert.equal(mobile.sidebarVisible, false);
+  assert.ok(mobile.promptsBottom < 844, JSON.stringify(mobile));
   await page.click("#home-history-show");
-  assert.equal(await page.$eval(".sidebar", node => getComputedStyle(node).display), "flex");
-  const [mobileConversation] = await Promise.all([
-    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
-    page.click("#new-chat-session"),
-  ]);
-  assert.equal(mobileConversation.status(), 201);
-  assert.equal(await page.$eval(".sidebar", node => getComputedStyle(node).display), "none");
-  const mobileSession = await mobileConversation.json();
-  const mobileDeleteStatus = await page.evaluate(async (id, ownerId) => {
-    const response = await fetch(`/api/v1/copilot/conversations/${id}`, {method: "DELETE", headers: {"X-Owner-ID": ownerId}});
-    return response.status;
-  }, mobileSession.conversation_id, ownerId);
-  assert.equal(mobileDeleteStatus, 200);
+  await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
+  assert.equal(await page.$eval(".sidebar", node => getComputedStyle(node).visibility), "visible");
+  await page.click("#new-chat-session");
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".sidebar")).visibility === "hidden");
+  assert.equal(conversationCreateCount(), 1);
   await page.click("#agent-feature-trigger");
   await checkMenuGeometry("#agent-feature-tools");
   await page.keyboard.press("Escape");
@@ -278,30 +391,22 @@ try {
   await page.keyboard.press("Escape");
 
   await page.click("#home-history-show");
-  const [chatSessionResponse] = await Promise.all([
-    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
-    page.click("#new-chat-session"),
-  ]);
-  const chatSession = await chatSessionResponse.json();
-  const question = "请用一句话说明你的用途。";
+  await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
+  await page.click("#new-chat-session");
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".sidebar")).visibility === "hidden");
   await page.type("#copilot-natural-input", question);
-  const [chatResponse] = await Promise.all([
+  const [chatSessionResponse, chatResponse] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
     page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/chat", {timeout: 30000}),
     page.click("#copilot-submit-query"),
   ]);
-  const chatRequest = JSON.parse(chatResponse.request().postData());
-  assert.notEqual(chatRequest.model_mode, "MOCK");
-  assert.equal(chatRequest.message, question);
-  assert.equal(chatRequest.conversation_id, chatSession.conversation_id);
-  if (chatResponse.status() === 409) {
-    const error = await chatResponse.json();
-    assert.equal(error.error_code, "MODEL_NOT_CONFIGURED");
-    await page.waitForFunction(() => document.querySelector("#copilot-chat-messages").textContent.includes("API Key"));
-    process.stdout.write("聊天请求与缺少模型配置时的页面状态检查通过。\n");
-  } else assert.equal(chatResponse.status(), 200);
-  await page.waitForSelector("#copilot-submit-query:not([disabled])", {timeout: 60000});
+  assert.equal(chatSessionResponse.status(), 201);
+  const chatSession = await chatSessionResponse.json();
+  await checkChatResponse(chatResponse, chatSession.conversation_id);
+  assert.equal(conversationCreateCount(), 2);
   assert.ok(await page.$$("#copilot-chat-messages .chat-msg").then(nodes => nodes.length) >= 2);
   assert.equal(await page.$eval(".agent-home-heading", node => getComputedStyle(node).display), "none");
+  assert.equal(await page.$eval(".home-quick-prompts", node => getComputedStyle(node).display), "none");
   await page.click("#agent-feature-trigger");
   await checkMenuGeometry("#agent-feature-tools");
   await page.keyboard.press("Escape");
@@ -311,11 +416,43 @@ try {
     viewportWidth: innerWidth,
   }));
   assert.ok(chatOverflow.composerRight <= chatOverflow.viewportWidth && chatOverflow.sendRight <= chatOverflow.viewportWidth, JSON.stringify(chatOverflow));
-  const finalChatDeleteStatus = await page.evaluate(async (id, ownerId) => {
+  await page.click("#home-history-show");
+  await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
+  const [finalChatDelete] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "DELETE"
+      && new URL(response.url()).pathname === `/api/v1/copilot/conversations/${chatSession.conversation_id}`),
+    page.click("#chat-session-list .chat-session-delete"),
+  ]);
+  assert.equal(finalChatDelete.status(), 200);
+  await page.waitForFunction(() => document.querySelectorAll("#chat-session-list .chat-session-item").length === 0
+    && getComputedStyle(document.querySelector(".sidebar")).visibility === "hidden");
+  assert.equal(conversationCreateCount(), 2);
+
+  await page.click("#home-history-show");
+  await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
+  const previousChatRequests = apiRequests.filter(request => request.path === "/api/v1/copilot/chat").length;
+  const [pendingSessionResponse] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST"
+      && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
+    page.evaluate(question => {
+      document.querySelector("#copilot-natural-input").value = question;
+      document.querySelector("#copilot-submit-query").click();
+      document.querySelector("#new-chat-session").click();
+    }, question),
+  ]);
+  assert.equal(pendingSessionResponse.status(), 201);
+  const pendingSession = await pendingSessionResponse.json();
+  await page.waitForSelector("#copilot-submit-query:not([disabled])");
+  assert.equal(conversationCreateCount(), 3);
+  assert.equal(apiRequests.filter(request => request.path === "/api/v1/copilot/chat").length, previousChatRequests);
+  assert.equal(await page.$$("#copilot-chat-messages .chat-msg").then(nodes => nodes.length), 0);
+  assert.equal(await page.$$("#chat-session-list .chat-session-item.is-active").then(nodes => nodes.length), 0);
+  assert.equal(await page.$eval("#copilot-natural-input", node => node.value), "");
+  const pendingDeleteStatus = await page.evaluate(async (id, ownerId) => {
     const response = await fetch(`/api/v1/copilot/conversations/${id}`, {method: "DELETE", headers: {"X-Owner-ID": ownerId}});
     return response.status;
-  }, chatSession.conversation_id, ownerId);
-  assert.equal(finalChatDeleteStatus, 200);
+  }, pendingSession.conversation_id, ownerId);
+  assert.equal(pendingDeleteStatus, 200);
 
   for (const [method, path] of [
     ["GET", "/api/v1/copilot/conversations"],

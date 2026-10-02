@@ -2803,8 +2803,8 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active .home-navigation .nav-copilot-icon { display: none; }
 .prism-ui-v2.copilot-active .sidebar-conversation-actions.home-only { display: grid; }
 .prism-ui-v2.copilot-active .sidebar .chat-history-panel.home-only { display: grid; }
-.prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr); }
-.prism-ui-v2.copilot-active .sidebar { grid-column: 1; grid-row: 2; top: 66px; height: calc(100dvh - 66px); padding: 17px 13px 14px; border: 0; background: var(--surface-subtle); }
+.prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr); overflow-x: clip; transition: grid-template-columns 280ms cubic-bezier(.2, .8, .2, 1); }
+.prism-ui-v2.copilot-active .sidebar { grid-column: 1; grid-row: 2; top: 66px; width: 248px; min-width: 0; height: calc(100dvh - 66px); padding: 17px 13px 14px; border: 0; background: var(--surface-subtle); transform: translateX(0); opacity: 1; visibility: visible; transition: transform 280ms cubic-bezier(.2, .8, .2, 1), opacity 200ms ease, visibility 0s; }
 .prism-ui-v2.copilot-active .sidebar > .nav-list { display: none; }
 .prism-ui-v2.copilot-active .home-history-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 35px; padding: 0 4px 0 10px; margin-bottom: 13px; }
 .prism-ui-v2.copilot-active .home-history-toolbar h2 { margin: 0; font-size: 14px; font-weight: 500; }
@@ -2813,9 +2813,8 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active .home-history-toolbar button:hover,
 .prism-ui-v2.copilot-active .home-history-show:hover { background: var(--surface-hover); }
 .prism-ui-v2.copilot-active .home-history-show { display: none; position: absolute; top: 14px; left: 18px; z-index: 20; font-size: 13px; }
-.prism-ui-v2.copilot-active.home-history-collapsed .app-shell { grid-template-columns: minmax(0, 1fr); }
-.prism-ui-v2.copilot-active.home-history-collapsed .sidebar { display: none; }
-.prism-ui-v2.copilot-active.home-history-collapsed .main { grid-column: 1; }
+.prism-ui-v2.copilot-active.home-history-collapsed .app-shell { grid-template-columns: 0px minmax(0, 1fr); }
+.prism-ui-v2.copilot-active.home-history-collapsed .sidebar { transform: translateX(-100%); opacity: 0; visibility: hidden; transition-delay: 0s, 0s, 280ms; }
 .prism-ui-v2.copilot-active.home-history-collapsed .home-history-show { display: inline-flex; }
 .prism-ui-v2.copilot-active .sidebar-conversation-actions { gap: 7px; margin-bottom: 16px; }
 .prism-ui-v2.copilot-active .sidebar-conversation-actions > button,
@@ -2944,9 +2943,12 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active .home-upload-trigger .prism-icon { width: 20px; height: 20px; }
 .prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn { min-width: 68px; min-height: 35px; font-size: 14px; font-weight: 500; }
 .prism-ui-v2.copilot-active .agent-conversation .clear-chat-btn { display: none; }
-.prism-ui-v2.copilot-active .home-quick-prompts { order: 5; align-self: flex-start; margin-top: 7px; color: var(--text-muted); font-size: 11px; }
-.prism-ui-v2.copilot-active .home-quick-prompts > summary { cursor: pointer; }
-.prism-ui-v2.copilot-active .home-quick-prompts .copilot-quick-tags { padding: 8px 0 0; border: 0; background: transparent; }
+.prism-ui-v2.copilot-active .home-quick-prompts { position: relative; order: 5; height: 0; color: var(--text-secondary); }
+.prism-ui-v2.copilot-active .home-quick-prompts .copilot-quick-tags { position: absolute; top: 18px; left: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; list-style: none; }
+.prism-ui-v2.copilot-active .home-quick-prompts li { margin: 0; padding: 0; }
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip { min-height: 30px; padding: 4px 0; border: 0; border-radius: 0; color: var(--text-secondary); background: transparent; box-shadow: none; font-size: 14px; font-weight: 400; line-height: 1.5; }
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip:hover,
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip:focus-visible { color: var(--text-primary); background: transparent; text-decoration: underline; text-underline-offset: 4px; }
 
 .prism-ui-v2.copilot-active #agent-feature-tools.is-compact,
 .prism-ui-v2.copilot-active .home-upload-menu { position: fixed; z-index: 55; display: none; width: 232px; margin: 0; padding: 6px; overflow-y: auto; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); box-shadow: 0 8px 30px rgba(20, 25, 30, .12); }
@@ -3003,6 +3005,8 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active #copilot:has(#copilot-decision-output:not(:empty)) { justify-content: flex-start; padding-top: 18px; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .agent-home-heading,
 .prism-ui-v2.copilot-active #copilot:has(#copilot-decision-output:not(:empty)) .agent-home-heading { display: none; }
+.prism-ui-v2.copilot-active #copilot:has(.chat-msg) .home-quick-prompts,
+.prism-ui-v2.copilot-active #copilot:has(#copilot-decision-output:not(:empty)) .home-quick-prompts { display: none; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .agent-home-grid,
 .prism-ui-v2.copilot-active #copilot:has(#copilot-decision-output:not(:empty)) .agent-home-grid { flex: 1; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .agent-workbench-column,
@@ -3012,7 +3016,8 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-query-box { margin-top: auto; }
 
 @media (max-width: 760px) {
-  .prism-ui-v2.copilot-active .app-shell { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 104px minmax(0, 1fr); }
+  .prism-ui-v2.copilot-active .app-shell,
+  .prism-ui-v2.copilot-active.home-history-collapsed .app-shell { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 104px minmax(0, 1fr); transition: none; }
   .prism-ui-v2.copilot-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
   .prism-ui-v2.copilot-active .home-navigation-main { display: contents; }
   .prism-ui-v2.copilot-active .home-navigation .brand { order: 1; min-height: 52px; }
@@ -3022,7 +3027,8 @@ body.prism-ui-v2 {
   .prism-ui-v2.copilot-active .home-navigation .nav-section-primary .nav-item { padding-inline: 9px; }
   .prism-ui-v2.copilot-active .home-navigation .brand > div { display: block; }
   .prism-ui-v2.copilot-active .sidebar { position: fixed; z-index: 65; top: 104px; left: 0; width: min(280px, calc(100vw - 52px)); height: calc(100dvh - 104px); padding: 15px 13px; border: 0; }
-  .prism-ui-v2.copilot-active:not(.home-history-collapsed) .home-history-backdrop { position: fixed; z-index: 64; inset: 104px 0 0; display: block; width: 100%; padding: 0; border: 0; border-radius: 0; background: rgba(15, 20, 25, .25); }
+  .prism-ui-v2.copilot-active .home-history-backdrop { position: fixed; z-index: 64; inset: 104px 0 0; display: block; width: 100%; padding: 0; border: 0; border-radius: 0; background: rgba(15, 20, 25, .25); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 200ms ease, visibility 0s 280ms; }
+  .prism-ui-v2.copilot-active:not(.home-history-collapsed) .home-history-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
   .prism-ui-v2.copilot-active .main { grid-column: 1; padding-inline: 16px; }
   .prism-ui-v2.copilot-active #copilot { min-height: calc(100dvh - 136px); padding: 58px 0 90px; }
   .prism-ui-v2.copilot-active .agent-home-heading { margin-bottom: 21px; }
@@ -3030,4 +3036,10 @@ body.prism-ui-v2 {
   .prism-ui-v2.copilot-active .home-composer-tool,
   .prism-ui-v2.copilot-active .home-model-trigger { padding-inline: 6px; font-size: 13px; }
   .prism-ui-v2.copilot-active #copilot.context-open .agent-profile-rail { top: 114px; max-height: calc(100dvh - 132px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-ui-v2.copilot-active .app-shell,
+  .prism-ui-v2.copilot-active .sidebar,
+  .prism-ui-v2.copilot-active .home-history-backdrop { transition: none; }
 }

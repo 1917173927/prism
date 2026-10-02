@@ -8,12 +8,12 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-chat-home">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-chat-home-interactions">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261002-chat-home" defer></script>
+    <script src="/static/app.js?v=20261002-chat-home-interactions" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -147,7 +147,7 @@
           <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
           <label class="sidebar-chat-search">
             <svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg>
-            <input id="chat-session-search" type="search" placeholder="搜索最近对话" aria-label="搜索最近对话" autocomplete="off">
+            <input id="chat-session-search" type="search" aria-label="搜索最近对话" autocomplete="off">
           </label>
         </div>
 
@@ -413,11 +413,11 @@
               </div>
               <p id="home-upload-status" class="home-upload-status" role="alert" hidden></p>
 
-              <details class="home-quick-prompts"><summary>常用提问</summary><div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
-                <button class="quick-tag-chip" type="button" data-intent="CHECK_PORTFOLIO">我的组合最需要关注什么？</button>
-                <button class="quick-tag-chip" type="button" data-intent="RESEARCH_STOCK" data-target="300750">分析 300750</button>
-                <button class="quick-tag-chip" type="button" data-intent="REBALANCE_PORTFOLIO">如何降低组合集中度？</button>
-              </div></details>
+              <div class="home-quick-prompts"><ul class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
+                <li><button class="quick-tag-chip" type="button">我的组合最需要关注什么？</button></li>
+                <li><button class="quick-tag-chip" type="button">帮我分析 300750</button></li>
+                <li><button class="quick-tag-chip" type="button">如何降低组合集中度？</button></li>
+              </ul></div>
 
               <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
               </div>

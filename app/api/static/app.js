@@ -6991,6 +6991,7 @@
   function renderHomeHistoryState() {
     const collapsed = document.body.classList.contains("copilot-active") && homeHistoryCollapsed;
     document.body.classList.toggle("home-history-collapsed", collapsed);
+    byId("home-history-sidebar").inert = collapsed;
     byId("home-history-show")?.setAttribute("aria-expanded", String(!collapsed));
     byId("home-history-hide")?.setAttribute("aria-expanded", String(!collapsed));
   }
@@ -8195,23 +8196,22 @@
     if (!container) return;
     clear(container);
 
-    const span = document.createElement("span");
-    span.className = "tags-label";
-    span.textContent = "试试这些：";
-    container.append(span);
-
-    tags.forEach(t => {
+    tags.slice(0, 3).forEach(t => {
+      const item = document.createElement("li");
       const btn = document.createElement("button");
       btn.className = "quick-tag-chip";
       btn.type = "button";
       btn.textContent = t.label;
-      btn.dataset.intent = t.intent;
-      if (t.target) btn.dataset.target = t.target;
-      btn.addEventListener("click", () => {
-        handleCopilotIntent(t.intent, t.target);
-      });
-      container.append(btn);
+      btn.addEventListener("click", () => fillChatPrompt(t.label));
+      item.append(btn);
+      container.append(item);
     });
+  }
+
+  function fillChatPrompt(prompt) {
+    const input = byId("copilot-natural-input");
+    input.value = prompt.trim();
+    input.focus();
   }
 
   function handleCopilotIntent(intent, target) {
@@ -10531,19 +10531,24 @@
   }
 
   async function _createPersistedChatSession(title = "新对话") {
+    const ownerId = state.ownerId;
+    const contextRevision = chatContextRevision;
     const response = await fetch("/api/v1/copilot/conversations", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Owner-ID": state.ownerId },
+      headers: { "Content-Type": "application/json", "X-Owner-ID": ownerId },
       body: JSON.stringify({ title }),
     });
     if (!response.ok) throw await apiError(response);
     const session = normalizeStoredChatSession(await response.json());
     if (!session) throw new Error("服务端返回了无效的会话记录");
+    if (ownerId !== state.ownerId) return session;
     chatSessions.unshift(session);
     if (chatSessions.length > CHAT_SESSION_LIMIT) chatSessions.length = CHAT_SESSION_LIMIT;
-    activeChatSessionId = session.id;
-    chatHistory.length = 0;
-    renderActiveChatMessages();
+    if (contextRevision === chatContextRevision) {
+      activeChatSessionId = session.id;
+      chatHistory.length = 0;
+      renderActiveChatMessages();
+    }
     renderChatSessionList();
     persistChatSessions();
     return session;
@@ -10577,12 +10582,14 @@
 
   async function activateChatSession(sessionId) {
     if (activeChatController) return;
+    const contextRevision = ++chatContextRevision;
     const response = await fetch(`/api/v1/copilot/conversations/${encodeURIComponent(sessionId)}`, {
       headers: { "X-Owner-ID": state.ownerId },
     });
     if (!response.ok) throw await apiError(response);
     const session = normalizeStoredChatSession(await response.json());
     if (!session) throw new Error("服务端返回了无效的会话记录");
+    if (contextRevision !== chatContextRevision) return;
     const index = chatSessions.findIndex(item => item.id === sessionId);
     if (index >= 0) chatSessions[index] = session;
     else chatSessions.unshift(session);
@@ -10679,7 +10686,7 @@
     const deletingActive = activeChatSessionId === sessionId;
     chatSessions.splice(index, 1);
     if (!chatSessions.length) {
-      await createPersistedChatSession();
+      clearConversationContext();
     } else if (deletingActive) {
       await activateChatSession(chatSessions[0].id);
     } else {
@@ -10690,9 +10697,11 @@
 
   async function loadCopilotChatHistory() {
     let preferredSessionId = null;
+    let hasDraft = false;
     try {
       const cached = JSON.parse(workspaceStorage.getItem(ownerStorageKey(CHAT_SESSIONS_STORAGE_KEY)) || "null");
       if (typeof cached?.active_session_id === "string") preferredSessionId = cached.active_session_id;
+      hasDraft = cached?.schema_version === "copilot-chat-sessions.v1" && cached.active_session_id === null;
     } catch (error) {}
     try {
       const response = await fetch(`/api/v1/copilot/conversations?limit=${CHAT_SESSION_LIMIT}`, {
@@ -10703,8 +10712,8 @@
       const summaries = Array.isArray(payload.items) ? payload.items : [];
       chatSessions.length = 0;
       summaries.map(normalizeStoredChatSession).filter(Boolean).forEach(session => chatSessions.push(session));
-      if (!chatSessions.length) {
-        await createPersistedChatSession();
+      if (!chatSessions.length || hasDraft) {
+        clearConversationContext();
         return;
       }
       const target = chatSessions.find(session => session.id === preferredSessionId) || chatSessions[0];
@@ -10732,8 +10741,8 @@
         }
       }
     } catch (e) {}
-    if (!chatSessions.length) chatSessions.push(createChatSessionRecord());
-    if (!chatSessions.some(session => session.id === activeChatSessionId)) activeChatSessionId = chatSessions[0].id;
+    if (!chatSessions.length || hasDraft) activeChatSessionId = null;
+    else if (!chatSessions.some(session => session.id === activeChatSessionId)) activeChatSessionId = chatSessions[0].id;
     const active = activeChatSession();
     chatHistory.splice(0, chatHistory.length, ...(active?.messages || []));
     renderActiveChatMessages();
@@ -10742,12 +10751,8 @@
   }
 
   function saveCopilotChatHistory() {
-    let session = activeChatSession();
-    if (!session) {
-      session = createChatSessionRecord();
-      chatSessions.unshift(session);
-      activeChatSessionId = session.id;
-    }
+    const session = activeChatSession();
+    if (!session) throw new Error("发送消息前必须创建会话");
     session.messages = chatHistory.slice(-CHAT_MESSAGE_LIMIT);
     session.answer_count = session.messages.filter(message => message.role === "assistant").length;
     const firstQuestion = session.messages.find(message => message.role === "user")?.content;
@@ -10775,16 +10780,18 @@
     workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
     const input = byId("copilot-natural-input");
     if (input) { input.value = ""; input.focus(); }
+    byId("chat-session-search").value = "";
     const progress = byId("chat-send-progress");
     if (progress) { progress.hidden = false; progress.textContent = "理解问题 → 查询数据 → 核验依据 → 组织回答"; }
     const output = byId("copilot-decision-output");
     if (output) clear(output);
     renderActiveChatMessages();
+    renderChatSessionList();
+    persistChatSessions();
     setAgentFeatureToolsOpen(false);
     closeAgentFeatureConfig();
     clearHomeUploadFile();
     if (homeMobileViewport.matches) setHomeHistoryCollapsed(true);
-    void createPersistedChatSession().catch(error => setError(error.message));
   }
 
   function buildPipelineStepItem(num, label, status) {
@@ -10863,7 +10870,8 @@
     const input = byId("copilot-natural-input");
     const query = (customQuery || input?.value || "").trim();
     if (!query) return;
-    if (!activeChatSessionId) await createPersistedChatSession();
+    if (!activeChatSessionId) await createPersistedChatSession(query.slice(0, 36));
+    if (signal.aborted || turnContextRevision !== chatContextRevision) return;
     setAgentFeatureToolsOpen(false);
     const chatOwner = state.ownerId;
     let chatTruth = null;
@@ -10880,7 +10888,7 @@
       truthRequest.dispose();
     }
 
-    if (signal.aborted) return;
+    if (signal.aborted || turnContextRevision !== chatContextRevision) return;
     if (input) input.value = "";
 
     const chatPanel = byId("copilot-chat-panel");
@@ -13443,15 +13451,7 @@
   }
 
   document.querySelectorAll("#copilot-quick-tags .quick-tag-chip").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const intent = btn.dataset.intent;
-      const target = btn.dataset.target;
-      if (intent) {
-        handleCopilotIntent(intent, target);
-      } else {
-        handleStreamingChat(btn.textContent.trim());
-      }
-    });
+    btn.addEventListener("click", () => fillChatPrompt(btn.textContent));
   });
 
   // Direction 2 Chat and Portfolio Modal Events
