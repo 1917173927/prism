@@ -205,9 +205,10 @@ try {
   await page.click("#home-history-show");
   await waitForSidebar(false);
   await navigate("overview");
-  assert.equal(await page.$eval("body", node => node.classList.contains("sidebar-layout-active")), false);
-  assert.equal(await page.$eval("#home-history-sidebar", node => node.inert), false);
-  assert.equal(await page.$eval(".nav-section-primary", node => node.parentElement.className), "nav-list");
+  assert.equal(await page.$eval("body", node => node.classList.contains("portfolio-active")), true);
+  assert.equal(await page.$eval("#home-history-sidebar", node => node.inert), true);
+  assert.equal(await page.$eval("#home-history-sidebar", node => getComputedStyle(node).display), "none");
+  assert.equal(await page.$eval(".nav-section-primary", node => node.parentElement.id), "home-primary-navigation");
   await navigate("market");
   await waitForSidebar(false);
 

@@ -158,6 +158,8 @@
   const homeMobileViewport = window.matchMedia("(max-width: 760px)");
   let homeHistoryCollapsed = homeMobileViewport.matches;
   let marketSidebarCollapsed = homeMobileViewport.matches;
+  let portfolioAnalysisError = "";
+  let portfolioOcrSequence = 0;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
   async function refreshSessionTruth(signal) {
     const owner = state.ownerId;
@@ -308,6 +310,9 @@
   }
 
   function renderInvalidatedDerivedState() {
+    portfolioAnalysisError = "";
+    portfolioSummarySequence += 1;
+    displayedPortfolioSummary = null;
     portfolioReportSequence += 1;
     displayedPortfolioReport = null;
     renderPortfolioReport(null);
@@ -6995,7 +7000,7 @@
     const collapsed = sharedLayout && (isMarket ? marketSidebarCollapsed : homeHistoryCollapsed);
     document.body.classList.toggle("home-history-collapsed", collapsed);
     const sidebar = byId("home-history-sidebar");
-    sidebar.inert = collapsed;
+    sidebar.inert = collapsed || document.body.classList.contains("portfolio-active");
     sidebar.setAttribute("aria-label", isMarket ? "指数切换" : sharedLayout ? "历史对话" : "导航");
     const showButton = byId("home-history-show");
     showButton.setAttribute("aria-expanded", String(!collapsed));
@@ -7065,8 +7070,10 @@
     const isCopilot = domain === "copilot" || !requestedNode;
     document.body.classList.toggle("copilot-active", isCopilot);
     document.body.classList.toggle("market-active", isMarket);
-    document.body.classList.toggle("sidebar-layout-active", isCopilot || isMarket);
-    syncHomeNavigation(isCopilot || isMarket);
+    document.body.classList.toggle("portfolio-active", isOverview);
+    document.body.classList.toggle("sidebar-layout-active", isCopilot || isMarket || isOverview);
+    syncHomeNavigation(isCopilot || isMarket || isOverview);
+    if (!isOverview) byId("portfolio-analysis-drawer").close();
     if (!isCopilot) {
       copilotSec?.classList.remove("context-open");
       byId("home-context-trigger")?.setAttribute("aria-expanded", "false");
@@ -7080,7 +7087,7 @@
     if (marketSec) marketSec.hidden = !isMarket;
     if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
-    if (pageTabs) pageTabs.hidden = isCopilot || isMarket || isTradingStyle;
+    if (pageTabs) pageTabs.hidden = isCopilot || isOverview || isMarket || isTradingStyle;
 
     setExpertMode(isWorkspacePanel);
 
@@ -7092,7 +7099,7 @@
       });
     }
 
-    if (pageTabs && !isCopilot && !isMarket) {
+    if (pageTabs && !isCopilot && !isOverview && !isMarket) {
       [...pageTabs.querySelectorAll("a[data-domain]")].forEach((link) => {
         const visible = link.dataset.domain === domain;
         link.hidden = !visible;
@@ -8527,7 +8534,8 @@
     return {affected, sectorIncomplete};
   }
 
-  function renderPortfolioAnalysisStatus(errorMessage = "") {
+  function renderPortfolioAnalysisStatus(errorMessage = portfolioAnalysisError) {
+    portfolioAnalysisError = errorMessage;
     const panel = byId("portfolio-analysis-status");
     const title = byId("portfolio-analysis-status-title");
     const message = byId("portfolio-analysis-status-message");
@@ -8541,11 +8549,11 @@
     }
     let detail = "";
     if (errorMessage) {
-      title.textContent = "持仓已保存，组合体检未完成";
-      detail = `${errorMessage} 已确认的市值、现金与资产结构仍可查看；行业分布、行业限额和行业 HHI 暂不可用。`;
+      title.textContent = "分析未完成";
+      detail = errorMessage;
     } else if (!state.profile?.profile) {
-      title.textContent = "持仓已保存，风险画像尚未确认";
-      detail = "请先完成风险问卷。已确认的市值、现金与资产结构仍可查看；画像阈值和组合体检暂不可用。";
+      title.textContent = "风险对照需要投资者画像";
+      detail = "完成风险问卷后，可查看持仓与风险承受范围的对照。";
     } else if (sectorIncomplete) {
       const unclassifiedCodes = state.portfolio?.position_snapshot?.positions
         ?.filter(position => !position.sector || String(position.sector).toUpperCase() === "UNCLASSIFIED")
@@ -8557,20 +8565,23 @@
         price_cny: "最新价格",
         observed_at: "报价时间",
       }[field] || field));
-      title.textContent = "持仓已保存，行业与集中度分析待补齐";
-      detail = `${codes.length ? `缺失标的：${codes.join("、")}；` : ""}${fields.length ? `缺失字段：${fields.join("、")}；` : "缺失字段：行业；"}影响范围：行业分布、行业限额和行业 HHI。补齐行业数据后可重新分析；未分类资产不作为真实行业结论。`;
-    } else if (!state.portfolioHealthRun) {
-      title.textContent = "持仓已保存，扩展分析尚未生成";
-      detail = "已确认的市值、现金与资产结构仍可查看。重新分析后生成行业分布与集中度扩展结果。";
+      title.textContent = "行业分析需要补充数据";
+      detail = `${codes.length ? `${codes.join("、")}：` : ""}缺少${fields.length ? fields.join("、") : "行业"}数据，行业分布与行业 HHI 暂不可用。`;
+    } else if (!state.portfolioHealthRun && !displayedPortfolioReport?.risk?.sectors?.length) {
+      title.textContent = "风险分析尚未生成";
+      detail = "可以更新分析，生成行业分布与风险对照。";
     }
     const unavailable = Boolean(detail);
     panel.hidden = !unavailable;
-    extended.hidden = unavailable;
+    extended.hidden = unavailable || !state.portfolioHealthRun;
     message.textContent = detail;
+    byId("portfolio-profile-entry").hidden = Boolean(state.profile?.profile);
+    byId("portfolio-analysis-retry").hidden = !state.profile?.profile;
   }
 
   let portfolioAnalysisSequence = 0;
   async function runPortfolioAnalysis() {
+    portfolioAnalysisError = "";
     const sequence = ++portfolioAnalysisSequence;
     const owner = state.ownerId;
     const mode = state.dataMode;
@@ -8917,8 +8928,7 @@
     const metricsData = [
       { label: "最大行业占比", value: `${health.top_sector_weight_pct}% (${health.top_sector_name})`, status: maxSector?.verdictCode === "PASS" ? "在设置范围内" : "需要关注", isOk: maxSector?.verdictCode === "PASS" },
       { label: "组合集中度 (HHI)", value: `${health.sector_hhi}`, status: health.hhi_verdict === "PASS" ? `低于参考值 ${health.hhi_limit}` : `超过参考值 ${health.hhi_limit}`, isOk: health.hhi_verdict === "PASS" },
-      { label: "现金与流动性", value: `${health.cash_weight_pct}%`, status: cashSector?.verdictCode === "PASS" ? `达到最低 ${health.cash_minimum_pct}%` : `低于最低 ${health.cash_minimum_pct}%`, isOk: cashSector?.verdictCode === "PASS" },
-      { label: "财务数据", value: "暂未检查", status: "本次分析未包含财务凭证", isOk: false }
+      { label: "现金与流动性", value: `${health.cash_weight_pct}%`, status: cashSector?.verdictCode === "PASS" ? `达到最低 ${health.cash_minimum_pct}%` : `低于最低 ${health.cash_minimum_pct}%`, isOk: cashSector?.verdictCode === "PASS" }
     ];
 
     const mGrid = document.createElement("div");
@@ -11418,20 +11428,42 @@
   }
 
   // 自定义持仓弹窗交互
-  function openPortfolioModal() {
+  function openPortfolioModal(tabId = "tab-btn-ocr") {
     const modal = byId("portfolio-modal");
-    if (modal) {
-      // The entry is global; a hidden workspace must not hide its dialog.
-      document.body.appendChild(modal);
-      modal.style.display = "flex";
-    }
+    document.body.appendChild(modal);
+    selectPortfolioImportTab(typeof tabId === "string" ? tabId : "tab-btn-ocr");
+    byId("portfolio-page-more").open = false;
+    if (!modal.open) modal.showModal();
+    syncPortfolioDialogScroll();
   }
 
   function closePortfolioModal() {
-    const modal = byId("portfolio-modal");
-    if (modal) {
-      modal.style.display = "none";
-    }
+    byId("portfolio-modal").close();
+  }
+
+  function syncPortfolioDialogScroll() {
+    const open = ["portfolio-modal", "portfolio-analysis-drawer", "portfolio-diagnosis-drawer"]
+      .some(id => byId(id).open);
+    document.body.classList.toggle("portfolio-dialog-open", open);
+  }
+
+  function openPortfolioDetails(sectionId = null) {
+    const drawer = byId("portfolio-analysis-drawer");
+    drawer.querySelectorAll("details").forEach(section => { section.open = section.id === sectionId; });
+    byId("portfolio-page-more").open = false;
+    drawer.showModal();
+    drawer.scrollTop = 0;
+    syncPortfolioDialogScroll();
+  }
+
+  function selectPortfolioImportTab(tabId) {
+    document.querySelectorAll(".portfolio-modal-tabs [role=tab]").forEach(tab => {
+      const selected = tab.id === tabId;
+      tab.classList.toggle("active", selected);
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      byId(tab.getAttribute("aria-controls")).hidden = !selected;
+    });
   }
 
   async function validateAndActivatePortfolio(data, positions = data.positions) {
@@ -11467,6 +11499,7 @@
       store.ocrPortfolioDraft = validated;
       store.portfolio = validated.portfolio;
     });
+    portfolioAnalysisError = "";
     const aumEl = byId("copilot-stat-aum");
     if (aumEl) aumEl.textContent = `¥ ${Number(validated.total_value_cny).toLocaleString()}`;
     const pTag = byId("copilot-hero-portfolio-tag");
@@ -11510,6 +11543,9 @@
     const statusBox = byId("parsed-portfolio-status");
     const text = textarea?.value?.trim();
     if (!text) return;
+    const owner = state.ownerId, mode = state.dataMode, revision = state.contextRevision;
+    const button = byId("btn-parse-portfolio");
+    button.disabled = true;
 
     if (statusBox) {
       statusBox.style.display = "block";
@@ -11519,10 +11555,11 @@
     try {
       const resp = await fetch("/api/v1/copilot/parse-portfolio", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Owner-ID": owner },
         body: JSON.stringify({ text }),
       });
       const data = await resp.json();
+      if (owner !== state.ownerId || mode !== state.dataMode || revision !== state.contextRevision) return;
 
       if (resp.ok && data.status === "SUCCESS" && data.positions && data.positions.length > 0) {
         const validated = await validateAndActivatePortfolio(data);
@@ -11542,16 +11579,14 @@
           statusBox.append(strong, list);
         }
 
-        setTimeout(() => {
-          closePortfolioModal();
-          runCopilotHealthCheck();
-        }, 600);
+        closePortfolioModal();
+        window.location.hash = "overview";
       } else {
         if (statusBox) statusBox.textContent = data.message || "未能识别出有效资产，请检查输入格式。";
       }
     } catch (err) {
-      if (statusBox) statusBox.textContent = `解析出错: ${err.message || "请求异常"}`;
-    }
+      if (owner === state.ownerId && mode === state.dataMode && statusBox) statusBox.textContent = `解析出错：${err.message || "请求异常"}`;
+    } finally { button.disabled = false; }
   }
 
   function handlePortfolioOcrFile(fileOrBlob) {
@@ -11559,6 +11594,10 @@
   }
 
   async function submitPortfolioOcr(fileOrBlob) {
+    const sequence = ++portfolioOcrSequence;
+    const owner = state.ownerId, mode = state.dataMode, revision = state.contextRevision;
+    const isCurrent = () => sequence === portfolioOcrSequence && owner === state.ownerId
+      && mode === state.dataMode && revision === state.contextRevision;
     const container = byId("ocr-result-container");
     if (container) {
       clear(container);
@@ -11584,14 +11623,17 @@
       form.append("file", fileOrBlob, filename);
       const resp = await fetch("/api/v1/advisor/portfolio/ocr", {
         method: "POST",
-        headers: { "X-Owner-ID": state.ownerId },
+        headers: { "X-Owner-ID": owner },
         body: form,
       });
+      if (!isCurrent()) return;
       if (!resp.ok) throw await apiError(resp);
       const data = await resp.json();
+      if (!isCurrent()) return;
       state.ocrPortfolioDraft = data;
       renderPortfolioOcrResult(data);
     } catch (err) {
+      if (!isCurrent()) return;
       if (container) {
         clear(container);
         const errCard = document.createElement("div");
@@ -11610,6 +11652,7 @@
   function renderPortfolioOcrResult(data) {
     const container = byId("ocr-result-container");
     if (!container) return;
+    const owner = state.ownerId, mode = state.dataMode, revision = state.contextRevision;
     clear(container);
     container.style.display = "block";
 
@@ -11808,6 +11851,9 @@
       confirmStatus.hidden = true;
       confirmStatus.textContent = "";
       try {
+        if (owner !== state.ownerId || mode !== state.dataMode || revision !== state.contextRevision) {
+          throw new Error("分析资料已变化，请重新识别截图");
+        }
         const editedPositions = inputControls.map(({ pos, inputs }) => {
           const quantity = Number(inputs.quantity.value);
           if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("持仓数量必须为正整数");
@@ -11853,6 +11899,7 @@
         const validated = await validateAndActivatePortfolio(data, editedPositions);
         if (!validated) return;
         closePortfolioModal();
+        window.location.hash = "overview";
       } catch (error) {
         confirmStatus.textContent = error.message || "持仓校验失败";
         confirmStatus.hidden = false;
@@ -11874,28 +11921,17 @@
   }
 
   function initPortfolioModalTabs() {
-    const tabOcr = byId("tab-btn-ocr");
-    const tabText = byId("tab-btn-text");
-    const panelOcr = byId("panel-portfolio-ocr");
-    const panelText = byId("panel-portfolio-text");
-    if (!tabOcr || !tabText || !panelOcr || !panelText) return;
-
-    tabOcr.addEventListener("click", () => {
-      tabOcr.classList.add("active");
-      tabOcr.setAttribute("aria-selected", "true");
-      tabText.classList.remove("active");
-      tabText.setAttribute("aria-selected", "false");
-      panelOcr.style.display = "block";
-      panelText.style.display = "none";
-    });
-
-    tabText.addEventListener("click", () => {
-      tabText.classList.add("active");
-      tabText.setAttribute("aria-selected", "true");
-      tabOcr.classList.remove("active");
-      tabOcr.setAttribute("aria-selected", "false");
-      panelText.style.display = "block";
-      panelOcr.style.display = "none";
+    const tabs = [...document.querySelectorAll(".portfolio-modal-tabs [role=tab]")];
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectPortfolioImportTab(tab.id));
+      tab.addEventListener("keydown", event => {
+        const next = {ArrowRight: (index + 1) % tabs.length, ArrowLeft: (index + tabs.length - 1) % tabs.length,
+          Home: 0, End: tabs.length - 1}[event.key];
+        if (next === undefined) return;
+        event.preventDefault();
+        selectPortfolioImportTab(tabs[next].id);
+        tabs[next].focus();
+      });
     });
 
     const triggerBtn = byId("btn-trigger-file-select");
@@ -11940,7 +11976,7 @@
 
     window.addEventListener("paste", (e) => {
       const modal = byId("portfolio-modal");
-      if (!modal || modal.style.display === "none") return;
+      if (!modal.open || byId("panel-portfolio-ocr").hidden) return;
       const items = e.clipboardData && e.clipboardData.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
@@ -12258,6 +12294,12 @@
       sector.append(title);
       svg.append(sector);
     });
+    const hole = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    hole.setAttribute("cx", center); hole.setAttribute("cy", center); hole.setAttribute("r", "66");
+    hole.setAttribute("class", "portfolio-asset-pie-hole"); svg.append(hole);
+    const centerLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    centerLabel.setAttribute("x", center); centerLabel.setAttribute("y", "115"); centerLabel.setAttribute("text-anchor", "middle");
+    centerLabel.setAttribute("class", "portfolio-asset-pie-label"); centerLabel.textContent = "资产分布"; svg.append(centerLabel);
     const legend = document.createElement("ul");
     legend.className = "portfolio-asset-legend";
     groups.forEach(group => {
@@ -12268,7 +12310,7 @@
       const label = document.createElement("strong");
       label.textContent = group.label;
       const facts = document.createElement("span");
-      facts.textContent = `${reportAmount(group.market_value_cny)} · ${reportPercent(group.weight_pct)} · ${group.position_count} 项`;
+      facts.textContent = reportPercent(group.weight_pct);
       item.append(dot, label, facts);
       legend.append(item);
     });
@@ -12364,30 +12406,54 @@
     });
     table.append(head, body);
     tableWrap.append(table);
-    const note = document.createElement("p");
+    const note = document.createElement("details");
     note.className = "portfolio-report-risk-line";
-    note.textContent = "最大回撤容忍度仅作为投资者画像边界；本报告未测算组合最大回撤，不将其展示为组合实测值。";
+    const noteSummary = document.createElement("summary"); noteSummary.textContent = "风险计算口径";
+    const noteText = document.createElement("p"); noteText.textContent = "单一标的占比以证券持仓市值为分母，上限对照以组合总资产为分母。行业分析包含基金穿透。最大回撤容忍度来自投资者画像；本报告未计算组合最大回撤。";
+    note.append(noteSummary, noteText);
     container.append(tableWrap, note);
   }
 
   function renderPortfolioReport(report) {
     const card = byId("portfolio-report-card");
     if (!card) return;
-    if (!report) { card.hidden = true; return; }
+    if (!report) {
+      card.hidden = !displayedPortfolioSummary?.position_count;
+      byId("portfolio-report-headline").textContent = "正在读取分析报告…";
+      byId("portfolio-attention-entry").hidden = true;
+      byId("portfolio-source-line").hidden = true;
+      ["portfolio-report-asset-structure", "portfolio-report-risk-summary", "portfolio-report-concentration-summary",
+        "portfolio-report-pnl-summary", "portfolio-report-protection-summary", "portfolio-report-observations",
+        "portfolio-report-disclosure", "portfolio-report-meta", "portfolio-pnl-note"].forEach(id => clear(byId(id)));
+      byId("portfolio-report-status").textContent = "待生成";
+      return;
+    }
     card.hidden = false;
     const status = byId("portfolio-report-status");
-    const reportStatus = report.risk?.status || "UNAVAILABLE";
+    const equityIssues = ["OVERBOUND", "UNDERBOUND"].includes(report.profile?.equity_verdict)
+      ? (report.configuration_reference || []) : [];
+    const issues = [...new Set([...(report.concentration?.issues || []), ...(report.risk?.issues || []), ...equityIssues])];
+    const reportStatus = report.risk?.status === "BLOCKED" ? "BLOCKED"
+      : report.concentration?.single_asset_verdict === "OVERBOUND" || ["OVERBOUND", "UNDERBOUND"].includes(report.profile?.equity_verdict)
+      ? "REVIEW_REQUIRED" : report.risk?.status || "UNAVAILABLE";
     if (status) {
       status.textContent = reportStatusLabel(reportStatus);
       status.className = `status-chip ${reportStatusClass(reportStatus)}`;
     }
     const meta = byId("portfolio-report-meta");
-    if (meta) meta.textContent = `${report.data_mode} · 计算时点 ${new Date(report.generated_at).toLocaleString("zh-CN")} · 报告编号 ${report.report_id}`;
+    if (meta) meta.textContent = `${report.data_mode} · 数据时点 ${new Date(report.source_as_of).toLocaleString("zh-CN")} · 报告编号 ${report.report_id}`;
+    const source = byId("portfolio-source-line");
+    source.hidden = false;
+    source.textContent = `${report.data_mode === "MOCK" ? "演示数据 · " : ""}数据截至 ${new Date(report.source_as_of).toLocaleString("zh-CN")}`;
     const headline = byId("portfolio-report-headline");
     if (headline) {
-      headline.className = `portfolio-report-headline ${reportStatusClass(reportStatus)}`;
-      headline.textContent = report.headline;
+      headline.className = "";
+      headline.textContent = reportStatus === "REVIEW_REQUIRED" && report.risk?.status === "PASS"
+        ? issues[0] || report.configuration_reference?.[0] || report.headline : report.headline;
     }
+    const attention = byId("portfolio-attention-entry");
+    attention.hidden = !issues.length;
+    attention.textContent = `${issues.length} 项需要关注，查看风险详情`;
     const observations = byId("portfolio-report-observations");
     if (observations) {
       clear(observations);
@@ -12415,18 +12481,17 @@
       appendReportMetric(metrics, "最高持仓", report.concentration?.top_asset_name || "未计算");
       appendReportMetric(metrics, "最高持仓占比", reportPercent(report.concentration?.top_asset_weight_pct));
       appendReportMetric(metrics, "资产 HHI", report.concentration?.asset_hhi == null ? "未计算" : String(report.concentration.asset_hhi));
-      appendReportMetric(metrics, "浮亏标的数", `${report.pnl_summary?.loss_position_count ?? 0} 项`);
-      appendReportMetric(metrics, "浮亏市值占比", reportPercent(report.pnl_summary?.loss_weight_pct));
       concentration.append(metrics);
-      const note = document.createElement("p"); note.className = "portfolio-report-risk-line";
-      note.textContent = report.pnl_summary?.note || "浮亏统计暂不可用。";
-      concentration.append(note);
       if (report.concentration?.issues?.length) {
         const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
         report.concentration.issues.forEach(item => { const li = document.createElement("li"); li.textContent = item; issues.append(li); });
         concentration.append(issues);
       }
     }
+    const pnl = byId("portfolio-report-pnl-summary"); clear(pnl);
+    appendReportMetric(pnl, "浮亏标的数", report.pnl_summary?.loss_position_count == null ? "待计算" : `${report.pnl_summary.loss_position_count} 项`);
+    appendReportMetric(pnl, "浮亏市值占比", reportPercent(report.pnl_summary?.loss_weight_pct));
+    byId("portfolio-pnl-note").textContent = report.pnl_summary?.note || "收益数据暂不可用。";
     const protection = byId("portfolio-report-protection-summary");
     if (protection) {
       clear(protection);
@@ -12445,6 +12510,7 @@
     }
     const disclosure = byId("portfolio-report-disclosure");
     if (disclosure) disclosure.textContent = (report.disclosures || []).join(" ");
+    renderPortfolioAnalysisStatus();
   }
 
   async function refreshPortfolioReport(expectedOwner = state.ownerId, expectedMode = state.dataMode) {
@@ -12525,6 +12591,7 @@
     if (!position || !drawer) return;
     renderPortfolioDiagnosis(position);
     drawer.showModal();
+    syncPortfolioDialogScroll();
   }
 
   function escapeReportHtml(value) {
@@ -12576,6 +12643,9 @@
     const summary = await response.json();
     if (sequence !== portfolioSummarySequence || owner !== state.ownerId || mode !== state.dataMode || mode !== summary.data_mode) return;
     displayedPortfolioSummary = summary;
+    byId("portfolio-overview-loading").hidden = true;
+    byId("portfolio-page-more").hidden = !summary.position_count;
+    byId("portfolio-report-card").hidden = !summary.position_count;
     const amount = value => value == null ? "待补充数据" : `¥ ${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     byId("overview-portfolio-aum").textContent = amount(summary.holdings_value_cny);
     byId("overview-portfolio-cash").textContent = `现金 ${amount(summary.cash_cny)}`;
@@ -12584,12 +12654,12 @@
     byId("overview-pnl-pct").textContent = summary.daily_pnl_cny == null ? "需取得可核验昨收价" : "基于昨收与当前持仓计算";
     byId("overview-benchmark-val").textContent = amount(summary.pnl_cny);
     byId("overview-benchmark-val").className = summary.pnl_cny == null ? "mono" : `mono ${Number(summary.pnl_cny) >= 0 ? "market-up" : "market-down"}`;
-    byId("overview-benchmark-sub").textContent = summary.pnl_pct == null ? "补全成本后计算累计收益率" : `累计收益率 ${summary.pnl_pct}%`;
+    byId("overview-benchmark-sub").textContent = summary.pnl_pct == null ? "补充成本后计算" : `${summary.pnl_pct}%`;
     byId("overview-position-count").textContent = `${summary.position_count}`;
     byId("overview-position-sub").textContent = summary.position_count ? "已确认证券" : "等待持仓";
     byId("portfolio-empty").hidden = summary.position_count > 0;
     byId("portfolio-data-label").textContent = !summary.position_count ? "未导入" : mode === "MOCK" ? "演示数据" : "已确认持仓";
-    byId("portfolio-summary-note").textContent = `${summary.position_count} 项持仓 · 当前记录价格；仅供参考，不构成投资建议。`;
+    byId("portfolio-summary-note").textContent = `${summary.position_count} 项持仓 · 当前记录价格`;
     const body = byId("portfolio-position-rows"); body.replaceChildren();
     summary.positions.forEach(row => {
       const tr = document.createElement("tr");
@@ -12620,7 +12690,10 @@
     try {
       await refreshPortfolioReport(owner, mode);
     } catch (error) {
-      if (owner === state.ownerId && mode === state.dataMode) renderPortfolioAnalysisStatus(`正式报告生成失败：${error.message}`);
+      if (sequence === portfolioSummarySequence && owner === state.ownerId && mode === state.dataMode) {
+        byId("portfolio-report-headline").textContent = "持仓已读取，报告暂不可用";
+        renderPortfolioAnalysisStatus(`报告读取失败：${error.message}`);
+      }
     }
   }
 
@@ -12635,6 +12708,7 @@
     const data = await response.json();
     if (owner !== state.ownerId || mode !== state.dataMode) return;
     microStore.transact(store => { invalidateDerivedState(store); store.ocrPortfolioDraft = data; store.portfolio = data.portfolio; });
+    portfolioAnalysisError = "";
     renderPortfolioReadiness(); renderOverviewWorkspace(state.selectedPersona);
     if (state.profile?.profile && data.portfolio) {
       await runPortfolioAnalysis();
@@ -13342,8 +13416,8 @@
   byId("questionnaire-welcome")?.addEventListener("cancel", dismissWelcome);
   byId("portfolio-import-entry")?.addEventListener("click", openPortfolioModal);
   document.querySelectorAll("[data-open-portfolio]").forEach(button => button.addEventListener("click", openPortfolioModal));
-  byId("portfolio-add-entry")?.addEventListener("click", () => byId("manual-position-dialog").showModal());
-  byId("manual-position-cancel")?.addEventListener("click", () => byId("manual-position-dialog").close());
+  byId("portfolio-add-entry")?.addEventListener("click", () => openPortfolioModal("tab-btn-manual"));
+  byId("manual-position-cancel")?.addEventListener("click", closePortfolioModal);
   byId("manual-position-form")?.addEventListener("submit", async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -13375,7 +13449,7 @@
       const existing = saved?.positions || [];
       if (existing.some(p => p.asset_id === data.positions[0].asset_id)) throw new Error("该证券已在持仓中，请删除旧记录后重新录入完整数量。");
       await replacePortfolioRows([...existing, ...data.positions], saved?.cash_cny || 0);
-      form.reset(); errorBox.textContent = ""; byId("manual-position-dialog").close();
+      form.reset(); errorBox.textContent = ""; closePortfolioModal(); window.location.hash = "overview";
     } catch (error) { errorBox.textContent = error.message; }
     finally { button.disabled = false; }
   });
@@ -13397,6 +13471,32 @@
     finally { button.disabled = false; }
   });
   byId("close-portfolio-diagnosis")?.addEventListener("click", () => byId("portfolio-diagnosis-drawer")?.close());
+  byId("portfolio-details-entry").addEventListener("click", () => openPortfolioDetails());
+  byId("portfolio-attention-entry").addEventListener("click", () => openPortfolioDetails("portfolio-risk-details"));
+  byId("portfolio-manage-entry").addEventListener("click", () => openPortfolioDetails("portfolio-holdings-details"));
+  byId("portfolio-report-info-entry").addEventListener("click", () => openPortfolioDetails("portfolio-report-info"));
+  byId("portfolio-details-close").addEventListener("click", () => byId("portfolio-analysis-drawer").close());
+  ["portfolio-modal", "portfolio-analysis-drawer", "portfolio-diagnosis-drawer"].forEach(id => {
+    const dialog = byId(id);
+    dialog.addEventListener("close", syncPortfolioDialogScroll);
+    dialog.addEventListener("click", event => {
+      const bounds = dialog.getBoundingClientRect();
+      if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right
+          || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+    });
+  });
+  byId("portfolio-analysis-drawer").querySelectorAll(".portfolio-disclosure").forEach(section => {
+    section.addEventListener("toggle", () => {
+      if (!section.open) return;
+      byId("portfolio-analysis-drawer").querySelectorAll(".portfolio-disclosure").forEach(other => {
+        if (other !== section) other.open = false;
+      });
+    });
+  });
+  document.addEventListener("click", event => {
+    const menu = byId("portfolio-page-more");
+    if (!menu.contains(event.target) || event.target.closest(".portfolio-more-panel button")) menu.open = false;
+  });
 
   // Event bindings for P2 panels
   const refHistBtn = byId("refresh-history");

@@ -221,7 +221,7 @@ def test_prism_ui_v2_default_copy_is_user_centered() -> None:
         "投资研究会话",
         "投资偏好",
         "分析资料",
-        "组合概览",
+        "持仓分析",
         "行业分布与设置范围",
     ):
         assert copy in markup
@@ -662,21 +662,21 @@ def test_portfolio_report_navigation_status_and_boundaries_are_restructured() ->
 
     heading = markup.index('class="overview-header-bar page-heading overview-heading"')
     tabs = markup.index('id="workspace-page-tabs"')
-    metrics = markup.index('class="metric-strip"', heading)
-    assert heading < tabs < metrics
+    card = markup.index('id="portfolio-report-card"', heading)
+    drawer = markup.index('id="portfolio-analysis-drawer"', card)
+    assert heading < tabs < card < drawer
     assert 'insertAdjacentElement("afterend", pageTabs)' in script
     assert 'id="portfolio-analysis-status"' in markup
     assert 'id="portfolio-analysis-retry"' in markup
     assert 'id="portfolio-extended-analysis"' in markup
-    assert 'class="portfolio-report-subcard portfolio-report-asset-card"' in markup
-    assert 'class="portfolio-report-subcard portfolio-report-risk-card"' in markup
-    assert '.portfolio-report-asset-card,' in styles
-    assert '.portfolio-report-risk-card { grid-column: 1 / -1; }' in styles
+    assert markup.index('id="portfolio-report-asset-structure"') < drawer
+    assert markup.index('id="portfolio-report-risk-summary"') > drawer
+    assert '.prism-ui-v2 .portfolio-disclosure > summary' in styles
     risk_renderer = script.split('function renderPortfolioRiskBoundaries', 1)[1].split('function renderPortfolioReport', 1)[0]
     for label in ("单一标的集中度", "权益类占比", "行业及未分类资产", "现金比例", "计算口径"):
         assert label in risk_renderer
     assert '"REVIEW_REQUIRED"' in risk_renderer
-    assert "最大回撤容忍度仅作为投资者画像边界" in risk_renderer
+    assert "最大回撤容忍度来自投资者画像" in risk_renderer
     assert 'renderPortfolioAnalysisStatus(error.message' in script
     assert 'setError(`持仓已保存' not in script
 

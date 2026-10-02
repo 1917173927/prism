@@ -406,8 +406,9 @@ try {
   await page.click('a[href="#overview"]');
   await page.waitForSelector("body:not(.copilot-active) #overview:not([hidden])");
   assert.equal(await page.$eval(".sidebar-conversation-actions", node => getComputedStyle(node).display), "none");
-  assert.equal(await page.$eval(".nav-section-primary", node => node.parentElement.className), "nav-list");
-  assert.equal(await page.$eval("#persona-switcher-bar", node => node.parentElement.className), "topbar");
+  assert.equal(await page.$eval(".nav-section-primary", node => node.parentElement.id), "home-primary-navigation");
+  assert.equal(await page.$eval("#persona-switcher-bar", node => node.parentElement.id), "home-navigation-actions");
+  assert.equal(await page.$eval("#home-history-sidebar", node => getComputedStyle(node).display), "none");
   await page.click('a[href="#copilot"]');
   await page.waitForSelector("body.copilot-active #copilot:not([hidden])");
   assert.equal(await page.$eval("#agent-feature-tools", node => getComputedStyle(node).display), "none");

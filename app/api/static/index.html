@@ -8,12 +8,12 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-market-sidebar">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-portfolio-disclosure">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261002-market-sidebar" defer></script>
+    <script src="/static/app.js?v=20261002-portfolio-disclosure" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -533,34 +533,36 @@
             </form>
           </dialog>
 
-          <!-- 自定义真实持仓录入弹窗 (支持截图 OCR 与文本 NER 双模) -->
-          <div id="portfolio-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="portfolio-modal-title">
+          <dialog id="portfolio-modal" class="portfolio-import-dialog" aria-labelledby="portfolio-modal-title">
             <div class="copilot-modal-content portfolio-entry-modal">
               <div class="copilot-modal-header">
-                <h3 id="portfolio-modal-title"><svg class="prism-icon"><use href="#icon-file-text"/></svg> 录入与识别真实投资持仓</h3>
+                <h3 id="portfolio-modal-title">导入持仓</h3>
                 <button id="close-portfolio-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
               </div>
               <div class="copilot-modal-body">
                 <!-- 模式切换 Tab -->
-                <div class="portfolio-modal-tabs" role="tablist">
-                  <button id="tab-btn-ocr" class="portfolio-tab-btn active" type="button" role="tab" aria-selected="true">
-                    <svg class="prism-icon"><use href="#icon-search"/></svg> 持仓截图识别 (RapidOCR)
+                <div class="portfolio-modal-tabs" role="tablist" aria-label="导入方式">
+                  <button id="tab-btn-ocr" class="portfolio-tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="panel-portfolio-ocr" tabindex="0">
+                    截图
                   </button>
-                  <button id="tab-btn-text" class="portfolio-tab-btn" type="button" role="tab" aria-selected="false">
-                    <svg class="prism-icon"><use href="#icon-file-text"/></svg> 自然语言 / 交割单文本
+                  <button id="tab-btn-text" class="portfolio-tab-btn" type="button" role="tab" aria-selected="false" aria-controls="panel-portfolio-text" tabindex="-1">
+                    文字
+                  </button>
+                  <button id="tab-btn-manual" class="portfolio-tab-btn" type="button" role="tab" aria-selected="false" aria-controls="panel-portfolio-manual" tabindex="-1">
+                    手动添加
                   </button>
                 </div>
 
                 <!-- 模式 1: 截图 OCR 识别 -->
-                <div id="panel-portfolio-ocr" class="portfolio-tab-panel">
+                <div id="panel-portfolio-ocr" class="portfolio-tab-panel" role="tabpanel" aria-labelledby="tab-btn-ocr">
                   <div id="ocr-dropzone" class="ocr-dropzone">
                     <input type="file" id="portfolio-ocr-file-input" accept="image/*" style="display:none;">
                     <div class="ocr-dropzone-icon">
                       <svg class="prism-icon prism-icon-xl"><use href="#icon-search"/></svg>
                     </div>
                     <div class="ocr-dropzone-text">
-                      <strong>点击选择图片、拖拽文件，或直接在窗口按 Ctrl+V / ⌘+V 粘贴持仓截图</strong>
-                      <span>基于离线 RapidOCR 轻量引擎，本地端到端提取，数据不离机</span>
+                      <strong>上传持仓截图</strong>
+                      <span>支持拖拽或粘贴图片，识别后确认持仓信息</span>
                     </div>
                     <div class="ocr-dropzone-actions">
                       <button id="btn-trigger-file-select" class="copilot-action-btn secondary small" type="button">选择持仓图片</button>
@@ -573,8 +575,8 @@
                 </div>
 
                 <!-- 模式 2: 自然语言 / 文本 NER 录入 -->
-                <div id="panel-portfolio-text" class="portfolio-tab-panel" style="display:none;">
-                  <p class="modal-hint">输入证券名称或代码、数量、买入均价；系统识别后校验金额。基金请同时填写现价：</p>
+                <div id="panel-portfolio-text" class="portfolio-tab-panel" role="tabpanel" aria-labelledby="tab-btn-text" hidden>
+                  <label class="modal-hint" for="portfolio-natural-textarea">填写证券名称或代码、数量、成本价；基金请同时填写现价。</label>
                   <textarea id="portfolio-natural-textarea" class="portfolio-textarea" rows="4" placeholder="例如：我持有1000股宁德时代，买入均价240元；还有2万份科创50ETF (588000)，现价1元，以及5万元现金"></textarea>
                   <div class="modal-actions">
                     <button id="btn-parse-portfolio" class="copilot-action-btn primary" type="button">
@@ -583,9 +585,20 @@
                   </div>
                   <div id="parsed-portfolio-status" class="parsed-portfolio-status" style="display:none;"></div>
                 </div>
+                <div id="panel-portfolio-manual" class="portfolio-tab-panel" role="tabpanel" aria-labelledby="tab-btn-manual" hidden>
+                  <form id="manual-position-form" class="portfolio-manual-form">
+                    <label>证券代码<input name="code" required pattern="[0-9]{6}" placeholder="例如 600519"></label>
+                    <label>持仓数量<input name="quantity" type="number" required min="1" step="1"></label>
+                    <label>成本价<input name="cost" type="number" required min="0.0001" step="any"></label>
+                    <label>现价（可选）<input name="price" type="number" min="0.0001" step="any"></label>
+                    <p class="modal-hint">留空现价时查询最新行情。</p>
+                    <p id="manual-position-error" role="alert"></p>
+                    <div class="modal-actions"><button id="manual-position-cancel" type="button" class="copilot-action-btn secondary">取消</button><button type="submit" class="copilot-action-btn primary">保存持仓</button></div>
+                  </form>
+                </div>
               </div>
             </div>
-          </div>
+          </dialog>
 
           <!-- 大模型 API Key 与服务商配置弹窗 -->
           <div id="llm-config-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="llm-config-modal-title">
@@ -724,38 +737,19 @@
           </div>
         </section>
 
-        <!-- 组合全景与多维投资分析独立工作区 (SPA 隔离工作区) -->
-        <section class="workspace-page-section" id="overview" hidden aria-labelledby="overview-title">
-          <nav class="doc-breadcrumbs" aria-label="路径导航">
-            <a class="crumb-item" href="#copilot">
-              <svg class="prism-icon"><use href="#icon-compass"/></svg>
-              个人投资工作台
-            </a>
-            <span class="crumb-sep">/</span>
-            <span class="crumb-item">常用任务</span>
-            <span class="crumb-sep">/</span>
-            <span class="crumb-item active">组合概览</span>
-          </nav>
-
+        <section class="workspace-page-section portfolio-page" id="overview" hidden aria-labelledby="overview-title">
           <div class="overview-header-bar page-heading overview-heading">
-            <div>
-              <span class="eyebrow">组合管理</span>
-              <h2 id="overview-title">持仓分析</h2>
-              <p class="overview-subtitle">查看持仓集中度、行业分布与收益表现。</p>
-            </div>
-            <div class="overview-actions heading-actions">
-              <button id="portfolio-import-entry" class="copilot-action-btn secondary" type="button">截图 / 文字导入</button>
-              <button id="portfolio-add-entry" class="copilot-action-btn secondary" type="button">添加持仓</button>
-              <button id="portfolio-export" class="copilot-action-btn secondary" type="button">导出报告</button>
-              <a href="#copilot" class="copilot-action-btn secondary button" id="btn-overview-back-copilot">
-                <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                <span>返回 Agent</span>
-              </a>
-              <button type="button" class="copilot-action-btn primary button" id="btn-run-full-overview-check">
-                <svg class="prism-icon"><use href="#icon-shield-check"/></svg>
-                <span>更新分析</span>
-              </button>
-            </div>
+            <h2 id="overview-title">持仓分析</h2>
+            <details id="portfolio-page-more" class="portfolio-page-more" hidden>
+              <summary>更多 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+              <div class="portfolio-more-panel">
+                <button id="portfolio-import-entry" type="button">导入持仓</button>
+                <button id="btn-run-full-overview-check" type="button">更新分析</button>
+                <button id="portfolio-manage-entry" type="button">查看持仓明细</button>
+                <button id="portfolio-export" type="button">导出报告</button>
+                <button id="portfolio-report-info-entry" type="button">报告信息</button>
+              </div>
+            </details>
           </div>
 
           <nav id="workspace-page-tabs" class="workspace-page-tabs" aria-label="当前页面功能" hidden>
@@ -777,81 +771,46 @@
             <a href="#dev-assist" data-domain="system" class="dev-only">研发辅助</a>
           </nav>
 
-          <section class="metric-strip" aria-label="组合摘要">
-            <article>
-              <span>持仓市值</span>
-              <strong class="mono" id="overview-portfolio-aum">—</strong>
-              <small id="overview-portfolio-cash">现金另计 —</small>
-            </article>
-            <article>
-              <span id="overview-pnl-label">当日盈亏</span>
-              <strong class="mono" id="overview-pnl-val">—</strong>
-              <small id="overview-pnl-pct">等待昨收价</small>
-            </article>
-            <article>
-              <span id="overview-benchmark-label">累计盈亏</span>
-              <strong class="mono" id="overview-benchmark-val">—</strong>
-              <small id="overview-benchmark-sub">等待成本价</small>
-            </article>
-            <article>
-              <span>持仓数量</span>
-              <strong class="mono" id="overview-position-count">—</strong>
-              <small id="overview-position-sub">等待持仓</small>
-            </article>
-          </section>
-
           <section id="portfolio-analysis-status" class="portfolio-analysis-warning doc-callout doc-callout-warning" role="status" aria-live="polite" hidden>
             <div class="callout-icon"><svg class="prism-icon"><use href="#icon-alert"/></svg></div>
             <div class="callout-content">
-              <div id="portfolio-analysis-status-title" class="callout-title">扩展分析暂不可用</div>
+              <div id="portfolio-analysis-status-title" class="callout-title">分析状态</div>
               <p id="portfolio-analysis-status-message"></p>
               <button id="portfolio-analysis-retry" type="button" class="copilot-action-btn secondary">重新分析</button>
+              <a id="portfolio-profile-entry" href="#profile" class="copilot-action-btn secondary" hidden>完成风险问卷</a>
             </div>
           </section>
 
-          <section id="portfolio-empty" class="surface portfolio-empty" hidden>
-            <h3>添加你的第一笔持仓</h3><p>支持截图识别、文字录入和手动添加。</p>
-            <button type="button" data-open-portfolio>导入持仓</button>
+          <section id="portfolio-empty" class="portfolio-empty" hidden>
+            <div class="portfolio-empty-symbol" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></div>
+            <h3>导入持仓，查看组合分析</h3><p>支持截图、文字录入和手动添加</p>
+            <button type="button" class="copilot-action-btn primary" data-open-portfolio>导入持仓 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button>
           </section>
           <section id="portfolio-report-card" class="surface portfolio-report-card" hidden aria-labelledby="portfolio-report-title">
-            <header class="portfolio-report-header">
-              <div>
-                <span class="eyebrow">正式快照报告</span>
-                <h3 id="portfolio-report-title">持仓分析报告</h3>
-                <p id="portfolio-report-meta" class="portfolio-report-meta"></p>
-              </div>
-              <div class="portfolio-report-actions">
-                <span id="portfolio-report-status" class="status-chip">待生成</span>
-                <button id="portfolio-report-refresh" type="button" class="copilot-action-btn secondary">重新生成</button>
-              </div>
-            </header>
-            <div id="portfolio-report-headline" class="portfolio-report-headline"></div>
-            <div id="portfolio-report-observations" class="portfolio-report-observations"></div>
-            <div class="portfolio-report-grid">
-              <section class="portfolio-report-subcard portfolio-report-asset-card" aria-labelledby="portfolio-report-structure-title">
-                <h4 id="portfolio-report-structure-title">资产结构</h4>
-                <div id="portfolio-report-asset-structure"></div>
-              </section>
-              <section class="portfolio-report-subcard portfolio-report-risk-card" aria-labelledby="portfolio-report-risk-title">
-                <h4 id="portfolio-report-risk-title">风险对照</h4>
-                <div id="portfolio-report-risk-summary"></div>
-              </section>
-              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-concentration-title">
-                <h4 id="portfolio-report-concentration-title">集中度与浮亏</h4>
-                <div id="portfolio-report-concentration-summary"></div>
-              </section>
-              <section class="portfolio-report-subcard" aria-labelledby="portfolio-report-protection-title">
-                <h4 id="portfolio-report-protection-title">底仓保护与配置参考</h4>
-                <div id="portfolio-report-protection-summary"></div>
-              </section>
+            <div class="portfolio-conclusion">
+              <span id="portfolio-report-title" class="portfolio-section-label">分析结果</span>
+              <h3 id="portfolio-report-headline" aria-live="polite">正在读取分析报告…</h3>
+              <button id="portfolio-attention-entry" type="button" class="portfolio-attention-entry" hidden></button>
             </div>
-            <p id="portfolio-report-disclosure" class="portfolio-report-disclosure"></p>
+            <div id="portfolio-report-asset-structure" class="portfolio-chart-region"></div>
+            <dl class="portfolio-key-figures">
+              <div><dt>持仓市值</dt><dd id="overview-portfolio-aum">—</dd></div>
+              <div><dt id="overview-benchmark-label">累计盈亏</dt><dd id="overview-benchmark-val">—</dd></div>
+            </dl>
+            <div class="portfolio-card-action"><button id="portfolio-details-entry" type="button" class="copilot-action-btn primary">查看分析详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button></div>
           </section>
-          <section class="surface portfolio-detail-card">
-            <h3>持仓明细 <span id="portfolio-data-label" class="status-chip"></span></h3>
-            <p id="portfolio-summary-note" role="status"></p>
-            <div class="table-wrap"><table><thead><tr><th>标的 / 代码</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>累计盈亏</th><th>持仓占比</th><th>操作</th></tr></thead><tbody id="portfolio-position-rows"></tbody></table></div>
-          </section>
+          <p id="portfolio-source-line" class="portfolio-source-line" hidden></p>
+          <p id="portfolio-overview-loading" class="portfolio-source-line" role="status">正在读取持仓…</p>
+
+          <dialog id="portfolio-analysis-drawer" class="portfolio-analysis-drawer" aria-labelledby="portfolio-details-title">
+            <header class="portfolio-drawer-heading"><h2 id="portfolio-details-title">分析详情</h2><button id="portfolio-details-close" type="button" class="copilot-action-btn secondary" autofocus>关闭</button></header>
+            <div class="portfolio-drawer-body">
+              <details id="portfolio-risk-details" class="portfolio-disclosure">
+                <summary>风险与集中度 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div class="portfolio-disclosure-content">
+                  <h3>集中度</h3><div id="portfolio-report-concentration-summary"></div>
+                  <h3>风险对照</h3><div id="portfolio-report-risk-summary"></div>
+                  <details class="portfolio-secondary-disclosure"><summary>行业分布与基金穿透</summary>
           <div id="portfolio-extended-analysis" class="overview-grid">
             <section class="surface holdings-card overview-card">
               <header class="surface-head overview-card-header">
@@ -909,6 +868,48 @@
             </section>
           </div>
 
+
+                  </details>
+                </div>
+              </details>
+              <details id="portfolio-pnl-details" class="portfolio-disclosure">
+                <summary>收益详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div class="portfolio-disclosure-content">
+                  <dl class="portfolio-detail-figures">
+                    <div><dt id="overview-pnl-label">当日盈亏</dt><dd id="overview-pnl-val">—</dd><small id="overview-pnl-pct"></small></div>
+                    <div><dt>累计收益率</dt><dd id="overview-benchmark-sub">—</dd></div>
+                  </dl>
+                  <div id="portfolio-report-pnl-summary"></div>
+                  <details class="portfolio-secondary-disclosure"><summary>收益计算口径</summary><p id="portfolio-pnl-note"></p></details>
+                </div>
+              </details>
+              <details id="portfolio-holdings-details" class="portfolio-disclosure">
+                <summary>持仓明细 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div class="portfolio-disclosure-content">
+                  <div class="portfolio-holdings-toolbar"><span><strong id="overview-position-count">—</strong> 项持仓 <small id="overview-position-sub"></small></span><button id="portfolio-add-entry" type="button" class="copilot-action-btn secondary">添加持仓</button></div>
+                  <p id="overview-portfolio-cash"></p>
+                  <section class="portfolio-detail-card">
+                    <h3>持仓明细 <span id="portfolio-data-label" class="status-chip"></span></h3>
+                    <p id="portfolio-summary-note" role="status"></p>
+                    <div class="table-wrap"><table><thead><tr><th>标的 / 代码</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>累计盈亏</th><th>持仓占比</th><th>操作</th></tr></thead><tbody id="portfolio-position-rows"></tbody></table></div>
+                  </section>
+                </div>
+              </details>
+              <details id="portfolio-more-details" class="portfolio-disclosure">
+                <summary>更多分析 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div class="portfolio-disclosure-content">
+                  <nav class="portfolio-tool-links" aria-label="更多持仓分析"><a href="#portfolio-optimization">组合优化 <span>查看配置方案</span></a><a href="#portfolio-rebalancing">调仓方案 <span>计算调整结果</span></a><a href="#scenario-simulation">市场变化模拟 <span>查看假设场景下的影响</span></a></nav>
+                  <details class="portfolio-secondary-disclosure"><summary>配置参考</summary><div id="portfolio-report-protection-summary"></div></details>
+                </div>
+              </details>
+              <details id="portfolio-report-info" class="portfolio-secondary-disclosure">
+                <summary>报告信息与计算口径</summary><p id="portfolio-report-meta" class="portfolio-report-meta"></p><span id="portfolio-report-status" class="status-chip"></span>
+                <div id="portfolio-report-observations" class="portfolio-report-observations"></div>
+                <p id="portfolio-report-disclosure" class="portfolio-report-disclosure"></p>
+                <button id="portfolio-report-refresh" type="button" class="copilot-action-btn secondary">重新读取报告</button>
+              </details>
+            </div>
+          </dialog>
 
           <details class="owner-form technical-owner-settings dev-only dev-outline">
             <summary>高级：切换本地数据空间</summary>
@@ -1931,17 +1932,6 @@
 <dialog id="questionnaire-welcome" class="prd-dialog" aria-labelledby="welcome-title">
   <h2 id="welcome-title">欢迎使用问财智投</h2><p>完成 19 题投资能力问卷，生成 8 维风险画像。也可以先浏览，再到个人中心完成测评。</p>
   <div class="modal-actions"><button id="welcome-later" type="button">稍后再说</button><button id="welcome-start" type="button" class="copilot-action-btn primary">开始填写问卷</button></div>
-</dialog>
-<dialog id="manual-position-dialog" class="prd-dialog" aria-labelledby="manual-position-title">
-  <form id="manual-position-form"><h2 id="manual-position-title">添加持仓</h2>
-    <label>证券代码<input name="code" required pattern="[0-9]{6}" placeholder="例如 600519"></label>
-    <label>持仓数量<input name="quantity" type="number" required min="1" step="1"></label>
-    <label>成本价<input name="cost" type="number" required min="0.0001" step="any"></label>
-    <label>现价（可选）<input name="price" type="number" min="0.0001" step="any"></label>
-    <p>未填写现价时尝试查询；未取得行情时提示补填，不以成本价替代。</p>
-    <p id="manual-position-error" role="alert"></p>
-    <div class="modal-actions"><button id="manual-position-cancel" type="button">取消</button><button type="submit" class="copilot-action-btn primary">保存持仓</button></div>
-  </form>
 </dialog>
 </body>
 </html>
