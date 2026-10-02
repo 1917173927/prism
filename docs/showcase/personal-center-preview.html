@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>个人中心 · 界面预览</title>
+  <style>
+    :root {
+      --page: #f7f7f8;
+      --surface: #fff;
+      --ink: #25282d;
+      --secondary: #62666e;
+      --muted: #727680;
+      --line: #e8e9ec;
+      --accent: #b95009;
+      --accent-hover: #9e4307;
+      --accent-light: #fff4ea;
+      --danger: #b42318;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.65 var(--sans); }
+    button, input, select { font: inherit; }
+    button, summary, a { -webkit-tap-highlight-color: transparent; }
+    button, summary { cursor: pointer; }
+    button { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    :focus-visible { outline: 3px solid #b95009; outline-offset: 4px; }
+    h1, h2, h3, p, dl { margin: 0; }
+    h1 { font-size: 28px; line-height: 1.4; font-weight: 600; letter-spacing: -.03em; }
+    h2 { font-size: 19px; font-weight: 600; line-height: 1.5; }
+    h3 { font-size: 14px; font-weight: 600; }
+    .icon { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .navigation { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+    .navigation-inner { min-height: 66px; display: flex; align-items: center; gap: 30px; max-width: 1500px; margin: auto; padding: 0 28px; }
+    .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; font-size: 17px; font-weight: 600; letter-spacing: -.03em; }
+    .brand svg { width: 30px; height: 30px; }
+    .primary-navigation { display: flex; align-items: center; gap: 4px; min-width: 0; }
+    .nav-item { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border-radius: 8px; color: var(--secondary); white-space: nowrap; }
+    a.nav-item:hover { background: #f6f6f7; color: var(--ink); }
+    .nav-item.active { color: var(--ink); background: #f1f1f3; font-weight: 500; }
+    .navigation-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+    .account { display: flex; align-items: center; gap: 8px; color: var(--secondary); white-space: nowrap; }
+    .avatar { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; background: #fafafa; }
+    .avatar .icon { width: 16px; height: 16px; }
+    .icon-button, .quiet-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--secondary); }
+    .icon-button { width: 44px; padding: 0; }
+    .quiet-button:hover, .icon-button:hover { background: #eeeff1; color: var(--ink); }
+    .primary-button, .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 10px 18px; border: 1px solid transparent; border-radius: 9px; font-weight: 500; line-height: 1.5; white-space: nowrap; }
+    .primary-button { background: var(--accent); color: #fff; }
+    .primary-button:hover { background: var(--accent-hover); }
+    .secondary-button { background: var(--surface); border-color: #d7d9de; }
+    .secondary-button:hover { background: #f6f6f7; }
+    button:disabled { cursor: default; color: #727680; background: #f3f3f5; border-color: #e5e6e9; }
+    .questionnaire-exit { display: none; margin-left: auto; }
+    body[data-view="questionnaire"] .questionnaire-exit { display: inline-flex; }
+    body[data-view="questionnaire"] .primary-navigation, body[data-view="questionnaire"] .navigation-actions { display: none; }
+    main { width: min(100% - 64px, 1000px); margin: 50px auto 0; padding-bottom: 44px; }
+    .page-heading { margin-bottom: 28px; }
+    .page-heading p { margin-top: 7px; color: var(--secondary); }
+    .profile-card { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+    .profile-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; padding: 34px 38px 30px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--secondary); font-size: 13px; }
+    .eyebrow .icon { width: 18px; height: 18px; }
+    .rating-value { display: block; margin: 12px 0 4px; font-size: 38px; font-weight: 550; line-height: 1.3; }
+    .rating-caption { color: var(--secondary); font-size: 13px; }
+    .overview-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 30px; border-left: 1px solid var(--line); }
+    .overview-copy h2 { font-size: 18px; }
+    .overview-copy p { max-width: 330px; margin: 7px 0 20px; color: var(--secondary); font-size: 13px; }
+    .rating-facts { display: grid; grid-template-columns: repeat(3, 1fr); padding: 20px 38px; border-top: 1px solid var(--line); background: #fcfcfd; }
+    .rating-facts > div { padding-left: 26px; border-left: 1px solid var(--line); }
+    .rating-facts > div:first-child { padding-left: 0; border-left: 0; }
+    .rating-facts dt { color: var(--secondary); font-size: 12px; }
+    .rating-facts dd { margin: 4px 0 0; font-size: 16px; font-weight: 500; }
+    .questionnaire-entry { display: flex; align-items: center; gap: 16px; margin-top: 20px; padding: 22px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .entry-symbol { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 12px; color: var(--secondary); background: #fafafa; }
+    .entry-copy { flex: 1; min-width: 0; }
+    .entry-copy h2 { font-size: 15px; }
+    .entry-copy p { margin-top: 3px; color: var(--secondary); font-size: 12px; }
+    .entry-progress { display: block; margin-top: 5px; color: var(--accent); font-size: 12px; }
+    .section-caption { margin: 32px 0 12px; color: var(--secondary); font-size: 12px; font-weight: 500; }
+    .profile-details { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .disclosure + .disclosure { border-top: 1px solid var(--line); }
+    summary { list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    .disclosure > summary { display: flex; align-items: center; gap: 14px; min-height: 80px; padding: 18px 26px; }
+    .disclosure > summary:hover { background: #fcfcfd; }
+    .disclosure > summary > .icon { color: var(--secondary); }
+    .disclosure-title { flex: 1; min-width: 0; }
+    .disclosure-title strong { display: block; font-size: 14px; font-weight: 500; }
+    .disclosure-title small { display: block; margin-top: 3px; color: var(--secondary); font-size: 12px; }
+    .disclosure .chevron { width: 17px; height: 17px; transition: transform 160ms ease; }
+    .disclosure[open] > summary .chevron { transform: rotate(180deg); }
+    .disclosure-content { padding: 6px 26px 26px; }
+    .detail-note { margin-top: 10px; color: var(--secondary); font-size: 12px; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; margin-top: 12px; }
+    .detail-grid > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #f0f0f2; }
+    .detail-grid dt { color: var(--secondary); font-size: 13px; }
+    .detail-grid dd { margin: 0; font-weight: 500; }
+    .detail-group + .detail-group { margin-top: 24px; }
+    .empty-line { margin-top: 9px; padding: 13px 16px; border-radius: 8px; background: #f7f7f8; color: var(--secondary); font-size: 13px; }
+    .allocation-values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+    .allocation-values > div { padding: 18px; border-radius: 9px; background: #f7f7f8; }
+    .allocation-values dt { color: var(--secondary); font-size: 13px; }
+    .allocation-values dd { margin: 7px 0 0; font-size: 23px; font-weight: 500; }
+    .profile-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 22px; color: var(--secondary); font-size: 12px; }
+    .profile-footer .quiet-button { font-size: 12px; padding-inline: 0; }
+    .preview-footer { width: min(100% - 64px, 1000px); display: flex; align-items: baseline; gap: 12px; margin: 0 auto 26px; padding-top: 18px; border-top: 1px solid #e0e1e5; color: var(--secondary); font-size: 11px; }
+    .demo-label { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .07em; }
+    .back-button { margin: 0 0 18px -12px; font-size: 13px; }
+    .back-button .icon { transform: rotate(180deg); width: 17px; }
+    .form-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+    .form-heading p { margin-top: 7px; color: var(--secondary); }
+    .question-count { padding-top: 8px; color: var(--secondary); font-size: 12px; white-space: nowrap; }
+    .questionnaire-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
+    .questionnaire-sidebar { position: sticky; top: 98px; }
+    .progress-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 9px; color: var(--secondary); font-size: 12px; }
+    progress { display: block; width: 100%; height: 4px; border: 0; border-radius: 4px; background: #e6e7eb; color: var(--accent); appearance: none; }
+    progress::-webkit-progress-bar { background: #e6e7eb; border-radius: 4px; }
+    progress::-webkit-progress-value { background: var(--accent); border-radius: 4px; }
+    progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
+    .section-navigation { display: flex; flex-direction: column; gap: 6px; margin: 23px 0 0; padding: 0; list-style: none; }
+    .section-navigation button { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 46px; padding: 10px; border: 0; border-radius: 8px; background: transparent; color: var(--secondary); text-align: left; font-size: 13px; }
+    .section-navigation button:hover { background: #eeeff1; }
+    .section-navigation button[aria-current="step"] { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+    .step-number { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border: 1px solid #d5d7dd; border-radius: 50%; font-size: 11px; font-weight: 500; }
+    [aria-current="step"] .step-number { background: var(--accent); color: white; border-color: var(--accent); }
+    .step-complete { margin-left: auto; width: 15px; height: 15px; }
+    .sidebar-note { margin: 22px 10px 0; color: var(--secondary); font-size: 11px; }
+    .questionnaire-panel { min-width: 0; }
+    .section-heading { padding: 24px 28px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .section-heading p { margin-top: 5px; color: var(--secondary); font-size: 13px; }
+    .section-index { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
+    .question { min-width: 0; margin: 0 0 18px; padding: 22px 26px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .question legend { float: left; width: 100%; padding: 0; margin-bottom: 14px; font-size: 15px; font-weight: 500; line-height: 1.65; }
+    .question legend + * { clear: both; }
+    .question-number { color: var(--muted); font-size: 12px; font-weight: 400; margin-right: 9px; }
+    .question-kind { display: block; margin: 0 0 12px; color: var(--secondary); font-size: 11px; }
+    .optional-note { margin-bottom: 14px; color: var(--secondary); font-size: 12px; }
+    .options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .option { display: flex; align-items: flex-start; gap: 10px; min-height: 48px; padding: 12px; border: 1px solid #dedfe4; border-radius: 8px; cursor: pointer; color: #474b53; font-size: 13px; }
+    .option:hover { border-color: #c5c8d0; background: #fcfcfd; }
+    .option:has(input:checked) { background: var(--accent-light); border-color: #c46c2d; color: #8f3b06; }
+    .option:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .option input { width: 16px; height: 16px; flex-shrink: 0; margin: 3px 0 0; accent-color: var(--accent); }
+    .option input:focus-visible { outline: 0; }
+    .question[data-invalid="true"] { border-color: var(--danger); }
+    .form-error { margin: 0 0 18px; padding: 14px 18px; border: 1px solid #f1c6c1; border-radius: 9px; color: var(--danger); background: #fff6f5; font-size: 13px; }
+    .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; }
+    .form-status { margin-top: 16px; color: var(--secondary); font-size: 11px; }
+    .review-intro { margin-bottom: 24px; padding: 22px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .review-intro p { margin-top: 6px; color: var(--secondary); font-size: 13px; }
+    .review-section { margin-bottom: 18px; padding: 24px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .review-section h2 { font-size: 16px; margin-bottom: 5px; }
+    .review-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 17px 0; border-bottom: 1px solid #f0f0f2; }
+    .review-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .review-item dt { font-size: 13px; }
+    .review-item dd { grid-column: 1; margin: 0; font-size: 13px; color: var(--secondary); }
+    .review-item button { grid-column: 2; grid-row: 1 / span 2; align-self: start; min-height: 44px; margin-top: -7px; padding: 8px 10px; color: var(--accent); font-size: 12px; }
+    .review-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 8px; }
+    .review-footer p { color: var(--secondary); font-size: 12px; }
+    dialog { width: min(460px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); background: var(--surface); box-shadow: 0 20px 80px #25282d20; }
+    dialog::backdrop { background: #25282d40; }
+    .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 24px 14px; }
+    .dialog-heading h2 { font-size: 18px; }
+    .dialog-body { padding: 0 24px 24px; }
+    .dialog-body > p { color: var(--secondary); font-size: 13px; margin-bottom: 20px; }
+    .display-options { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
+    .display-options legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .display-options .option { align-items: center; }
+    .display-options .option input { margin-top: 0; }
+    .display-options small { display: block; color: var(--secondary); font-size: 11px; }
+    .dialog-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 24px; border-top: 1px solid var(--line); }
+    .dialog-footer p { color: var(--secondary); font-size: 11px; }
+    .skip-link { position: fixed; z-index: 30; left: 16px; top: -70px; padding: 12px 18px; border-radius: 8px; background: var(--ink); color: white; }
+    .skip-link:focus { top: 12px; }
+    @media (max-width: 900px) {
+      .navigation-inner { flex-wrap: wrap; gap: 0; padding: 0 20px; }
+      .brand { min-height: 60px; }
+      .navigation-actions { order: 2; }
+      .primary-navigation { order: 3; flex-basis: 100%; overflow-x: auto; padding: 0 0 10px; }
+      .nav-item { font-size: 13px; padding: 7px 10px; }
+      main { width: calc(100% - 40px); margin-top: 34px; }
+      .preview-footer { width: calc(100% - 40px); }
+      .profile-overview { gap: 28px; padding: 28px; }
+      .overview-copy { padding-left: 24px; }
+      .rating-facts { padding-inline: 28px; }
+      .questionnaire-layout { grid-template-columns: 175px minmax(0, 1fr); gap: 24px; }
+      .options { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .navigation-inner { padding: 0 14px; }
+      .brand { font-size: 16px; }
+      .account > span:last-child { display: none; }
+      main { width: calc(100% - 28px); margin-top: 28px; }
+      h1 { font-size: 24px; }
+      .page-heading { margin-bottom: 22px; }
+      .profile-card { border-radius: 14px; }
+      .profile-overview { grid-template-columns: 1fr; gap: 24px; padding: 26px 24px; }
+      .rating-value { font-size: 34px; }
+      .overview-copy { padding: 22px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+      .overview-copy .primary-button { width: 100%; }
+      .rating-facts { padding: 18px 24px; gap: 12px; }
+      .rating-facts > div { padding-left: 12px; }
+      .rating-facts dt { font-size: 11px; }
+      .rating-facts dd { font-size: 14px; }
+      .questionnaire-entry { flex-wrap: wrap; padding: 20px; gap: 12px; }
+      .questionnaire-entry .secondary-button { width: 100%; }
+      .entry-copy p { font-size: 11px; }
+      .disclosure > summary { padding: 18px 20px; gap: 12px; }
+      .disclosure-content { padding: 4px 20px 24px; }
+      .detail-grid { grid-template-columns: 1fr; gap: 0; }
+      .allocation-values { gap: 8px; }
+      .allocation-values > div { padding: 14px 12px; }
+      .profile-footer { flex-wrap: wrap; gap: 6px; }
+      .preview-footer { width: calc(100% - 28px); align-items: flex-start; }
+      .form-heading { display: block; margin-bottom: 22px; }
+      .form-heading p { font-size: 13px; }
+      .question-count { display: block; }
+      .questionnaire-layout { display: block; }
+      .questionnaire-sidebar { position: static; margin-bottom: 24px; }
+      .section-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 18px; }
+      .section-navigation button { min-height: 48px; padding: 9px; font-size: 12px; gap: 8px; }
+      .step-number { width: 22px; height: 22px; }
+      .sidebar-note { margin: 12px 0 0; }
+      .section-heading { padding: 20px; }
+      .question { padding: 20px; }
+      .question legend { font-size: 14px; }
+      .review-section, .review-intro { padding: 20px; }
+      .review-footer { flex-wrap: wrap; }
+      .review-footer .primary-button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body data-view="profile">
+  <a class="skip-link" href="#main-content">跳转到页面内容</a>
+  <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+    <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.5" fill="white"/><circle cx="15" cy="17" r="2.5" fill="white"/></symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 3v17h17M8 15V9M13 15V5M18 15v-4"/></symbol>
+    <symbol id="icon-pie" viewBox="0 0 24 24"><path d="M12 3v9h9a9 9 0 1 1-9-9Z"/><path d="M15 3.5V9h5.5a9 9 0 0 0-5.5-5.5Z"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  </svg>
+  <header class="navigation">
+    <div class="navigation-inner">
+      <div class="brand">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="4" y="4" width="56" height="56" rx="14" fill="#25282d"/>
+          <path d="M17 17.5h30v22H32.5L22 48v-8.5h-5z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="m22.5 33 6-6 5 4.5 8.5-9M36.5 22.5H42V28" fill="none" stroke="#ef8a24" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>问财智投</span>
+      </div>
+      <nav class="primary-navigation" aria-label="主导航">
+        <span class="nav-item">AI 对话</span>
+        <a class="nav-item" href="portfolio-disclosure-preview.html">持仓分析</a>
+        <span class="nav-item">大盘鉴别</span>
+        <span class="nav-item">交易风格</span>
+        <a class="nav-item active" href="#profile" aria-current="page">个人中心</a>
+      </nav>
+      <div class="navigation-actions">
+        <div class="account"><span class="avatar"><svg class="icon" aria-hidden="true"><use href="#icon-user"/></svg></span><span>账户</span></div>
+        <button class="icon-button" type="button" data-open-settings aria-label="回答显示设置"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg></button>
+      </div>
+      <button class="quiet-button questionnaire-exit" type="button" data-return-profile>退出填写</button>
+    </div>
+  </header>
+  <main id="main-content" tabindex="-1">
+    <section id="profile-view" aria-labelledby="profile-title">
+      <div class="page-heading">
+        <h1 id="profile-title" tabindex="-1">个人中心</h1>
+        <p>管理风险测评与个人分析资料</p>
+      </div>
+      <section class="profile-card" aria-labelledby="effective-rating-title">
+        <div class="profile-overview">
+          <div>
+            <h2 id="effective-rating-title" class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg>当前有效评级</h2>
+            <strong class="rating-value">—</strong>
+            <p class="rating-caption">用于持仓分析中的风险约束</p>
+          </div>
+          <div class="overview-copy">
+            <h2>查看你的持仓分析</h2>
+            <p>导入持仓，查看资产结构、集中度与风险对照。</p>
+            <a class="primary-button" id="go-to-portfolio" href="portfolio-disclosure-preview.html">前往持仓分析<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+          </div>
+        </div>
+        <dl class="rating-facts">
+          <div><dt>问卷适当性等级</dt><dd>—</dd></div>
+          <div><dt>画像风险分</dt><dd>—</dd></div>
+          <div><dt>测评确认时间</dt><dd>—</dd></div>
+        </dl>
+      </section>
+      <section class="questionnaire-entry" aria-labelledby="questionnaire-entry-title">
+        <div class="entry-symbol"><svg class="icon" aria-hidden="true"><use href="#icon-file"/></svg></div>
+        <div class="entry-copy">
+          <h2 id="questionnaire-entry-title">投资者风险测评</h2>
+          <p>19 道题目 · 6 个部分 · 独立填写界面</p>
+          <span class="entry-progress" id="entry-progress" hidden></span>
+        </div>
+        <button class="secondary-button" id="open-questionnaire" type="button">打开问卷<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+      </section>
+      <h2 class="section-caption">个人分析资料</h2>
+      <div class="profile-details">
+        <details class="disclosure" id="profile-disclosure">
+          <summary><svg class="icon" aria-hidden="true"><use href="#icon-chart"/></svg><span class="disclosure-title"><strong>投资者画像</strong><small>八维画像、关键档案与服务策略</small></span><svg class="icon chevron" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
+          <div class="disclosure-content">
+            <section class="detail-group">
+              <h3>投资者原型</h3>
+              <p class="empty-line">原型名称与画像标签待载入</p>
+              <details class="detail-note"><summary class="quiet-button">查看原型依据<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><p>适配度、判断条件与相关依据待载入。</p></details>
+            </section>
+            <section class="detail-group">
+              <h3>八维画像</h3>
+              <dl class="detail-grid">
+                <div><dt>风险承受能力</dt><dd>—</dd></div><div><dt>投资经验</dt><dd>—</dd></div>
+                <div><dt>操作活跃度</dt><dd>—</dd></div><div><dt>研究习惯</dt><dd>—</dd></div>
+                <div><dt>信息投入</dt><dd>—</dd></div><div><dt>AI 信任度</dt><dd>—</dd></div>
+                <div><dt>个性化需求</dt><dd>—</dd></div><div><dt>辅助需求</dt><dd>—</dd></div>
+              </dl>
+              <p class="detail-note">八个维度按 0–100 分展示，来源为已确认问卷。</p>
+            </section>
+            <section class="detail-group">
+              <h3>关键档案</h3>
+              <dl class="detail-grid">
+                <div><dt>投资经验</dt><dd>—</dd></div><div><dt>投资资金</dt><dd>—</dd></div>
+                <div><dt>投资目标</dt><dd>—</dd></div><div><dt>决策周期</dt><dd>—</dd></div>
+                <div><dt>研究投入</dt><dd>—</dd></div><div><dt>AI 使用经验</dt><dd>—</dd></div>
+              </dl>
+            </section>
+            <section class="detail-group"><h3>服务策略与推荐功能</h3><p class="empty-line">依据已确认问卷生成的分析顺序、解释方式与推荐功能待载入。</p></section>
+          </div>
+        </details>
+        <details class="disclosure" id="rating-disclosure">
+          <summary><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg><span class="disclosure-title"><strong>评级依据</strong><small>问卷评级与当前有效评级的来源</small></span><svg class="icon chevron" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
+          <div class="disclosure-content">
+            <dl class="detail-grid">
+              <div><dt>问卷适当性等级</dt><dd>—</dd></div><div><dt>当前有效评级</dt><dd>—</dd></div>
+              <div><dt>画像风险分</dt><dd>—</dd></div><div><dt>行为观察结果</dt><dd>—</dd></div>
+            </dl>
+            <p class="detail-note">问卷评级来源于已确认的测评。当前有效评级用于后续风险约束，并结合已有的行为观察结果。</p>
+          </div>
+        </details>
+        <details class="disclosure" id="allocation-disclosure">
+          <summary><svg class="icon" aria-hidden="true"><use href="#icon-pie"/></svg><span class="disclosure-title"><strong>资产配置参考</strong><small>画像级参考比例与权益参考区间</small></span><svg class="icon chevron" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
+          <div class="disclosure-content">
+            <dl class="allocation-values"><div><dt>货币类</dt><dd>—</dd></div><div><dt>债券</dt><dd>—</dd></div><div><dt>权益</dt><dd>—</dd></div></dl>
+            <p class="detail-note">权益参考区间：—</p>
+            <p class="detail-note">此处展示画像级参考比例。当前持仓的资产结构可在持仓分析中查看。</p>
+          </div>
+        </details>
+      </div>
+      <div class="profile-footer">
+        <p>仅作适当性与服务展示参考，不构成投资建议。</p>
+        <button class="quiet-button" type="button" data-open-settings>回答显示设置<svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg></button>
+      </div>
+    </section>
+    <section id="questionnaire-view" aria-labelledby="questionnaire-title" hidden>
+      <button class="quiet-button back-button" type="button" data-return-profile><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg>返回个人中心</button>
+      <div class="form-heading">
+        <div><h1 id="questionnaire-title" tabindex="-1">投资者风险测评</h1><p>请根据你的实际情况填写。</p></div>
+        <span class="question-count">19 道题目 · 18 道必答 · Q13 可选</span>
+      </div>
+      <div class="questionnaire-layout" id="questionnaire-form-view">
+        <aside class="questionnaire-sidebar" aria-label="问卷填写进度">
+          <div class="progress-label"><span>必答题进度</span><span id="progress-text" role="status" aria-live="polite">0 / 18</span></div>
+          <progress id="questionnaire-progress" value="0" max="18" aria-label="已回答的必答题数量"></progress>
+          <nav aria-label="问卷部分"><ol class="section-navigation" id="section-navigation"></ol></nav>
+          <p class="sidebar-note">可以切换部分查看题目。填写内容在本次打开期间保留。</p>
+        </aside>
+        <div class="questionnaire-panel">
+          <div class="section-heading" id="section-heading"><span class="section-index" id="section-index"></span><h2 id="section-title" tabindex="-1"></h2><p id="section-description"></p></div>
+          <form id="questionnaire-form" novalidate>
+            <div id="questionnaire-questions"></div>
+            <p class="form-error" id="form-error" role="alert" hidden></p>
+            <div class="form-actions">
+              <button class="secondary-button" id="previous-section" type="button">上一部分</button>
+              <button class="primary-button" id="next-section" type="button">下一部分<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+              <button class="primary-button" id="review-answers" type="button" hidden>核对全部答案<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+            </div>
+            <p class="form-status">界面预览：可填写与核对答案，内容仅在本次打开期间保留。</p>
+          </form>
+        </div>
+      </div>
+      <div id="questionnaire-review-view" hidden>
+        <div class="review-intro"><h2 id="review-title" tabindex="-1">核对问卷答案</h2><p>全部 19 道题目按原有顺序展示，可返回对应部分修改。</p></div>
+        <div id="review-list"></div>
+        <div class="review-footer"><p>预览中的答案不会提交，不生成风险评级。</p><button class="primary-button" type="button" data-return-profile>返回个人中心<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button></div>
+      </div>
+    </section>
+  </main>
+  <footer class="preview-footer"><span class="demo-label">DEMO</span><p>个人中心界面预览 · 评级与资产数值使用占位内容 · 未连接账户数据 · 问卷填写内容不会保存</p></footer>
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-heading"><h2 id="settings-title">回答显示设置</h2><button class="icon-button" id="close-settings" type="button" aria-label="关闭回答显示设置"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+    <div class="dialog-body">
+      <p>选择分析回答的详细程度。风险提示始终展开。</p>
+      <fieldset class="display-options"><legend>回答详细度</legend>
+        <label class="option"><input type="radio" name="display-level" value="CONCISE"><span>简洁<small>先看结论和关键依据</small></span></label>
+        <label class="option"><input type="radio" name="display-level" value="STANDARD" checked><span>标准<small>结论与关键依据保持平衡</small></span></label>
+        <label class="option"><input type="radio" name="display-level" value="DETAILED"><span>详细<small>展开结论、依据和数据说明</small></span></label>
+      </fieldset>
+    </div>
+    <div class="dialog-footer"><p>仅预览选择效果，不会修改账户设置。</p><button class="secondary-button" id="finish-settings" type="button">完成</button></div>
+  </dialog>
+  <script id="questionnaire-template" type="application/json">
+  {
+    "questionnaire_version": "investor-questionnaire.v2",
+    "sections": [
+      {"section_id":"basic","title":"投资基本情况","description":"了解投资经验、资金和目标。","question_ids":["Q1","Q2","Q3","Q4","Q5","Q6"]},
+      {"section_id":"decision","title":"投资决策方式","description":"了解研究投入和操作习惯。","question_ids":["Q7","Q8","Q9","Q10"]},
+      {"section_id":"pain","title":"投资痛点","description":"了解当前决策困难。","question_ids":["Q11","Q12"]},
+      {"section_id":"scenes","title":"高频场景","description":"确定优先提供的分析能力。","question_ids":["Q13"]},
+      {"section_id":"personal","title":"个性化需求","description":"确认分析需要结合的个人条件。","question_ids":["Q14","Q15"]},
+      {"section_id":"ai","title":"AI 辅助与信任","description":"决定解释深度，不改变风险等级。","question_ids":["Q16","Q17","Q18","Q19"]}
+    ],
+    "questions": [
+      {"question_id":"Q1","section_id":"basic","prompt":"你目前的投资状态是？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"not_started","label":"尚未开始投资"},{"option_id":"learning","label":"正在学习和观察"},{"option_id":"active","label":"已有持续投资"},{"option_id":"professional","label":"具备专业投资或研究经历"}]},
+      {"question_id":"Q2","section_id":"basic","prompt":"你接触投资多长时间？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"lt_1y","label":"不足 1 年"},{"option_id":"y1_3","label":"1 至 3 年"},{"option_id":"y3_5","label":"3 至 5 年"},{"option_id":"y5_10","label":"5 至 10 年"},{"option_id":"gt_10y","label":"10 年以上"}]},
+      {"question_id":"Q3","section_id":"basic","prompt":"你主要投资过哪些产品？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"cash","label":"存款或货币基金"},{"option_id":"bond","label":"债券或固收产品"},{"option_id":"fund","label":"公募基金或 ETF"},{"option_id":"stock","label":"股票"},{"option_id":"convertible","label":"可转债"},{"option_id":"derivative","label":"期权、期货等衍生品"}]},
+      {"question_id":"Q4","section_id":"basic","prompt":"可用于投资且短期无需动用的资金规模是？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"lt_50k","label":"5 万元以下"},{"option_id":"k50_200","label":"5 万至 20 万元"},{"option_id":"k200_500","label":"20 万至 50 万元"},{"option_id":"k500_1000","label":"50 万至 100 万元"},{"option_id":"gt_1m","label":"100 万元以上"}]},
+      {"question_id":"Q5","section_id":"basic","prompt":"你通常多久进行一次调仓或交易决策？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"yearly","label":"每年数次或更少"},{"option_id":"monthly","label":"每月数次"},{"option_id":"weekly","label":"每周数次"},{"option_id":"daily","label":"几乎每天"},{"option_id":"intraday","label":"日内多次"}]},
+      {"question_id":"Q6","section_id":"basic","prompt":"你最主要的投资目标是？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"preserve","label":"尽量保住本金"},{"option_id":"income","label":"获取稳定现金流"},{"option_id":"balanced_growth","label":"长期稳健增值"},{"option_id":"capital_growth","label":"追求较高资本增值"},{"option_id":"aggressive","label":"接受较大波动以争取高收益"},{"option_id":"pension","label":"养老或长期专项资金"},{"option_id":"education","label":"教育等明确用途资金"}]},
+      {"question_id":"Q7","section_id":"decision","prompt":"开始一项新投资前，你通常会做什么？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"fundamental","label":"研究财务和基本面"},{"option_id":"market_data","label":"查看行情和量化指标"},{"option_id":"reports","label":"阅读研报和公告"},{"option_id":"discuss","label":"参考社区或熟人意见"},{"option_id":"ai","label":"使用 AI 工具辅助分析"},{"option_id":"follow","label":"直接跟随他人建议"}]},
+      {"question_id":"Q8","section_id":"decision","prompt":"作出重要投资决策通常需要多长时间？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"minutes","label":"几分钟内"},{"option_id":"hours","label":"数小时"},{"option_id":"days","label":"一至数天"},{"option_id":"weeks","label":"一周以上"}]},
+      {"question_id":"Q9","section_id":"decision","prompt":"你每天通常投入多少时间进行投资研究？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"lt_15m","label":"不足 15 分钟"},{"option_id":"m15_60","label":"15 分钟至 1 小时"},{"option_id":"h1_2","label":"1 至 2 小时"},{"option_id":"gt_2h","label":"2 小时以上"}]},
+      {"question_id":"Q10","section_id":"decision","prompt":"投资后你通常会采取哪些行为？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"regular_review","label":"定期复盘基本面"},{"option_id":"price_alert","label":"设置价格或风险提醒"},{"option_id":"frequent_adjust","label":"根据波动频繁调整"},{"option_id":"long_hold","label":"按长期计划持有"},{"option_id":"news_follow","label":"持续跟踪新闻和公告"},{"option_id":"no_review","label":"很少复盘"}]},
+      {"question_id":"Q11","section_id":"pain","prompt":"你在投资中经常遇到哪些困难？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"information","label":"信息过多，难以筛选"},{"option_id":"valuation","label":"不会判断估值和买卖时机"},{"option_id":"portfolio","label":"缺少组合和仓位管理方法"},{"option_id":"risk","label":"难以识别或控制风险"},{"option_id":"discipline","label":"容易受情绪影响"},{"option_id":"none","label":"暂未遇到明显困难"}]},
+      {"question_id":"Q12","section_id":"pain","prompt":"这些困难对你作出投资决策的影响有多大？","question_type":"SCORE","required":true,"minimum_score":1,"maximum_score":5,"options":[]},
+      {"question_id":"Q13","section_id":"scenes","prompt":"你希望系统重点帮助哪些场景？","question_type":"MULTI","required":false,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"market","label":"大盘和市场走势"},{"option_id":"industry","label":"行业和板块配置"},{"option_id":"stock","label":"个股分析"},{"option_id":"fund","label":"ETF 或基金筛选"},{"option_id":"bond","label":"可转债分析"},{"option_id":"portfolio","label":"持仓诊断和组合优化"},{"option_id":"risk","label":"投资风险分析"}]},
+      {"question_id":"Q14","section_id":"personal","prompt":"投资分析是否需要结合你的个人情况？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"no","label":"不需要，通用信息即可"},{"option_id":"sometimes","label":"重要决策时需要"},{"option_id":"always","label":"所有分析都应结合个人情况"}]},
+      {"question_id":"Q15","section_id":"personal","prompt":"系统应重点考虑哪些个人因素？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"holdings","label":"当前持仓和成本"},{"option_id":"cashflow","label":"收入、现金流和流动性"},{"option_id":"risk_level","label":"风险承受能力"},{"option_id":"goals","label":"投资目标和期限"},{"option_id":"preferences","label":"行业、品种和排除偏好"},{"option_id":"history","label":"历史交易和操作习惯"}]},
+      {"question_id":"Q16","section_id":"ai","prompt":"你使用 AI 投资工具的经历是？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"never","label":"从未使用"},{"option_id":"tried","label":"偶尔尝试"},{"option_id":"regular","label":"经常用于辅助分析"},{"option_id":"workflow","label":"已纳入日常决策流程"}]},
+      {"question_id":"Q17","section_id":"ai","prompt":"你愿意在多大程度上参考 AI 的分析？","question_type":"SCORE","required":true,"minimum_score":1,"maximum_score":5,"options":[]},
+      {"question_id":"Q18","section_id":"ai","prompt":"当 AI 分析与你的判断不一致时，你通常会？","question_type":"SINGLE","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"ignore","label":"直接忽略 AI"},{"option_id":"check","label":"核对证据后自行决定"},{"option_id":"discuss","label":"继续追问并比较观点"},{"option_id":"follow","label":"通常采纳 AI 结论"}]},
+      {"question_id":"Q19","section_id":"ai","prompt":"你对 AI 投资分析的主要担忧是？","question_type":"MULTI","required":true,"minimum_score":null,"maximum_score":null,"options":[
+        {"option_id":"accuracy","label":"信息或结论不准确"},{"option_id":"explainability","label":"无法解释判断依据"},{"option_id":"privacy","label":"个人数据和隐私风险"},{"option_id":"dependency","label":"过度依赖影响独立判断"},{"option_id":"compliance","label":"建议可能越过合规边界"},{"option_id":"none","label":"暂无明显担忧"}]}
+    ]
+  }
+  </script>
+  <script>
+    "use strict";
+    const template = JSON.parse(document.getElementById("questionnaire-template").textContent);
+    const questionsById = new Map(template.questions.map(question => [question.question_id, question]));
+    const answers = new Map();
+    const requiredQuestions = template.questions.filter(question => question.required);
+    const scoreLabels = {
+      Q12: ["几乎没有影响", "影响较小", "影响一般", "影响较大", "影响非常大"],
+      Q17: ["几乎不参考", "少量参考", "适度参考", "较多参考", "高度参考"]
+    };
+    let sectionIndex = 0;
+    let settingsTrigger = null;
+    const byId = id => document.getElementById(id);
+    const isAnswered = question => {
+      const answer = answers.get(question.question_id);
+      return Boolean(answer && (Number.isInteger(answer.score) || answer.selected_option_ids.length));
+    };
+    const unanswered = questions => questions.filter(question => question.required && !isAnswered(question));
+
+    function updateProgress() {
+      const answeredCount = requiredQuestions.filter(isAnswered).length;
+      byId("progress-text").textContent = `${answeredCount} / ${requiredQuestions.length}`;
+      byId("questionnaire-progress").value = answeredCount;
+      byId("entry-progress").hidden = answeredCount === 0;
+      byId("entry-progress").textContent = `本次预览已回答 ${answeredCount} / ${requiredQuestions.length} 道必答题`;
+      byId("open-questionnaire").firstChild.textContent = answeredCount ? "继续填写" : "打开问卷";
+      template.sections.forEach((section, index) => {
+        const sectionQuestions = section.question_ids.map(id => questionsById.get(id));
+        const completed = sectionQuestions.every(question => isAnswered(question) || !question.required);
+        const optionalSelected = sectionQuestions.some(isAnswered);
+        byId(`step-complete-${index}`).toggleAttribute("hidden", !(completed && (sectionQuestions.some(question => question.required) || optionalSelected)));
+      });
+    }
+
+    function clearError() {
+      byId("form-error").hidden = true;
+      byId("form-error").textContent = "";
+      document.querySelectorAll(".question[data-invalid]").forEach(fieldset => {
+        fieldset.removeAttribute("data-invalid");
+        fieldset.removeAttribute("aria-describedby");
+      });
+    }
+
+    function selectAnswer(question, input) {
+      if (question.question_type === "SCORE") {
+        answers.set(question.question_id, {score: Number(input.value), selected_option_ids: []});
+      } else if (question.question_type === "SINGLE") {
+        answers.set(question.question_id, {selected_option_ids: [input.value]});
+      } else {
+        const previous = answers.get(question.question_id);
+        const selected = new Set(previous ? previous.selected_option_ids : []);
+        if (input.checked) selected.add(input.value);
+        else selected.delete(input.value);
+        if (input.value === "none" && input.checked) {
+          selected.clear();
+          selected.add("none");
+        } else if (input.checked) {
+          selected.delete("none");
+        }
+        if (selected.size) answers.set(question.question_id, {selected_option_ids: [...selected]});
+        else answers.delete(question.question_id);
+        document.querySelectorAll(`input[name="${question.question_id}"]`).forEach(control => {
+          control.checked = selected.has(control.value);
+        });
+      }
+      clearError();
+      updateProgress();
+    }
+
+    function makeIcon(name, className = "icon") {
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("class", className);
+      icon.setAttribute("aria-hidden", "true");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", `#icon-${name}`);
+      icon.append(use);
+      return icon;
+    }
+
+    function renderNavigation() {
+      byId("section-navigation").replaceChildren();
+      template.sections.forEach((section, index) => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.sectionIndex = String(index);
+        if (index === sectionIndex) button.setAttribute("aria-current", "step");
+        const number = document.createElement("span");
+        number.className = "step-number";
+        number.textContent = String(index + 1);
+        number.setAttribute("aria-hidden", "true");
+        const title = document.createElement("span");
+        title.textContent = section.title;
+        const completed = makeIcon("check", "icon step-complete");
+        completed.id = `step-complete-${index}`;
+        completed.setAttribute("hidden", "");
+        button.append(number, title, completed);
+        button.addEventListener("click", () => {
+          sectionIndex = index;
+          renderSection();
+          focusSection();
+        });
+        item.append(button);
+        byId("section-navigation").append(item);
+      });
+    }
+
+    function renderSection() {
+      clearError();
+      renderNavigation();
+      const section = template.sections[sectionIndex];
+      byId("section-index").textContent = `第 ${sectionIndex + 1} / ${template.sections.length} 部分`;
+      byId("section-title").textContent = section.title;
+      byId("section-description").textContent = section.description;
+      byId("questionnaire-questions").replaceChildren();
+      section.question_ids.forEach(questionId => {
+        const question = questionsById.get(questionId);
+        const fieldset = document.createElement("fieldset");
+        fieldset.className = "question";
+        fieldset.id = `question-${questionId}`;
+        const legend = document.createElement("legend");
+        const number = document.createElement("span");
+        number.className = "question-number";
+        number.textContent = questionId;
+        legend.append(number, document.createTextNode(question.prompt));
+        const kind = document.createElement("p");
+        kind.className = "question-kind";
+        kind.textContent = `${question.question_type === "MULTI" ? "多选" : "单选"} · ${question.required ? "必答" : "可选"}`;
+        fieldset.append(legend, kind);
+        if (!question.required) {
+          const note = document.createElement("p");
+          note.className = "optional-note";
+          note.textContent = "可选；未选择时默认推荐大盘分析、个股分析和组合优化。";
+          fieldset.append(note);
+        }
+        const options = document.createElement("div");
+        options.className = "options";
+        const displayedOptions = question.question_type === "SCORE"
+          ? scoreLabels[questionId].map((label, index) => ({option_id: String(question.minimum_score + index), label}))
+          : question.options;
+        displayedOptions.forEach(option => {
+          const label = document.createElement("label");
+          label.className = "option";
+          const input = document.createElement("input");
+          input.type = question.question_type === "MULTI" ? "checkbox" : "radio";
+          input.name = questionId;
+          input.value = option.option_id;
+          const answer = answers.get(questionId);
+          input.checked = Boolean(answer && (question.question_type === "SCORE"
+            ? answer.score === Number(option.option_id)
+            : answer.selected_option_ids.includes(option.option_id)));
+          input.addEventListener("change", () => selectAnswer(question, input));
+          const text = document.createElement("span");
+          text.textContent = option.label;
+          label.append(input, text);
+          options.append(label);
+        });
+        fieldset.append(options);
+        byId("questionnaire-questions").append(fieldset);
+      });
+      byId("previous-section").disabled = sectionIndex === 0;
+      byId("next-section").hidden = sectionIndex === template.sections.length - 1;
+      byId("review-answers").hidden = sectionIndex !== template.sections.length - 1;
+      updateProgress();
+    }
+
+    function focusSection() {
+      byId("section-title").focus({preventScroll: true});
+      const top = byId("section-heading").getBoundingClientRect().top + window.scrollY - 90;
+      window.scrollTo({top: Math.max(0, top), behavior: "instant"});
+    }
+
+    function validateQuestions(questions) {
+      const missing = unanswered(questions);
+      if (!missing.length) return true;
+      sectionIndex = template.sections.findIndex(section => section.question_ids.includes(missing[0].question_id));
+      renderSection();
+      byId("form-error").textContent = `请完成必答题：${missing.map(question => question.question_id).join("、")}。`;
+      byId("form-error").hidden = false;
+      missing.forEach(question => {
+        const fieldset = byId(`question-${question.question_id}`);
+        if (fieldset) {
+          fieldset.dataset.invalid = "true";
+          fieldset.setAttribute("aria-describedby", "form-error");
+        }
+      });
+      const firstInput = byId(`question-${missing[0].question_id}`).querySelector("input");
+      firstInput.focus({preventScroll: true});
+      const top = firstInput.closest("fieldset").getBoundingClientRect().top + window.scrollY - 90;
+      window.scrollTo({top: Math.max(0, top), behavior: "instant"});
+      return false;
+    }
+
+    function answerText(question) {
+      const answer = answers.get(question.question_id);
+      if (!answer) return "未选择，将使用默认推荐";
+      if (question.question_type === "SCORE") return `${scoreLabels[question.question_id][answer.score - question.minimum_score]}（${answer.score} / ${question.maximum_score}）`;
+      return question.options.filter(option => answer.selected_option_ids.includes(option.option_id)).map(option => option.label).join("、");
+    }
+
+    function renderReview() {
+      byId("review-list").replaceChildren();
+      template.sections.forEach((section, index) => {
+        const container = document.createElement("section");
+        container.className = "review-section";
+        const title = document.createElement("h2");
+        title.textContent = section.title;
+        const list = document.createElement("dl");
+        section.question_ids.forEach(questionId => {
+          const question = questionsById.get(questionId);
+          const row = document.createElement("div");
+          row.className = "review-item";
+          row.dataset.questionId = questionId;
+          const prompt = document.createElement("dt");
+          prompt.textContent = `${questionId} ${question.prompt}`;
+          const answer = document.createElement("dd");
+          answer.textContent = answerText(question);
+          const edit = document.createElement("button");
+          edit.type = "button";
+          edit.className = "quiet-button";
+          edit.textContent = "修改";
+          edit.setAttribute("aria-label", `修改 ${questionId} 的答案`);
+          edit.addEventListener("click", () => {
+            sectionIndex = index;
+            location.hash = "questionnaire";
+          });
+          row.append(prompt, answer, edit);
+          list.append(row);
+        });
+        container.append(title, list);
+        byId("review-list").append(container);
+      });
+    }
+
+    function updateView(focus = true) {
+      const reviewRequested = location.hash === "#questionnaire-review";
+      const questionnaireRequested = location.hash === "#questionnaire" || reviewRequested;
+      const showReview = reviewRequested && unanswered(template.questions).length === 0;
+      byId("profile-view").hidden = questionnaireRequested;
+      byId("questionnaire-view").hidden = !questionnaireRequested;
+      byId("questionnaire-form-view").hidden = showReview;
+      byId("questionnaire-review-view").hidden = !showReview;
+      document.body.dataset.view = questionnaireRequested ? "questionnaire" : "profile";
+      document.title = questionnaireRequested ? "投资者风险测评 · 界面预览" : "个人中心 · 界面预览";
+      if (questionnaireRequested) {
+        if (showReview) renderReview();
+        else renderSection();
+      }
+      if (focus) {
+        const heading = showReview ? byId("review-title") : questionnaireRequested ? byId("questionnaire-title") : byId("profile-title");
+        heading.focus({preventScroll: true});
+        window.scrollTo({top: 0, behavior: "instant"});
+      }
+    }
+
+    byId("questionnaire-form").addEventListener("submit", event => event.preventDefault());
+    document.querySelector(".skip-link").addEventListener("click", event => {
+      event.preventDefault();
+      byId("main-content").focus({preventScroll: true});
+      window.scrollTo({top: 0, behavior: "instant"});
+    });
+    byId("open-questionnaire").addEventListener("click", () => { location.hash = "questionnaire"; });
+    document.querySelectorAll("[data-return-profile]").forEach(button => {
+      button.addEventListener("click", () => { location.hash = "profile"; });
+    });
+    byId("previous-section").addEventListener("click", () => {
+      sectionIndex -= 1;
+      renderSection();
+      focusSection();
+    });
+    byId("next-section").addEventListener("click", () => {
+      const questions = template.sections[sectionIndex].question_ids.map(id => questionsById.get(id));
+      if (!validateQuestions(questions)) return;
+      sectionIndex += 1;
+      renderSection();
+      focusSection();
+    });
+    byId("review-answers").addEventListener("click", () => {
+      if (validateQuestions(template.questions)) location.hash = "questionnaire-review";
+    });
+    const settingsDialog = byId("settings-dialog");
+    document.querySelectorAll("[data-open-settings]").forEach(button => {
+      button.addEventListener("click", () => {
+        settingsTrigger = button;
+        settingsDialog.showModal();
+      });
+    });
+    byId("close-settings").addEventListener("click", () => settingsDialog.close());
+    byId("finish-settings").addEventListener("click", () => settingsDialog.close());
+    settingsDialog.addEventListener("close", () => settingsTrigger.focus());
+    settingsDialog.addEventListener("click", event => {
+      if (event.target !== settingsDialog) return;
+      const bounds = settingsDialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) settingsDialog.close();
+    });
+    window.addEventListener("hashchange", () => updateView());
+    renderSection();
+    updateView(false);
+  </script>
+</body>
+</html>
