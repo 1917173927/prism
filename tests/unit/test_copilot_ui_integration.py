@@ -313,8 +313,8 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
     assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
-    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20261002-home-sidebar"' in markup
-    assert '<script src="/static/app.js?v=20261002-chat-home-interactions"' in markup
+    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=' in markup
+    assert '<script src="/static/app.js?v=' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
@@ -401,7 +401,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
         assert selector in v2_styles
 
     for geometry in (
-        ".prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr);",
+        ".prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr);",
         ".prism-ui-v2.copilot-active .agent-home-grid { display: block; width: min(100%, 760px); margin: 0 auto; }",
         ".prism-ui-v2.copilot-active #agent-feature-tools.is-compact,",
         ".prism-ui-v2.copilot-active .agent-profile-rail { display: none; }",

@@ -157,6 +157,7 @@
   let accountAccessEnabled = false;
   const homeMobileViewport = window.matchMedia("(max-width: 760px)");
   let homeHistoryCollapsed = homeMobileViewport.matches;
+  let marketSidebarCollapsed = homeMobileViewport.matches;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
   async function refreshSessionTruth(signal) {
     const owner = state.ownerId;
@@ -6989,15 +6990,25 @@
   }
 
   function renderHomeHistoryState() {
-    const collapsed = document.body.classList.contains("copilot-active") && homeHistoryCollapsed;
+    const isMarket = document.body.classList.contains("market-active");
+    const sharedLayout = document.body.classList.contains("sidebar-layout-active");
+    const collapsed = sharedLayout && (isMarket ? marketSidebarCollapsed : homeHistoryCollapsed);
     document.body.classList.toggle("home-history-collapsed", collapsed);
-    byId("home-history-sidebar").inert = collapsed;
-    byId("home-history-show")?.setAttribute("aria-expanded", String(!collapsed));
+    const sidebar = byId("home-history-sidebar");
+    sidebar.inert = collapsed;
+    sidebar.setAttribute("aria-label", isMarket ? "指数切换" : sharedLayout ? "历史对话" : "导航");
+    const showButton = byId("home-history-show");
+    showButton.setAttribute("aria-expanded", String(!collapsed));
+    showButton.setAttribute("aria-label", isMarket ? "展开指数" : "展开历史对话");
+    showButton.querySelector("span").textContent = isMarket ? "展开指数" : "历史对话";
+    byId("home-history-backdrop").setAttribute("aria-label", isMarket ? "关闭指数切换" : "关闭历史对话");
     byId("home-history-hide")?.setAttribute("aria-expanded", String(!collapsed));
+    byId("market-sidebar-hide").setAttribute("aria-expanded", String(!collapsed));
   }
 
   function setHomeHistoryCollapsed(collapsed) {
-    homeHistoryCollapsed = collapsed;
+    if (document.body.classList.contains("market-active")) marketSidebarCollapsed = collapsed;
+    else homeHistoryCollapsed = collapsed;
     renderHomeHistoryState();
   }
 
@@ -7053,7 +7064,9 @@
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
     document.body.classList.toggle("copilot-active", isCopilot);
-    syncHomeNavigation(isCopilot);
+    document.body.classList.toggle("market-active", isMarket);
+    document.body.classList.toggle("sidebar-layout-active", isCopilot || isMarket);
+    syncHomeNavigation(isCopilot || isMarket);
     if (!isCopilot) {
       copilotSec?.classList.remove("context-open");
       byId("home-context-trigger")?.setAttribute("aria-expanded", "false");
@@ -7067,7 +7080,7 @@
     if (marketSec) marketSec.hidden = !isMarket;
     if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
-    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle;
+    if (pageTabs) pageTabs.hidden = isCopilot || isMarket || isTradingStyle;
 
     setExpertMode(isWorkspacePanel);
 
@@ -7079,7 +7092,7 @@
       });
     }
 
-    if (pageTabs) {
+    if (pageTabs && !isCopilot && !isMarket) {
       [...pageTabs.querySelectorAll("a[data-domain]")].forEach((link) => {
         const visible = link.dataset.domain === domain;
         link.hidden = !visible;
@@ -7239,6 +7252,10 @@
         byId("market-index-input").value = item.index_id;
         container.querySelectorAll("button").forEach(node => node.setAttribute("aria-pressed", String(node === button)));
         assessMarket();
+        if (homeMobileViewport.matches) {
+          setHomeHistoryCollapsed(true);
+          byId("home-history-show").focus();
+        }
       });
       container.append(button);
       if (index === 0 && !rows.some(row => row.index_id === byId("market-index-input").value)) {
@@ -7284,8 +7301,10 @@
     marketAbortController?.abort();
     marketAbortController = new AbortController();
     status.textContent = "正在读取";
+    byId("market-data-meta").textContent = "";
+    byId("market-crosshair-info").textContent = "";
     byId("market-kline").replaceChildren();
-    result.textContent = "正在读取可验证行情与研判状态…";
+    result.textContent = "正在读取行情…";
     try {
       const response = await fetch(`/api/v1/market/analysis/${marketRegion}/${encodeURIComponent(selected.index_id)}?interval=${marketInterval}`,
         {headers: {"X-Owner-ID": state.ownerId}, signal: marketAbortController.signal});
@@ -7297,11 +7316,10 @@
       const quote = data.price === null ? "未返回行情" : `${Number(data.price).toLocaleString("zh-CN", {minimumFractionDigits: data.precision, maximumFractionDigits: data.precision})}（${data.change_pct >= 0 ? "+" : ""}${Number(data.change_pct).toFixed(2)}%）`;
       result.replaceChildren();
       const heading = document.createElement("h3"); heading.textContent = `${data.name}${data.symbol ? ` · ${data.symbol}` : ""}`;
-      const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.currency} · ${data.source}`;
+      const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.currency}`;
       detail.className = "market-quote-value";
-      const historyLabel = data.history_status === "LIVE" ? "历史完整" : data.history_status === "REVIEW_REQUIRED" ? "历史窗口部分可用" : "历史不可用";
-      const audit = document.createElement("small"); audit.textContent = `周期：${data.interval === "1M" ? "月线" : "日线"}；${historyLabel}；市场时区：${data.timezone}；观察时间：${data.observed_at || "未提供"}`;
-      result.append(heading, detail, audit);
+      result.append(heading, detail);
+      byId("market-data-meta").textContent = [data.source, data.observed_at].filter(Boolean).join(" · ");
       renderIndexCandles(data);
       renderMarketFactors(data.factors || []);
     } catch (error) {
@@ -13466,14 +13484,26 @@
     setHomeHistoryCollapsed(true);
     byId("home-history-show").focus();
   });
+  byId("market-sidebar-hide").addEventListener("click", () => {
+    setHomeHistoryCollapsed(true);
+    byId("home-history-show").focus();
+  });
   byId("home-history-show")?.addEventListener("click", () => {
     setHomeHistoryCollapsed(false);
-    byId("chat-session-search").focus();
+    if (document.body.classList.contains("market-active")) {
+      document.querySelector('.market-region-tabs [aria-selected="true"]').focus();
+    } else {
+      byId("chat-session-search").focus();
+    }
   });
   byId("home-history-backdrop")?.addEventListener("click", () => setHomeHistoryCollapsed(true));
-  homeMobileViewport.addEventListener("change", event => setHomeHistoryCollapsed(event.matches));
+  homeMobileViewport.addEventListener("change", event => {
+    homeHistoryCollapsed = event.matches;
+    marketSidebarCollapsed = event.matches;
+    renderHomeHistoryState();
+  });
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && homeMobileViewport.matches && !homeHistoryCollapsed && document.body.classList.contains("copilot-active")) {
+    if (event.key === "Escape" && homeMobileViewport.matches && !document.body.classList.contains("home-history-collapsed") && document.body.classList.contains("sidebar-layout-active")) {
       setHomeHistoryCollapsed(true);
       byId("home-history-show").focus();
     }
@@ -13485,6 +13515,10 @@
     homeContextTrigger?.setAttribute("aria-expanded", "false");
   }
   homeContextTrigger?.addEventListener("click", () => {
+    if (!document.body.classList.contains("copilot-active")) {
+      window.location.hash = "copilot";
+      syncNavigation("copilot");
+    }
     const copilot = byId("copilot");
     const expanded = !copilot.classList.contains("context-open");
     copilot.classList.toggle("context-open", expanded);

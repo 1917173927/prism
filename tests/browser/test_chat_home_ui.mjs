@@ -123,7 +123,9 @@ try {
       const newChat = document.querySelector("#new-chat-session").getBoundingClientRect();
       const search = document.querySelector(".sidebar-chat-search").getBoundingClientRect();
       const hide = document.querySelector("#home-history-hide").getBoundingClientRect();
-      const headings = [...sidebar.querySelectorAll("h2, h3")].map(node => ({text: node.textContent, top: node.getBoundingClientRect().top}));
+      const headings = [...sidebar.querySelectorAll("h2, h3")]
+        .filter(node => node.getClientRects().length > 0)
+        .map(node => ({text: node.textContent, top: node.getBoundingClientRect().top}));
       return {newTop: newChat.top, newBottom: newChat.bottom, searchTop: search.top, searchBottom: search.bottom,
         hideTop: hide.top, hideBottom: hide.bottom, hideLeft: hide.left, newRight: newChat.right, headings};
     });
