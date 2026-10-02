@@ -59,19 +59,28 @@
     body[data-view="questionnaire"] .primary-navigation, body[data-view="questionnaire"] .navigation-actions { display: none; }
     main { width: min(100% - 64px, 1000px); margin: 50px auto 0; padding-bottom: 44px; }
     .page-heading { margin-bottom: 28px; }
-    .page-heading p { margin-top: 7px; color: var(--secondary); }
     .profile-card { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
-    .profile-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; padding: 34px 38px 30px; }
+    .profile-overview { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 38px; padding: 28px 34px; }
+    .radar-panel { min-width: 0; }
+    .radar-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+    .radar-heading h2 { font-size: 17px; }
+    .radar-range { color: var(--muted); font-size: 11px; }
+    .radar-chart { position: relative; width: 100%; max-width: 460px; aspect-ratio: 460 / 340; margin: 12px auto 0; }
+    .radar-chart svg { display: block; width: 100%; height: 100%; }
+    .radar-ring { fill: none; stroke: #e4e3e2; stroke-width: 1; }
+    .radar-ring-outer { fill: #fffaf6; stroke: #d5ccc4; stroke-width: 1.2; }
+    .radar-axis { stroke: #e0dbd7; stroke-width: 1; }
+    .radar-label { position: absolute; color: var(--secondary); font-size: 12px; line-height: 1.5; white-space: nowrap; }
+    .radar-label[data-align="left"] { transform: translate(-100%, -50%); text-align: right; }
+    .radar-label[data-align="right"] { transform: translate(0, -50%); text-align: left; }
+    .radar-label[data-align="center"] { transform: translate(-50%, -50%); text-align: center; }
+    .radar-score { display: block; margin-top: 2px; color: var(--ink); font-size: 14px; font-weight: 500; line-height: 1.4; }
+    .profile-summary { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 22px 0 22px 32px; border-left: 1px solid var(--line); }
     .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--secondary); font-size: 13px; }
     .eyebrow .icon { width: 18px; height: 18px; }
     .rating-value { display: block; margin: 12px 0 4px; font-size: 38px; font-weight: 550; line-height: 1.3; }
-    .rating-caption { color: var(--secondary); font-size: 13px; }
-    .overview-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 30px; border-left: 1px solid var(--line); }
-    .overview-copy h2 { font-size: 18px; }
-    .overview-copy p { max-width: 330px; margin: 7px 0 20px; color: var(--secondary); font-size: 13px; }
-    .rating-facts { display: grid; grid-template-columns: repeat(3, 1fr); padding: 20px 38px; border-top: 1px solid var(--line); background: #fcfcfd; }
-    .rating-facts > div { padding-left: 26px; border-left: 1px solid var(--line); }
-    .rating-facts > div:first-child { padding-left: 0; border-left: 0; }
+    .rating-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 22px 0 26px; }
+    .rating-facts > div:last-child { grid-column: 1 / -1; }
     .rating-facts dt { color: var(--secondary); font-size: 12px; }
     .rating-facts dd { margin: 4px 0 0; font-size: 16px; font-weight: 500; }
     .questionnaire-entry { display: flex; align-items: center; gap: 16px; margin-top: 20px; padding: 22px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
@@ -105,14 +114,9 @@
     .allocation-values > div { padding: 18px; border-radius: 9px; background: #f7f7f8; }
     .allocation-values dt { color: var(--secondary); font-size: 13px; }
     .allocation-values dd { margin: 7px 0 0; font-size: 23px; font-weight: 500; }
-    .profile-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 22px; color: var(--secondary); font-size: 12px; }
-    .profile-footer .quiet-button { font-size: 12px; padding-inline: 0; }
-    .preview-footer { width: min(100% - 64px, 1000px); display: flex; align-items: baseline; gap: 12px; margin: 0 auto 26px; padding-top: 18px; border-top: 1px solid #e0e1e5; color: var(--secondary); font-size: 11px; }
-    .demo-label { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .07em; }
     .back-button { margin: 0 0 18px -12px; font-size: 13px; }
     .back-button .icon { transform: rotate(180deg); width: 17px; }
     .form-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
-    .form-heading p { margin-top: 7px; color: var(--secondary); }
     .question-count { padding-top: 8px; color: var(--secondary); font-size: 12px; white-space: nowrap; }
     .questionnaire-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; align-items: start; }
     .questionnaire-sidebar { position: sticky; top: 98px; }
@@ -128,7 +132,6 @@
     .step-number { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border: 1px solid #d5d7dd; border-radius: 50%; font-size: 11px; font-weight: 500; }
     [aria-current="step"] .step-number { background: var(--accent); color: white; border-color: var(--accent); }
     .step-complete { margin-left: auto; width: 15px; height: 15px; }
-    .sidebar-note { margin: 22px 10px 0; color: var(--secondary); font-size: 11px; }
     .questionnaire-panel { min-width: 0; }
     .section-heading { padding: 24px 28px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
     .section-heading p { margin-top: 5px; color: var(--secondary); font-size: 13px; }
@@ -149,9 +152,7 @@
     .question[data-invalid="true"] { border-color: var(--danger); }
     .form-error { margin: 0 0 18px; padding: 14px 18px; border: 1px solid #f1c6c1; border-radius: 9px; color: var(--danger); background: #fff6f5; font-size: 13px; }
     .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; }
-    .form-status { margin-top: 16px; color: var(--secondary); font-size: 11px; }
     .review-intro { margin-bottom: 24px; padding: 22px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-    .review-intro p { margin-top: 6px; color: var(--secondary); font-size: 13px; }
     .review-section { margin-bottom: 18px; padding: 24px 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
     .review-section h2 { font-size: 16px; margin-bottom: 5px; }
     .review-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 17px 0; border-bottom: 1px solid #f0f0f2; }
@@ -159,21 +160,18 @@
     .review-item dt { font-size: 13px; }
     .review-item dd { grid-column: 1; margin: 0; font-size: 13px; color: var(--secondary); }
     .review-item button { grid-column: 2; grid-row: 1 / span 2; align-self: start; min-height: 44px; margin-top: -7px; padding: 8px 10px; color: var(--accent); font-size: 12px; }
-    .review-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 8px; }
-    .review-footer p { color: var(--secondary); font-size: 12px; }
+    .review-footer { display: flex; justify-content: flex-end; padding-top: 8px; }
     dialog { width: min(460px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 16px; color: var(--ink); background: var(--surface); box-shadow: 0 20px 80px #25282d20; }
     dialog::backdrop { background: #25282d40; }
     .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 24px 14px; }
     .dialog-heading h2 { font-size: 18px; }
     .dialog-body { padding: 0 24px 24px; }
-    .dialog-body > p { color: var(--secondary); font-size: 13px; margin-bottom: 20px; }
     .display-options { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
     .display-options legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
     .display-options .option { align-items: center; }
     .display-options .option input { margin-top: 0; }
     .display-options small { display: block; color: var(--secondary); font-size: 11px; }
-    .dialog-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 24px; border-top: 1px solid var(--line); }
-    .dialog-footer p { color: var(--secondary); font-size: 11px; }
+    .dialog-footer { display: flex; justify-content: flex-end; padding: 18px 24px; border-top: 1px solid var(--line); }
     .skip-link { position: fixed; z-index: 30; left: 16px; top: -70px; padding: 12px 18px; border-radius: 8px; background: var(--ink); color: white; }
     .skip-link:focus { top: 12px; }
     @media (max-width: 900px) {
@@ -183,10 +181,8 @@
       .primary-navigation { order: 3; flex-basis: 100%; overflow-x: auto; padding: 0 0 10px; }
       .nav-item { font-size: 13px; padding: 7px 10px; }
       main { width: calc(100% - 40px); margin-top: 34px; }
-      .preview-footer { width: calc(100% - 40px); }
-      .profile-overview { gap: 28px; padding: 28px; }
-      .overview-copy { padding-left: 24px; }
-      .rating-facts { padding-inline: 28px; }
+      .profile-overview { gap: 22px; padding: 24px; }
+      .profile-summary { padding-left: 22px; }
       .questionnaire-layout { grid-template-columns: 175px minmax(0, 1fr); gap: 24px; }
       .options { grid-template-columns: 1fr; }
     }
@@ -198,12 +194,14 @@
       h1 { font-size: 24px; }
       .page-heading { margin-bottom: 22px; }
       .profile-card { border-radius: 14px; }
-      .profile-overview { grid-template-columns: 1fr; gap: 24px; padding: 26px 24px; }
+      .profile-overview { grid-template-columns: 1fr; gap: 22px; padding: 22px 20px; }
+      .radar-heading h2 { font-size: 16px; }
+      .radar-label { font-size: 11px; }
+      .radar-score { font-size: 13px; }
       .rating-value { font-size: 34px; }
-      .overview-copy { padding: 22px 0 0; border-left: 0; border-top: 1px solid var(--line); }
-      .overview-copy .primary-button { width: 100%; }
-      .rating-facts { padding: 18px 24px; gap: 12px; }
-      .rating-facts > div { padding-left: 12px; }
+      .profile-summary { padding: 22px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+      .rating-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 22px; }
+      .rating-facts > div:last-child { grid-column: auto; }
       .rating-facts dt { font-size: 11px; }
       .rating-facts dd { font-size: 14px; }
       .questionnaire-entry { flex-wrap: wrap; padding: 20px; gap: 12px; }
@@ -214,22 +212,17 @@
       .detail-grid { grid-template-columns: 1fr; gap: 0; }
       .allocation-values { gap: 8px; }
       .allocation-values > div { padding: 14px 12px; }
-      .profile-footer { flex-wrap: wrap; gap: 6px; }
-      .preview-footer { width: calc(100% - 28px); align-items: flex-start; }
       .form-heading { display: block; margin-bottom: 22px; }
-      .form-heading p { font-size: 13px; }
       .question-count { display: block; }
       .questionnaire-layout { display: block; }
       .questionnaire-sidebar { position: static; margin-bottom: 24px; }
       .section-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 18px; }
       .section-navigation button { min-height: 48px; padding: 9px; font-size: 12px; gap: 8px; }
       .step-number { width: 22px; height: 22px; }
-      .sidebar-note { margin: 12px 0 0; }
       .section-heading { padding: 20px; }
       .question { padding: 20px; }
       .question legend { font-size: 14px; }
       .review-section, .review-intro { padding: 20px; }
-      .review-footer { flex-wrap: wrap; }
       .review-footer .primary-button { width: 100%; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -279,32 +272,30 @@
     <section id="profile-view" aria-labelledby="profile-title">
       <div class="page-heading">
         <h1 id="profile-title" tabindex="-1">个人中心</h1>
-        <p>管理风险测评与个人分析资料</p>
       </div>
-      <section class="profile-card" aria-labelledby="effective-rating-title">
+      <section class="profile-card" aria-labelledby="radar-title">
         <div class="profile-overview">
-          <div>
+          <div class="radar-panel">
+            <div class="radar-heading"><h2 id="radar-title">八维投资者画像</h2><span class="radar-range">0–100</span></div>
+            <div class="radar-chart" id="profile-radar" role="img" aria-label="八维投资者画像雷达图"></div>
+          </div>
+          <div class="profile-summary">
             <h2 id="effective-rating-title" class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg>当前有效评级</h2>
             <strong class="rating-value">—</strong>
-            <p class="rating-caption">用于持仓分析中的风险约束</p>
-          </div>
-          <div class="overview-copy">
-            <h2>查看你的持仓分析</h2>
-            <p>导入持仓，查看资产结构、集中度与风险对照。</p>
+            <dl class="rating-facts">
+              <div><dt>问卷适当性等级</dt><dd>—</dd></div>
+              <div><dt>画像风险分</dt><dd>—</dd></div>
+              <div><dt>测评确认时间</dt><dd>—</dd></div>
+            </dl>
             <a class="primary-button" id="go-to-portfolio" href="portfolio-disclosure-preview.html">前往持仓分析<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></a>
           </div>
         </div>
-        <dl class="rating-facts">
-          <div><dt>问卷适当性等级</dt><dd>—</dd></div>
-          <div><dt>画像风险分</dt><dd>—</dd></div>
-          <div><dt>测评确认时间</dt><dd>—</dd></div>
-        </dl>
       </section>
       <section class="questionnaire-entry" aria-labelledby="questionnaire-entry-title">
         <div class="entry-symbol"><svg class="icon" aria-hidden="true"><use href="#icon-file"/></svg></div>
         <div class="entry-copy">
           <h2 id="questionnaire-entry-title">投资者风险测评</h2>
-          <p>19 道题目 · 6 个部分 · 独立填写界面</p>
+          <p>19 道题目 · 6 个部分</p>
           <span class="entry-progress" id="entry-progress" hidden></span>
         </div>
         <button class="secondary-button" id="open-questionnaire" type="button">打开问卷<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
@@ -312,22 +303,12 @@
       <h2 class="section-caption">个人分析资料</h2>
       <div class="profile-details">
         <details class="disclosure" id="profile-disclosure">
-          <summary><svg class="icon" aria-hidden="true"><use href="#icon-chart"/></svg><span class="disclosure-title"><strong>投资者画像</strong><small>八维画像、关键档案与服务策略</small></span><svg class="icon chevron" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
+          <summary><svg class="icon" aria-hidden="true"><use href="#icon-chart"/></svg><span class="disclosure-title"><strong>画像档案</strong><small>投资者原型、关键档案与服务策略</small></span><svg class="icon chevron" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
           <div class="disclosure-content">
             <section class="detail-group">
               <h3>投资者原型</h3>
-              <p class="empty-line">原型名称与画像标签待载入</p>
-              <details class="detail-note"><summary class="quiet-button">查看原型依据<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><p>适配度、判断条件与相关依据待载入。</p></details>
-            </section>
-            <section class="detail-group">
-              <h3>八维画像</h3>
-              <dl class="detail-grid">
-                <div><dt>风险承受能力</dt><dd>—</dd></div><div><dt>投资经验</dt><dd>—</dd></div>
-                <div><dt>操作活跃度</dt><dd>—</dd></div><div><dt>研究习惯</dt><dd>—</dd></div>
-                <div><dt>信息投入</dt><dd>—</dd></div><div><dt>AI 信任度</dt><dd>—</dd></div>
-                <div><dt>个性化需求</dt><dd>—</dd></div><div><dt>辅助需求</dt><dd>—</dd></div>
-              </dl>
-              <p class="detail-note">八个维度按 0–100 分展示，来源为已确认问卷。</p>
+              <p class="empty-line">—</p>
+              <details class="detail-note"><summary class="quiet-button">原型依据<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><dl class="detail-grid"><div><dt>适配度</dt><dd>—</dd></div><div><dt>判断条件</dt><dd>—</dd></div></dl></details>
             </section>
             <section class="detail-group">
               <h3>关键档案</h3>
@@ -337,7 +318,7 @@
                 <div><dt>研究投入</dt><dd>—</dd></div><div><dt>AI 使用经验</dt><dd>—</dd></div>
               </dl>
             </section>
-            <section class="detail-group"><h3>服务策略与推荐功能</h3><p class="empty-line">依据已确认问卷生成的分析顺序、解释方式与推荐功能待载入。</p></section>
+            <section class="detail-group"><h3>服务策略与推荐功能</h3><p class="empty-line">—</p></section>
           </div>
         </details>
         <details class="disclosure" id="rating-disclosure">
@@ -347,7 +328,6 @@
               <div><dt>问卷适当性等级</dt><dd>—</dd></div><div><dt>当前有效评级</dt><dd>—</dd></div>
               <div><dt>画像风险分</dt><dd>—</dd></div><div><dt>行为观察结果</dt><dd>—</dd></div>
             </dl>
-            <p class="detail-note">问卷评级来源于已确认的测评。当前有效评级用于后续风险约束，并结合已有的行为观察结果。</p>
           </div>
         </details>
         <details class="disclosure" id="allocation-disclosure">
@@ -355,19 +335,14 @@
           <div class="disclosure-content">
             <dl class="allocation-values"><div><dt>货币类</dt><dd>—</dd></div><div><dt>债券</dt><dd>—</dd></div><div><dt>权益</dt><dd>—</dd></div></dl>
             <p class="detail-note">权益参考区间：—</p>
-            <p class="detail-note">此处展示画像级参考比例。当前持仓的资产结构可在持仓分析中查看。</p>
           </div>
         </details>
-      </div>
-      <div class="profile-footer">
-        <p>仅作适当性与服务展示参考，不构成投资建议。</p>
-        <button class="quiet-button" type="button" data-open-settings>回答显示设置<svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg></button>
       </div>
     </section>
     <section id="questionnaire-view" aria-labelledby="questionnaire-title" hidden>
       <button class="quiet-button back-button" type="button" data-return-profile><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg>返回个人中心</button>
       <div class="form-heading">
-        <div><h1 id="questionnaire-title" tabindex="-1">投资者风险测评</h1><p>请根据你的实际情况填写。</p></div>
+        <div><h1 id="questionnaire-title" tabindex="-1">投资者风险测评</h1></div>
         <span class="question-count">19 道题目 · 18 道必答 · Q13 可选</span>
       </div>
       <div class="questionnaire-layout" id="questionnaire-form-view">
@@ -375,7 +350,6 @@
           <div class="progress-label"><span>必答题进度</span><span id="progress-text" role="status" aria-live="polite">0 / 18</span></div>
           <progress id="questionnaire-progress" value="0" max="18" aria-label="已回答的必答题数量"></progress>
           <nav aria-label="问卷部分"><ol class="section-navigation" id="section-navigation"></ol></nav>
-          <p class="sidebar-note">可以切换部分查看题目。填写内容在本次打开期间保留。</p>
         </aside>
         <div class="questionnaire-panel">
           <div class="section-heading" id="section-heading"><span class="section-index" id="section-index"></span><h2 id="section-title" tabindex="-1"></h2><p id="section-description"></p></div>
@@ -387,29 +361,26 @@
               <button class="primary-button" id="next-section" type="button">下一部分<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
               <button class="primary-button" id="review-answers" type="button" hidden>核对全部答案<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
             </div>
-            <p class="form-status">界面预览：可填写与核对答案，内容仅在本次打开期间保留。</p>
           </form>
         </div>
       </div>
       <div id="questionnaire-review-view" hidden>
-        <div class="review-intro"><h2 id="review-title" tabindex="-1">核对问卷答案</h2><p>全部 19 道题目按原有顺序展示，可返回对应部分修改。</p></div>
+        <div class="review-intro"><h2 id="review-title" tabindex="-1">核对问卷答案</h2></div>
         <div id="review-list"></div>
-        <div class="review-footer"><p>预览中的答案不会提交，不生成风险评级。</p><button class="primary-button" type="button" data-return-profile>返回个人中心<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button></div>
+        <div class="review-footer"><button class="primary-button" type="button" data-return-profile>返回个人中心<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button></div>
       </div>
     </section>
   </main>
-  <footer class="preview-footer"><span class="demo-label">DEMO</span><p>个人中心界面预览 · 评级与资产数值使用占位内容 · 未连接账户数据 · 问卷填写内容不会保存</p></footer>
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <div class="dialog-heading"><h2 id="settings-title">回答显示设置</h2><button class="icon-button" id="close-settings" type="button" aria-label="关闭回答显示设置"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
     <div class="dialog-body">
-      <p>选择分析回答的详细程度。风险提示始终展开。</p>
       <fieldset class="display-options"><legend>回答详细度</legend>
         <label class="option"><input type="radio" name="display-level" value="CONCISE"><span>简洁<small>先看结论和关键依据</small></span></label>
         <label class="option"><input type="radio" name="display-level" value="STANDARD" checked><span>标准<small>结论与关键依据保持平衡</small></span></label>
         <label class="option"><input type="radio" name="display-level" value="DETAILED"><span>详细<small>展开结论、依据和数据说明</small></span></label>
       </fieldset>
     </div>
-    <div class="dialog-footer"><p>仅预览选择效果，不会修改账户设置。</p><button class="secondary-button" id="finish-settings" type="button">完成</button></div>
+    <div class="dialog-footer"><button class="secondary-button" id="finish-settings" type="button">完成</button></div>
   </dialog>
   <script id="questionnaire-template" type="application/json">
   {
@@ -473,8 +444,61 @@
       Q17: ["几乎不参考", "少量参考", "适度参考", "较多参考", "高度参考"]
     };
     let sectionIndex = 0;
-    let settingsTrigger = null;
     const byId = id => document.getElementById(id);
+    const radarDimensions = [
+      {key: "risk", label: "风险承受能力"}, {key: "exp", label: "投资经验"},
+      {key: "act", label: "操作活跃度"}, {key: "res", label: "研究习惯"},
+      {key: "inf", label: "信息投入"}, {key: "ai", label: "AI 信任度"},
+      {key: "per", label: "个性化需求"}, {key: "aid", label: "辅助需求"}
+    ];
+
+    function renderRadar() {
+      const chart = byId("profile-radar");
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("viewBox", "0 0 460 340");
+      svg.setAttribute("aria-hidden", "true");
+      const cx = 230;
+      const cy = 170;
+      const radius = 120;
+      const pointFor = (distance, index) => {
+        const angle = -Math.PI / 2 + index * 2 * Math.PI / radarDimensions.length;
+        return [cx + distance * Math.cos(angle), cy + distance * Math.sin(angle)];
+      };
+      const pointsFor = distance => radarDimensions.map((_, index) => pointFor(distance, index).map(value => value.toFixed(2)).join(",")).join(" ");
+      chart.replaceChildren(svg);
+      [100, 80, 60, 40, 20].forEach(level => {
+        const ring = document.createElementNS(svgNS, "polygon");
+        ring.setAttribute("points", pointsFor(radius * level / 100));
+        ring.setAttribute("class", level === 100 ? "radar-ring radar-ring-outer" : "radar-ring");
+        svg.append(ring);
+      });
+      radarDimensions.forEach((dimension, index) => {
+        const [x, y] = pointFor(radius, index);
+        const axis = document.createElementNS(svgNS, "line");
+        axis.setAttribute("x1", String(cx));
+        axis.setAttribute("y1", String(cy));
+        axis.setAttribute("x2", x.toFixed(2));
+        axis.setAttribute("y2", y.toFixed(2));
+        axis.setAttribute("class", "radar-axis");
+        svg.append(axis);
+        const [labelX, labelY] = pointFor(150, index);
+        const label = document.createElement("span");
+        label.className = "radar-label";
+        label.dataset.dimension = dimension.key;
+        label.dataset.align = labelX < cx - 4 ? "left" : labelX > cx + 4 ? "right" : "center";
+        label.style.left = `${labelX / 460 * 100}%`;
+        label.style.top = `${labelY / 340 * 100}%`;
+        const name = document.createElement("span");
+        name.textContent = dimension.label;
+        const score = document.createElement("strong");
+        score.className = "radar-score";
+        score.textContent = "—";
+        label.append(name, score);
+        chart.append(label);
+      });
+      chart.setAttribute("aria-label", `八维投资者画像雷达图：${radarDimensions.map(dimension => `${dimension.label}：—`).join("；")}`);
+    }
     const isAnswered = question => {
       const answer = answers.get(question.question_id);
       return Boolean(answer && (Number.isInteger(answer.score) || answer.selected_option_ids.length));
@@ -486,7 +510,7 @@
       byId("progress-text").textContent = `${answeredCount} / ${requiredQuestions.length}`;
       byId("questionnaire-progress").value = answeredCount;
       byId("entry-progress").hidden = answeredCount === 0;
-      byId("entry-progress").textContent = `本次预览已回答 ${answeredCount} / ${requiredQuestions.length} 道必答题`;
+      byId("entry-progress").textContent = `已回答 ${answeredCount} / ${requiredQuestions.length} 道必答题`;
       byId("open-questionnaire").firstChild.textContent = answeredCount ? "继续填写" : "打开问卷";
       template.sections.forEach((section, index) => {
         const sectionQuestions = section.question_ids.map(id => questionsById.get(id));
@@ -744,20 +768,17 @@
     });
     const settingsDialog = byId("settings-dialog");
     document.querySelectorAll("[data-open-settings]").forEach(button => {
-      button.addEventListener("click", () => {
-        settingsTrigger = button;
-        settingsDialog.showModal();
-      });
+      button.addEventListener("click", () => settingsDialog.showModal());
     });
     byId("close-settings").addEventListener("click", () => settingsDialog.close());
     byId("finish-settings").addEventListener("click", () => settingsDialog.close());
-    settingsDialog.addEventListener("close", () => settingsTrigger.focus());
     settingsDialog.addEventListener("click", event => {
       if (event.target !== settingsDialog) return;
       const bounds = settingsDialog.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) settingsDialog.close();
     });
     window.addEventListener("hashchange", () => updateView());
+    renderRadar();
     renderSection();
     updateView(false);
   </script>
