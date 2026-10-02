@@ -2378,6 +2378,11 @@ body.prism-ui-v2 {
 .prd-dialog label { display: grid; gap: 5px; margin: 12px 0; }
 .prd-dialog input { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: inherit; font: inherit; }
 .prd-dialog p { font-size: 14px; color: var(--text-secondary); }
+.prism-ui-v2 #questionnaire-welcome .modal-actions { align-items: center; gap: 12px; margin-top: 24px; }
+.prism-ui-v2 #questionnaire-welcome .copilot-action-btn { min-height: 44px; padding: 0 18px; border-radius: 10px; justify-content: center; font-size: 14px; }
+@media (max-width: 480px) {
+  .prism-ui-v2 #questionnaire-welcome .modal-actions { flex-direction: column; align-items: stretch; }
+}
 .portfolio-detail-card, .portfolio-empty { padding: 20px; margin-bottom: 20px; }
 .portfolio-detail-card th, .portfolio-detail-card td { white-space: nowrap; padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
 .portfolio-detail-card td small { display: block; color: var(--text-muted); }
