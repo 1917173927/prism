@@ -2,6 +2,7 @@
   "schema_version": "research-quality-review.v1",
   "dataset_id": "replace-with-real-frozen-dataset-id",
   "corpus_kind": "REAL_CORPUS",
+  "review_method": "HUMAN",
   "frozen_at": null,
   "reviewer": "",
   "items": [

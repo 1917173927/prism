@@ -1,8 +1,9 @@
-/* Standalone review page: in-memory human labels, no API requests or answer generation. */
+/* Standalone review page: in-memory labels with preserved reviewer provenance. */
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
   const SCHEMA = "research-quality-review.v1";
+  const REVIEW_METHODS = {HUMAN: "人工标注", AGENT_ASSISTED: "Agent 辅助标注", UNREVIEWED: "未评审", UNSPECIFIED: "未指定标注来源"};
   const SCENARIOS = {NORMAL: "正常", MISSING: "缺失", STALE: "过期", CONFLICT: "冲突", ISOLATION: "隔离", INJECTION: "注入"};
   let pack = null, current = 0;
   const node = (tag, text) => {const result = document.createElement(tag); if (text != null) result.textContent = text; return result;};
@@ -24,6 +25,8 @@
   }
   function validate(value) {
     if (!value || value.schema_version !== SCHEMA || !["REAL_CORPUS", "SYNTHETIC_FROZEN"].includes(value.corpus_kind) || typeof value.dataset_id !== "string" || !Array.isArray(value.items) || !value.items.length) throw new Error("评测包格式无效；请使用本页示例或空模板。");
+    if (value.review_method != null && (typeof value.review_method !== "string" || !Object.hasOwn(REVIEW_METHODS, value.review_method))) throw new Error("标注来源须为 HUMAN / AGENT_ASSISTED / UNREVIEWED / UNSPECIFIED。");
+    value.review_method ??= "UNSPECIFIED";
     const itemIds = new Set();
     for (const item of value.items) {
       if (!item || typeof item.id !== "string" || !item.id || itemIds.has(item.id) || typeof item.question !== "string" || typeof item.answer !== "string" || !Array.isArray(item.source_documents) || !Array.isArray(item.atomic_claims) || !Array.isArray(item.retrieved_evidence_ids) || !(item.relevant_evidence_ids === null || Array.isArray(item.relevant_evidence_ids))) throw new Error("题目字段、标识或证据数组无效。");
@@ -67,10 +70,10 @@
     $("question-labels").replaceChildren(node("h2", "问题、拒答与检索标注")); const grid = node("div"); grid.className = "grid";
     for (const [key, title] of Object.entries({answerability: "依据是否充分", refusal: "回答或拒答是否合理", isolation_time: "用户隔离及公告／过期时点检查"})) grid.append(control(title, item.annotation, key, choices[key]));
     grid.append(control("问题标注依据（必填）", item.annotation, "notes")); $("question-labels").append(grid);
-    const relevant = node("label", "人工相关证据标识（每行一项，最多 10 项；未标注和确认无相关证据必须区分）");
+    const relevant = node("label", "相关证据标识（每行一项，最多 10 项；未标注和确认无相关证据必须区分）");
     const input = node("textarea"); input.id = "relevant-evidence"; input.value = (item.relevant_evidence_ids || []).join("\n");
     input.addEventListener("input", () => {item.relevant_evidence_ids = input.value.trim() ? [...new Set(input.value.split(/\n/).map(value => value.trim()).filter(Boolean))] : null;}); relevant.append(input); $("question-labels").append(relevant);
-    const noEvidence = node("button", "确认此题无相关证据"); noEvidence.type = "button"; noEvidence.addEventListener("click", () => {item.relevant_evidence_ids = []; input.value = ""; $("message").textContent = `${item.id} 已人工确认无相关证据；该题不进入 Recall 分母，但仍须核验拒答是否合理。`;}); $("question-labels").append(noEvidence, node("p", `召回前 10 项（原样顺序）：${item.retrieved_evidence_ids.slice(0, 10).join("、") || "空"}`));
+    const noEvidence = node("button", "确认此题无相关证据"); noEvidence.type = "button"; noEvidence.addEventListener("click", () => {item.relevant_evidence_ids = []; input.value = ""; $("message").textContent = `${item.id} 已确认无相关证据；该题不进入 Recall 分母，但仍须核验拒答是否合理。`;}); $("question-labels").append(noEvidence, node("p", `召回前 10 项（原样顺序）：${item.retrieved_evidence_ids.slice(0, 10).join("、") || "空"}`));
     updateProgress();
   }
   $("import-file").addEventListener("change", async event => {
@@ -78,9 +81,10 @@
     try {
       if (file.size > 8 * 1024 * 1024) throw new Error("评测包不得超过 8 MiB。");
       const candidate = validate(JSON.parse(await file.text())); pack = candidate; current = 0;
-      $("dataset-meta").textContent = `${pack.dataset_id} · ${pack.corpus_kind} · 冻结时点 ${pack.frozen_at || "未冻结"} · ${pack.items.length} 题`;
+      $("dataset-meta").textContent = `${pack.dataset_id} · ${pack.corpus_kind} · 冻结时点 ${pack.frozen_at || "未冻结"} · ${pack.items.length} 题 · 标注来源 ${pack.review_method}（${REVIEW_METHODS[pack.review_method]}）`;
+      $("reviewer-label").textContent = pack.review_method === "HUMAN" ? "人工标注者标识" : pack.review_method === "AGENT_ASSISTED" ? "Agent 辅助标注者标识（不构成人工签署）" : "标注者标识（来源未完成，不构成人工签署）";
       $("reviewer").value = pack.reviewer || ""; $("item-selector").replaceChildren(); pack.items.forEach((item, index) => {const option = node("option", `${index + 1}. ${item.id}`); option.value = String(index); $("item-selector").append(option);});
-      $("workspace").hidden = false; $("export-json").disabled = false; render(); $("message").textContent = "已导入。所有空标签保持未标注；请人工核对后填写，离开前导出。";
+      $("workspace").hidden = false; $("export-json").disabled = false; render(); $("message").textContent = `已导入，标注来源为 ${pack.review_method}。导出保留此来源，修改标注者不会将 Agent 辅助标注升级为人工签署；所有空标签保持未标注。`;
     } catch (error) {$("message").textContent = `未导入：${error.message}`;}
   });
   $("reviewer").addEventListener("input", event => {pack.reviewer = event.target.value.trim();});

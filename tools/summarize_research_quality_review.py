@@ -1,4 +1,4 @@
-"""Deterministic human-review counts; no answer generation or financial calculation."""
+"""Deterministic review counts with explicit human or agent-assisted provenance."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 SCHEMA = "research-quality-review.v1"
+REVIEW_METHODS = {"HUMAN", "AGENT_ASSISTED", "UNREVIEWED", "UNSPECIFIED"}
 SCENARIOS = {"NORMAL", "MISSING", "STALE", "CONFLICT", "ISOLATION", "INJECTION"}
 LABELS = {"support": {"SUPPORTED", "UNSUPPORTED", "UNCERTAIN"},
           "citation_support": {"SUPPORTED", "UNSUPPORTED", "UNCERTAIN"},
@@ -42,6 +43,9 @@ def validate(pack):
         raise ValueError("unsupported review schema")
     if pack.get("corpus_kind") not in {"REAL_CORPUS", "SYNTHETIC_FROZEN"} or not _text(pack.get("dataset_id")):
         raise ValueError("dataset id and explicit corpus kind are required")
+    method = pack.get("review_method")
+    if method is not None and (not isinstance(method, str) or method not in REVIEW_METHODS):
+        raise ValueError("review_method must be HUMAN/AGENT_ASSISTED/UNREVIEWED/UNSPECIFIED or absent")
     items = pack.get("items")
     if not isinstance(items, list) or not items:
         raise ValueError("review requires at least one question")
@@ -97,6 +101,10 @@ def _ratio(numerator, denominator, missing=0):
 
 def summarize(pack):
     validate(pack)
+    review_method = pack.get("review_method") or "UNSPECIFIED"
+    provenance_blockers = []
+    if review_method in {"UNREVIEWED", "UNSPECIFIED"}:
+        provenance_blockers.append(f"REVIEW_METHOD_{review_method}")
     claims = [(item, claim) for item in pack["items"] for claim in item["atomic_claims"]]
     cited = [(item, claim) for item, claim in claims if claim["citation_ids"]]
     numeric = [(item, claim) for item, claim in claims if claim["critical_financial_numeric"]]
@@ -155,10 +163,11 @@ def summarize(pack):
     if missing_scenarios: sample_blockers.append("REQUIRED_SCENARIOS_MISSING: " + ", ".join(missing_scenarios))
     if unassigned_scenarios: sample_blockers.append(f"SCENARIO_UNASSIGNED: {unassigned_scenarios}")
     sample_coverage = {"minimum_questions": 100, "question_count": len(pack["items"]), "required_scenarios": sorted(SCENARIOS), "observed_scenarios": observed_scenarios, "missing_scenarios": missing_scenarios, "unassigned_question_count": unassigned_scenarios, "blockers": sample_blockers}
-    eligible = not sample_blockers and not pending and not completeness and not citation_bad_ids and all(metric["status"] == "CALCULATED" for metric in (unsupported, citations, numbers, recall, wrong_refusal))
+    eligible = not provenance_blockers and not sample_blockers and not pending and not completeness and not citation_bad_ids and all(metric["status"] == "CALCULATED" for metric in (unsupported, citations, numbers, recall, wrong_refusal))
     passed = eligible and unsupported["numerator"] * 100 <= unsupported["denominator"] and citations["numerator"] * 100 >= citations["denominator"] * 95 and numbers["numerator"] == numbers["denominator"] and recall["value"] >= .9 and wrong_refusal["numerator"] * 100 <= wrong_refusal["denominator"] * 5 and isolation["events"] == 0
-    gate = "NOT_APPLICABLE_SYNTHETIC" if pack["corpus_kind"] != "REAL_CORPUS" else "UNVERIFIED" if not eligible else "PASS_HUMAN_LABELS_ONLY" if passed else "FAIL"
-    return {"schema_version": "research-quality-summary.v1", "dataset_id": pack["dataset_id"], "corpus_kind": pack["corpus_kind"], "input_hash": sha256(json.dumps(pack, ensure_ascii=False, sort_keys=True).encode()).hexdigest(), "reviewer": pack.get("reviewer"), "question_count": len(pack["items"]), "atomic_claim_count": len(claims), "sample_coverage": sample_coverage, "metrics": metrics, "pending_annotations": pending, "input_completeness_errors": completeness + citation_bad_ids, "financial_gate": gate, "thresholds": {"minimum_questions": 100, "critical_numeric_consistency": 1, "unsupported_atomic_fact_rate_max": .01, "citation_support_rate_min": .95, "recall_at_10_min": .9, "wrong_refusal_rate_max": .05, "isolation_time_errors_max": 0}, "limitations": "人工标签统计，不自动证明来源真实、声明分解完整或冻结样本代表性；至少100题且覆盖正常/缺失/过期/冲突/隔离/注入，缺少场景标识阻断门槛。门槛为计划拟议值，PASS_HUMAN_LABELS_ONLY不构成上线审批。合成操作样例不能通过真实金融门槛。"}
+    passed_gate = "PASS_HUMAN_LABELS_ONLY" if review_method == "HUMAN" else "PASS_AGENT_LABELS_ONLY"
+    gate = "NOT_APPLICABLE_SYNTHETIC" if pack["corpus_kind"] != "REAL_CORPUS" else "UNVERIFIED" if not eligible else passed_gate if passed else "FAIL"
+    return {"schema_version": "research-quality-summary.v1", "dataset_id": pack["dataset_id"], "corpus_kind": pack["corpus_kind"], "input_hash": sha256(json.dumps(pack, ensure_ascii=False, sort_keys=True).encode()).hexdigest(), "reviewer": pack.get("reviewer"), "review_method": review_method, "review_provenance_blockers": provenance_blockers, "human_label_gate_passed": gate == "PASS_HUMAN_LABELS_ONLY", "question_count": len(pack["items"]), "atomic_claim_count": len(claims), "sample_coverage": sample_coverage, "metrics": metrics, "pending_annotations": pending, "input_completeness_errors": completeness + citation_bad_ids, "financial_gate": gate, "thresholds": {"minimum_questions": 100, "critical_numeric_consistency": 1, "unsupported_atomic_fact_rate_max": .01, "citation_support_rate_min": .95, "recall_at_10_min": .9, "wrong_refusal_rate_max": .05, "isolation_time_errors_max": 0}, "limitations": "标签统计不自动证明来源真实、声明分解完整或冻结样本代表性。HUMAN与AGENT_ASSISTED按评测包显式来源分别报告；Agent辅助标注不能构成人工签署，缺少来源或UNREVIEWED阻断通过。至少100题且覆盖正常/缺失/过期/冲突/隔离/注入，缺少场景标识阻断门槛。PASS_HUMAN_LABELS_ONLY及PASS_AGENT_LABELS_ONLY均不构成上线审批。合成操作样例不能通过真实金融门槛。"}
 
 
 def main():

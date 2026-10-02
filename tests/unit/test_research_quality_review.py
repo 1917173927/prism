@@ -17,6 +17,7 @@ def package(name="research-quality-review-demo.json"):
 def labelled():
     value = package()
     value["reviewer"] = "unit-test-reviewer"
+    value["review_method"] = "HUMAN"
     value["items"] = value["items"][:1]
     item = value["items"][0]
     item["annotation"] = {"answerability": "SUFFICIENT", "refusal": "NOT_REFUSED", "isolation_time": "PASS", "notes": "Fixture only"}
@@ -103,6 +104,57 @@ def test_hundred_controlled_labels_only_exercise_sample_and_scenario_gate():
     result = summarize(value)
     assert result["financial_gate"] == "UNVERIFIED"
     assert len(result["sample_coverage"]["missing_scenarios"]) == 5
+
+
+@pytest.mark.parametrize("method,gate,human_gate", [
+    ("HUMAN", "PASS_HUMAN_LABELS_ONLY", True),
+    ("AGENT_ASSISTED", "PASS_AGENT_LABELS_ONLY", False),
+])
+def test_explicit_review_provenance_separates_human_and_agent_gate(method, gate, human_gate):
+    value = controlled_hundred_labels()
+    value["review_method"] = method
+    frozen = copy.deepcopy(value)
+    result = summarize(value)
+    assert result["financial_gate"] == gate
+    assert result["human_label_gate_passed"] is human_gate
+    assert result["review_method"] == method
+    assert result["review_provenance_blockers"] == []
+    assert value == frozen  # Summarizing must never upgrade or otherwise alter provenance.
+
+
+@pytest.mark.parametrize("method", [None, "UNSPECIFIED", "UNREVIEWED"])
+def test_unspecified_or_unreviewed_full_labels_cannot_pass(method):
+    value = controlled_hundred_labels()
+    value["review_method"] = method
+    result = summarize(value)
+    expected = method or "UNSPECIFIED"
+    assert result["review_method"] == expected
+    assert result["financial_gate"] == "UNVERIFIED"
+    assert result["human_label_gate_passed"] is False
+    assert result["review_provenance_blockers"] == [f"REVIEW_METHOD_{expected}"]
+    assert result["metrics"]["critical_numeric_consistency"]["value"] == 1
+    value.pop("review_method")
+    assert summarize(value)["financial_gate"] == "UNVERIFIED"
+
+
+def test_agent_labels_still_require_reviewer_and_complete_numeric_reference():
+    value = controlled_hundred_labels()
+    value["review_method"] = "AGENT_ASSISTED"
+    value["reviewer"] = ""
+    result = summarize(value)
+    assert result["financial_gate"] == "UNVERIFIED"
+    assert "reviewer missing" in result["pending_annotations"]
+    value["reviewer"] = "agent-test-reviewer"
+    value["items"][0]["atomic_claims"][0]["assessment"]["numeric_source_verified"] = "NO"
+    assert summarize(value)["financial_gate"] == "UNVERIFIED"
+
+
+@pytest.mark.parametrize("method", ["human", "AUTO", "", 7, ["HUMAN"]])
+def test_invalid_review_method_rejected(method):
+    value = labelled()
+    value["review_method"] = method
+    with pytest.raises(ValueError, match="review_method"):
+        validate(value)
 
 
 def test_absent_scenario_blocks_even_when_other_questions_cover_six():

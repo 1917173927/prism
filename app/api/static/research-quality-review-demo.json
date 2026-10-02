@@ -2,6 +2,7 @@
   "schema_version": "research-quality-review.v1",
   "dataset_id": "non-financial-operation-demo.v1",
   "corpus_kind": "SYNTHETIC_FROZEN",
+  "review_method": "HUMAN",
   "frozen_at": "2026-10-01T00:00:00Z",
   "reviewer": "",
   "items": [
