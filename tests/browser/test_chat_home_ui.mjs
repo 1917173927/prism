@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import path from "node:path";
+import {fileURLToPath} from "node:url";
 import puppeteer from "puppeteer-core";
 
 const baseUrl = process.env.PRISM_TEST_BASE_URL || "http://127.0.0.1:8874";
@@ -8,6 +11,7 @@ const executablePath = process.env.PRISM_TEST_BROWSER || (
     : "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 );
 const browser = await puppeteer.launch({executablePath, headless: true, args: ["--no-sandbox"]});
+const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 try {
   const page = await browser.newPage();
@@ -21,11 +25,25 @@ try {
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.setViewport({width: 1440, height: 900});
   await page.goto(baseUrl, {waitUntil: "domcontentloaded"});
+  if (new URL(page.url()).pathname === "/login") {
+    const password = randomUUID() + randomUUID();
+    await page.click("#register-tab");
+    await page.type("#username", `home-ui-${Date.now()}`);
+    await page.type("#password", password);
+    await page.type("#confirmation", password);
+    await Promise.all([page.waitForNavigation({waitUntil: "domcontentloaded"}), page.click("#submit")]);
+  }
   await page.waitForSelector("body:not(.questionnaire-pending)");
+  const session = await page.evaluate(async () => {
+    const response = await fetch("/api/v1/auth/context");
+    return response.json();
+  });
+  assert.equal(session.enabled, true);
+  const ownerId = session.owner_id;
 
   if (await page.$eval("body", body => body.classList.contains("questionnaire-required"))) {
-    const status = await page.evaluate(async () => {
-      const headers = {"X-Owner-ID": "demo-owner"};
+    const status = await page.evaluate(async ownerId => {
+      const headers = {"X-Owner-ID": ownerId};
       const template = await fetch("/api/v1/advisor/profile/questionnaire-template", {headers}).then(response => response.json());
       const answers = template.questions.map(question => question.question_type === "SCORE"
         ? {question_id: question.question_id, score: 3}
@@ -33,50 +51,110 @@ try {
       const response = await fetch("/api/v1/advisor/profile/questionnaire/confirm", {
         method: "POST",
         headers: {...headers, "Content-Type": "application/json"},
-        body: JSON.stringify({schema_version: "questionnaire-confirmation-request.v1", owner_id: "demo-owner", confirmed_at: new Date().toISOString(), answers}),
+        body: JSON.stringify({schema_version: "questionnaire-confirmation-request.v1", owner_id: ownerId, confirmed_at: new Date().toISOString(), answers}),
       });
       return response.status;
-    });
+    }, ownerId);
     assert.equal(status, 200);
     await page.reload({waitUntil: "domcontentloaded"});
     await page.waitForSelector("body:not(.questionnaire-pending):not(.questionnaire-required)");
   }
 
   await page.waitForSelector("body.copilot-active #copilot:not([hidden])");
-  await page.waitForFunction(() => document.querySelector("#home-context-trigger").textContent !== "当前上下文：A股 · 查看分析资料");
   const home = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).getBoundingClientRect();
     const visible = selector => getComputedStyle(document.querySelector(selector)).display !== "none";
     return {
       actionTop: rect(".sidebar-conversation-actions").top,
-      navTop: rect(".nav-list").top,
+      navTop: rect("#home-primary-navigation").top,
+      headerBottom: rect("#home-navigation").bottom,
+      sidebarBottom: rect(".sidebar").bottom,
+      sidebarTop: rect(".sidebar").top,
       historyTop: rect(".sidebar .chat-history-panel").top,
       titleCenter: rect("#copilot-hero-title").x + rect("#copilot-hero-title").width / 2,
       inputCenter: rect(".copilot-query-box").x + rect(".copilot-query-box").width / 2,
       inputWidth: rect(".copilot-query-box").width,
+      inputTop: rect(".copilot-query-box").top,
       toolsVisible: visible("#agent-feature-tools"),
       contextVisible: visible("#agent-profile-rail"),
       sidebarVisible: visible(".sidebar-conversation-actions"),
       horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      font: getComputedStyle(document.querySelector("#copilot-natural-input")).fontFamily,
+      titleWeight: getComputedStyle(document.querySelector("#copilot-hero-title")).fontWeight,
+      contextInsideConversation: Boolean(document.querySelector(".conversation-main #home-context-trigger")),
     };
   });
-  assert.ok(home.actionTop < home.navTop && home.navTop < home.historyTop, JSON.stringify(home));
+  assert.ok(home.navTop < home.actionTop && home.actionTop < home.historyTop, JSON.stringify(home));
+  assert.equal(home.sidebarTop, home.headerBottom);
+  assert.equal(home.sidebarBottom, 900);
   assert.ok(Math.abs(home.titleCenter - home.inputCenter) < 2, JSON.stringify(home));
   assert.ok(home.inputWidth >= 600 && home.inputWidth <= 760, JSON.stringify(home));
   assert.equal(home.sidebarVisible, true);
   assert.equal(home.toolsVisible, false);
   assert.equal(home.contextVisible, false);
   assert.equal(home.horizontalOverflow, false);
+  assert.ok(home.inputTop > 300 && home.inputTop < 500, JSON.stringify(home));
+  assert.match(home.font, /ui-sans-serif/);
+  assert.equal(home.titleWeight, "600");
+  assert.equal(home.contextInsideConversation, false);
+  assert.equal(await page.$eval("#home-model-label", node => node.textContent), "API 配置");
+
+  await page.click("#home-history-hide");
+  const collapsed = await page.evaluate(() => ({
+    sidebarDisplay: getComputedStyle(document.querySelector(".sidebar")).display,
+    sidebarWidth: document.querySelector(".sidebar").getBoundingClientRect().width,
+    mainLeft: document.querySelector(".main").getBoundingClientRect().left,
+    headerWidth: document.querySelector("#home-navigation").getBoundingClientRect().width,
+  }));
+  assert.equal(collapsed.sidebarDisplay, "none");
+  assert.equal(collapsed.sidebarWidth, 0);
+  assert.equal(collapsed.mainLeft, 0);
+  assert.equal(collapsed.headerWidth, 1440);
+  await page.click("#home-history-show");
+
+  async function checkMenuGeometry(selector) {
+    const geometry = await page.evaluate(selector => {
+      const menu = document.querySelector(selector).getBoundingClientRect();
+      const composer = document.querySelector(".copilot-query-box").getBoundingClientRect();
+      return {width: menu.width, height: menu.height, left: menu.left, right: menu.right, top: menu.top, bottom: menu.bottom,
+        intersectsInput: menu.left < composer.right && menu.right > composer.left && menu.top < composer.bottom && menu.bottom > composer.top,
+        viewportWidth: innerWidth, viewportHeight: innerHeight};
+    }, selector);
+    assert.ok(geometry.width <= 232 && geometry.height <= 300, JSON.stringify(geometry));
+    assert.ok(geometry.left >= 0 && geometry.right <= geometry.viewportWidth, JSON.stringify(geometry));
+    assert.ok(geometry.top >= 0 && geometry.bottom <= geometry.viewportHeight, JSON.stringify(geometry));
+    assert.equal(geometry.intersectsInput, false, JSON.stringify(geometry));
+  }
 
   await page.click("#agent-feature-trigger");
   await page.waitForSelector("#agent-feature-tools.is-open");
   assert.equal(await page.$$("#agent-feature-popover [data-feature-id]").then(nodes => nodes.length), 6);
-  await page.click('[data-feature-id="stock"]');
-  assert.equal(await page.$eval("#agent-feature-config", node => node.hidden), false);
-  assert.equal(apiResponses.some(response => response.path === "/api/v1/copilot/chat"), false);
+  await checkMenuGeometry("#agent-feature-tools");
+  assert.equal(await page.$eval(".copilot-query-box", node => node.getBoundingClientRect().top), home.inputTop);
+  await page.keyboard.press("ArrowDown");
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.featureId), "market");
+  await page.keyboard.press("End");
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.featureId), "optimization");
   await page.keyboard.press("Escape");
+  await page.type("#copilot-natural-input", "检查财务趋势");
+  await page.click("#agent-feature-trigger");
+  await page.click('[data-feature-id="stock"]');
   assert.equal(await page.$eval("#agent-feature-tools", node => getComputedStyle(node).display), "none");
+  assert.equal(await page.$eval("#agent-feature-config-dialog", node => node.open), false);
+  assert.equal(await page.$eval("#home-selected-tool-label", node => node.textContent), "个股分析");
+  assert.equal(await page.$eval("#copilot-natural-input", node => node.value), "检查财务趋势");
+  assert.equal(apiResponses.some(response => response.path === "/api/v1/copilot/chat"), false);
+  await page.click("#home-selected-tool-config");
+  assert.equal(await page.$eval("#agent-feature-config-dialog", node => node.open), true);
+  await page.type('#agent-feature-fields input[name="target"]', "600251.SH");
+  assert.match(await page.$eval("#copilot-natural-input", node => node.value), /600251.SH/);
+  await page.keyboard.press("Escape");
+  assert.equal(await page.$eval("#agent-feature-config-dialog", node => node.open), false);
+  assert.equal(await page.$eval("#home-selected-tool", node => node.hidden), false);
+  await page.click("#home-selected-tool-clear");
+  assert.equal(await page.$eval("#home-selected-tool", node => node.hidden), true);
 
+  await page.click("#persona-switcher-bar > summary");
   await page.click("#home-context-trigger");
   assert.equal(await page.$eval("#agent-profile-rail", node => getComputedStyle(node).display), "grid");
   await page.click("#home-context-close");
@@ -84,6 +162,37 @@ try {
   await page.click("#home-model-trigger");
   assert.equal(await page.$eval("#llm-config-modal", node => getComputedStyle(node).display), "flex");
   await page.click("#close-llm-config-modal-btn");
+
+  await page.click("#home-upload-trigger");
+  assert.equal(await page.$$("#home-upload-menu button").then(nodes => nodes.length), 1);
+  await checkMenuGeometry("#home-upload-menu");
+  await page.keyboard.press("Escape");
+  assert.equal(await page.$eval("#home-upload-menu", node => node.hidden), true);
+  const uploadInput = await page.$("#home-upload-input");
+  await uploadInput.uploadFile(path.join(repoRoot, "app/api/static/index.html"));
+  await page.waitForSelector("#home-upload-status:not([hidden])");
+  assert.equal(apiResponses.some(response => response.path === "/api/v1/advisor/portfolio/ocr"), false);
+  if (process.env.PRISM_TEST_UPLOAD_FILE) {
+    await page.click("#home-upload-trigger");
+    const [chooser] = await Promise.all([page.waitForFileChooser(), page.click("#home-upload-select")]);
+    const [ocrResponse] = await Promise.all([
+      page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/advisor/portfolio/ocr", {timeout: 60000}),
+      chooser.accept([process.env.PRISM_TEST_UPLOAD_FILE]),
+    ]);
+    assert.equal(ocrResponse.status(), 200);
+    const ocr = await ocrResponse.json();
+    assert.equal(ocr.original_image_persisted, false);
+    assert.equal(ocr.owner_id, ownerId);
+    assert.ok(Array.isArray(ocr.positions));
+    await page.waitForSelector("#home-upload-trigger:not([disabled])");
+    assert.equal(await page.$eval("#home-upload-filename", node => node.textContent), path.basename(process.env.PRISM_TEST_UPLOAD_FILE));
+    await page.click("#close-portfolio-modal-btn");
+    await page.click("#home-upload-review");
+    assert.equal(await page.$eval("#portfolio-modal", node => getComputedStyle(node).display), "flex");
+    await page.click("#close-portfolio-modal-btn");
+    await page.click("#home-upload-remove");
+    assert.equal(await page.$eval("#home-upload-file", node => node.hidden), true);
+  }
 
   const initialCount = await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length);
   const [createdResponse] = await Promise.all([
@@ -103,10 +212,10 @@ try {
   await page.type("#chat-session-search", title);
   assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 1);
   await page.waitForFunction(value => document.querySelector("#active-chat-title")?.textContent === value, {}, title);
-  const loadedStatus = await page.evaluate(async id => {
-    const response = await fetch(`/api/v1/copilot/conversations/${id}`, {headers: {"X-Owner-ID": "demo-owner"}});
+  const loadedStatus = await page.evaluate(async (id, ownerId) => {
+    const response = await fetch(`/api/v1/copilot/conversations/${id}`, {headers: {"X-Owner-ID": ownerId}});
     return response.status;
-  }, created.conversation_id);
+  }, created.conversation_id, ownerId);
   assert.equal(loadedStatus, 200);
   const [removedResponse] = await Promise.all([
     page.waitForResponse(response => response.request().method() === "DELETE"
@@ -123,19 +232,90 @@ try {
   await page.click('a[href="#overview"]');
   await page.waitForSelector("body:not(.copilot-active) #overview:not([hidden])");
   assert.equal(await page.$eval(".sidebar-conversation-actions", node => getComputedStyle(node).display), "none");
+  assert.equal(await page.$eval(".nav-section-primary", node => node.parentElement.className), "nav-list");
+  assert.equal(await page.$eval("#persona-switcher-bar", node => node.parentElement.className), "topbar");
   await page.click('a[href="#copilot"]');
   await page.waitForSelector("body.copilot-active #copilot:not([hidden])");
   assert.equal(await page.$eval("#agent-feature-tools", node => getComputedStyle(node).display), "none");
+  assert.equal(await page.$eval(".nav-section-primary", node => node.parentElement.id), "home-primary-navigation");
+
+  for (const width of [1024, 2200]) {
+    await page.setViewport({width, height: 900});
+    await page.click("#agent-feature-trigger");
+    await checkMenuGeometry("#agent-feature-tools");
+    await page.keyboard.press("Escape");
+  }
 
   await page.setViewport({width: 390, height: 844});
+  await page.waitForFunction(() => document.body.classList.contains("home-history-collapsed"));
   const mobile = await page.evaluate(() => ({
     inputWidth: document.querySelector(".copilot-query-box").getBoundingClientRect().width,
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
-    sidebarVisible: getComputedStyle(document.querySelector(".sidebar-conversation-actions")).display !== "none",
+    sidebarVisible: getComputedStyle(document.querySelector(".sidebar")).display !== "none",
   }));
   assert.ok(mobile.inputWidth <= 390, JSON.stringify(mobile));
   assert.equal(mobile.horizontalOverflow, false);
-  assert.equal(mobile.sidebarVisible, true);
+  assert.equal(mobile.sidebarVisible, false);
+  await page.click("#home-history-show");
+  assert.equal(await page.$eval(".sidebar", node => getComputedStyle(node).display), "flex");
+  const [mobileConversation] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
+    page.click("#new-chat-session"),
+  ]);
+  assert.equal(mobileConversation.status(), 201);
+  assert.equal(await page.$eval(".sidebar", node => getComputedStyle(node).display), "none");
+  const mobileSession = await mobileConversation.json();
+  const mobileDeleteStatus = await page.evaluate(async (id, ownerId) => {
+    const response = await fetch(`/api/v1/copilot/conversations/${id}`, {method: "DELETE", headers: {"X-Owner-ID": ownerId}});
+    return response.status;
+  }, mobileSession.conversation_id, ownerId);
+  assert.equal(mobileDeleteStatus, 200);
+  await page.click("#agent-feature-trigger");
+  await checkMenuGeometry("#agent-feature-tools");
+  await page.keyboard.press("Escape");
+  await page.click("#home-upload-trigger");
+  await checkMenuGeometry("#home-upload-menu");
+  await page.keyboard.press("Escape");
+
+  await page.click("#home-history-show");
+  const [chatSessionResponse] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/conversations"),
+    page.click("#new-chat-session"),
+  ]);
+  const chatSession = await chatSessionResponse.json();
+  const question = "请用一句话说明你的用途。";
+  await page.type("#copilot-natural-input", question);
+  const [chatResponse] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/copilot/chat", {timeout: 30000}),
+    page.click("#copilot-submit-query"),
+  ]);
+  const chatRequest = JSON.parse(chatResponse.request().postData());
+  assert.notEqual(chatRequest.model_mode, "MOCK");
+  assert.equal(chatRequest.message, question);
+  assert.equal(chatRequest.conversation_id, chatSession.conversation_id);
+  if (chatResponse.status() === 409) {
+    const error = await chatResponse.json();
+    assert.equal(error.error_code, "MODEL_NOT_CONFIGURED");
+    await page.waitForFunction(() => document.querySelector("#copilot-chat-messages").textContent.includes("API Key"));
+    process.stdout.write("聊天请求与缺少模型配置时的页面状态检查通过。\n");
+  } else assert.equal(chatResponse.status(), 200);
+  await page.waitForSelector("#copilot-submit-query:not([disabled])", {timeout: 60000});
+  assert.ok(await page.$$("#copilot-chat-messages .chat-msg").then(nodes => nodes.length) >= 2);
+  assert.equal(await page.$eval(".agent-home-heading", node => getComputedStyle(node).display), "none");
+  await page.click("#agent-feature-trigger");
+  await checkMenuGeometry("#agent-feature-tools");
+  await page.keyboard.press("Escape");
+  const chatOverflow = await page.evaluate(() => ({
+    composerRight: document.querySelector(".copilot-query-box").getBoundingClientRect().right,
+    sendRight: document.querySelector("#copilot-submit-query").getBoundingClientRect().right,
+    viewportWidth: innerWidth,
+  }));
+  assert.ok(chatOverflow.composerRight <= chatOverflow.viewportWidth && chatOverflow.sendRight <= chatOverflow.viewportWidth, JSON.stringify(chatOverflow));
+  const finalChatDeleteStatus = await page.evaluate(async (id, ownerId) => {
+    const response = await fetch(`/api/v1/copilot/conversations/${id}`, {method: "DELETE", headers: {"X-Owner-ID": ownerId}});
+    return response.status;
+  }, chatSession.conversation_id, ownerId);
+  assert.equal(finalChatDeleteStatus, 200);
 
   for (const [method, path] of [
     ["GET", "/api/v1/copilot/conversations"],

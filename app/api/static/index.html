@@ -8,12 +8,12 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20260930-chat-home">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-chat-home">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20260930-chat-home" defer></script>
+    <script src="/static/app.js?v=20261002-chat-home" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -117,10 +117,24 @@
         <polyline points="15 3 21 3 21 9"></polyline>
         <line x1="10" y1="14" x2="21" y2="3"></line>
       </symbol>
+      <symbol id="icon-panel-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+        <path d="M9 4v16"></path>
+      </symbol>
     </svg>
 
     <div class="app-shell">
-      <aside class="sidebar" aria-label="主导航">
+      <header class="home-navigation home-only" id="home-navigation">
+        <div class="home-navigation-main" id="home-navigation-main">
+          <nav id="home-primary-navigation" aria-label="主导航"></nav>
+        </div>
+        <div class="home-navigation-actions" id="home-navigation-actions"></div>
+      </header>
+      <aside class="sidebar" id="home-history-sidebar" aria-label="导航与历史对话">
+        <div class="home-history-toolbar home-only">
+          <h2>历史对话</h2>
+          <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
+        </div>
         <div class="brand" aria-label="问财智投">
           <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
           <div>
@@ -204,7 +218,6 @@
           <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
             <p class="chat-history-empty">暂无历史对话</p>
           </div>
-          <p class="chat-history-boundary">追问使用当前会话及相同资料版本的消息。</p>
         </aside>
 
         <div class="sidebar-note">
@@ -212,8 +225,10 @@
           <p>添加风险设置与持仓即可分析。结果包含结论、依据和可采取的下一步。</p>
         </div>
       </aside>
+      <button class="home-history-backdrop home-only" id="home-history-backdrop" type="button" aria-label="关闭历史对话"></button>
 
       <main class="main">
+        <button class="home-history-show home-only" id="home-history-show" type="button" aria-label="展开历史对话" aria-controls="home-history-sidebar" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg><span>历史对话</span></button>
         <header class="topbar">
           <div class="topbar-title-area">
             <span class="eyebrow">个人投资工作台</span>
@@ -223,6 +238,7 @@
           <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
             <summary aria-label="打开风险与偏好菜单">
               <span class="profile-menu-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+              <span class="home-only home-account-label">账户</span>
               <span class="profile-menu-copy"><small>风险与偏好</small><strong id="profile-menu-current-label">查看当前设置</strong></span>
               <span class="profile-menu-chevron" aria-hidden="true">⌄</span>
             </summary>
@@ -242,6 +258,9 @@
               <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-plus"/></svg></span>
               <span class="persona-name">添加持仓</span>
             </button>
+              <button id="home-context-trigger" class="persona-chip home-only" type="button" aria-expanded="false" aria-controls="agent-profile-rail">
+                <svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>查看分析资料</span>
+              </button>
               <details class="persona-library dev-only">
               <summary>切换示例画像</summary>
               <div class="persona-library-options">
@@ -286,7 +305,7 @@
           </details>
         </header>
 
-        <!-- Agent 对话是默认首页；专业任务通过侧栏进入各自页面。 -->
+        <!-- Agent 对话是默认首页；专业任务使用现有导航进入各自页面。 -->
         <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">
           <div class="agent-home-heading">
             <h2 id="copilot-hero-title">我们从哪里开始？</h2>
@@ -294,68 +313,51 @@
 
           <div class="agent-home-grid" id="agent-home-grid">
             <div class="agent-workbench-column">
-          <section class="agent-feature-tools is-compact" id="agent-feature-tools" aria-labelledby="agent-feature-tools-title">
-            <header class="agent-feature-tools-head">
-              <div>
-                <h3 id="agent-feature-tools-title">六项分析工具</h3>
-                <p>先确认分析范围与所需数据，再开始真实数据查询。功能入口不会在点击时自动执行。</p>
-              </div>
-              <div class="agent-feature-head-actions">
-                <span class="agent-feature-mode">LIVE 数据 · 结构化入口</span>
-                <button class="agent-feature-toggle" id="agent-feature-toggle" type="button" aria-expanded="false" aria-controls="agent-feature-popover">
-                  <span id="agent-feature-toggle-label">关闭工具</span>
-                  <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
-                </button>
-              </div>
-            </header>
+          <section class="agent-feature-tools is-compact" id="agent-feature-tools" aria-label="分析工具">
             <div class="agent-feature-popover" id="agent-feature-popover">
-              <div class="agent-feature-grid" role="list">
-              <button class="agent-feature-card" type="button" data-feature-id="market" data-chat-prefix="大盘分析" aria-expanded="false" aria-controls="agent-feature-config">
+              <div class="agent-feature-grid" role="menu" aria-label="分析工具">
+              <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="market" data-chat-prefix="大盘分析" aria-checked="false">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-activity"/></svg></span>
-                <span class="agent-feature-copy"><strong>大盘分析</strong><span>趋势、估值与市场风险</span><small>市场范围 · 观察周期 · 关注维度</small></span>
-                <span class="agent-feature-status" data-feature-status="market">READY</span>
+                <span class="agent-feature-copy"><strong>大盘分析</strong></span>
               </button>
-              <button class="agent-feature-card" type="button" data-feature-id="industry" data-chat-prefix="行业配置" aria-expanded="false" aria-controls="agent-feature-config">
+              <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="industry" data-chat-prefix="行业配置" aria-checked="false">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-layers"/></svg></span>
-                <span class="agent-feature-copy"><strong>行业配置</strong><span>检查行业暴露及画像上限</span><small>已确认持仓 · 风险画像 · 行业数据</small></span>
-                <span class="agent-feature-status" data-feature-status="industry">NEED_INPUT</span>
+                <span class="agent-feature-copy"><strong>行业配置</strong></span>
               </button>
-              <button class="agent-feature-card" type="button" data-feature-id="stock" data-chat-prefix="个股分析" aria-expanded="false" aria-controls="agent-feature-config">
+              <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="stock" data-chat-prefix="个股分析" aria-checked="false">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg></span>
-                <span class="agent-feature-copy"><strong>个股分析</strong><span>行情、财务、估值及动态证据</span><small>证券代码 · 五年财务 · 当前账户适配</small></span>
-                <span class="agent-feature-status" data-feature-status="stock">NEED_INPUT</span>
+                <span class="agent-feature-copy"><strong>个股分析</strong></span>
               </button>
-              <button class="agent-feature-card" type="button" data-feature-id="fund" data-chat-prefix="ETF 基金筛选" aria-expanded="false" aria-controls="agent-feature-config">
+              <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="fund" data-chat-prefix="ETF 基金筛选" aria-checked="false">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-compass"/></svg></span>
-                <span class="agent-feature-copy"><strong>ETF 基金筛选</strong><span>净值、费率、持仓与行业穿透</span><small>基金代码或筛选条件 · 风险画像</small></span>
-                <span class="agent-feature-status" data-feature-status="fund">NEED_INPUT</span>
+                <span class="agent-feature-copy"><strong>ETF 基金筛选</strong></span>
               </button>
-              <button class="agent-feature-card" type="button" data-feature-id="convertible" data-chat-prefix="可转债投资" aria-expanded="false" aria-controls="agent-feature-config">
+              <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="convertible" data-chat-prefix="可转债投资" aria-checked="false">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-shuffle"/></svg></span>
-                <span class="agent-feature-copy"><strong>可转债投资</strong><span>价格、转股条款、评级与流动性</span><small>转债代码或筛选条件 · 风险画像</small></span>
-                <span class="agent-feature-status" data-feature-status="convertible">NEED_INPUT</span>
+                <span class="agent-feature-copy"><strong>可转债投资</strong></span>
               </button>
-              <button class="agent-feature-card" type="button" data-feature-id="optimization" data-chat-prefix="资产重组优化" aria-expanded="false" aria-controls="agent-feature-config">
+              <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="optimization" data-chat-prefix="资产重组优化" aria-checked="false">
                 <span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-scale"/></svg></span>
-                <span class="agent-feature-copy"><strong>资产重组优化</strong><span>集中度、风险预算与调整测算</span><small>已确认持仓 · 画像约束 · 优化目标</small></span>
-                <span class="agent-feature-status" data-feature-status="optimization">NEED_INPUT</span>
+                <span class="agent-feature-copy"><strong>资产重组优化</strong></span>
               </button>
               </div>
+            </div>
+          </section>
+          <dialog id="agent-feature-config-dialog" class="home-feature-dialog" aria-labelledby="agent-feature-config-title">
               <form class="agent-feature-config" id="agent-feature-config" hidden>
               <header>
                 <div><span class="eyebrow">已选择</span><h4 id="agent-feature-config-title">配置分析</h4></div>
-                <button id="agent-feature-config-close" type="button" aria-label="关闭功能配置">关闭</button>
+                <button id="agent-feature-config-close" type="button" aria-label="关闭参数设置">关闭</button>
               </header>
               <p id="agent-feature-config-help"></p>
               <div class="agent-feature-fields" id="agent-feature-fields"></div>
               <div class="agent-feature-requirements" id="agent-feature-requirements" role="status" aria-live="polite"></div>
               <div class="agent-feature-actions">
-                <span>生成的问题会同步到下方输入框，可继续补充要求。</span>
+                <span>分析要求同步至对话输入框。</span>
                 <button class="btn btn-primary" id="agent-feature-start" type="submit">开始分析 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button>
               </div>
               </form>
-            </div>
-          </section>
+          </dialog>
 
             <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
               <div class="conversation-main">
@@ -378,14 +380,30 @@
               </div>
 
               <div class="copilot-query-box">
+                <div class="home-composer-selections">
+                  <div id="home-selected-tool" class="home-selection-chip" hidden>
+                    <button id="home-selected-tool-config" type="button" aria-controls="agent-feature-config-dialog" aria-haspopup="dialog"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg><span id="home-selected-tool-label"></span></button>
+                    <button id="home-selected-tool-clear" type="button" aria-label="取消分析工具">×</button>
+                  </div>
+                  <div id="home-upload-file" class="home-selection-chip" hidden>
+                    <button id="home-upload-review" type="button" title="查看持仓识别结果"><svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span id="home-upload-filename"></span></button>
+                    <button id="home-upload-remove" type="button" aria-label="移除文件标签">×</button>
+                  </div>
+                </div>
                 <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
                 <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="输入你的问题…" autocomplete="off"></textarea>
                 <div class="copilot-composer-meta">
-                  <button id="agent-feature-trigger" class="home-composer-tool" type="button" aria-expanded="false" aria-controls="agent-feature-popover" aria-label="打开分析工具">
-                    <svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg><span>分析工具</span>
+                  <button id="home-upload-trigger" class="home-upload-trigger" type="button" aria-label="上传文件" title="上传文件" aria-haspopup="menu" aria-expanded="false" aria-controls="home-upload-menu"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg></button>
+                  <div id="home-upload-menu" class="home-upload-menu" role="menu" aria-label="上传文件" hidden>
+                    <button id="home-upload-select" type="button" role="menuitem"><svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>上传文件<small>持仓图片 · PNG / JPEG / WebP</small></span></button>
+                  </div>
+                  <input id="home-upload-input" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden>
+                  <button id="agent-feature-trigger" class="home-composer-tool" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="agent-feature-popover" aria-label="打开分析工具">
+                    <span>分析工具</span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg>
                   </button>
+                  <span class="home-composer-spacer" aria-hidden="true"></span>
                   <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
-                  <button id="home-model-trigger" class="home-model-trigger" type="button" aria-label="打开模型设置"><span id="home-model-label">模型</span></button>
+                  <button id="home-model-trigger" class="home-model-trigger" type="button" aria-label="打开 API 配置" aria-haspopup="dialog" aria-controls="llm-config-modal"><span id="home-model-label">API 配置</span></button>
                   <button id="chat-cancel-query" type="button" hidden>停止</button>
                   <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
                     <span>发送</span>
@@ -393,8 +411,7 @@
                   </button>
                 </div>
               </div>
-
-              <button id="home-context-trigger" class="home-context-trigger" type="button" aria-expanded="false" aria-controls="agent-profile-rail">当前上下文：A股 · 查看分析资料</button>
+              <p id="home-upload-status" class="home-upload-status" role="alert" hidden></p>
 
               <details class="home-quick-prompts"><summary>常用提问</summary><div class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问">
                 <button class="quick-tag-chip" type="button" data-intent="CHECK_PORTFOLIO">我的组合最需要关注什么？</button>

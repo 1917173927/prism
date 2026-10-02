@@ -83,6 +83,7 @@ try {
   await page.evaluate(() => { window.location.hash = "copilot"; });
   await page.waitForSelector("#copilot:not([hidden])");
 
+  await page.click("#persona-switcher-bar > summary");
   await page.click("#home-context-trigger");
   await page.click("#start-conversation-profile-update");
   for (let step = 0; step < 4; step += 1) {

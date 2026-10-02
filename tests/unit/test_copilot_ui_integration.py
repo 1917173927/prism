@@ -313,8 +313,8 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
     assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
-    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20260930-chat-home"' in markup
-    assert '<script src="/static/app.js?v=20260930-chat-home"' in markup
+    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20261002-chat-home"' in markup
+    assert '<script src="/static/app.js?v=20261002-chat-home"' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')
     agent_end = markup.index('id="portfolio-modal"', agent_start)
@@ -401,9 +401,9 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
         assert selector in v2_styles
 
     for geometry in (
-        ".prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); }",
+        ".prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr); }",
         ".prism-ui-v2.copilot-active .agent-home-grid { display: block; width: min(100%, 760px); margin: 0 auto; }",
-        ".prism-ui-v2.copilot-active .agent-workbench-column > .agent-feature-tools { order: 2; display: none;",
+        ".prism-ui-v2.copilot-active #agent-feature-tools.is-compact,",
         ".prism-ui-v2.copilot-active .agent-profile-rail { display: none; }",
     ):
         assert geometry in v2_styles
@@ -427,7 +427,6 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
     for node_id in ("chat-history-title", "new-chat-session", "chat-session-list", "active-chat-title"):
         assert f'id="{node_id}"' in markup
     assert "暂无历史对话" in markup
-    assert "追问使用当前会话及相同资料版本的消息。" in markup
     assert markup.index('id="new-chat-session"') < markup.index('class="nav-list"') < markup.index('id="chat-session-list"')
     for token in (
         'const CHAT_SESSIONS_STORAGE_KEY = "prism_copilot_chat_sessions_v1"',
@@ -539,7 +538,7 @@ def test_industry_shortcut_uses_confirmed_portfolio_template() -> None:
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     assert 'data-chat-prefix="行业配置"' in markup
-    assert "检查行业暴露及画像上限" in markup
+    assert "行业配置" in markup
     assert "请基于我已确认的持仓和风险画像" in script
     assert "不要推荐无关股票" in script
     assert "requiresPortfolio: true, requiresProfile: true" in script
@@ -687,16 +686,16 @@ def test_feature_tools_yield_space_after_chat_starts_and_remain_reopenable() -> 
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert 'id="agent-feature-toggle"' in markup
     assert 'id="agent-feature-trigger"' in markup
     assert 'aria-controls="agent-feature-popover"' in markup
     assert 'id="agent-feature-popover"' in markup
     assert 'function setAgentFeatureToolsOpen(open)' in script
     assert 'setAgentFeatureToolsOpen(false);\n    const chatOwner' in script
-    assert 'setAgentFeatureToolsOpen(true);' in script
+    assert 'id="agent-feature-config-dialog"' in markup
+    assert 'byId("agent-feature-config-dialog").showModal();' in script
     assert 'event.key !== "Escape"' in script
-    assert '.prism-ui-v2.copilot-active .agent-workbench-column > .agent-feature-tools.is-open { display: block; }' in styles
-    assert '.prism-ui-v2.copilot-active .agent-feature-tools.is-compact.is-open .agent-feature-popover' in styles
+    assert '.prism-ui-v2.copilot-active #agent-feature-tools.is-open { display: block; }' in styles
+    assert '.prism-ui-v2.copilot-active #agent-feature-tools.is-compact .agent-feature-popover' in styles
 
 
 def test_feature_tools_share_the_conversation_column_with_on_demand_profile() -> None:

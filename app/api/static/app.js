@@ -155,6 +155,8 @@
   const state = microStore.state;
   let authenticatedOwner = null;
   let accountAccessEnabled = false;
+  const homeMobileViewport = window.matchMedia("(max-width: 760px)");
+  let homeHistoryCollapsed = homeMobileViewport.matches;
   let sessionTruthState = {owner:null, revision:0, status:"NOT_LOCKED"};
   async function refreshSessionTruth(signal) {
     const owner = state.ownerId;
@@ -165,8 +167,6 @@
     sessionTruthState = {...result, owner};
     const labels = {LOCKED:"分析资料已更新", NOT_LOCKED:"可以更新分析资料", DRIFT_DETECTED:"持仓或风险设置已变化", INPUT_REQUIRED:"请先添加风险设置和持仓"};
     byId("session-truth-status").textContent = labels[result.status] || "分析资料需要更新";
-    const homeContext = byId("home-context-trigger");
-    if (homeContext) homeContext.textContent = `当前上下文：A股 · ${labels[result.status] || "分析资料需要更新"}`;
     byId("confirm-session-truth").textContent = "更新分析资料";
     return result;
   }
@@ -6988,6 +6988,41 @@
     }
   }
 
+  function renderHomeHistoryState() {
+    const collapsed = document.body.classList.contains("copilot-active") && homeHistoryCollapsed;
+    document.body.classList.toggle("home-history-collapsed", collapsed);
+    byId("home-history-show")?.setAttribute("aria-expanded", String(!collapsed));
+    byId("home-history-hide")?.setAttribute("aria-expanded", String(!collapsed));
+  }
+
+  function setHomeHistoryCollapsed(collapsed) {
+    homeHistoryCollapsed = collapsed;
+    renderHomeHistoryState();
+  }
+
+  function syncHomeNavigation(isHome) {
+    const sidebar = byId("home-history-sidebar");
+    const brand = document.querySelector(".brand");
+    const navigation = document.querySelector(".nav-section-primary");
+    const profile = byId("persona-switcher-bar");
+    const settings = document.querySelector(".topbar-more-menu");
+    const homeMain = byId("home-navigation-main");
+    const homeNavigation = byId("home-primary-navigation");
+    const homeActions = byId("home-navigation-actions");
+    const topbar = document.querySelector(".topbar");
+    if (isHome) {
+      if (brand.parentElement !== homeMain) homeMain.insertBefore(brand, homeNavigation);
+      if (navigation.parentElement !== homeNavigation) homeNavigation.append(navigation);
+      if (profile.parentElement !== homeActions) homeActions.append(profile, settings);
+    } else {
+      if (brand.parentElement !== sidebar) sidebar.prepend(brand);
+      const sidebarNavigation = sidebar.querySelector(".nav-list");
+      if (navigation.parentElement !== sidebarNavigation) sidebarNavigation.prepend(navigation);
+      if (profile.parentElement !== topbar) topbar.append(profile, settings);
+    }
+    renderHomeHistoryState();
+  }
+
   function syncNavigation(targetId = window.location.hash.replace(/^#/, "")) {
     const aliases = {
       workbench: "copilot",
@@ -7017,10 +7052,13 @@
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
     document.body.classList.toggle("copilot-active", isCopilot);
+    syncHomeNavigation(isCopilot);
     if (!isCopilot) {
       copilotSec?.classList.remove("context-open");
       byId("home-context-trigger")?.setAttribute("aria-expanded", "false");
       setAgentFeatureToolsOpen(false);
+      setHomeUploadMenuOpen(false);
+      byId("agent-feature-config-dialog")?.close();
     }
 
     if (copilotSec) copilotSec.hidden = !isCopilot;
@@ -10743,6 +10781,9 @@
     if (output) clear(output);
     renderActiveChatMessages();
     setAgentFeatureToolsOpen(false);
+    closeAgentFeatureConfig();
+    clearHomeUploadFile();
+    if (homeMobileViewport.matches) setHomeHistoryCollapsed(true);
     void createPersistedChatSession().catch(error => setError(error.message));
   }
 
@@ -11158,11 +11199,14 @@
 
   function handleNaturalQuerySubmit() {
     const input = byId("copilot-natural-input");
-    const q = (input?.value || "").trim();
+    let q = (input?.value || "").trim();
     if (!q) {
       setError("请输入您的问题");
       input?.focus();
       return;
+    }
+    if (activeAgentFeature && !q.startsWith(AGENT_FEATURES[activeAgentFeature].title)) {
+      q = `${AGENT_FEATURES[activeAgentFeature].title}：${q}`;
     }
     if (/^个股分析[：:]\s*$/.test(q)) {
       setError("请输入需要分析的 6 位证券代码或证券名称");
@@ -11217,7 +11261,9 @@
     const label = byId("llm-config-btn-label");
     const badge = byId("chat-model-badge");
     const homeModelLabel = byId("home-model-label");
-    if (homeModelLabel) homeModelLabel.textContent = llmConfig.configured ? llmConfig.model : "模型设置";
+    if (homeModelLabel) homeModelLabel.textContent = "API 配置";
+    const homeModelTrigger = byId("home-model-trigger");
+    if (homeModelTrigger) homeModelTrigger.title = llmConfig.configured ? `API 配置 · ${llmConfig.model}` : "配置服务商、API Key 与模型";
 
     if (llmConfig.configured && llmConfig.connectionStatus === "CONNECTED") {
       if (dot) dot.textContent = "●";
@@ -12655,26 +12701,64 @@
   let activeAgentFeature = null;
   let agentFeaturePopoverOpen = false;
 
+  function positionHomePopover(popover, trigger) {
+    popover.style.maxHeight = "";
+    popover.style.width = `${Math.min(232, window.innerWidth - 32)}px`;
+    const composer = document.querySelector(".copilot-query-box").getBoundingClientRect();
+    const anchor = trigger.getBoundingClientRect();
+    const bounds = popover.getBoundingClientRect();
+    const main = document.querySelector(".main").getBoundingClientRect();
+    const sideLeft = composer.left - bounds.width - 12;
+    let left = Math.min(Math.max(16, anchor.left), window.innerWidth - bounds.width - 16);
+    let top;
+    if (sideLeft >= main.left + 12) {
+      left = sideLeft;
+      top = Math.max(12, Math.min(anchor.top - bounds.height / 2, window.innerHeight - bounds.height - 12));
+    } else {
+      const below = window.innerHeight - composer.bottom - 22;
+      const above = composer.top - byId("home-navigation").getBoundingClientRect().bottom - 22;
+      const useBelow = below >= bounds.height || below >= above;
+      const available = Math.max(40, useBelow ? below : above);
+      popover.style.maxHeight = `${available}px`;
+      top = useBelow ? composer.bottom + 10 : composer.top - Math.min(bounds.height, available) - 10;
+    }
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+  }
+
+  function setHomeUploadMenuOpen(open) {
+    const menu = byId("home-upload-menu");
+    const trigger = byId("home-upload-trigger");
+    menu.hidden = !open;
+    trigger.setAttribute("aria-expanded", String(open));
+    if (open) positionHomePopover(menu, trigger);
+  }
+
+  function clearHomeUploadFile() {
+    byId("home-upload-file").hidden = true;
+    byId("home-upload-filename").textContent = "";
+    byId("home-upload-input").value = "";
+    byId("home-upload-status").hidden = true;
+    setHomeUploadMenuOpen(false);
+  }
+
   function renderAgentFeatureToolsState() {
     const tools = byId("agent-feature-tools");
     const popover = byId("agent-feature-popover");
-    const toggle = byId("agent-feature-toggle");
-    const label = byId("agent-feature-toggle-label");
     const trigger = byId("agent-feature-trigger");
-    if (!tools || !popover || !toggle || !label) return;
+    if (!tools || !popover || !trigger) return;
     const expanded = agentFeaturePopoverOpen;
     tools.classList.add("is-compact");
     tools.classList.toggle("is-open", expanded);
     popover.setAttribute("aria-hidden", String(!expanded));
-    toggle.setAttribute("aria-expanded", String(expanded));
-    label.textContent = "关闭工具";
     trigger?.setAttribute("aria-expanded", String(expanded));
     trigger?.setAttribute("aria-label", expanded ? "关闭分析工具" : "打开分析工具");
+    if (expanded) positionHomePopover(tools, trigger);
   }
 
   function setAgentFeatureToolsOpen(open) {
     agentFeaturePopoverOpen = open;
-    if (!agentFeaturePopoverOpen && activeAgentFeature) closeAgentFeatureConfig();
+    if (open) setHomeUploadMenuOpen(false);
     renderAgentFeatureToolsState();
   }
 
@@ -12715,6 +12799,7 @@
     document.querySelectorAll("[data-feature-id]").forEach(button => {
       const availability = featureAvailability(button.dataset.featureId);
       button.dataset.featureAvailability = availability.status;
+      button.title = availability.missing.length ? availability.missing.join("；") : AGENT_FEATURES[button.dataset.featureId].help;
       const status = button.querySelector("[data-feature-status]");
       if (status) {
         status.textContent = availability.status;
@@ -12734,7 +12819,8 @@
     if (!activeAgentFeature) return;
     const definition = AGENT_FEATURES[activeAgentFeature];
     const input = byId("copilot-natural-input");
-    if (input) input.value = definition.prompt(featureValues());
+    const values = featureValues();
+    if (input) input.value = definition.requiresTarget && !values.target ? "" : definition.prompt(values);
     renderAgentFeatureRequirements(activeAgentFeature);
   }
 
@@ -12752,12 +12838,17 @@
     start.disabled = missing.length > 0;
   }
 
-  function openAgentFeatureConfig(id) {
+  function openAgentFeatureConfig(id, showDialog = true) {
     const definition = AGENT_FEATURES[id];
     if (!definition) return;
-    setAgentFeatureToolsOpen(true);
+    setAgentFeatureToolsOpen(false);
     activeAgentFeature = id;
-    document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", String(button.dataset.featureId === id)));
+    document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.featureId === id)));
+    byId("home-selected-tool").hidden = false;
+    byId("home-selected-tool-label").textContent = definition.title;
+    byId("home-selected-tool-config").setAttribute("aria-label", `设置${definition.title}参数`);
+    const input = byId("copilot-natural-input");
+    input.placeholder = definition.requiresTarget ? definition.fields.find(field => field.name === "target").placeholder : "输入你的分析要求…";
     byId("agent-feature-config-title").textContent = definition.title;
     byId("agent-feature-config-help").textContent = definition.help;
     const fields = byId("agent-feature-fields");
@@ -12782,14 +12873,23 @@
     });
     const form = byId("agent-feature-config");
     form.hidden = false;
-    syncAgentFeaturePrompt();
-    fields.querySelector("input, select")?.focus();
+    if (showDialog) {
+      syncAgentFeaturePrompt();
+      byId("agent-feature-config-dialog").showModal();
+      fields.querySelector("input, select")?.focus();
+    } else {
+      renderAgentFeatureRequirements(id);
+      input.focus();
+    }
   }
 
   function closeAgentFeatureConfig() {
     activeAgentFeature = null;
+    byId("agent-feature-config-dialog").close();
     byId("agent-feature-config").hidden = true;
-    document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-expanded", "false"));
+    byId("home-selected-tool").hidden = true;
+    byId("copilot-natural-input").placeholder = "输入你的问题…";
+    document.querySelectorAll("[data-feature-id]").forEach(button => button.setAttribute("aria-checked", "false"));
   }
 
   function agentFeatureOutput() {
@@ -13114,10 +13214,17 @@
     }
   }
 
-  document.querySelectorAll("[data-feature-id]").forEach(button => button.addEventListener("click", () => openAgentFeatureConfig(button.dataset.featureId)));
+  document.querySelectorAll("[data-feature-id]").forEach(button => button.addEventListener("click", () => openAgentFeatureConfig(button.dataset.featureId, false)));
   byId("agent-feature-trigger")?.addEventListener("click", toggleAgentFeatureTools);
-  byId("agent-feature-toggle")?.addEventListener("click", toggleAgentFeatureTools);
-  byId("agent-feature-config-close")?.addEventListener("click", closeAgentFeatureConfig);
+  byId("agent-feature-config-close")?.addEventListener("click", () => byId("agent-feature-config-dialog").close());
+  byId("home-selected-tool-clear")?.addEventListener("click", () => {
+    closeAgentFeatureConfig();
+    byId("copilot-natural-input").focus();
+  });
+  byId("home-selected-tool-config")?.addEventListener("click", () => {
+    byId("agent-feature-config-dialog").showModal();
+    byId("agent-feature-fields").querySelector("input, select")?.focus();
+  });
   document.addEventListener("click", event => {
     if (!agentFeaturePopoverOpen) return;
     if (!byId("agent-feature-tools")?.contains(event.target) && !byId("agent-feature-trigger")?.contains(event.target)) setAgentFeatureToolsOpen(false);
@@ -13135,8 +13242,69 @@
     syncAgentFeaturePrompt();
     if (byId("agent-feature-start").disabled) return;
     setAgentFeatureToolsOpen(false);
+    closeAgentFeatureConfig();
     await runConfiguredAgentFeature(featureId, values);
   });
+  byId("home-upload-trigger")?.addEventListener("click", () => {
+    const open = byId("home-upload-menu").hidden;
+    setAgentFeatureToolsOpen(false);
+    setHomeUploadMenuOpen(open);
+  });
+  byId("home-upload-select")?.addEventListener("click", () => {
+    setHomeUploadMenuOpen(false);
+    byId("home-upload-input").click();
+  });
+  byId("home-upload-input")?.addEventListener("change", async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const status = byId("home-upload-status");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size === 0 || file.size > 5 * 1024 * 1024) {
+      status.textContent = "请选择 PNG、JPEG 或 WebP 持仓图片，文件大小需在 5 MiB 以内。";
+      status.hidden = false;
+      event.target.value = "";
+      return;
+    }
+    status.hidden = true;
+    byId("home-upload-filename").textContent = file.name;
+    byId("home-upload-file").hidden = false;
+    openPortfolioModal();
+    byId("tab-btn-ocr").click();
+    const trigger = byId("home-upload-trigger");
+    trigger.disabled = true;
+    try { await submitPortfolioOcr(file); }
+    finally { trigger.disabled = false; event.target.value = ""; }
+  });
+  byId("home-upload-review")?.addEventListener("click", () => {
+    openPortfolioModal();
+    byId("tab-btn-ocr").click();
+  });
+  byId("home-upload-remove")?.addEventListener("click", clearHomeUploadFile);
+  document.addEventListener("click", event => {
+    if (!byId("home-upload-menu").contains(event.target) && !byId("home-upload-trigger").contains(event.target)) setHomeUploadMenuOpen(false);
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !byId("home-upload-menu").hidden) {
+      setHomeUploadMenuOpen(false);
+      byId("home-upload-trigger").focus();
+    }
+    const tools = agentFeaturePopoverOpen ? byId("agent-feature-tools") : !byId("home-upload-menu").hidden ? byId("home-upload-menu") : null;
+    if (!tools || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const trigger = agentFeaturePopoverOpen ? byId("agent-feature-trigger") : byId("home-upload-trigger");
+    if (!tools.contains(event.target) && event.target !== trigger) return;
+    event.preventDefault();
+    const buttons = [...tools.querySelectorAll('[role^="menuitem"]')];
+    const current = buttons.indexOf(document.activeElement);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+      : current < 0 ? event.key === "ArrowDown" ? 0 : buttons.length - 1
+      : (current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+    buttons[next].focus();
+  });
+  const repositionHomePopovers = () => {
+    if (agentFeaturePopoverOpen) positionHomePopover(byId("agent-feature-tools"), byId("agent-feature-trigger"));
+    if (!byId("home-upload-menu").hidden) positionHomePopover(byId("home-upload-menu"), byId("home-upload-trigger"));
+  };
+  window.addEventListener("resize", repositionHomePopovers);
+  window.addEventListener("scroll", repositionHomePopovers, {passive: true});
   const dismissWelcome = () => {
     workspaceStorage.setItem(ownerStorageKey("prism_welcome_dismissed"), "1");
     const url = new URL(window.location.href); url.searchParams.delete("onboarding");
@@ -13294,6 +13462,22 @@
   const newChatSessionBtn = byId("new-chat-session");
   if (newChatSessionBtn) newChatSessionBtn.addEventListener("click", clearConversationContext);
   byId("chat-session-search")?.addEventListener("input", renderChatSessionList);
+  byId("home-history-hide")?.addEventListener("click", () => {
+    setHomeHistoryCollapsed(true);
+    byId("home-history-show").focus();
+  });
+  byId("home-history-show")?.addEventListener("click", () => {
+    setHomeHistoryCollapsed(false);
+    byId("chat-session-search").focus();
+  });
+  byId("home-history-backdrop")?.addEventListener("click", () => setHomeHistoryCollapsed(true));
+  homeMobileViewport.addEventListener("change", event => setHomeHistoryCollapsed(event.matches));
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && homeMobileViewport.matches && !homeHistoryCollapsed && document.body.classList.contains("copilot-active")) {
+      setHomeHistoryCollapsed(true);
+      byId("home-history-show").focus();
+    }
+  });
   byId("home-model-trigger")?.addEventListener("click", openLLMConfigModal);
   const homeContextTrigger = byId("home-context-trigger");
   function closeHomeContext() {
@@ -13305,11 +13489,12 @@
     const expanded = !copilot.classList.contains("context-open");
     copilot.classList.toggle("context-open", expanded);
     homeContextTrigger.setAttribute("aria-expanded", String(expanded));
+    byId("persona-switcher-bar").open = false;
     if (expanded) refreshSessionTruth().catch(error => setError(error.message));
   });
   byId("home-context-close")?.addEventListener("click", () => {
     closeHomeContext();
-    homeContextTrigger?.focus();
+    byId("persona-switcher-bar").querySelector("summary").focus();
   });
   document.addEventListener("click", event => {
     if (!byId("copilot")?.classList.contains("context-open")) return;
@@ -13319,7 +13504,7 @@
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape" || !byId("copilot")?.classList.contains("context-open")) return;
     closeHomeContext();
-    homeContextTrigger?.focus();
+    byId("persona-switcher-bar").querySelector("summary").focus();
   });
 
   const conversationProfileBtn = byId("start-conversation-profile-update");
