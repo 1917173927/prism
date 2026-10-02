@@ -313,7 +313,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
     assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
-    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20261002-chat-home-interactions"' in markup
+    assert '<link rel="stylesheet" href="/static/prism-v2.css?v=20261002-home-sidebar"' in markup
     assert '<script src="/static/app.js?v=20261002-chat-home-interactions"' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
     agent_start = markup.index('<section class="copilot-section" id="copilot"')

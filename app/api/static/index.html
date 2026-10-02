@@ -8,7 +8,7 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-chat-home-interactions">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261002-home-sidebar">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
@@ -131,10 +131,6 @@
         <div class="home-navigation-actions" id="home-navigation-actions"></div>
       </header>
       <aside class="sidebar" id="home-history-sidebar" aria-label="导航与历史对话">
-        <div class="home-history-toolbar home-only">
-          <h2>历史对话</h2>
-          <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
-        </div>
         <div class="brand" aria-label="问财智投">
           <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
           <div>
@@ -144,7 +140,10 @@
         </div>
 
         <div class="sidebar-conversation-actions home-only">
-          <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
+          <div class="home-history-toolbar">
+            <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
+            <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
+          </div>
           <label class="sidebar-chat-search">
             <svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg>
             <input id="chat-session-search" type="search" aria-label="搜索最近对话" autocomplete="off">
@@ -214,7 +213,7 @@
         </nav>
 
         <aside class="chat-history-panel home-only" aria-labelledby="chat-history-title">
-          <header class="chat-history-head"><h3 id="chat-history-title">最近对话</h3></header>
+          <header class="chat-history-head"><h3 id="chat-history-title">历史对话</h3></header>
           <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
             <p class="chat-history-empty">暂无历史对话</p>
           </div>

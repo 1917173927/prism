@@ -116,6 +116,49 @@ try {
   assert.equal(home.contextInsideConversation, false);
   assert.equal(await page.$eval("#home-model-label", node => node.textContent), "API 配置");
 
+  async function checkSidebarOrder() {
+    const geometry = await page.evaluate(() => {
+      const sidebar = document.querySelector(".sidebar");
+      const newChat = document.querySelector("#new-chat-session").getBoundingClientRect();
+      const search = document.querySelector(".sidebar-chat-search").getBoundingClientRect();
+      const hide = document.querySelector("#home-history-hide").getBoundingClientRect();
+      const headings = [...sidebar.querySelectorAll("h2, h3")].map(node => ({text: node.textContent, top: node.getBoundingClientRect().top}));
+      return {newTop: newChat.top, newBottom: newChat.bottom, searchTop: search.top, searchBottom: search.bottom,
+        hideTop: hide.top, hideBottom: hide.bottom, hideLeft: hide.left, newRight: newChat.right, headings};
+    });
+    assert.equal(geometry.headings.length, 1, JSON.stringify(geometry));
+    assert.equal(geometry.headings[0].text, "历史对话");
+    assert.ok(geometry.newBottom <= geometry.searchTop && geometry.searchBottom <= geometry.headings[0].top, JSON.stringify(geometry));
+    assert.ok(geometry.hideLeft >= geometry.newRight && geometry.hideTop >= geometry.newTop
+      && geometry.hideBottom <= geometry.newBottom, JSON.stringify(geometry));
+  }
+
+  async function checkHistoryEditLayout() {
+    const geometry = await page.$eval("#chat-session-list .chat-session-item", node => {
+      const button = node.querySelector(".chat-session-rename");
+      const style = getComputedStyle(button);
+      const letters = [...button.textContent].map((text, index) => {
+        const range = document.createRange();
+        range.setStart(button.firstChild, index);
+        range.setEnd(button.firstChild, index + 1);
+        const box = range.getBoundingClientRect();
+        return {top: box.top, left: box.left, right: box.right};
+      });
+      const edit = button.getBoundingClientRect();
+      const remove = node.querySelector(".chat-session-delete").getBoundingClientRect();
+      const title = node.querySelector(".chat-session-select strong").getBoundingClientRect();
+      return {letters, whiteSpace: style.whiteSpace, titleRight: title.right,
+        editLeft: edit.left, editRight: edit.right, removeLeft: remove.left};
+    });
+    assert.equal(geometry.whiteSpace, "nowrap");
+    assert.equal(geometry.letters.length, 2);
+    assert.equal(geometry.letters[0].top, geometry.letters[1].top, JSON.stringify(geometry));
+    assert.ok(geometry.letters[1].left >= geometry.letters[0].right - 1, JSON.stringify(geometry));
+    assert.ok(geometry.titleRight <= geometry.editLeft && geometry.editRight <= geometry.removeLeft, JSON.stringify(geometry));
+  }
+
+  await checkSidebarOrder();
+
   const suggestions = await page.$eval("#copilot-quick-tags", node => {
     const prompt = node.querySelector(".quick-tag-chip");
     const style = getComputedStyle(prompt);
@@ -319,12 +362,20 @@ try {
   await page.waitForFunction(node => !node.isConnected, {}, selectedRow);
   await selectedRow.dispose();
   await page.waitForSelector("#chat-session-list .chat-session-item.is-active");
+  await checkHistoryEditLayout();
+  await page.click("#chat-session-list .chat-session-rename");
+  await page.waitForSelector("#chat-session-list .chat-session-title-input");
+  await page.$eval("#chat-session-list .chat-session-title-input", node => { node.value = "新对话"; });
+  await page.click("#chat-session-list .chat-session-edit-save");
+  await page.waitForFunction(() => document.querySelector("#chat-session-list .chat-session-select strong")?.textContent === "新对话");
+  await checkHistoryEditLayout();
   const title = `首页接口核对-${Date.now()}`;
   await page.click("#chat-session-list .chat-session-item:first-child .chat-session-rename");
   await page.waitForSelector("#chat-session-list .chat-session-title-input");
   await page.$eval("#chat-session-list .chat-session-title-input", (node, value) => { node.value = value; node.dispatchEvent(new Event("input", {bubbles: true})); }, title);
   await page.click("#chat-session-list .chat-session-edit-save");
   await page.waitForFunction(value => document.querySelector("#chat-session-list")?.textContent.includes(value), {}, title);
+  await checkHistoryEditLayout();
   await page.type("#chat-session-search", title);
   assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 1);
   await page.waitForFunction(value => document.querySelector("#active-chat-title")?.textContent === value, {}, title);
@@ -359,6 +410,7 @@ try {
 
   for (const width of [1024, 2200]) {
     await page.setViewport({width, height: 900});
+    await checkSidebarOrder();
     await page.click("#agent-feature-trigger");
     await checkMenuGeometry("#agent-feature-tools");
     await page.keyboard.press("Escape");
@@ -380,6 +432,7 @@ try {
   await page.click("#home-history-show");
   await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
   assert.equal(await page.$eval(".sidebar", node => getComputedStyle(node).visibility), "visible");
+  await checkSidebarOrder();
   await page.click("#new-chat-session");
   await page.waitForFunction(() => getComputedStyle(document.querySelector(".sidebar")).visibility === "hidden");
   assert.equal(conversationCreateCount(), 1);
@@ -418,6 +471,7 @@ try {
   assert.ok(chatOverflow.composerRight <= chatOverflow.viewportWidth && chatOverflow.sendRight <= chatOverflow.viewportWidth, JSON.stringify(chatOverflow));
   await page.click("#home-history-show");
   await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
+  await checkHistoryEditLayout();
   const [finalChatDelete] = await Promise.all([
     page.waitForResponse(response => response.request().method() === "DELETE"
       && new URL(response.url()).pathname === `/api/v1/copilot/conversations/${chatSession.conversation_id}`),

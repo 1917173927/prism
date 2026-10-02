@@ -2806,18 +2806,18 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr); overflow-x: clip; transition: grid-template-columns 280ms cubic-bezier(.2, .8, .2, 1); }
 .prism-ui-v2.copilot-active .sidebar { grid-column: 1; grid-row: 2; top: 66px; width: 248px; min-width: 0; height: calc(100dvh - 66px); padding: 17px 13px 14px; border: 0; background: var(--surface-subtle); transform: translateX(0); opacity: 1; visibility: visible; transition: transform 280ms cubic-bezier(.2, .8, .2, 1), opacity 200ms ease, visibility 0s; }
 .prism-ui-v2.copilot-active .sidebar > .nav-list { display: none; }
-.prism-ui-v2.copilot-active .home-history-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 35px; padding: 0 4px 0 10px; margin-bottom: 13px; }
-.prism-ui-v2.copilot-active .home-history-toolbar h2 { margin: 0; font-size: 14px; font-weight: 500; }
+.prism-ui-v2.copilot-active .home-history-toolbar { display: flex; align-items: center; gap: 7px; min-height: 39px; padding: 0; margin: 0; }
 .prism-ui-v2.copilot-active .home-history-toolbar button,
 .prism-ui-v2.copilot-active .home-history-show { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 7px; border: 0; border-radius: 8px; color: var(--text-secondary); background: transparent; cursor: pointer; }
 .prism-ui-v2.copilot-active .home-history-toolbar button:hover,
 .prism-ui-v2.copilot-active .home-history-show:hover { background: var(--surface-hover); }
+.prism-ui-v2.copilot-active #home-history-hide { flex: 0 0 34px; width: 34px; }
 .prism-ui-v2.copilot-active .home-history-show { display: none; position: absolute; top: 14px; left: 18px; z-index: 20; font-size: 13px; }
 .prism-ui-v2.copilot-active.home-history-collapsed .app-shell { grid-template-columns: 0px minmax(0, 1fr); }
 .prism-ui-v2.copilot-active.home-history-collapsed .sidebar { transform: translateX(-100%); opacity: 0; visibility: hidden; transition-delay: 0s, 0s, 280ms; }
 .prism-ui-v2.copilot-active.home-history-collapsed .home-history-show { display: inline-flex; }
 .prism-ui-v2.copilot-active .sidebar-conversation-actions { gap: 7px; margin-bottom: 16px; }
-.prism-ui-v2.copilot-active .sidebar-conversation-actions > button,
+.prism-ui-v2.copilot-active .sidebar-conversation-actions #new-chat-session,
 .prism-ui-v2.copilot-active .sidebar-chat-search {
   display: flex;
   align-items: center;
@@ -2830,8 +2830,8 @@ body.prism-ui-v2 {
   color: var(--text-secondary);
   background: transparent;
 }
-.prism-ui-v2.copilot-active .sidebar-conversation-actions > button { cursor: pointer; text-align: left; font-size: 14px; }
-.prism-ui-v2.copilot-active .sidebar-conversation-actions > button:hover,
+.prism-ui-v2.copilot-active .sidebar-conversation-actions #new-chat-session { flex: 1; min-width: 0; width: auto; justify-content: flex-start; cursor: pointer; text-align: left; font-size: 14px; }
+.prism-ui-v2.copilot-active .sidebar-conversation-actions #new-chat-session:hover,
 .prism-ui-v2.copilot-active .sidebar-chat-search:focus-within { color: var(--text-primary); background: var(--surface); }
 .prism-ui-v2.copilot-active .sidebar-conversation-actions .prism-icon { width: 17px; height: 17px; flex: 0 0 auto; }
 .prism-ui-v2.copilot-active .sidebar-chat-search input {
@@ -2861,6 +2861,9 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active .chat-session-list { min-height: 0; padding: 4px 0; }
 .prism-ui-v2.copilot-active .chat-session-item { padding: 9px 7px; }
 .prism-ui-v2.copilot-active .chat-session-select strong { font-size: 14px; font-weight: 400; }
+.prism-ui-v2.copilot-active .chat-session-actions { align-items: center; gap: 4px; }
+.prism-ui-v2.copilot-active .chat-session-rename { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: auto; min-width: 40px; padding: 0 6px; white-space: nowrap; font-weight: 500; }
+.prism-ui-v2.copilot-active .chat-session-delete { flex: 0 0 24px; }
 .prism-ui-v2.copilot-active .sidebar-note { display: none; }
 
 .prism-ui-v2.copilot-active .main { position: relative; grid-column: 2; grid-row: 2; padding: 0 clamp(18px, 4vw, 64px) 32px; }
