@@ -161,7 +161,6 @@ def test_copilot_styles_and_responsive_rules() -> None:
         ".copilot-natural-input",
         ".copilot-submit-btn",
         ".copilot-quick-tags",
-        ".copilot-tasks-grid",
         ".copilot-task-card",
         ".copilot-decision-card",
         ".decision-banner",
@@ -187,7 +186,7 @@ def test_copilot_styles_and_responsive_rules() -> None:
     ):
         assert selector in styles
 
-    assert ".copilot-stats-grid, .copilot-tasks-grid, .decision-metrics-row" in styles
+    assert ".decision-metrics-row { grid-template-columns: 1fr; }" in styles
 
 
 def test_prism_ui_v2_design_tokens_are_semantic_and_legacy_compatible() -> None:
@@ -493,7 +492,7 @@ def test_portfolio_panel_declares_demo_data_and_hides_snapshot_identifiers() -> 
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     assert 'id="portfolio-source-note"' in markup
-    assert "导入持仓后即可查看持仓明细与基金底层股票。" in markup
+    assert 'id="portfolio-title">持仓明细</h2>' in markup
     assert "function setPortfolioSourcePresentation(" in script
     assert "示例持仓明细" in script
     assert "parentPosition" in script
@@ -737,3 +736,20 @@ def test_live_provider_results_use_compact_emphasized_card_layout() -> None:
     assert 'max-height: 520px;' in styles
     assert 'scrollbar-gutter: stable;' in styles
     assert '.agent-conversation .copilot-output-container { display: block; max-height: 520px;' in styles
+
+
+def test_auxiliary_results_use_chinese_labels_and_guard_rebalancing_context() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    optimization = script.split("function renderPortfolioOptimization", 1)[1].split(
+        "function clearPortfolioOptimizationRun", 1
+    )[0]
+    rebalancing = script.split("async function runPortfolioRebalancing", 1)[1].split(
+        "// 分析依据", 1
+    )[0]
+
+    for label in ("当前占比", "目标占比", "变化", "单项上限", "风险等级"):
+        assert f'"{label}"' in optimization
+    assert "目标由确定性规则和风险画像共同决定；不是交易指令" not in script
+    assert "不执行交易" not in optimization
+    assert "const contextRevision = state.contextRevision;" in rebalancing
+    assert rebalancing.count("contextRevision !== state.contextRevision") >= 2
