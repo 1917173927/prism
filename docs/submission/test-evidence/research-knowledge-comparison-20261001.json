@@ -1,0 +1,12 @@
+{
+  "schema_version": "research-knowledge-comparison.v1",
+  "dataset_hash": "7d58fed17f0124c4a517f9cf2c865a8cf6a0f01347a7ae2660ef71e056b0ff3b",
+  "keyword_recall_at_10": 0.7142857142857143,
+  "hybrid_recall_at_10": 0.9285714285714286,
+  "recall_improvement": 0.2142857142857143,
+  "retrieval_gate": "PASS",
+  "automatic_enablement": false,
+  "human_financial_correctness_gate": "NOT_EVALUATED",
+  "notice": "仅比较冻结合成语料的检索质量；不自动启用生产混合检索，不代表人工金融事实和引用支持发布门槛已通过。",
+  "recall_unit": "DOCUMENT_RELEVANCE_PROGRAMMATIC_LABELS_NOT_HUMAN_FRAGMENT_SUPPORT"
+}

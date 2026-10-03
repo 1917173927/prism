@@ -1,0 +1,43 @@
+{
+  "schema_version": "research-followup-verification.v1",
+  "date": "2026-10-01",
+  "baseline_commit": "5dd6ffc",
+  "scope": "Installed PostgreSQL, LIVE explicit metadata and standalone human review with 100-question six-scenario hard gate",
+  "python": "3.12.12",
+  "postgres_server": "17.11",
+  "psycopg": "3.3.5",
+  "dependency_version_source": "uv.lock",
+  "full_suite": {
+    "command": ".venv/Scripts/python.exe -m tools.local_postgres test --full",
+    "passed": 1068,
+    "skipped": 1,
+    "failed": 0,
+    "warnings": 2,
+    "seconds": 132.03,
+    "skip_reason": "Default explicit real embedding gate is not enabled; separately validated earlier"
+  },
+  "postgres_real_tests": {"passed": 13, "skipped": 0},
+  "live_metadata_related_tests": {"passed": 51, "skipped": 0, "real_upstream_called": false},
+  "human_review_unit_tests": {"passed": 13, "skipped": 0},
+  "package_build": {"result": "PASS", "format": "wheel", "review_html_script_json_packs_and_cli_included": true},
+  "browser": {
+    "script": "tests/browser/test_research_quality_review.mjs",
+    "result": "PASS",
+    "viewport_sizes": ["1440x1000", "1024x768", "390x844"],
+    "page_errors": 0,
+    "api_requests": 0,
+    "overflow": false,
+    "flows": ["import", "literal untrusted source rendering", "per-claim labels", "per-question labels", "navigation retention", "export", "deterministic summary"],
+    "screenshot": "research-quality-review/review-390.png",
+    "labels": "SYNTHETIC_OPERATIONAL_CHECK_ONLY"
+  },
+  "empty_real_template_gate": "UNVERIFIED",
+  "minimum_real_questions": 100,
+  "required_scenarios": ["NORMAL", "MISSING", "STALE", "CONFLICT", "ISOLATION", "INJECTION"],
+  "human_financial_acceptance": "NOT_EVALUATED",
+  "hybrid_default_enabled": false,
+  "pages_deployment_requirement": "CANCELLED_BY_USER",
+  "pages_workflow_removal_commit": "5d39caa",
+  "upstream_load_reexecuted": false,
+  "remaining_conditions": ["Wencai daily query quota", "Point-in-time factor and covariance inputs", "Real human financial annotations"]
+}

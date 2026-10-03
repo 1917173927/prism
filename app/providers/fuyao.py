@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta, timezone
 import math
 import os
@@ -71,6 +72,7 @@ class FuyaoFinanceProvider(MarketDataProvider):
         base_url: str | None = None,
         timeout_seconds: float = 1.5,
         transport: httpx.AsyncBaseTransport | None = None,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         self._api_key_override = api_key
         self._base_url = (
@@ -80,6 +82,19 @@ class FuyaoFinanceProvider(MarketDataProvider):
         self._timeout_seconds = min(max(timeout_seconds, 0.1), 2.0)
         self._transport = transport
         self.last_probe_errors: dict[str, str | None] = {}
+        self._shared_client = client
+        self._owns_shared_client = False
+
+    async def start_http(self) -> None:
+        if self._shared_client is None:
+            self._shared_client = self._new_client()
+            self._owns_shared_client = True
+
+    async def aclose(self) -> None:
+        if self._owns_shared_client and self._shared_client is not None:
+            await self._shared_client.aclose()
+            self._shared_client = None
+            self._owns_shared_client = False
 
     @property
     def api_key(self) -> str:
@@ -123,7 +138,7 @@ class FuyaoFinanceProvider(MarketDataProvider):
     ) -> dict[str, Any]:
         for attempt in range(3):
             try:
-                response = await client.get(path, params=params)
+                response = await client.get(path, params=params, headers={"X-api-key": self.api_key})
                 if response.status_code == 429:
                     if attempt < 2:
                         try:
@@ -162,17 +177,25 @@ class FuyaoFinanceProvider(MarketDataProvider):
             raise FuyaoProviderError("INVALID_RESPONSE", "扶摇数据接口缺少 data 字段。")
         return data
 
-    def _client(self) -> httpx.AsyncClient:
+    def _new_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=self._timeout_seconds,
+            transport=self._transport,
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=32),
+        )
+
+    @asynccontextmanager
+    async def _client(self):
         if not self.is_configured:
             raise FuyaoProviderError(
                 "NOT_CONFIGURED", "服务端尚未配置 HITHINK_FINANCE_API_KEY。"
             )
-        return httpx.AsyncClient(
-            base_url=self._base_url,
-            headers={"X-api-key": self.api_key},
-            timeout=self._timeout_seconds,
-            transport=self._transport,
-        )
+        if self._shared_client is not None:
+            yield self._shared_client
+        else:
+            async with self._new_client() as client:
+                yield client
 
     async def get_quote(self, code: str) -> dict[str, Any] | None:
         """Return one normalized A-share quote and its upstream observation time."""

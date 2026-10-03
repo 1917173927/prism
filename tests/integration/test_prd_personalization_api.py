@@ -47,6 +47,18 @@ class UnavailableYahooProvider:
     is_configured = False
 
 
+def test_market_analysis_missing_quote_time_is_unavailable():
+    class MissingTime(AnalysisProvider):
+        async def get_index_quote(self, code):
+            return {"symbol": code, "source": "time missing"}
+
+    with TestClient(create_app(market_provider=MissingTime(), yahoo_finance_provider=UnavailableYahooProvider())) as client:
+        response = client.get("/api/v1/market/analysis/CN/sse-composite", headers={"X-Owner-ID": "test-owner"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "REVIEW_REQUIRED"
+    assert not response.json()["research_metrics"]
+
+
 class UnavailableEtNetProvider:
     is_configured = False
 
@@ -141,6 +153,11 @@ def test_cross_market_catalog_and_analysis_keep_unverified_overseas_data_unavail
         assert body["history_status"] == "LIVE"
         assert body["volume"]["latest_volume"] == "120"
         assert set(body["indicators"]) == {"boll", "macd", "kdj", "parameters"}
+        metrics = body["research_metrics"]
+        assert metrics["daily_return"]["status"] == "CALCULATED"
+        assert metrics["momentum_20"]["value"] is None
+        assert metrics["momentum_20"]["missing_reason"] == "INSUFFICIENT_DAILY_BARS:21"
+        assert metrics["daily_return"]["snapshot_id"] == body["input_snapshot_id"]
         hk = client.get("/api/v1/market/analysis/HK/hang-seng", headers=headers)
         assert hk.status_code == 200
         assert hk.json()["status"] == "REVIEW_REQUIRED"
@@ -149,6 +166,8 @@ def test_cross_market_catalog_and_analysis_keep_unverified_overseas_data_unavail
         monthly = client.get("/api/v1/market/analysis/CN/sse-composite?interval=1M", headers=headers)
         assert monthly.status_code == 200
         assert monthly.json()["history_status"] == "REVIEW_REQUIRED"
+        assert monthly.json()["research_interval"] == "1d"
+        assert monthly.json()["research_metrics"] == metrics
         assert client.get("/api/v1/market/analysis/CN/sse-composite?interval=5m", headers=headers).status_code == 422
         assert client.get("/api/v1/market/analysis/EU/not-registered", headers=headers).status_code == 404
 

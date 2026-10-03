@@ -9,11 +9,14 @@
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20261003-auxiliary-disclosure">
     <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-auxiliary-disclosure">
+    <link rel="stylesheet" href="/static/research-platform.css?v=20261001">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
     <script src="/static/app.js?v=20261003-auxiliary-disclosure" defer></script>
+    <script src="/static/research-platform.js?v=20261001" defer></script>
+    <script src="/static/research-tools.js?v=20261001" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2 sidebar-layout-active">
@@ -156,6 +159,22 @@
               <a class="nav-item" href="#profile">
                 <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
                 <span>个人中心</span>
+              </a>
+              <a class="nav-item" href="#skill-store">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
+                <span>技能商店</span>
+              </a>
+              <a class="nav-item" href="#research-knowledge">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                <span>研究知识库</span>
+              </a>
+              <a class="nav-item" href="#live-research">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
+                <span>LIVE 研究</span>
+              </a>
+              <a class="nav-item" href="#research-algorithms">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
+                <span>论文算法</span>
               </a>
             </div>
           </nav>
@@ -680,8 +699,9 @@
           </div>
 
           <nav id="workspace-page-tabs" class="workspace-page-tabs" aria-label="当前页面功能" hidden>
-            <a href="#overview" data-domain="portfolio">组合总览</a>
-            <a href="#portfolio" data-domain="portfolio">持仓明细</a>
+            <a href="#holdings-management" data-domain="portfolio">持仓管理</a>
+            <a href="#holdings-report" data-domain="portfolio">组合报告</a>
+            <a href="#portfolio" data-domain="legacy" hidden>持仓明细</a>
             <a href="#portfolio-optimization" data-domain="portfolio">组合优化</a>
             <a href="#portfolio-rebalancing" data-domain="portfolio">调仓方案</a>
             <a href="#scenario-simulation" data-domain="portfolio">情景模拟</a>
@@ -690,7 +710,12 @@
             <a href="#convertible-bond-research" data-domain="research">可转债研究</a>
             <a href="#recommendation-history" data-domain="decisions">历史建议</a>
             <a href="#advanced-explainability" data-domain="decisions">为什么这样判断</a>
-            <a href="#profile" data-domain="profile">问卷与画像</a>
+            <a href="#profile-results" data-domain="profile">画像结果</a>
+            <a href="#profile-questionnaire" data-domain="profile">问卷填写</a>
+            <a href="#profile-preferences" data-domain="profile">偏好设置</a>
+            <a href="#market-quotes" data-domain="market">行情</a>
+            <a href="#market-risk" data-domain="market">风险与活跃度</a>
+            <a href="#market-sectors" data-domain="market">板块观察</a>
             <a href="#evaluation-dashboard" data-domain="system" class="dev-only">评测看板</a>
             <a href="#context-memory" data-domain="system" class="dev-only">上下文记忆</a>
             <a href="#research-tracks" data-domain="system" class="dev-only">研究轨道</a>
@@ -713,7 +738,7 @@
             <h3>导入持仓，查看组合分析</h3><p>支持截图、文字录入和手动添加</p>
             <button type="button" class="copilot-action-btn primary" data-open-portfolio>导入持仓 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button>
           </section>
-          <section id="portfolio-report-card" class="surface portfolio-report-card" hidden aria-labelledby="portfolio-report-title">
+          <section id="portfolio-report-card" class="surface portfolio-report-card" hidden aria-labelledby="portfolio-report-title" data-subpage="holdings-report">
             <div class="portfolio-conclusion">
               <span id="portfolio-report-title" class="portfolio-section-label">分析结果</span>
               <h3 id="portfolio-report-headline" aria-live="polite">正在读取分析报告…</h3>
@@ -726,6 +751,7 @@
             </dl>
             <div class="portfolio-card-action"><button id="portfolio-details-entry" type="button" class="copilot-action-btn primary">查看分析详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button></div>
           </section>
+          <section id="portfolio-management-view" class="surface portfolio-detail-card" data-subpage="holdings-management" aria-label="持仓管理"></section>
           <p id="portfolio-source-line" class="portfolio-source-line" hidden></p>
           <p id="portfolio-overview-loading" class="portfolio-source-line" role="status">正在读取持仓…</p>
 
@@ -809,6 +835,7 @@
                   <div id="portfolio-report-pnl-summary"></div>
                 </div>
               </details>
+              <div id="portfolio-holdings-drawer-slot">
               <details id="portfolio-holdings-details" class="portfolio-disclosure">
                 <summary>持仓明细 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
                 <div class="portfolio-disclosure-content">
@@ -821,6 +848,7 @@
                   </section>
                 </div>
               </details>
+              </div>
               <details id="portfolio-more-details" class="portfolio-disclosure">
                 <summary>更多分析 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
                 <div class="portfolio-disclosure-content">
@@ -850,7 +878,7 @@
 
         <section class="workspace-page-section market-page" id="market" hidden aria-labelledby="market-title">
           <h2 id="market-title" class="sr-only">大盘鉴别</h2>
-          <section class="surface market-result" aria-live="polite">
+          <section class="surface market-result" aria-live="polite" data-subpage="market-quotes">
             <div class="market-result-heading">
               <div id="market-result-content">正在读取行情…</div>
               <span id="market-status" class="status-chip">正在读取</span>
@@ -871,15 +899,41 @@
               </div>
             </footer>
           </section>
-          <section class="surface portfolio-detail-card market-factor-section">
-            <div class="market-section-heading"><h3>宏观因子联动</h3><span class="status-chip">20 / 60 期</span></div>
+          <section class="surface research-metrics-section" data-subpage="market-risk" aria-labelledby="research-metrics-title">
+            <div class="market-section-heading"><div><h3 id="research-metrics-title">收益与风险指标</h3><p>日频确定性计算；切换月 K 线不会改变指标计算频率。</p></div><span id="research-metrics-status" class="status-chip">等待查询</span></div>
+            <div id="research-metric-cards" class="research-metric-grid" aria-live="polite"><p class="empty-state">更新指数行情后展示指标、来源及计算窗口。</p></div>
+            <div id="research-metric-chart" aria-label="研究指标时间序列"></div>
+            <p id="research-metric-chart-meta" class="research-data-meta"></p>
+            <div class="doc-callout doc-callout-info"><p>成交量与成交额用于市场活跃度观察；数据单位未核验时不作跨来源比较。上述指标不识别真实散户人数或主力资金流。</p></div>
+          </section>
+          <section class="surface portfolio-detail-card market-factor-section" data-subpage="market-risk">
+            <div class="market-section-heading"><div><h3>宏观因子联动</h3><p>同期相关性不代表因果关系。</p></div><span class="status-chip">20 / 60 期</span></div>
             <div id="market-factors" class="market-factor-grid" aria-live="polite"><div class="empty-state">读取指数后显示美债、油价与金价联动。</div></div>
           </section>
-          <section id="market-industries-section" class="surface portfolio-detail-card">
-            <h3>行业轮动观察</h3>
+          <section id="market-industries-section" class="surface portfolio-detail-card" data-subpage="market-sectors">
+            <h3>行业轮动观察</h3><p>对照固定观察行业的短中期涨跌幅，查看相对强弱变化。</p>
+            <div class="research-action-row"><label class="research-form-field">关联个股代码<input id="market-stock-research-code" placeholder="例如 600519.SH" maxlength="12"></label><button id="market-stock-research-open" type="button" class="copilot-action-btn secondary">进入个股 LIVE 研究</button></div>
             <button id="market-load-industries" type="button" class="copilot-action-btn secondary">读取行业表现</button>
             <div id="market-industries" aria-live="polite"></div>
           </section>
+        </section>
+
+        <section class="workspace-page-section" id="skill-store" hidden aria-labelledby="skill-store-title">
+          <div class="page-heading"><div><span class="eyebrow">研究能力</span><h2 id="skill-store-title">同花顺技能商店</h2><p>查看受控数据能力及个人启用状态。</p></div></div>
+          <section class="surface doc-callout doc-callout-info" id="skill-store-content" role="status" aria-live="polite"><strong>目录待加载</strong><p>能力状态以服务端注册和权限验证结果为准。</p></section>
+        </section>
+
+        <section class="workspace-page-section research-tools-page" id="research-knowledge" hidden aria-labelledby="research-knowledge-title">
+          <div class="page-heading"><div><span class="eyebrow">资料与证据</span><h2 id="research-knowledge-title">研究知识库</h2><p>保留原文、公告时点及版本；检索相关性不代表金融事实已核验。</p></div></div>
+          <div id="knowledge-workspace"></div>
+        </section>
+        <section class="workspace-page-section research-tools-page" id="live-research" hidden aria-labelledby="live-research-title">
+          <div class="page-heading"><div><span class="eyebrow">结构化研究任务</span><h2 id="live-research-title">LIVE 研究</h2><p>编辑节点与依赖，查看实际执行状态和单源观察证据。</p></div></div>
+          <div id="live-research-workspace"></div>
+        </section>
+        <section class="workspace-page-section research-tools-page" id="research-algorithms" hidden aria-labelledby="research-algorithms-title">
+          <div class="page-heading"><div><span class="eyebrow">确定性研究计算</span><h2 id="research-algorithms-title">论文算法</h2><p>输入有来源和时点的数据；计算状态不证明原始数据或全市场覆盖。</p></div></div>
+          <div id="algorithm-workspace"></div>
         </section>
 
         <section class="workspace-page-section trading-style-page" id="trading-style" hidden aria-labelledby="trading-style-title">
@@ -1442,7 +1496,7 @@
           </section>
 
           <section class="panel profile-panel" id="profile" aria-labelledby="profile-title">
-            <div id="profile-overview-view">
+            <div id="profile-overview-view" data-subpage="profile-results">
               <div class="panel-head profile-center-heading">
                 <h2 id="profile-title" tabindex="-1">个人中心</h2>
                 <button id="refresh-profile-summary" class="quiet-profile-action" type="button" aria-label="刷新投资者画像">刷新画像</button>
@@ -1469,8 +1523,8 @@
               </div>
             </div>
 
-            <div id="profile-questionnaire-view" hidden>
-              <a id="profile-questionnaire-return" class="quiet-profile-action profile-questionnaire-return" href="#profile">返回个人中心</a>
+            <div id="profile-questionnaire-view" data-subpage="profile-questionnaire" hidden>
+              <a id="profile-questionnaire-return" class="quiet-profile-action profile-questionnaire-return" href="#profile-results">返回个人中心</a>
               <div class="profile-questionnaire-heading">
                 <h2 id="profile-questionnaire-heading" tabindex="-1">投资者问卷</h2>
                 <span>19 道题 · 18 道必答题 · Q13 可选</span>
@@ -1507,6 +1561,18 @@
               </form>
             </div>
 
+            <section id="profile-preferences-view" class="profile-display-preference" aria-labelledby="display-preference-title" data-subpage="profile-preferences">
+              <div>
+                <strong id="display-preference-title" tabindex="-1">AI 信任度与解释偏好</strong>
+                <p>它只决定结论与依据的展开方式，不改变风险分数、适当性等级或告警结果。</p>
+              </div>
+              <div class="research-preference-actions">
+                <label>回答详细度<select id="profile-answer-detail"><option value="80">简洁</option><option value="50">标准</option><option value="20">详细</option></select></label>
+                <button id="profile-save-detail" type="button" class="query-submit secondary">保存解释偏好</button>
+                <button id="profile-theme-toggle" type="button" class="query-submit secondary">切换深浅主题</button>
+                <span id="profile-preference-status" role="status" aria-live="polite"></span>
+              </div>
+            </section>
             <dialog id="profile-display-dialog" class="prd-dialog" aria-labelledby="profile-display-title">
               <div class="profile-dialog-heading">
                 <h2 id="profile-display-title">回答详细度</h2>
@@ -1524,7 +1590,7 @@
               </form>
             </dialog>
 
-            <div class="dev-only profile-technical-tools dev-outline">
+            <div class="dev-only profile-technical-tools dev-outline" data-subpage="profile-results">
               <div class="context-confirm-actions">
                 <div>
                   <strong>兼容画像契约</strong>

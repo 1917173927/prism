@@ -1,0 +1,59 @@
+{
+  "schema_version": "research-quality-browser-proof.v1",
+  "review_method": "AGENT_ASSISTED",
+  "human_signoff": false,
+  "entry": "http://127.0.0.1:8023/static/research-quality-review.html",
+  "actual_ui_import": true,
+  "actual_ui_export": true,
+  "export_path": "VISIBLE_READONLY_JSON_SNAPSHOT_SAVED_FROM_DOM",
+  "blob_download_observed": false,
+  "blob_control_cases": "2 KiB and 4.3 MiB failed to yield a file in this App browser; HTTP static download succeeded. Attachment and delay hypotheses were falsified.",
+  "immutable_checks": "Saved UI JSON compared in Python against merged independent annotations; only reviewed_at differs.",
+  "viewports": [
+    {
+      "height": 1000,
+      "meta": "prism-real-macro-bank-100.20261003.v3.hybrid · REAL_CORPUS · 冻结时点 2026-10-02T16:37:25.281955+00:00 · 100 题 · 标注来源 AGENT_ASSISTED（Agent 辅助标注）",
+      "overflow": false,
+      "progress": "第 81／100 题 · 依据标签 1956／1956；此计数不代表完整验收",
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "height": 768,
+      "meta": "prism-real-macro-bank-100.20261003.v3.hybrid · REAL_CORPUS · 冻结时点 2026-10-02T16:37:25.281955+00:00 · 100 题 · 标注来源 AGENT_ASSISTED（Agent 辅助标注）",
+      "overflow": false,
+      "progress": "第 1／100 题 · 依据标签 1956／1956；此计数不代表完整验收",
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "height": 844,
+      "meta": "prism-real-macro-bank-100.20261003.v3.hybrid · REAL_CORPUS · 冻结时点 2026-10-02T16:37:25.281955+00:00 · 100 题 · 标注来源 AGENT_ASSISTED（Agent 辅助标注）",
+      "overflow": false,
+      "progress": "第 1／100 题 · 依据标签 1956／1956；此计数不代表完整验收",
+      "scrollWidth": 375,
+      "width": 390
+    }
+  ],
+  "scenario_checks": [
+    {
+      "id": "real-100",
+      "scenario": "INJECTION",
+      "answerability": "SUFFICIENT",
+      "refusal": "NOT_REFUSED",
+      "isolation_time": "PASS"
+    },
+    {
+      "id": "real-081",
+      "scenario": "CONFLICT",
+      "answerability": "INSUFFICIENT",
+      "refusal": "NOT_REFUSED",
+      "isolation_time": "PASS"
+    }
+  ],
+  "screenshots": [
+    "review-agent-100.png",
+    "review-agent-export.png"
+  ],
+  "viewport_reset": true
+}

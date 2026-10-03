@@ -45,7 +45,9 @@ try {
     await page.evaluate(hash => { window.location.hash = hash; }, hash);
     await page.waitForFunction(expected => window.location.hash === `#${expected}`, {}, hash);
     if (hash === "profile") await page.waitForSelector("body.profile-active #profile-overview-view:not([hidden])");
+    if (hash === "profile-results") await page.waitForSelector("body.profile-active #profile-overview-view", {visible: true});
     if (hash === "profile-questionnaire") await page.waitForSelector("body.profile-questionnaire-active #profile-questionnaire-view:not([hidden])");
+    if (hash === "profile-preferences") await page.waitForSelector("body.profile-active #profile-preferences-view", {visible: true});
   }
   async function section(index) {
     await page.locator(`#questionnaire-section-tabs li:nth-child(${index + 1}) button`).click();
@@ -81,7 +83,7 @@ try {
     assert.ok(measurement.radar.top >= measurement.heading.bottom, JSON.stringify(measurement));
     assert.ok(measurement.documentWidth <= width + 1, JSON.stringify(measurement));
     assert.equal(measurement.sidebarVisible, false);
-    assert.equal(measurement.tabsVisible, false);
+    assert.equal(measurement.tabsVisible, true);
     for (const label of measurement.labels) {
       assert.ok(label.left >= measurement.card.left && label.right <= measurement.card.right, JSON.stringify({width, label, card: measurement.card}));
       assert.ok(label.top >= measurement.card.top && label.bottom <= measurement.card.bottom, JSON.stringify({width, label, card: measurement.card}));
@@ -147,6 +149,7 @@ try {
     }
     if (index === 0) {
       await page.click("#profile-questionnaire-return");
+      await page.waitForFunction(() => window.location.hash === "#profile-results");
       await page.waitForSelector("#profile-overview-view:not([hidden])");
       assert.equal(await visible("#questionnaire-form"), false);
       assert.equal(await page.$$("#profile-summary-content .profile-radar-value").then(nodes => nodes.length), 0);
@@ -180,7 +183,7 @@ try {
   assert.equal(previewBody.persisted, false);
   await page.waitForSelector("#questionnaire-result:not([hidden]) .profile-radar-value");
   assert.equal((await api("/api/v1/advisor/profile/summary")).questionnaire_snapshot, null);
-  await navigate("profile");
+  await navigate("profile-results");
   assert.equal(await page.$$("#profile-summary-content .profile-radar-value").then(nodes => nodes.length), 0);
   await navigate("profile-questionnaire");
   const confirmation = waitResponse("/api/v1/advisor/profile/questionnaire/confirm", "POST");
@@ -198,6 +201,21 @@ try {
   const expectedRating = {CONSERVATIVE: "保守型", BALANCED: "平衡型", GROWTH: "成长型"}[firstSummary.effective_profile.risk_level];
   assert.equal(await text(".profile-center-rating-value"), expectedRating);
   record("服务端预览独立展示、确认保存并返回个人中心、雷达显示真实分数");
+
+  for (const [route, view] of [
+    ["profile-preferences", "profile-preferences-view"],
+    ["profile-questionnaire", "profile-questionnaire-view"],
+    ["profile-results", "profile-overview-view"],
+  ]) {
+    await page.click(`#workspace-page-tabs a[href="#${route}"]`);
+    await page.waitForFunction(expected => document.querySelector("#profile").dataset.activeSubpage === expected, {}, route);
+    assert.equal(await visible(`#${view}`), true);
+    assert.equal(await page.$eval(`#workspace-page-tabs a[href="#${route}"]`, node => node.getAttribute("aria-current")), "page");
+    assert.deepEqual(await page.$$eval("#profile [data-subpage]", (nodes, selected) =>
+      nodes.filter(node => node.dataset.subpage !== selected && node.getClientRects().length > 0).map(node => node.dataset.subpage), route), []);
+  }
+  assert.equal((await api("/api/v1/advisor/profile/summary")).questionnaire_snapshot.snapshot_id, firstSummary.questionnaire_snapshot.snapshot_id);
+  record("画像结果、问卷与偏好三子页通过可见导航互相可达，切换不修改已确认画像");
 
   for (let index = 1; index <= 3; index += 1) await page.click(`#profile-details-content > details:nth-child(${index}) > summary`);
   assert.equal(await page.$$("#profile-details-content .profile-key-fact").then(nodes => nodes.length), firstSummary.presentation.key_profile.length);
@@ -236,6 +254,7 @@ try {
   await page.click(`input[name="Q4"][value="${changedOption}"]`);
   assert.equal(await page.$eval("#questionnaire-confirm", node => node.hidden), true);
   await page.click("#profile-questionnaire-return");
+  await page.waitForFunction(() => window.location.hash === "#profile-results");
   await page.waitForSelector("#profile-overview-view:not([hidden])");
   await checkRadar(firstSummary);
   await page.reload({waitUntil: "domcontentloaded"});
@@ -280,8 +299,14 @@ try {
   await page.click(".profile-holdings-entry");
   await page.waitForSelector("body.portfolio-active #overview:not([hidden])");
   assert.equal(await visible("#home-history-sidebar"), false);
+  await page.click('#portfolio-empty [data-open-portfolio]');
+  await page.waitForSelector("#portfolio-modal[open]");
+  assert.equal(await page.$eval("body", node => node.classList.contains("portfolio-dialog-open")), true);
   await page.goBack();
   await page.waitForSelector("body.profile-active #profile-overview-view:not([hidden])");
+  assert.deepEqual(await page.$$eval("#portfolio-modal[open], #portfolio-analysis-drawer[open], #portfolio-diagnosis-drawer[open]", nodes => nodes.map(node => node.id)), []);
+  assert.equal(await page.$eval("body", node => node.classList.contains("portfolio-dialog-open")), false);
+  record("持仓导入窗口打开后浏览器返回关闭持仓窗口并恢复页面滚动");
   await page.click("#profile-details-content > details:first-child > summary");
   await page.click("#profile-details-content .profile-feature-card");
   await page.waitForSelector("body.copilot-active #agent-feature-config-dialog[open]");

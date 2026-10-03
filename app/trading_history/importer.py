@@ -164,7 +164,7 @@ def _preview_row(row_number: int, row: dict[str, object], mapping: dict[str, str
     if layout_issue := str(row.get("版式校验") or "").strip():
         issues.append(layout_issue)
     if confidence < OCR_CONFIDENCE_THRESHOLD:
-        issues.append("识别结果需要人工核对")
+        issues.append(f"识别置信度低于 {OCR_CONFIDENCE_THRESHOLD:.0%}，需要人工核对")
     overbound = currency not in {"CNY", "人民币", "RMB"}
     return TradePreviewRow(
         row_number=row_number,

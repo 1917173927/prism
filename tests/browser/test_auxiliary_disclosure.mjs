@@ -12,7 +12,7 @@ export async function auditAuxiliaryPages(tab) {
   const pages = [
     ["portfolio-optimization", 1], ["portfolio-rebalancing", 1], ["scenario-simulation", 1],
     ["stock-research", 1], ["fund-research", 1], ["convertible-bond-research", 1],
-    ["portfolio", 0], ["recommendation-history", 0], ["advanced-explainability", 1],
+    ["recommendation-history", 0], ["advanced-explainability", 1],
   ];
   const observations = [];
   for (const [pageId, expectedActions] of pages) {
@@ -58,6 +58,15 @@ export async function auditAuxiliaryPages(tab) {
     }
     observations.push(observation);
   }
+  await openPage(tab, origin, "portfolio");
+  const management = await tab.playwright.evaluate(() => ({
+    visible: !document.getElementById("overview").hidden,
+    subpage: document.getElementById("overview").dataset.activeSubpage,
+    holdingsVisible: document.getElementById("portfolio-holdings-details").getClientRects().length > 0,
+  }));
+  assert.equal(management.visible, true);
+  assert.equal(management.subpage, "holdings-management");
+  assert.equal(management.holdingsVisible, true);
   return observations;
 }
 

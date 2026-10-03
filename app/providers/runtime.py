@@ -35,10 +35,8 @@ async def _execute_direct_with_budget(
     fingerprint = compute_request_fingerprint(request)
 
     try:
-        result = await asyncio.wait_for(
-            provider.execute(request),
-            timeout=timeout_sec,
-        )
+        async with asyncio.timeout(timeout_sec):
+            result = await provider.execute(request)
         validate_result_for_request(request, result)
         return result
     except TimeoutError:
@@ -63,24 +61,10 @@ async def _execute_direct_with_budget(
             latency_ms=request.timeout_ms,
         )
     except asyncio.CancelledError:
-        return ProviderResult(
-            request_id=request.request_id,
-            request_fingerprint=fingerprint,
-            provider=provider.name,
-            status=ProviderStatus.FAILED,
-            retrieved_at=datetime.now(UTC),
-            records=(),
-            missing_fields=(),
-            issues=(
-                ProviderIssue(
-                    code=ProviderIssueCode.CANCELLED,
-                    stage="runtime",
-                    safe_message="Provider execution was cancelled",
-                    retriable=False,
-                ),
-            ),
-            scope_description=None,
-        )
+        # Cancellation is a control signal from the task owner or total
+        # deadline. Converting it to FAILED would start a fallback request
+        # after its parent task has already stopped.
+        raise
     except Exception as exc:
         safe_diagnostics = redact_sensitive_data(
             {"error_type": type(exc).__name__}

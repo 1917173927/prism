@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 
 import httpx
 import pytest
@@ -23,7 +23,14 @@ def _html(code: str = "HSC") -> str:
     return f"<script>var testData_1_Daily = {json.dumps(payload)};</script>"
 
 
-def test_etnet_public_chart_parses_hk_ohlcv_without_credentials():
+def test_etnet_public_chart_parses_hk_ohlcv_without_credentials(monkeypatch):
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            fixed = datetime(2026, 9, 14, 12, tzinfo=UTC)
+            return fixed.astimezone(tz) if tz else fixed.replace(tzinfo=None)
+
+    monkeypatch.setattr("app.providers.etnet.datetime", FixedDateTime)
     requests = []
 
     def respond(request: httpx.Request) -> httpx.Response:

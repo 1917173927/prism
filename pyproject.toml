@@ -16,9 +16,19 @@ dependencies = [
   "rapidocr-onnxruntime>=1.3.0",
   "python-multipart>=0.0.9",
   "tzdata>=2025.1; platform_system == 'Windows'",
+  "numpy==2.2.6",
+  "pypdf==6.1.3",
 ]
 
 [project.optional-dependencies]
+research = [
+  "hmmlearn==0.3.3",
+]
+knowledge = [
+  "sentence-transformers==5.1.1",
+  "torch==2.8.0",
+  "transformers==4.56.2",
+]
 postgres = [
   "psycopg[binary]>=3.2,<4",
 ]
@@ -35,6 +45,7 @@ include = ["app*", "tools*"]
 
 [tool.setuptools.data-files]
 "eval_cases" = ["eval_cases/*.json"]
+"eval_cases/research" = ["eval_cases/research/*.json"]
 
 [tool.setuptools.package-data]
 app = [
@@ -45,6 +56,7 @@ app = [
   "api/static/*.js",
   "api/static/*.png",
   "api/static/*.txt",
+  "api/static/*.json",
   "fixtures/advisor/*.json",
   "fixtures/advisor/providers/*.json",
   "fixtures/research/*.json",

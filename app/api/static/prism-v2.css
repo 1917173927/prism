@@ -78,6 +78,15 @@ body.prism-ui-v2 {
 
 .prism-ui-v2 .brand strong { color: var(--text-primary); font-size: 15px; line-height: 1.25; }
 .prism-ui-v2 .brand span:not(.brand-mark) { color: var(--text-muted); font-size: 10px; }
+.prism-ui-v2 .nav-list { display: grid; gap: 3px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.prism-ui-v2 .sidebar > .brand, .prism-ui-v2 .sidebar > .sidebar-note { flex-shrink: 0; }
+.prism-ui-v2 .research-subpage-hidden { display: none !important; }
+.prism-ui-v2 #profile[data-active-subpage="profile-questionnaire"].questionnaire-preview-visible .profile-summary-section { display: block !important; }
+.prism-ui-v2 .research-preference-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.prism-ui-v2 .research-preference-actions label { display: grid; gap: 5px; }
+.prism-ui-v2 .research-preference-actions select { min-width: 120px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); background: var(--surface); }
+.prism-ui-v2 .research-tools-page details,
+.prism-ui-v2 .research-tools-page details > summary { scroll-margin-top: 120px; }
 .prism-ui-v2 .nav-section-primary { display: grid; gap: 3px; }
 .prism-ui-v2 .nav-item,
 .prism-ui-v2 .nav-section-primary .nav-item,
@@ -1654,6 +1663,9 @@ body.prism-ui-v2 {
 }
 
 .prism-ui-v2 .workspace-page-tabs {
+  position: sticky;
+  top: 66px;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1662,6 +1674,10 @@ body.prism-ui-v2 {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-subtle);
+}
+
+@media (max-width: 900px) {
+  .prism-ui-v2 .workspace-page-tabs { top: 104px; }
 }
 
 .prism-ui-v2 .workspace-page-tabs a {
@@ -2721,6 +2737,7 @@ body.prism-ui-v2 {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
+html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.sidebar-layout-active .other-page-only { display: none; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .home-only { display: inline; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .profile-actions-panel .home-only { display: flex; }
@@ -2743,7 +2760,7 @@ body.prism-ui-v2 {
 .prism-ui-v2.sidebar-layout-active .home-navigation-main,
 .prism-ui-v2.sidebar-layout-active .home-navigation-actions { display: flex; align-items: center; min-width: 0; gap: 12px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation-main { flex: 1; gap: 25px; }
-.prism-ui-v2.sidebar-layout-active #home-primary-navigation { min-width: 0; }
+.prism-ui-v2.sidebar-layout-active #home-primary-navigation { min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex: 0 0 auto; min-height: 0; padding: 0; gap: 9px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand strong { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand > div > span { display: none; }
@@ -2978,6 +2995,7 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-query-box { margin-top: auto; }
 
 @media (max-width: 900px) {
+  html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 120px; }
   .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-rows: 104px minmax(0, 1fr); }
   .prism-ui-v2.sidebar-layout-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation-main { display: contents; }
@@ -3119,12 +3137,13 @@ body.prism-ui-v2 {
 /* 个人中心与独立问卷页面 */
 .prism-ui-v2.sidebar-layout-active.profile-active .app-shell { grid-template-columns: minmax(0, 1fr); transition: none; }
 .prism-ui-v2.profile-active .sidebar,
-.prism-ui-v2.profile-active .home-history-show,
+.prism-ui-v2.sidebar-layout-active.profile-active .home-history-show,
 .prism-ui-v2.profile-active .home-history-backdrop { display: none; }
 .prism-ui-v2.profile-active .main { grid-column: 1; padding: 0 32px 60px; }
 .prism-ui-v2 #expert-workspace-grid > #profile { width: min(100%, 1000px); margin: 50px auto 0; padding: 0; }
 .prism-ui-v2 #profile [hidden] { display: none !important; }
 .prism-ui-v2 #profile .profile-center-heading { align-items: center; margin: 0 0 28px; padding: 0; border: 0; }
+.prism-ui-v2 #profile .profile-center-heading > .quiet-profile-action { width: auto; flex-shrink: 0; margin-left: auto; }
 .prism-ui-v2 #profile .profile-center-heading h2,
 .prism-ui-v2 #profile .profile-questionnaire-heading h2 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.03em; }
 .prism-ui-v2 #profile h2[tabindex="-1"]:focus { outline: none; }

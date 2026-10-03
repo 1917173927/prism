@@ -1,0 +1,4993 @@
+{
+  "schema_version": "research-service-load-evidence.v1",
+  "generated_at": "2026-10-01T10:04:54.309370+00:00",
+  "python": "3.13.5",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "rounds": [
+    {
+      "task_count": 25,
+      "pipeline": "LiveResearchService -> ResearchRuntime -> Provider -> normalization",
+      "mode": "REAL_PROVIDER",
+      "is_synthetic": false,
+      "runtime": {
+        "scope": "SINGLE_PROCESS",
+        "global_limit": 100,
+        "queue_limit": 400,
+        "per_owner_limit": 200,
+        "budget_seconds": 60.0,
+        "active": 0,
+        "waiting": 0,
+        "peak_active": 25,
+        "completed": 25,
+        "failed": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "rejected": 0,
+        "closed": false,
+        "queue_wait_ms_total": 0.321,
+        "execution_ms_total": 7145.355,
+        "provider_active": 0,
+        "provider_waiting": 0,
+        "provider_peak": 25,
+        "model_active": 0,
+        "model_waiting": 0,
+        "model_peak": 0
+      },
+      "run_states": {
+        "PARTIAL": 25
+      },
+      "provider_statuses": {
+        "SUCCESS": 25
+      },
+      "error_codes": {},
+      "completed_rate": 0.0,
+      "wall_ms": 1213.399,
+      "cpu_ms": 984.375,
+      "p50_ms": 271.585,
+      "p95_ms": 462.503,
+      "p99_ms": 468.727,
+      "event_loop_lag_p95_ms": 20.182,
+      "python_allocated_bytes": 23247624,
+      "python_peak_allocated_bytes": 23833924,
+      "memory_scope": "TRACEMALLOC_PYTHON_ALLOCATIONS_NOT_PROCESS_RSS",
+      "observations": 25,
+      "verified_observations": 0,
+      "fact_storage_exercised": true,
+      "upstream_capacity_proven": false,
+      "upstream_quota_verified": false,
+      "controlled_provider_delay_ms": null,
+      "samples": [
+        {
+          "elapsed_ms": 739.296,
+          "active": 0,
+          "waiting": 0,
+          "provider_active": 0,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 778.539,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 797.885,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 808.346,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 829.191,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 848.956,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 867.62,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 883.101,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 898.736,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 914.157,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 929.268,
+          "active": 25,
+          "waiting": 0,
+          "provider_active": 25,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 941.214,
+          "active": 24,
+          "waiting": 0,
+          "provider_active": 24,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 972.119,
+          "active": 21,
+          "waiting": 0,
+          "provider_active": 18,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1000.623,
+          "active": 15,
+          "waiting": 0,
+          "provider_active": 11,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1023.256,
+          "active": 8,
+          "waiting": 0,
+          "provider_active": 5,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1036.641,
+          "active": 4,
+          "waiting": 0,
+          "provider_active": 4,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1052.996,
+          "active": 4,
+          "waiting": 0,
+          "provider_active": 4,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1068.008,
+          "active": 4,
+          "waiting": 0,
+          "provider_active": 4,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1082.971,
+          "active": 4,
+          "waiting": 0,
+          "provider_active": 4,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1099.049,
+          "active": 4,
+          "waiting": 0,
+          "provider_active": 4,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1114.415,
+          "active": 4,
+          "waiting": 0,
+          "provider_active": 4,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1124.913,
+          "active": 3,
+          "waiting": 0,
+          "provider_active": 3,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1144.312,
+          "active": 3,
+          "waiting": 0,
+          "provider_active": 3,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1159.699,
+          "active": 3,
+          "waiting": 0,
+          "provider_active": 3,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1175.29,
+          "active": 3,
+          "waiting": 0,
+          "provider_active": 3,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1191.349,
+          "active": 3,
+          "waiting": 0,
+          "provider_active": 3,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1206.119,
+          "active": 2,
+          "waiting": 0,
+          "provider_active": 1,
+          "model_active": 0
+        }
+      ],
+      "runs": [
+        {
+          "run_id": "76ce462949e24ee2b8446ee0b1d89984",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.833456+00:00",
+          "finished_at": "2026-10-01T10:04:51.109696+00:00",
+          "elapsed_ms": 273.904,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 251.517,
+              "fact_storage_ms": 1.77,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:fd9a226542ce7a62c654b90d14311996ce6460ee7f2ecc9bf83f5da3a4d41247"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "846dea5298bc49648dada85a36c9c86a",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.833649+00:00",
+          "finished_at": "2026-10-01T10:04:51.059344+00:00",
+          "elapsed_ms": 223.414,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 210.698,
+              "fact_storage_ms": 1.882,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:7f48d38eba405677ec43a02edab48ab09d613e88bf1552b8c13c418e0361c539"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "e15a72aaff5848939c166a63d6b2c018",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.833743+00:00",
+          "finished_at": "2026-10-01T10:04:51.068756+00:00",
+          "elapsed_ms": 232.743,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 211.735,
+              "fact_storage_ms": 1.755,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:2c326a077ea3321219611397609cd410b9520e23b24d7bbca93327ee78776518"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a67d572eeeb14880974ee9c62f9cee9a",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.833828+00:00",
+          "finished_at": "2026-10-01T10:04:51.079432+00:00",
+          "elapsed_ms": 243.345,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 218.849,
+              "fact_storage_ms": 1.747,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b784c5bdd3dd15882b61cbca6d9355da0c29b02e35b49a5fc057c069f3a9e77d"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a74a63bf317c40628b7febb4cb288363",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.833909+00:00",
+          "finished_at": "2026-10-01T10:04:51.089239+00:00",
+          "elapsed_ms": 253.085,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 230.555,
+              "fact_storage_ms": 1.751,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:5cec933e49deb8d80eed334e6913f12fc77543163c2fae6c0074aa4758d1b3da"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "e71f4eee908843f794e48e7559dc75aa",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.833988+00:00",
+          "finished_at": "2026-10-01T10:04:51.097298+00:00",
+          "elapsed_ms": 260.102,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 235.752,
+              "fact_storage_ms": 1.635,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:4bac2ef6a020bd601e7f712a669b9032b4f2da5a1ccfd84efd848a62aab1cf1f"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "ad12866e143a48e18b017cc45fcff9f8",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834075+00:00",
+          "finished_at": "2026-10-01T10:04:51.221310+00:00",
+          "elapsed_ms": 384.037,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 370.742,
+              "fact_storage_ms": 1.912,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b092eba147a8fbffd5090c23d10c42a24406460681ac5aba30570b917c863a69"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "ce15421173fb4b77b57855de1a165fd0",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834158+00:00",
+          "finished_at": "2026-10-01T10:04:51.097208+00:00",
+          "elapsed_ms": 259.863,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 230.805,
+              "fact_storage_ms": 1.671,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:9536cd2fd55872c764882e4dc37f0a5e304e3901d3a479307ac2ac3af100ee92"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0818b6e1169c44d7a4fdd7c864f53217",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834238+00:00",
+          "finished_at": "2026-10-01T10:04:51.043288+00:00",
+          "elapsed_ms": 205.878,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 190.533,
+              "fact_storage_ms": 1.847,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:431732cdccb126e2c3a6ac8ff19e44611e0a56d0de1bc9d06b31b115a9edf050"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "b160a8563dc1441fb45ef243ce628965",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834326+00:00",
+          "finished_at": "2026-10-01T10:04:51.119561+00:00",
+          "elapsed_ms": 282.085,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 254.012,
+              "fact_storage_ms": 1.922,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:969be6ef4a9764738bc0f7c1ed98d2ded835ba5ae9751e331136d87df95c0ed5"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "73f3b08fc42d465fb42ba3dcfe5c4f5e",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834433+00:00",
+          "finished_at": "2026-10-01T10:04:51.059262+00:00",
+          "elapsed_ms": 221.721,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 194.403,
+              "fact_storage_ms": 2.54,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:cd131dd74ead1a299e6d73b85c5d4ac63e4c030e90640c12b1059ccac0739f60"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "915068fd5d72452787b56580ab8a7757",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834513+00:00",
+          "finished_at": "2026-10-01T10:04:51.133039+00:00",
+          "elapsed_ms": 295.434,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 277.168,
+              "fact_storage_ms": 1.795,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b124ec8344356cd8105f92e1c83c108f885fe4f39fdcec70fd99a4ba10b911ae"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "fe51fcb751944c3e99e0d8a3047d1346",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834590+00:00",
+          "finished_at": "2026-10-01T10:04:51.119859+00:00",
+          "elapsed_ms": 282.195,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 255.976,
+              "fact_storage_ms": 1.695,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:39e02bf9365a7579f0c0a1c2dcabb7f306edd1a4d9fde9d611d4994074b09073"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "2e852eccd3b140adb7a537ba5135e428",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834664+00:00",
+          "finished_at": "2026-10-01T10:04:51.037593+00:00",
+          "elapsed_ms": 199.87,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 178.463,
+              "fact_storage_ms": 2.612,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b654d4ffafef94f50ea022fe51b3424bec2658d995e2d145aa5e9167641474e9"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "25002acd9bbe46c6a6cde2926c6e7429",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834740+00:00",
+          "finished_at": "2026-10-01T10:04:51.089082+00:00",
+          "elapsed_ms": 251.298,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 211.95,
+              "fact_storage_ms": 2.46,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:18f0d4b71a3c96d05228b00d3b2466523e8cd00d10fb36fcb93f71124997d2c9"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d15076f8717744cd999dcc5e29ea6096",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834816+00:00",
+          "finished_at": "2026-10-01T10:04:51.079368+00:00",
+          "elapsed_ms": 241.524,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 201.582,
+              "fact_storage_ms": 1.737,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:3388c326bccd43a3b75ddf1568560f172a7281f3fbc0e3a0cddd61cf855c58c5"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "abb686c2a65b483087a411418be6c2aa",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834892+00:00",
+          "finished_at": "2026-10-01T10:04:51.302792+00:00",
+          "elapsed_ms": 464.891,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 439.959,
+              "fact_storage_ms": 2.363,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:f2e2efd8fc8e65a3778a91d1bc49a385622069609ed35e4ede876eaf29d80c04"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a03514753f4a48919483dd37af690fae",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.834974+00:00",
+          "finished_at": "2026-10-01T10:04:51.119959+00:00",
+          "elapsed_ms": 281.999,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 252.991,
+              "fact_storage_ms": 1.695,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b24aa670659d721ac742f8487676f3652ba6431f17c8ac265b5413003fe05ff4"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "4fb661bad13647fabd494897586814f0",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835053+00:00",
+          "finished_at": "2026-10-01T10:04:51.120027+00:00",
+          "elapsed_ms": 281.935,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 255.02,
+              "fact_storage_ms": 1.974,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:bf5c7a835231fb500a978571d427d162a2a3a22291b11685182b102b1356154e"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "15e562afb8224a3c8548ec768abc016f",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835138+00:00",
+          "finished_at": "2026-10-01T10:04:51.109785+00:00",
+          "elapsed_ms": 271.585,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 230.307,
+              "fact_storage_ms": 1.728,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:612de95117e292ce421f22750eb5488a062ab395759f6320ab095e981a7f34e5"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "33cb68a48c4b4c96a2b1303b4b3aac6d",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835214+00:00",
+          "finished_at": "2026-10-01T10:04:51.119319+00:00",
+          "elapsed_ms": 281.004,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 234.053,
+              "fact_storage_ms": 1.84,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:69030a0471e5d973db4bd9a68605e8e43b3e26e026a0cbaeeecc5eec8eaf59b8"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "8045625b2cdc47f1a190689be655d473",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835289+00:00",
+          "finished_at": "2026-10-01T10:04:51.308390+00:00",
+          "elapsed_ms": 469.939,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 440.722,
+              "fact_storage_ms": 2.036,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:22e540ff847df6a2cdb7004c37e33cc7ad815c10f4dc7fa9fdf526a2bfea87c6"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0407f76a7e384de08491a5edbd51a49d",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835369+00:00",
+          "finished_at": "2026-10-01T10:04:51.089169+00:00",
+          "elapsed_ms": 250.62,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 207.142,
+              "fact_storage_ms": 1.736,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:9655c276f49267d7dec948100c82135dd1801df93f6ba1a52eb63218c23ab4f8"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "491024b1c1cf49b789685eadaf8655e4",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835444+00:00",
+          "finished_at": "2026-10-01T10:04:51.119388+00:00",
+          "elapsed_ms": 280.753,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 233.648,
+              "fact_storage_ms": 2.123,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:d28f13dd63ee3d9f6640f72222c8157f965f981779cb4af38fc56a5f48b6a271"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "311afee0679041b1be3f30caa6d0b3ce",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:50.835520+00:00",
+          "finished_at": "2026-10-01T10:04:51.291667+00:00",
+          "elapsed_ms": 452.951,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 420.754,
+              "fact_storage_ms": 1.908,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:00b2adcfe6444ea4dad55b7ca061183e071ef2bb5c052da3142e23e5ca390813"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        }
+      ],
+      "round_index": 1,
+      "fact_storage_scope": "IN_MEMORY_BENCHMARK_ONLY",
+      "evidence_retention": "METADATA_ONLY",
+      "fact_reference_scope": "CLOSED_IN_MEMORY_BENCHMARK_DATABASE_NOT_QUERYABLE"
+    },
+    {
+      "task_count": 50,
+      "pipeline": "LiveResearchService -> ResearchRuntime -> Provider -> normalization",
+      "mode": "REAL_PROVIDER",
+      "is_synthetic": false,
+      "runtime": {
+        "scope": "SINGLE_PROCESS",
+        "global_limit": 100,
+        "queue_limit": 400,
+        "per_owner_limit": 200,
+        "budget_seconds": 60.0,
+        "active": 0,
+        "waiting": 0,
+        "peak_active": 50,
+        "completed": 50,
+        "failed": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "rejected": 0,
+        "closed": false,
+        "queue_wait_ms_total": 0.51,
+        "execution_ms_total": 21959.654,
+        "provider_active": 0,
+        "provider_waiting": 0,
+        "provider_peak": 50,
+        "model_active": 0,
+        "model_waiting": 0,
+        "model_peak": 0
+      },
+      "run_states": {
+        "PARTIAL": 50
+      },
+      "provider_statuses": {
+        "SUCCESS": 50
+      },
+      "error_codes": {},
+      "completed_rate": 0.0,
+      "wall_ms": 1301.529,
+      "cpu_ms": 1234.375,
+      "p50_ms": 459.624,
+      "p95_ms": 511.487,
+      "p99_ms": 518.312,
+      "event_loop_lag_p95_ms": 80.657,
+      "python_allocated_bytes": 25743418,
+      "python_peak_allocated_bytes": 26792354,
+      "memory_scope": "TRACEMALLOC_PYTHON_ALLOCATIONS_NOT_PROCESS_RSS",
+      "observations": 48,
+      "verified_observations": 0,
+      "fact_storage_exercised": true,
+      "upstream_capacity_proven": false,
+      "upstream_quota_verified": false,
+      "controlled_provider_delay_ms": null,
+      "samples": [
+        {
+          "elapsed_ms": 771.12,
+          "active": 0,
+          "waiting": 0,
+          "provider_active": 0,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 848.668,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 861.989,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 884.629,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 903.588,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 935.812,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 977.145,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 994.075,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1017.112,
+          "active": 50,
+          "waiting": 0,
+          "provider_active": 50,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1032.961,
+          "active": 49,
+          "waiting": 0,
+          "provider_active": 49,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1045.944,
+          "active": 47,
+          "waiting": 0,
+          "provider_active": 47,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1057.157,
+          "active": 45,
+          "waiting": 0,
+          "provider_active": 45,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1103.519,
+          "active": 43,
+          "waiting": 0,
+          "provider_active": 39,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1233.532,
+          "active": 31,
+          "waiting": 0,
+          "provider_active": 13,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1284.895,
+          "active": 3,
+          "waiting": 0,
+          "provider_active": 1,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1298.552,
+          "active": 0,
+          "waiting": 0,
+          "provider_active": 0,
+          "model_active": 0
+        }
+      ],
+      "runs": [
+        {
+          "run_id": "a0285d5827104bd7bcb2275f013b4c4a",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.090710+00:00",
+          "finished_at": "2026-10-01T10:04:52.374563+00:00",
+          "elapsed_ms": 279.135,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 270.96,
+              "fact_storage_ms": 2.786,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:9d78ee67f4bd39720a5d0d134386564fb5cdd1eeab9cbc8b80adde8612e3c206"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "8894d4299d624e2ebc78800b02e22ddb",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.090845+00:00",
+          "finished_at": "2026-10-01T10:04:52.558675+00:00",
+          "elapsed_ms": 463.121,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 383.292,
+              "fact_storage_ms": 2.338,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:6fccd4a87606d8a1256df85366aa9b45032e55cd2885dd591b27d719c2b372c6"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "1c64c1fede17465bba3b78bd5423f3f6",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.090936+00:00",
+          "finished_at": "2026-10-01T10:04:52.609366+00:00",
+          "elapsed_ms": 513.732,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 501.893,
+              "fact_storage_ms": 1.962,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:c7aefe3a8c1fe542ed84864fb0adcf255ab1d4536172c5e8f4c632673ea4ead7"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "183be7614f1c41c8a65d10af1d5692ec",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091021+00:00",
+          "finished_at": "2026-10-01T10:04:52.368939+00:00",
+          "elapsed_ms": 273.239,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 261.124,
+              "fact_storage_ms": 2.306,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:165bacd885baf64344b9da958dd313e4efb7edcd2aaf1d366886008211069b13"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "86c230ad7be84bb1a2ad29c6b856410d",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091105+00:00",
+          "finished_at": "2026-10-01T10:04:52.362819+00:00",
+          "elapsed_ms": 267.053,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 253.652,
+              "fact_storage_ms": 2.693,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:07192cf678ccd2f7a6ce6a00ec4f0e5c27c89007304b0bea0e6238a987f53ca7"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "88b48316d2ff455c918efefead3c4084",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091185+00:00",
+          "finished_at": "2026-10-01T10:04:52.385547+00:00",
+          "elapsed_ms": 289.71,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 275.504,
+              "fact_storage_ms": 2.503,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:dd591f8cb8b546cbb2db0d00b244fb8a2cb4890293f39b03e3afe071b10c95cc"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "3491ec76d4484fdea9bc0a29c0b5e1ce",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091266+00:00",
+          "finished_at": "2026-10-01T10:04:52.428236+00:00",
+          "elapsed_ms": 332.333,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 291.636,
+              "fact_storage_ms": 2.181,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:8949b911db9318946d66579d9158c2a15ded6182e752f4d32227df50104b209c"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "8f57872f79b64ce7a029a02744bf0e72",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091346+00:00",
+          "finished_at": "2026-10-01T10:04:52.609081+00:00",
+          "elapsed_ms": 513.112,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 487.655,
+              "fact_storage_ms": 1.716,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:cbc504466889364686c44f28388508363bb4d89c03cc765c9882aa7e3d7c3da1"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "5a66722dec2a45259f02af785721ce94",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091425+00:00",
+          "finished_at": "2026-10-01T10:04:52.345392+00:00",
+          "elapsed_ms": 249.406,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 232.961,
+              "fact_storage_ms": 1.934,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:30215f7defb01066ef4c73a89ea723d051cad95359e760c19c5e0f6587fc9674"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a23231e196db45bc953294bc84e567b0",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091505+00:00",
+          "finished_at": "2026-10-01T10:04:52.518377+00:00",
+          "elapsed_ms": 422.279,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 341.666,
+              "fact_storage_ms": 2.538,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b80292c44de0bfa6bfe217e2cc00254c8121ee53f99767980d135766c272e553"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d060203b22d3487aacc99efb05d8bb6e",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091581+00:00",
+          "finished_at": "2026-10-01T10:04:52.380551+00:00",
+          "elapsed_ms": 284.389,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 265.404,
+              "fact_storage_ms": 1.888,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:e3b3a27b4375d69bbed4ae1018b77a3fb14a18b2db3fb17aae581ea9edfd25c2"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "db4a23a113c2474bb61f28eccb9f026b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091660+00:00",
+          "finished_at": "2026-10-01T10:04:52.600098+00:00",
+          "elapsed_ms": 503.87,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 436.061,
+              "fact_storage_ms": 2.38,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:57494aa022766b61280397095c4c5c76badd2780733b293477dacaa55b195afa"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d0e8eb28bdff4b609e0ae4fff0bd452f",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091737+00:00",
+          "finished_at": "2026-10-01T10:04:52.469868+00:00",
+          "elapsed_ms": 373.559,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 296.788,
+              "fact_storage_ms": 2.629,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:ec969f0f2e325006351f3a01d0a131b19b9800a11c5fb582b6e8b582326ac143"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "b2789c0b32c94a529e29793386b72ce3",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091815+00:00",
+          "finished_at": "2026-10-01T10:04:52.558439+00:00",
+          "elapsed_ms": 462.066,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 362.509,
+              "fact_storage_ms": 1.819,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:4eab0f3d390bb39f3ffe6f6e57589612699b0fc8b92d2166780d1648d7f73477"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d6aad205a54649b8bbfc925b9a3955b7",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091891+00:00",
+          "finished_at": "2026-10-01T10:04:52.518109+00:00",
+          "elapsed_ms": 421.673,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 322.436,
+              "fact_storage_ms": 2.48,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:da3c203a3c780bba98b4b4888765b782839ccbb5b7ce8219576f49644a32ce24"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "1662bb5c9a124329b2acd16ab1ca6700",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.091969+00:00",
+          "finished_at": "2026-10-01T10:04:52.599872+00:00",
+          "elapsed_ms": 503.375,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 415.825,
+              "fact_storage_ms": 2.182,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:5926e591ae16bb6193be671d33034d21f9d2980e66d019fadd3dc266a2721287"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d358fc9d51fa497b804c4a05b47e23a8",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092045+00:00",
+          "finished_at": "2026-10-01T10:04:52.518189+00:00",
+          "elapsed_ms": 421.628,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 323.83,
+              "fact_storage_ms": 2.563,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:dc5997921b4f9eb032e0a72d839b91bf6f65cd8a0195fa25c4d899ec92e9f23d"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "b5e4d1c5807c4a708eb1b269c40388f6",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092124+00:00",
+          "finished_at": "2026-10-01T10:04:52.518006+00:00",
+          "elapsed_ms": 419.25,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 315.413,
+              "fact_storage_ms": 2.567,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:7c33332250b23d0ef2008aa7b9ed9149eb0813c4c6cc6d39cf4fc509821c9b98"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "299c0bc04e88453499802a0a6c8653c8",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092215+00:00",
+          "finished_at": "2026-10-01T10:04:52.608332+00:00",
+          "elapsed_ms": 509.502,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 443.365,
+              "fact_storage_ms": 2.397,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:4955692a26ab2abbe7752ed6aef5564aabd48914f4becdcc910e59728b728065"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "68844c20504a44828aad77e1b158e977",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092296+00:00",
+          "finished_at": "2026-10-01T10:04:52.410365+00:00",
+          "elapsed_ms": 311.472,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 268.884,
+              "fact_storage_ms": 1.945,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:1c6ea9b25cd69c1d487b24e80334ab0d25761581b7ebe56a03c39892e8b943c4"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "5b72b3297aaa4872abaa75292803bd29",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092376+00:00",
+          "finished_at": "2026-10-01T10:04:52.608235+00:00",
+          "elapsed_ms": 509.279,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 436.978,
+              "fact_storage_ms": 2.274,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:ca20834c31f045657369592c742c2ffb757c8bdb3895e7cb3064d79234617861"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "46c10b1e76314699b90f9845a22f1783",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092453+00:00",
+          "finished_at": "2026-10-01T10:04:52.518300+00:00",
+          "elapsed_ms": 419.284,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 324.887,
+              "fact_storage_ms": 2.26,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:492969601aee19eaf4cc4a048bb88f76620e1355a04a980d075945f43777479c"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "709b798591e447a8b0c52d2985a2aeca",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092532+00:00",
+          "finished_at": "2026-10-01T10:04:52.559042+00:00",
+          "elapsed_ms": 459.969,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 374.949,
+              "fact_storage_ms": 1.74,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:2722ff53883689837f0e1b1c71c3d78061ab02c47cb81488f0d179129c81ead1"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "dfd6d9b5286649c89b3087f91c4c1901",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092609+00:00",
+          "finished_at": "2026-10-01T10:04:52.518457+00:00",
+          "elapsed_ms": 419.326,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 329.658,
+              "fact_storage_ms": 2.43,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:3379642520e08708cbf24e34b438c3c63cc5a4d59af8d7872f70a42093bf27f8"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "ec838f2f64544fd29a9d2cf0a4b52399",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092685+00:00",
+          "finished_at": "2026-10-01T10:04:52.558959+00:00",
+          "elapsed_ms": 459.774,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 367.611,
+              "fact_storage_ms": 1.806,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:a2b9bee67450669c8caafda4757c9429ac521787d3e41eae0353cdafce14e335"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "9384a1d53e8f4750822a47705d80642d",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092761+00:00",
+          "finished_at": "2026-10-01T10:04:52.558155+00:00",
+          "elapsed_ms": 458.919,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 339.046,
+              "fact_storage_ms": 1.816,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:1bd0dbdd0a5ff884d31d5d12e393bf666304401c2f423539d7e3bf11bf718ef0"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "e154f7a3f40b4f53b58e44392f606f3b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092840+00:00",
+          "finished_at": "2026-10-01T10:04:52.599954+00:00",
+          "elapsed_ms": 500.664,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 406.789,
+              "fact_storage_ms": 3.071,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:22dfc741b06200aa7f9d14ea6c72104f2c49d131c5a54196e320023cb90a4e14"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "34606915d446407fb770648b36fb8414",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.092921+00:00",
+          "finished_at": "2026-10-01T10:04:52.469953+00:00",
+          "elapsed_ms": 370.61,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 281.701,
+              "fact_storage_ms": 2.467,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:4d61d0db2ff5afce550f8aa6dac53ad61d345ffe56bf3180b15002b415e36fd5"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "b580db4235214ac9b31f7ca6cd2372a9",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093001+00:00",
+          "finished_at": "2026-10-01T10:04:52.558866+00:00",
+          "elapsed_ms": 459.473,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 359.852,
+              "fact_storage_ms": 1.874,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:95a8cb12bbf4a2a5d3623ce9e71b06add7a6b3691ad05a00c5a73b2f3f3063ac"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "183e7dec58c24d94aaa2ef88993afa83",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093080+00:00",
+          "finished_at": "2026-10-01T10:04:52.428322+00:00",
+          "elapsed_ms": 328.876,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 266.859,
+              "fact_storage_ms": 2.35,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:c21de17e3cdbeddafc1f718661849a6f2905145f283fd459721378a89c077482"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "5c1bd394cb1f45cb8c6e5e952e9de58b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093158+00:00",
+          "finished_at": "2026-10-01T10:04:52.517919+00:00",
+          "elapsed_ms": 418.409,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 294.607,
+              "fact_storage_ms": 3.329,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:dfddd1a1b116fd0e57263e025e19ec7590c4ec2996442e404223d516a5477cb9"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "303a0c0e751a48c3984fb354af458ad7",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093234+00:00",
+          "finished_at": "2026-10-01T10:04:52.608917+00:00",
+          "elapsed_ms": 509.355,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 451.613,
+              "fact_storage_ms": 1.817,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:d0cfe0e4f11e1376d43e2731e7106ecbf2704f04b76da40466142a6944d182e3"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "b61ac8eb221b493eac581de5091c4a34",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093312+00:00",
+          "finished_at": "2026-10-01T10:04:52.599790+00:00",
+          "elapsed_ms": 500.173,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 390.664,
+              "fact_storage_ms": 1.736,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:f585661cc2e8324c84c27acf8335e6e5c07a61af4675b5444c78ce4a1d994da0"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "c911b1ab78d5403ca8c72233ac666303",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093389+00:00",
+          "finished_at": "2026-10-01T10:04:52.558258+00:00",
+          "elapsed_ms": 458.59,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 333.391,
+              "fact_storage_ms": 1.743,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:fcabe54bb84180f950ddc0ee767acebf13986cad5fd2a3819713f71cfd54d556"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "31ed14a374994327ad4fe5c6b4f259c9",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093466+00:00",
+          "finished_at": "2026-10-01T10:04:52.600041+00:00",
+          "elapsed_ms": 500.317,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 404.391,
+              "fact_storage_ms": 2.373,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:bc3c4103d0c1fedccef6c369d5cce435cde07f0e154c55c98d62d44ad0a8040e"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "5b7303119d6648d2a4d0d9d8e5c4be9a",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093542+00:00",
+          "finished_at": "2026-10-01T10:04:52.608776+00:00",
+          "elapsed_ms": 508.998,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 442.812,
+              "fact_storage_ms": 2.275,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:d25c9d60c6d56d55e3ad0603beda443a4d49a8b0caed69981215fe7e3e9b2647"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "4d28d52e6802444cb1152b54c99a8132",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093626+00:00",
+          "finished_at": "2026-10-01T10:04:52.558348+00:00",
+          "elapsed_ms": 458.518,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 331.727,
+              "fact_storage_ms": 1.689,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:e2f1c58c7b2de6802c7e2e6de4d8ae1e0e0590852049e2388c86472b9ed28867"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "19d8d336836a470cb21a1fe0a067ff40",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093707+00:00",
+          "finished_at": "2026-10-01T10:04:52.558574+00:00",
+          "elapsed_ms": 458.691,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 335.898,
+              "fact_storage_ms": 2.371,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:5dfa21db2369a695b3dfc10724b6339ad2e1b652e3d50cd8e4edf9e73889ccd5"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0e89dadaa2704228afcee74e9fa08d37",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093786+00:00",
+          "finished_at": "2026-10-01T10:04:52.517819+00:00",
+          "elapsed_ms": 417.885,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 281.598,
+              "fact_storage_ms": 1.994,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:1a414f969317fa068cfdc667f2492b725c84463f11b9fe2edaecdc763c8381a4"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "48f08cb5aafb42ad943f7714dcd05d5c",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093865+00:00",
+          "finished_at": "2026-10-01T10:04:52.608516+00:00",
+          "elapsed_ms": 508.52,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 424.3,
+              "fact_storage_ms": 1.863,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:6d33d245bef2f99c88c723e32fe316570f92d0f62c3d55463915970c0ba0af9a"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "4bb8926bc1dd47ca855fd7e2a51a05ff",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.093957+00:00",
+          "finished_at": "2026-10-01T10:04:52.622763+00:00",
+          "elapsed_ms": 522.713,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 470.607,
+              "fact_storage_ms": 1.191,
+              "missing_fields": [
+                "price"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a314c21d0c9d4587b82fb0a064fde921",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094041+00:00",
+          "finished_at": "2026-10-01T10:04:52.608432+00:00",
+          "elapsed_ms": 508.327,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 417.956,
+              "fact_storage_ms": 1.96,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:007459db173b6c9b078d281a83980b6df6e2e55db7f53b68d8c1f6830392300e"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a808736926d641d1af7f9f782ab36c42",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094191+00:00",
+          "finished_at": "2026-10-01T10:04:52.609012+00:00",
+          "elapsed_ms": 508.854,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 440.354,
+              "fact_storage_ms": 1.839,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:f7a06571b99aa17ec0a3e257ff1aa38eb20adf38f6752e8528b6ee86b0bec81c"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "183e145add2c4a14a6ee3e2053946e1d",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094272+00:00",
+          "finished_at": "2026-10-01T10:04:52.599563+00:00",
+          "elapsed_ms": 499.354,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 366.347,
+              "fact_storage_ms": 1.984,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:0f7d1e55157dfe7d3e94ded5095f59251229444c71d29bc399646befe16a8435"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "2383bbe41fdb49dda99373e3869730de",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094350+00:00",
+          "finished_at": "2026-10-01T10:04:52.608599+00:00",
+          "elapsed_ms": 508.323,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 422.165,
+              "fact_storage_ms": 2.142,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:08b7d64b88c9ccc45a725f1a494bc5fd0708ef9b244687d659f1275ba0409832"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "4f4dd293113549a8be9e0c4bbcebccb2",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094428+00:00",
+          "finished_at": "2026-10-01T10:04:52.599650+00:00",
+          "elapsed_ms": 499.317,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 367.176,
+              "fact_storage_ms": 2.624,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:c4b45b39da16893f01cb79432da196a6ed9805679815a74ff62b1c9537c2bdab"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "992fbd0d8f3f420e8a3bb66ead5c24b9",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094741+00:00",
+          "finished_at": "2026-10-01T10:04:52.608691+00:00",
+          "elapsed_ms": 508.305,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 423.268,
+              "fact_storage_ms": 2.346,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:4ca4430724fb80128a3c56685932f576e9c25870c1f85173057213b48dc70283"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "07673c844b3948ec82e68de8176b49f9",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094897+00:00",
+          "finished_at": "2026-10-01T10:04:52.599726+00:00",
+          "elapsed_ms": 499.288,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 368.318,
+              "fact_storage_ms": 1.106,
+              "missing_fields": [
+                "price"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0fe8be38e1914abaa808f1d43eb1625b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.094996+00:00",
+          "finished_at": "2026-10-01T10:04:52.558778+00:00",
+          "elapsed_ms": 458.288,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 329.933,
+              "fact_storage_ms": 2.332,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:fa5a597423b6cd997f7c7134dff02968ad1a44badf372e2bfbffe9fb1a2d42d1"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "5ffd0ab104004d92a779e2afb9e26a40",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:52.095086+00:00",
+          "finished_at": "2026-10-01T10:04:52.609297+00:00",
+          "elapsed_ms": 508.755,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 439.591,
+              "fact_storage_ms": 2.24,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:983e9c3f7c25cb3f57cd896605f29da3a7c31082e11372259540f68dcb7b20e9"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        }
+      ],
+      "round_index": 1,
+      "fact_storage_scope": "IN_MEMORY_BENCHMARK_ONLY",
+      "evidence_retention": "METADATA_ONLY",
+      "fact_reference_scope": "CLOSED_IN_MEMORY_BENCHMARK_DATABASE_NOT_QUERYABLE"
+    },
+    {
+      "task_count": 100,
+      "pipeline": "LiveResearchService -> ResearchRuntime -> Provider -> normalization",
+      "mode": "REAL_PROVIDER",
+      "is_synthetic": false,
+      "runtime": {
+        "scope": "SINGLE_PROCESS",
+        "global_limit": 100,
+        "queue_limit": 400,
+        "per_owner_limit": 200,
+        "budget_seconds": 60.0,
+        "active": 0,
+        "waiting": 0,
+        "peak_active": 100,
+        "completed": 100,
+        "failed": 0,
+        "cancelled": 0,
+        "timed_out": 0,
+        "rejected": 0,
+        "closed": false,
+        "queue_wait_ms_total": 0.981,
+        "execution_ms_total": 66521.133,
+        "provider_active": 0,
+        "provider_waiting": 0,
+        "provider_peak": 100,
+        "model_active": 0,
+        "model_waiting": 0,
+        "model_peak": 0
+      },
+      "run_states": {
+        "PARTIAL": 24,
+        "FAILED": 76
+      },
+      "provider_statuses": {
+        "SUCCESS": 24,
+        "FAILED": 76
+      },
+      "error_codes": {
+        "QUOTA_EXHAUSTED": 76
+      },
+      "completed_rate": 0.0,
+      "wall_ms": 1658.503,
+      "cpu_ms": 1640.625,
+      "p50_ms": 704.629,
+      "p95_ms": 715.053,
+      "p99_ms": 720.609,
+      "event_loop_lag_p95_ms": 154.189,
+      "python_allocated_bytes": 30781502,
+      "python_peak_allocated_bytes": 32929458,
+      "memory_scope": "TRACEMALLOC_PYTHON_ALLOCATIONS_NOT_PROCESS_RSS",
+      "observations": 24,
+      "verified_observations": 0,
+      "fact_storage_exercised": true,
+      "upstream_capacity_proven": false,
+      "upstream_quota_verified": false,
+      "controlled_provider_delay_ms": null,
+      "samples": [
+        {
+          "elapsed_ms": 902.252,
+          "active": 0,
+          "waiting": 0,
+          "provider_active": 0,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1053.194,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1081.198,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1124.863,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1168.707,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1216.551,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1283.55,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1313.077,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 100,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1424.124,
+          "active": 100,
+          "waiting": 0,
+          "provider_active": 71,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1608.177,
+          "active": 66,
+          "waiting": 0,
+          "provider_active": 3,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1624.394,
+          "active": 1,
+          "waiting": 0,
+          "provider_active": 1,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1638.216,
+          "active": 1,
+          "waiting": 0,
+          "provider_active": 1,
+          "model_active": 0
+        },
+        {
+          "elapsed_ms": 1651.791,
+          "active": 1,
+          "waiting": 0,
+          "provider_active": 0,
+          "model_active": 0
+        }
+      ],
+      "runs": [
+        {
+          "run_id": "7560c2be73744f6f9ba9118218a9d81f",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.530746+00:00",
+          "finished_at": "2026-10-01T10:04:54.254040+00:00",
+          "elapsed_ms": 707.92,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 603.233,
+              "fact_storage_ms": 1.707,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:9951c1137d92c0affa870e6f533776b184249c011e5bc45338daab9b5b0dcd6b"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "93d69d6be33f4624b44bcdcf3c5f95bb",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.530896+00:00",
+          "finished_at": "2026-10-01T10:04:54.253869+00:00",
+          "elapsed_ms": 707.632,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 596.906,
+              "fact_storage_ms": 2.21,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:bdbde0769337c6068214d765b98aba7e645015883cc78e6e68b1fc37d0944cc5"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "fe6e9dbad23c48f09f4e5477aae13f5b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.530992+00:00",
+          "finished_at": "2026-10-01T10:04:54.252769+00:00",
+          "elapsed_ms": 706.449,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 570.204,
+              "fact_storage_ms": 2.65,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:ecb74ee22c013a0b38e4eaa8c333b672f83d09a0f8afaf8f2f82dadb3549287a"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "787037f0c845407b87dfeb2eb3bea0dc",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531079+00:00",
+          "finished_at": "2026-10-01T10:04:54.227080+00:00",
+          "elapsed_ms": 680.693,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 530.392,
+              "fact_storage_ms": 1.851,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:c3223a16cefde56dc773039381e860159ff4d2e4b6eeb9ca42bb512389a0b7f7"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "a89ae349e44d489198c00139773bfafe",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531164+00:00",
+          "finished_at": "2026-10-01T10:04:54.254206+00:00",
+          "elapsed_ms": 707.752,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 603.014,
+              "fact_storage_ms": 2.319,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:b22d1017df903e29d1414ec9f14908e90161052af2f64b0adcd29014b783b02a"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "b2cc70ff0a834e4ebac6c5b9844d0734",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531249+00:00",
+          "finished_at": "2026-10-01T10:04:54.252491+00:00",
+          "elapsed_ms": 705.974,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 561.013,
+              "fact_storage_ms": 2.038,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:78a31148024dbcb3bf9cd206ad36fcfa11af18bb162d22aee00f6c083129fd4c"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "66b035a51621428691a06593ee4aaa2f",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531333+00:00",
+          "finished_at": "2026-10-01T10:04:54.252893+00:00",
+          "elapsed_ms": 706.311,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 570.722,
+              "fact_storage_ms": 2.252,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:5505e08aa1cecfdf13b2dd4ad633c250f94cf83b6e4e1125badb6394b209be93"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "e8b11af312a04e198dd44757cce7c747",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531415+00:00",
+          "finished_at": "2026-10-01T10:04:54.254751+00:00",
+          "elapsed_ms": 708.108,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 620.768,
+              "fact_storage_ms": 1.922,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:8b0b0a0497d3e569720fe09f75e2c0744d58ef6d48f00295cfdd650e6f16528c"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "8070e632055f4eb0833f098df374db04",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531497+00:00",
+          "finished_at": "2026-10-01T10:04:54.262741+00:00",
+          "elapsed_ms": 716.035,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 686.285,
+              "fact_storage_ms": 1.747,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:87f5631b15c93c33692d3143094df4f486f6389ffcb6ded024d55f551be362fa"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "c508427ace974139a077d7af532160eb",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.531580+00:00",
+          "finished_at": "2026-10-01T10:04:54.117928+00:00",
+          "elapsed_ms": 571.161,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 452.177,
+              "fact_storage_ms": 0.589,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "349a98a57a7e4d2ea8fc270d3403fbd6",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531656+00:00",
+          "finished_at": "2026-10-01T10:04:54.254442+00:00",
+          "elapsed_ms": 707.616,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 605.461,
+              "fact_storage_ms": 2.0,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:5e392ddb6387ae339714e0e71e70f9c013617c0defff0ce7e0e2b06daaebd1fe"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0cda89df619145b78ea0502138fa93f8",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531739+00:00",
+          "finished_at": "2026-10-01T10:04:54.254846+00:00",
+          "elapsed_ms": 707.961,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 620.577,
+              "fact_storage_ms": 1.764,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:0f567ebe34daca00cdb36ef860775e8b932ea8502072b68d3f57ddd730f55605"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0b5366e2b0a3457fbe10a0bdd41c1faa",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531818+00:00",
+          "finished_at": "2026-10-01T10:04:54.227197+00:00",
+          "elapsed_ms": 680.25,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 523.061,
+              "fact_storage_ms": 1.778,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:5a13f72c80d96e24fc158efeb49f1841389f2c231c80c026e64ecd69f6ec0278"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "be40a1c03e284e70ba425d65cca6ba10",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531896+00:00",
+          "finished_at": "2026-10-01T10:04:54.262362+00:00",
+          "elapsed_ms": 715.348,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 662.326,
+              "fact_storage_ms": 1.754,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:c720eff570b0a0733e63b4639785a5b507ca64d34ee0656808b23fdb58146c26"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "2dd8746ef94b417884714386b243e27b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.531973+00:00",
+          "finished_at": "2026-10-01T10:04:54.253339+00:00",
+          "elapsed_ms": 706.26,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 571.935,
+              "fact_storage_ms": 2.366,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:6753c20d003d32eabf6b0b82054737bb7deb7c3457003f16c46c23e2905cafc0"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "01b3d671f82a41e1a22906dcd5888377",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.532053+00:00",
+          "finished_at": "2026-10-01T10:04:54.104477+00:00",
+          "elapsed_ms": 557.334,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 439.127,
+              "fact_storage_ms": 0.688,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "1dc887cd0f364d309925600f469c5472",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.532132+00:00",
+          "finished_at": "2026-10-01T10:04:54.117857+00:00",
+          "elapsed_ms": 570.65,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 443.828,
+              "fact_storage_ms": 0.687,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "28e9278001b54d3a889185ef40c95faf",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.532218+00:00",
+          "finished_at": "2026-10-01T10:04:54.267608+00:00",
+          "elapsed_ms": 720.333,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 684.937,
+              "fact_storage_ms": 1.931,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:6f133b52f2442458aa4a8a90186e71516a5530422956519f67e9882b1ba396aa"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "c04d149e7a56441e91861681c21a88a1",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.532298+00:00",
+          "finished_at": "2026-10-01T10:04:54.117701+00:00",
+          "elapsed_ms": 570.363,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 439.486,
+              "fact_storage_ms": 0.632,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "8c4588f8aaff488bb303193bdd1f0824",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.532380+00:00",
+          "finished_at": "2026-10-01T10:04:54.254521+00:00",
+          "elapsed_ms": 707.116,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 598.504,
+              "fact_storage_ms": 1.719,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:7edbdf037e322b3d5e9151e25e0e25e95a39e7f8038f29b5068996bc7cb30462"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "e9938c8b93e340d4bfb26a81f0370231",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.532522+00:00",
+          "finished_at": "2026-10-01T10:04:54.254675+00:00",
+          "elapsed_ms": 707.211,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 603.899,
+              "fact_storage_ms": 1.74,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:364b3d98f19f61cffb84b1123714ad6083de0d91ce526cc854f70978dd6608d6"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d6924bfd4c25401084eda16beced7db7",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.532673+00:00",
+          "finished_at": "2026-10-01T10:04:54.254599+00:00",
+          "elapsed_ms": 707.076,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 599.546,
+              "fact_storage_ms": 1.958,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:cdf61fe557a723107273bf94d0e92609fb12a7952ce1365c16576d0e33edca3d"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "d4dc6ede528a44a9a801c9ec02c29f2b",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.532843+00:00",
+          "finished_at": "2026-10-01T10:04:54.262518+00:00",
+          "elapsed_ms": 714.936,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 660.141,
+              "fact_storage_ms": 2.007,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:51011dad9b6c82ee93d28d57f3c0861694eab764fc8f9e218b5214f395b67372"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "2f50153209d849b7985eeb17dd6ef016",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.532982+00:00",
+          "finished_at": "2026-10-01T10:04:54.262680+00:00",
+          "elapsed_ms": 715.038,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 665.922,
+              "fact_storage_ms": 2.393,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:bfd508b89617cf478335f24105d21e9be9a83590bc1c98268a16ded6ce1197b0"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "49e56537c37e466f9726fb4c7c3f9612",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.533103+00:00",
+          "finished_at": "2026-10-01T10:04:54.262435+00:00",
+          "elapsed_ms": 714.736,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 652.61,
+              "fact_storage_ms": 2.258,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:423debb1d085b6257b1cebcc0b8d74d1763d8ea36ed55db9e5455d1cd2b30c2d"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "5bac5c6186c146d3821e99ff31ffa4e4",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.533218+00:00",
+          "finished_at": "2026-10-01T10:04:54.254362+00:00",
+          "elapsed_ms": 706.6,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 584.417,
+              "fact_storage_ms": 2.199,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:82148e0df5bfd27d94d3972820734871f8a1f5459659d3f6e26ebd4575f258b7"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "e054455fa3774569a958432fbab1c88c",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.533326+00:00",
+          "finished_at": "2026-10-01T10:04:54.295769+00:00",
+          "elapsed_ms": 747.947,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 711.993,
+              "fact_storage_ms": 0.804,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "068b72b928744d3080ce9a8d3d047d31",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.533436+00:00",
+          "finished_at": "2026-10-01T10:04:54.268170+00:00",
+          "elapsed_ms": 720.287,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 680.684,
+              "fact_storage_ms": 2.488,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:3d7cf9614cf8a1275ad44365cb30549b771ddbf730212664ca2f34b7aec29c14"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "0d1f559267ea424d8f45c2a4ea47acee",
+          "status": "PARTIAL",
+          "created_at": "2026-10-01T10:04:53.533550+00:00",
+          "finished_at": "2026-10-01T10:04:54.262591+00:00",
+          "elapsed_ms": 714.639,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "PARTIAL",
+              "provider_status": "SUCCESS",
+              "provider_ms": 655.647,
+              "fact_storage_ms": 1.735,
+              "missing_fields": [
+                "price.observed_at",
+                "price.unit"
+              ],
+              "fact_refs": [
+                "rf:8f74610fe1c4067c1c517b03d122b75f6853f2b3fcfabe6d970b3fedfd6f0612"
+              ],
+              "verification_status": "SINGLE_SOURCE_UNVERIFIED",
+              "error_codes": []
+            }
+          ]
+        },
+        {
+          "run_id": "525c0542a957414f842f9183386b6c69",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.533662+00:00",
+          "finished_at": "2026-10-01T10:04:54.104389+00:00",
+          "elapsed_ms": 556.377,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 420.243,
+              "fact_storage_ms": 0.787,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "b7a2ebd95d4e453bb5bc9171025c061f",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.533770+00:00",
+          "finished_at": "2026-10-01T10:04:54.104543+00:00",
+          "elapsed_ms": 556.462,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 420.913,
+              "fact_storage_ms": 0.649,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d0b5cf83155d4253bf5d0d5ea2a56823",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.533878+00:00",
+          "finished_at": "2026-10-01T10:04:54.118131+00:00",
+          "elapsed_ms": 569.972,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 428.022,
+              "fact_storage_ms": 0.62,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "c625a40b0dfb4376882e644ddafa1d09",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.533984+00:00",
+          "finished_at": "2026-10-01T10:04:54.118057+00:00",
+          "elapsed_ms": 569.836,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 425.916,
+              "fact_storage_ms": 0.58,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "f2d1e6f41eda4fc297129d0c53955f63",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534104+00:00",
+          "finished_at": "2026-10-01T10:04:54.118367+00:00",
+          "elapsed_ms": 570.08,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 430.297,
+              "fact_storage_ms": 0.667,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "acf413625f6842e4ac5206b3d5fbc004",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534225+00:00",
+          "finished_at": "2026-10-01T10:04:54.118424+00:00",
+          "elapsed_ms": 569.992,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 430.31,
+              "fact_storage_ms": 0.642,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "e5382a86e2e247fc952952dc346d546d",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534343+00:00",
+          "finished_at": "2026-10-01T10:04:54.117994+00:00",
+          "elapsed_ms": 569.495,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 421.84,
+              "fact_storage_ms": 0.6,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "ded9f30b86e24d84b0791b04dac42434",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534475+00:00",
+          "finished_at": "2026-10-01T10:04:54.118190+00:00",
+          "elapsed_ms": 569.625,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 423.259,
+              "fact_storage_ms": 0.731,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "75d321a0c5d3442898aa000639b62879",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534593+00:00",
+          "finished_at": "2026-10-01T10:04:54.117782+00:00",
+          "elapsed_ms": 569.159,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 415.926,
+              "fact_storage_ms": 0.591,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "41f3d080a2844d588a9fd60363eac8c5",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534683+00:00",
+          "finished_at": "2026-10-01T10:04:54.086109+00:00",
+          "elapsed_ms": 537.425,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 398.856,
+              "fact_storage_ms": 0.753,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "613e3dc6b60047dd9000c54d9c5adc36",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534766+00:00",
+          "finished_at": "2026-10-01T10:04:54.118310+00:00",
+          "elapsed_ms": 569.558,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 421.845,
+              "fact_storage_ms": 0.648,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "5f10f6d2295244e180a9dd21983cdd3d",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534851+00:00",
+          "finished_at": "2026-10-01T10:04:54.118603+00:00",
+          "elapsed_ms": 569.79,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 425.572,
+              "fact_storage_ms": 0.624,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "ccf0aedd2e774365aef8825af2c9e431",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.534939+00:00",
+          "finished_at": "2026-10-01T10:04:54.118250+00:00",
+          "elapsed_ms": 569.378,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 417.451,
+              "fact_storage_ms": 0.776,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "c12488879b9743bc8b763f3cb9adf62d",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535021+00:00",
+          "finished_at": "2026-10-01T10:04:54.118658+00:00",
+          "elapsed_ms": 569.725,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 423.319,
+              "fact_storage_ms": 0.63,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "823c309bd0644bf69959e86ca81f951c",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535106+00:00",
+          "finished_at": "2026-10-01T10:04:54.118483+00:00",
+          "elapsed_ms": 569.489,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 418.277,
+              "fact_storage_ms": 0.622,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "9f11b8451c82460782201b60518c515e",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535188+00:00",
+          "finished_at": "2026-10-01T10:04:54.118773+00:00",
+          "elapsed_ms": 569.721,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 422.045,
+              "fact_storage_ms": 0.581,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "78eb60314aa44e7ca502089073ecc445",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535269+00:00",
+          "finished_at": "2026-10-01T10:04:54.118831+00:00",
+          "elapsed_ms": 569.719,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 421.432,
+              "fact_storage_ms": 0.585,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "99d54c3c43fc4567b0763a066aeba5cb",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535351+00:00",
+          "finished_at": "2026-10-01T10:04:54.118716+00:00",
+          "elapsed_ms": 569.54,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 417.535,
+              "fact_storage_ms": 0.585,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "7fa6cc36eee84d7d9683ce77ddc5b093",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535480+00:00",
+          "finished_at": "2026-10-01T10:04:54.118542+00:00",
+          "elapsed_ms": 569.306,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 412.985,
+              "fact_storage_ms": 0.732,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "cfb2a1c1e6be4ae485d4def3ce5eb5cc",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535567+00:00",
+          "finished_at": "2026-10-01T10:04:54.260460+00:00",
+          "elapsed_ms": 711.152,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 579.5,
+              "fact_storage_ms": 0.687,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "13a87dfa94544abfb079ba43b9488ff8",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535654+00:00",
+          "finished_at": "2026-10-01T10:04:54.191946+00:00",
+          "elapsed_ms": 642.58,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 453.633,
+              "fact_storage_ms": 0.787,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "67ed571e013248259b26a5ef04a009d5",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535734+00:00",
+          "finished_at": "2026-10-01T10:04:54.118888+00:00",
+          "elapsed_ms": 569.461,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 415.756,
+              "fact_storage_ms": 0.732,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "df09f0826bae4c95b457b5fa2b8cac14",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535814+00:00",
+          "finished_at": "2026-10-01T10:04:54.260674+00:00",
+          "elapsed_ms": 711.184,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 579.488,
+              "fact_storage_ms": 0.865,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "c1830ab4e08f4c0ea648d5ec5eb14d53",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535894+00:00",
+          "finished_at": "2026-10-01T10:04:54.260929+00:00",
+          "elapsed_ms": 711.379,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 583.316,
+              "fact_storage_ms": 0.689,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "e331c0e54f5645be9a0aba5e62830164",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.535977+00:00",
+          "finished_at": "2026-10-01T10:04:54.260369+00:00",
+          "elapsed_ms": 710.76,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 572.86,
+              "fact_storage_ms": 0.733,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "ef04c1a0b80642888704b4d45f444061",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536057+00:00",
+          "finished_at": "2026-10-01T10:04:54.118948+00:00",
+          "elapsed_ms": 569.278,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 411.818,
+              "fact_storage_ms": 0.618,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "45851729b5c540a5a9d5b3df31183092",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536138+00:00",
+          "finished_at": "2026-10-01T10:04:54.260801+00:00",
+          "elapsed_ms": 711.073,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 576.273,
+              "fact_storage_ms": 0.75,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "1f445d5630364e7291d54ab9d32d3f5b",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536224+00:00",
+          "finished_at": "2026-10-01T10:04:54.192034+00:00",
+          "elapsed_ms": 642.242,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 445.587,
+              "fact_storage_ms": 0.672,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d24e7dec2b0b424c866acfc20bdd072f",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536305+00:00",
+          "finished_at": "2026-10-01T10:04:54.192103+00:00",
+          "elapsed_ms": 642.251,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 445.534,
+              "fact_storage_ms": 0.602,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "0ad05a106f1d4520980c7fe3835d4b5f",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536386+00:00",
+          "finished_at": "2026-10-01T10:04:54.262154+00:00",
+          "elapsed_ms": 712.244,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 600.805,
+              "fact_storage_ms": 0.606,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "4e44c3e289df4162aecdb14d74d384e1",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536470+00:00",
+          "finished_at": "2026-10-01T10:04:54.260739+00:00",
+          "elapsed_ms": 710.753,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 570.225,
+              "fact_storage_ms": 0.808,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "8633424042ff461684ac997eb393881e",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536554+00:00",
+          "finished_at": "2026-10-01T10:04:54.260865+00:00",
+          "elapsed_ms": 710.82,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 571.467,
+              "fact_storage_ms": 0.624,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "0d39a31a1b6645cda11ecc9e927bce44",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536635+00:00",
+          "finished_at": "2026-10-01T10:04:54.253251+00:00",
+          "elapsed_ms": 703.149,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 507.821,
+              "fact_storage_ms": 0.868,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "b7d3639c2bcc4796ae3d3c08a865d88d",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536753+00:00",
+          "finished_at": "2026-10-01T10:04:54.252956+00:00",
+          "elapsed_ms": 702.795,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 502.352,
+              "fact_storage_ms": 0.794,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "fad5178a700940a48324e8a91543b033",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536838+00:00",
+          "finished_at": "2026-10-01T10:04:54.253502+00:00",
+          "elapsed_ms": 703.283,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 512.474,
+              "fact_storage_ms": 0.856,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "f026e240cfd4468b8bbd8ac90581bdf4",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.536919+00:00",
+          "finished_at": "2026-10-01T10:04:54.260604+00:00",
+          "elapsed_ms": 710.325,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 561.798,
+              "fact_storage_ms": 0.645,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d123727f99ac408f9816382adf6d1334",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537002+00:00",
+          "finished_at": "2026-10-01T10:04:54.119018+00:00",
+          "elapsed_ms": 568.678,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 399.819,
+              "fact_storage_ms": 0.619,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "24b2a08c51804caf92f35bf0938150ad",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537087+00:00",
+          "finished_at": "2026-10-01T10:04:54.253143+00:00",
+          "elapsed_ms": 702.746,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 500.493,
+              "fact_storage_ms": 1.15,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d9e36cf2082e4e3d96f5dc099f3d8a0e",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537189+00:00",
+          "finished_at": "2026-10-01T10:04:54.260533+00:00",
+          "elapsed_ms": 710.017,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 554.992,
+              "fact_storage_ms": 0.793,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "9fbb10ec6ce74996ae9a96fcfd046428",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537273+00:00",
+          "finished_at": "2026-10-01T10:04:54.252570+00:00",
+          "elapsed_ms": 701.991,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 481.741,
+              "fact_storage_ms": 0.73,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "202ca5c8cf204dd3bf99391b801f3510",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537354+00:00",
+          "finished_at": "2026-10-01T10:04:54.252704+00:00",
+          "elapsed_ms": 702.064,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 482.561,
+              "fact_storage_ms": 0.581,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "5f86efecd89d48009f1f02ab5e921696",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537436+00:00",
+          "finished_at": "2026-10-01T10:04:54.119151+00:00",
+          "elapsed_ms": 568.452,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 394.169,
+              "fact_storage_ms": 0.813,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "ed5fb62b19b44ecfaa97f054094a0b4c",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537519+00:00",
+          "finished_at": "2026-10-01T10:04:54.119081+00:00",
+          "elapsed_ms": 568.32,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 391.868,
+              "fact_storage_ms": 0.744,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "c0ca94baefd640bf8491bfaaa0679368",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537603+00:00",
+          "finished_at": "2026-10-01T10:04:54.261428+00:00",
+          "elapsed_ms": 710.601,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 566.414,
+              "fact_storage_ms": 0.603,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "38cbbf3f8c2f4dc08df380c2b32d15f3",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537684+00:00",
+          "finished_at": "2026-10-01T10:04:54.261309+00:00",
+          "elapsed_ms": 710.42,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 562.428,
+              "fact_storage_ms": 0.856,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "76c5d6cba4aa4aaeb56b41132c6e119a",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537769+00:00",
+          "finished_at": "2026-10-01T10:04:54.261126+00:00",
+          "elapsed_ms": 710.174,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 557.593,
+              "fact_storage_ms": 0.643,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "3602a88fcfc84f8b8e6ede35fe9b01b8",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537852+00:00",
+          "finished_at": "2026-10-01T10:04:54.260992+00:00",
+          "elapsed_ms": 709.978,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 554.076,
+              "fact_storage_ms": 0.624,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "a7d84f939fdd49a3a247e0d6faabe05f",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.537938+00:00",
+          "finished_at": "2026-10-01T10:04:54.261050+00:00",
+          "elapsed_ms": 709.972,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 553.939,
+              "fact_storage_ms": 0.597,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "52372c27a81a4e61a9ffb60cbf899154",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538037+00:00",
+          "finished_at": "2026-10-01T10:04:54.252638+00:00",
+          "elapsed_ms": 701.495,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 472.671,
+              "fact_storage_ms": 0.595,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "b230d1cef09a45f0911f33ec40145477",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538149+00:00",
+          "finished_at": "2026-10-01T10:04:54.261251+00:00",
+          "elapsed_ms": 710.047,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 555.671,
+              "fact_storage_ms": 0.669,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "4a9903dbdccf4aaf8b55e4ff17e6ca5b",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538232+00:00",
+          "finished_at": "2026-10-01T10:04:54.253423+00:00",
+          "elapsed_ms": 702.149,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 490.11,
+              "fact_storage_ms": 0.829,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "69e187942e344ab2b4830927f801661b",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538316+00:00",
+          "finished_at": "2026-10-01T10:04:54.261368+00:00",
+          "elapsed_ms": 710.027,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 555.371,
+              "fact_storage_ms": 0.655,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "299886f6e7974ee0b885b9b78e47de0e",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538396+00:00",
+          "finished_at": "2026-10-01T10:04:54.253659+00:00",
+          "elapsed_ms": 702.25,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 491.602,
+              "fact_storage_ms": 0.819,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "3a42978b9def4a76847ae4da193ff258",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538477+00:00",
+          "finished_at": "2026-10-01T10:04:54.261668+00:00",
+          "elapsed_ms": 710.195,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 560.525,
+              "fact_storage_ms": 0.619,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "89932c577d70478b956d8afe269516cb",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538557+00:00",
+          "finished_at": "2026-10-01T10:04:54.261789+00:00",
+          "elapsed_ms": 710.251,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 562.874,
+              "fact_storage_ms": 0.707,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "e185e5b806f7418d92502587b3a0569d",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538636+00:00",
+          "finished_at": "2026-10-01T10:04:54.261490+00:00",
+          "elapsed_ms": 709.89,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 553.547,
+              "fact_storage_ms": 0.616,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "1f78a9c1f9ed42d08f898b6629c6e83f",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538717+00:00",
+          "finished_at": "2026-10-01T10:04:54.253583+00:00",
+          "elapsed_ms": 701.914,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 485.646,
+              "fact_storage_ms": 0.844,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d4d802b77c5d4bda887684344da1210b",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538813+00:00",
+          "finished_at": "2026-10-01T10:04:54.261734+00:00",
+          "elapsed_ms": 709.995,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 556.569,
+              "fact_storage_ms": 0.643,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "9512f8021aaf456b94351fd26f4fc742",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.538968+00:00",
+          "finished_at": "2026-10-01T10:04:54.261551+00:00",
+          "elapsed_ms": 709.742,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 551.316,
+              "fact_storage_ms": 0.66,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "0a5a9c3cae4f4640a6aafc91af65cf0b",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539075+00:00",
+          "finished_at": "2026-10-01T10:04:54.252831+00:00",
+          "elapsed_ms": 700.957,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 464.225,
+              "fact_storage_ms": 0.915,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "6d49e7e7329e4040b446ea4147844c01",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539163+00:00",
+          "finished_at": "2026-10-01T10:04:54.261609+00:00",
+          "elapsed_ms": 709.672,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 550.4,
+              "fact_storage_ms": 0.599,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "53e38ca94a824c20bf83e6de5fbdb8f0",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539257+00:00",
+          "finished_at": "2026-10-01T10:04:54.119212+00:00",
+          "elapsed_ms": 567.213,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 371.857,
+              "fact_storage_ms": 0.642,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "ac4ea7ce2a824ee78b3593e29cd84d58",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539341+00:00",
+          "finished_at": "2026-10-01T10:04:54.261846+00:00",
+          "elapsed_ms": 709.784,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 554.858,
+              "fact_storage_ms": 0.632,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "5835c8a0919841bb9be888c5273dc8ba",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539424+00:00",
+          "finished_at": "2026-10-01T10:04:54.253015+00:00",
+          "elapsed_ms": 700.888,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 465.342,
+              "fact_storage_ms": 0.784,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "2d948ff374dc4a7299893895c6f01e14",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539507+00:00",
+          "finished_at": "2026-10-01T10:04:54.261188+00:00",
+          "elapsed_ms": 708.993,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 535.208,
+              "fact_storage_ms": 0.645,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "702ee251ccdd44988d95149e7e4d9cd7",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539587+00:00",
+          "finished_at": "2026-10-01T10:04:54.253757+00:00",
+          "elapsed_ms": 701.506,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 476.979,
+              "fact_storage_ms": 0.846,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "e393233802c2482f9ee0d2a2b5dff584",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539669+00:00",
+          "finished_at": "2026-10-01T10:04:54.261995+00:00",
+          "elapsed_ms": 709.676,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 552.59,
+              "fact_storage_ms": 0.6,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "4cc2df7aba1442879f6c9441c99b1e15",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539747+00:00",
+          "finished_at": "2026-10-01T10:04:54.254123+00:00",
+          "elapsed_ms": 701.745,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 483.213,
+              "fact_storage_ms": 0.616,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d0763e666ce94b0bbc11693567752a91",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539828+00:00",
+          "finished_at": "2026-10-01T10:04:54.254284+00:00",
+          "elapsed_ms": 701.845,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 487.197,
+              "fact_storage_ms": 1.114,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "d14d3ba8a66a46718697bbb85ec725f6",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539909+00:00",
+          "finished_at": "2026-10-01T10:04:54.253956+00:00",
+          "elapsed_ms": 701.454,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 476.711,
+              "fact_storage_ms": 0.655,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        },
+        {
+          "run_id": "ee7d63133ab8461089503c0b616cac40",
+          "status": "FAILED",
+          "created_at": "2026-10-01T10:04:53.539992+00:00",
+          "finished_at": "2026-10-01T10:04:54.261911+00:00",
+          "elapsed_ms": 709.345,
+          "nodes": [
+            {
+              "node_id": "quote",
+              "status": "FAILED",
+              "provider_status": "FAILED",
+              "provider_ms": 545.923,
+              "fact_storage_ms": 0.622,
+              "missing_fields": [
+                "price",
+                "subject_identity"
+              ],
+              "fact_refs": [],
+              "verification_status": "NO_VERIFIABLE_OBSERVATION",
+              "error_codes": [
+                "QUOTA_EXHAUSTED"
+              ]
+            }
+          ]
+        }
+      ],
+      "round_index": 1,
+      "fact_storage_scope": "IN_MEMORY_BENCHMARK_ONLY",
+      "evidence_retention": "METADATA_ONLY",
+      "fact_reference_scope": "CLOSED_IN_MEMORY_BENCHMARK_DATABASE_NOT_QUERYABLE"
+    }
+  ],
+  "mode": "REAL_PROVIDER",
+  "status": "BLOCKED",
+  "blocker": "REAL_PROVIDER_REJECTED_LOAD",
+  "smoke": {
+    "status": "PASS",
+    "provider_status": "SUCCESS",
+    "error_codes": [],
+    "record_count": 1,
+    "retrieved_at": "2026-10-01T10:04:50.084523+00:00",
+    "is_synthetic": false,
+    "upstream_capacity_proven": false
+  },
+  "requested_rounds": [
+    25,
+    50,
+    100
+  ],
+  "acceptance_boundary": "Controlled mode is a local scheduling and normalization regression. Real mode is a finite measured run; neither proves a supplier SLA or sustained upstream capacity.",
+  "all_local_peaks_reached": true,
+  "upstream_capacity_proven": false,
+  "runtime_support": "SUPPORTED_RUNTIME_NOT_VERIFIED",
+  "requested_repeats_per_size": 3,
+  "executed_repeats_per_size": {
+    "25": 1,
+    "50": 1,
+    "100": 1
+  },
+  "all_requested_rounds_executed": false,
+  "remaining_rounds_blocker": "QUOTA_EXHAUSTED",
+  "metrics_semantics": "research-execution-return.v1",
+  "known_metric_limitations": [
+    "The original runtime completed counter means normal execution return, including business PARTIAL and FAILED; use run_states for actual business outcomes.",
+    "Actual measurements used Python 3.13.5 outside the declared supported versions; supported-runtime real load was not verified.",
+    "Only one repetition per task-count size was executed. Further repetitions were blocked by exhausted upstream quota."
+  ],
+  "evidence_retention": "METADATA_ONLY",
+  "evidence_retention_limitation": "Original benchmark retained node statuses, missing-field flags, timings, and ephemeral fact references only. Raw Provider responses and normalized values were held in an in-memory benchmark database that was closed. Full original values cannot be recovered from this evidence; no upstream re-execution was performed."
+}
