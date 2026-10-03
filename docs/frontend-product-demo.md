@@ -42,6 +42,6 @@ LIVE 页的运行是本地步骤演示；技能选择只影响演示状态。知
 
 `tools/package_product_demo.py` 生成 `output/product-demo/prism-product-demo.zip`，仅打包声明的 Demo 文件、共享主题、品牌图标、Lightweight Charts 及授权文件，附带本机预览入口。已验证的[便携包](showcase/product-demo-20261003/prism-product-demo.zip)与截图一并归档。截图与最终浏览器验证分别留存在 `docs/showcase/product-demo-20261003/` 和 `docs/submission/test-evidence/product-demo-20261003/`。
 
-正式主题阶段已提交推送 `81b133f`，相关 62 项测试与三视口 27 次导航通过。独立 Demo 的最终验证及提交结果记录于 `LOG.md`。Pages 发布保持停用。
+正式主题阶段已提交推送 `81b133f`，相关 62 项测试与三视口 27 次导航通过。独立 Demo、截图及便携包已提交推送 `3c0b369`；最终验证记录于 `LOG.md`。Pages 发布保持停用。
 
 独立 Demo 完成三视口 27 次页面检查及 18 项实际交互，11 项专项回归通过；含本机 PostgreSQL 的全量回归为 `1110 passed, 1 skipped`。截图合集为 [产品截图](showcase/product-demo-20261003/index.html)，包含 9 页桌面版及平板、手机总览。便携包的 12 个资源均已校验，运行需 Python 3，无其他后端依赖。

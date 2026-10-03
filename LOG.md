@@ -2056,4 +2056,4 @@ Phase 27 已在本地 worktree 接受，最终验收记录见
 - 全量 `1110 passed, 1 skipped`，包含真实本机 PostgreSQL，98.24 秒、2 项既有依赖弃用警告；最后入口断言强化后专项 `11 passed`。差异、Node 语法及便携包白名单、CRC、资源一致性检查通过。
 - 浏览器三固定视口共 27 次页面检查，字段缺失及整体横向溢出为 0，18 项实际交互留存；11 张截图位于 `docs/showcase/product-demo-20261003/`，运行说明为 `docs/frontend-product-demo.md`，验证位于 `docs/submission/test-evidence/product-demo-20261003/`。
 - 本地预览为 `http://127.0.0.1:8860/demos/product-demo/#overview`；便携包生成于 `output/product-demo/prism-product-demo.zip`，并以相同哈希归档到截图目录。仅 12 个声明资源／启动说明，不含旧静态业务快照、用户资料或凭据。Pages 发布继续停用。
-- 阶段二提交编号与推送结果在成功后追加；三个既有未跟踪工作目录保持排除。
+- 阶段二提交 `3c0b369` 已成功推送至 `origin/main`，含完整 Demo、11 张原始 JPEG 截图、便携包及验证；与阶段一 `81b133f` 分别归档。三个既有未跟踪工作目录保持排除。
