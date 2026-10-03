@@ -79,7 +79,8 @@ try {
   assert.ok((await page.$eval(".profile-result-identity h4", (node) => node.textContent.trim())).length > 0);
   const recommendedFeatureCount = await page.$$(".profile-feature-card").then((nodes) => nodes.length);
   assert.ok(recommendedFeatureCount >= 1 && recommendedFeatureCount <= 3);
-  assert.match(await page.$eval(".profile-compliance-fixed", (node) => node.textContent), /不构成投资建议/);
+  assert.equal(await page.$$("#profile-details-content > details:not([open])").then(nodes => nodes.length), 3);
+  assert.equal(await page.$eval("#profile-questionnaire-view", node => node.hidden), true);
   await page.evaluate(() => { window.location.hash = "copilot"; });
   await page.waitForSelector("#copilot:not([hidden])");
 

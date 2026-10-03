@@ -12,7 +12,8 @@ def test_regular_workbench_has_five_primary_pages_and_profile_questionnaire() ->
     assert 'id="questionnaire-form"' in INDEX
     assert 'id="questionnaire-summary-content"' not in INDEX
     assert 'id="profile-risk-select"' not in INDEX
-    assert 'AI 信任度与解释偏好' in INDEX
+    assert 'id="profile-display-dialog"' in INDEX
+    assert '回答详细度' in INDEX
 
 
 def test_first_visit_is_guarded_by_the_formal_questionnaire() -> None:
@@ -82,7 +83,10 @@ def test_profile_result_renders_radar_strategy_and_allocation_without_trade_gate
     assert "presentation.persona_fit" in result
     assert "presentation.rule_trace" in result
     assert "renderRecommendedProfileFeatures(presentation)" in result
-    assert "仅作适当性与服务展示参考，不构成投资建议。" in result
+    assert 'profileDisclosure("画像档案"' in result
+    assert 'profileDisclosure("评级依据"' in result
+    assert 'profileDisclosure("配置参考"' in result
+    assert "不构成投资建议" not in result
     assert "交易记录参考" not in result
     assert "还缺哪些数据" not in result
 
@@ -108,7 +112,7 @@ def test_profile_feature_cards_reuse_existing_agent_feature_configuration() -> N
     assert 'bond: "convertible"' in result
     assert 'optimize: "optimization"' in result
     assert "openAgentFeatureConfig(featureIds[feat])" in result
-    assert "DEFAULT · Q13 未选择场景" in result
+    assert 'profileResultSection("推荐功能")' in result
 
 
 def test_holdings_page_has_kpis_diagnosis_and_formal_report_export() -> None:

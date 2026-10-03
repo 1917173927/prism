@@ -8,19 +8,18 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-trading-style">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-personal-center">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261003-trading-style" defer></script>
+    <script src="/static/app.js?v=20261003-personal-center" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
     <div id="questionnaire-entry-loading" class="questionnaire-entry-loading" role="status" aria-live="polite">
       <span class="questionnaire-entry-mark" aria-hidden="true">P</span>
       <strong>正在加载风险设置</strong>
-      <p>首次使用需要先完成投资者风险测评。</p>
     </div>
     <!-- SVG 图标库 (CSP 兼容，零外部网络请求) -->
     <svg xmlns="http://www.w3.org/2000/svg" class="svg-sprite" aria-hidden="true">
@@ -1566,64 +1565,87 @@
           </section>
 
           <section class="panel profile-panel" id="profile" aria-labelledby="profile-title">
-            <div class="panel-head">
-              <div>
-                <span class="eyebrow">风险与偏好</span>
-                <h2 id="profile-title">投资偏好与风险设置</h2>
+            <div id="profile-overview-view">
+              <div class="panel-head profile-center-heading">
+                <h2 id="profile-title" tabindex="-1">个人中心</h2>
+                <button id="refresh-profile-summary" class="quiet-profile-action" type="button" aria-label="刷新投资者画像">刷新画像</button>
               </div>
-              <span id="questionnaire-confirmation-status" class="status-chip">问卷未完成</span>
+              <div id="profile-load-error" class="notice error" role="alert" hidden></div>
+              <section class="profile-summary-section" aria-label="投资者画像与评级">
+                <div id="profile-summary-content" class="profile-summary-content" aria-live="polite">
+                  <div class="empty-state">正在读取投资者画像。</div>
+                </div>
+              </section>
+              <section class="profile-questionnaire-entry" aria-labelledby="profile-questionnaire-title">
+                <span class="profile-entry-symbol" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                <div class="profile-entry-copy">
+                  <h3 id="profile-questionnaire-title">投资者问卷</h3>
+                  <p>19 道题 · 6 个部分</p>
+                  <span id="questionnaire-confirmation-status" class="status-chip">问卷未完成</span>
+                  <span id="profile-questionnaire-progress"></span>
+                </div>
+                <a id="profile-questionnaire-open" href="#profile-questionnaire" class="query-submit secondary">填写问卷</a>
+              </section>
+              <div id="profile-details-content" class="profile-center-details"></div>
+              <div class="profile-center-footer">
+                <button id="profile-display-settings" class="quiet-profile-action" type="button" aria-haspopup="dialog">回答详细度 · <span id="profile-display-level">标准</span></button>
+              </div>
             </div>
 
-            <div class="profile-purpose-callout">
-              <div>
-                <strong>评级如何确定</strong>
-                <p>19 题问卷用于了解你的风险承受能力、投资经验和个性化需求，确认后生成八维量化画像与资产配置参考。</p>
+            <div id="profile-questionnaire-view" hidden>
+              <a id="profile-questionnaire-return" class="quiet-profile-action profile-questionnaire-return" href="#profile">返回个人中心</a>
+              <div class="profile-questionnaire-heading">
+                <h2 id="profile-questionnaire-heading" tabindex="-1">投资者问卷</h2>
+                <span>19 道题 · 18 道必答题 · Q13 可选</span>
               </div>
+              <form id="questionnaire-form" class="questionnaire-shell" novalidate>
+                <aside class="questionnaire-sidebar" aria-label="问卷进度与部分导航">
+                  <div class="questionnaire-progress-head">
+                    <div>
+                      <strong id="questionnaire-section-title">正在读取问卷</strong>
+                      <span id="questionnaire-progress-text">0 / 19</span>
+                    </div>
+                    <div class="questionnaire-progress-track" aria-hidden="true">
+                      <span id="questionnaire-progress-bar"></span>
+                    </div>
+                  </div>
+                  <ol id="questionnaire-section-tabs" class="questionnaire-section-tabs" aria-label="问卷部分"></ol>
+                </aside>
+                <div class="questionnaire-content">
+                  <div id="questionnaire-questions" class="questionnaire-questions" aria-live="polite">
+                    <div class="empty-state">正在读取问卷。</div>
+                  </div>
+                  <section id="questionnaire-result" class="questionnaire-result" aria-labelledby="questionnaire-result-title" hidden>
+                    <h3 id="questionnaire-result-title">结果预览 <span class="status-chip warning">待确认</span></h3>
+                    <div id="questionnaire-result-content"></div>
+                  </section>
+                  <div id="questionnaire-error" class="notice error" role="alert" hidden></div>
+                  <div class="questionnaire-actions">
+                    <button id="questionnaire-prev" class="query-submit secondary" type="button">上一部分</button>
+                    <button id="questionnaire-next" class="query-submit" type="button">下一部分</button>
+                    <button id="questionnaire-preview" class="query-submit secondary" type="button" hidden>生成结果预览</button>
+                    <button id="questionnaire-confirm" class="query-submit" type="submit" hidden>确认并保存问卷</button>
+                  </div>
+                </div>
+              </form>
             </div>
 
-            <section class="profile-summary-section" aria-labelledby="profile-summary-title">
-              <div class="profile-summary-heading">
-                <div>
-                  <span class="eyebrow clay">双轨汇总</span>
-                  <h3 id="profile-summary-title">评级与偏好摘要</h3>
-                </div>
-                <button id="refresh-profile-summary" class="query-submit secondary" type="button">刷新偏好</button>
+            <dialog id="profile-display-dialog" class="prd-dialog" aria-labelledby="profile-display-title">
+              <div class="profile-dialog-heading">
+                <h2 id="profile-display-title">回答详细度</h2>
+                <button id="profile-display-close" class="quiet-profile-action" type="button" aria-label="关闭回答设置">关闭</button>
               </div>
-              <div id="profile-summary-content" class="profile-summary-content" aria-live="polite">
-                <div class="empty-state">完成测评后可查看风险等级与设置。</div>
-              </div>
-            </section>
-
-            <form id="questionnaire-form" class="questionnaire-shell" novalidate>
-              <div class="questionnaire-progress-head">
-                <div>
-                  <strong id="questionnaire-section-title">正在读取问卷</strong>
-                  <span id="questionnaire-progress-text">0 / 19</span>
-                </div>
-                <div class="questionnaire-progress-track" aria-hidden="true">
-                  <span id="questionnaire-progress-bar"></span>
-                </div>
-              </div>
-              <ol id="questionnaire-section-tabs" class="questionnaire-section-tabs" aria-label="问卷部分"></ol>
-              <div id="questionnaire-questions" class="questionnaire-questions" aria-live="polite">
-                <div class="empty-state">正在读取版本化问卷。</div>
-              </div>
-              <div id="questionnaire-error" class="notice error" role="alert" hidden></div>
-              <div class="questionnaire-actions">
-                <button id="questionnaire-prev" class="query-submit secondary" type="button">上一部分</button>
-                <button id="questionnaire-next" class="query-submit" type="button">下一部分</button>
-                <button id="questionnaire-preview" class="query-submit secondary" type="button" hidden>生成结果预览</button>
-                <button id="questionnaire-confirm" class="query-submit" type="submit" hidden>确认并保存问卷</button>
-              </div>
-            </form>
-
-            <section class="profile-display-preference" aria-labelledby="display-preference-title">
-              <div>
-                <strong id="display-preference-title">AI 信任度与解释偏好</strong>
-                <p>它只决定结论与依据的展开方式，不改变风险分数、适当性等级或告警结果。</p>
-              </div>
-              <a href="#copilot" class="query-submit secondary">前往设置</a>
-            </section>
+              <form id="profile-display-form">
+                <fieldset class="profile-display-options">
+                  <legend class="sr-only">选择回答详细度</legend>
+                  <label><input type="radio" name="profile-display-policy-level" value="80"><span>简洁<small>先看结论和关键依据</small></span></label>
+                  <label><input type="radio" name="profile-display-policy-level" value="50" checked><span>标准<small>结论与关键依据保持平衡</small></span></label>
+                  <label><input type="radio" name="profile-display-policy-level" value="20"><span>详细<small>展开结论、依据和数据说明</small></span></label>
+                </fieldset>
+                <p id="profile-display-error" class="notice error" role="alert" hidden></p>
+                <div class="modal-actions"><button class="copilot-action-btn primary" type="submit">保存设置</button></div>
+              </form>
+            </dialog>
 
             <div class="dev-only profile-technical-tools dev-outline">
               <div class="context-confirm-actions">
