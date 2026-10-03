@@ -6919,47 +6919,24 @@
 
   function renderHomeHistoryState() {
     const isMarket = document.body.classList.contains("market-active");
-    const sharedLayout = document.body.classList.contains("sidebar-layout-active");
-    const collapsed = sharedLayout && (isMarket ? marketSidebarCollapsed : homeHistoryCollapsed);
+    const usesSidebar = isMarket || document.body.classList.contains("copilot-active");
+    const collapsed = usesSidebar && (isMarket ? marketSidebarCollapsed : homeHistoryCollapsed);
     document.body.classList.toggle("home-history-collapsed", collapsed);
     const sidebar = byId("home-history-sidebar");
-    sidebar.inert = collapsed || document.body.classList.contains("portfolio-active") || document.body.classList.contains("profile-active");
-    sidebar.setAttribute("aria-label", isMarket ? "指数切换" : sharedLayout ? "历史对话" : "导航");
+    sidebar.inert = !usesSidebar || collapsed;
+    sidebar.setAttribute("aria-label", isMarket ? "指数切换" : "历史对话");
     const showButton = byId("home-history-show");
-    showButton.setAttribute("aria-expanded", String(!collapsed));
+    showButton.setAttribute("aria-expanded", String(usesSidebar && !collapsed));
     showButton.setAttribute("aria-label", isMarket ? "展开指数" : "展开历史对话");
     showButton.querySelector("span").textContent = isMarket ? "展开指数" : "历史对话";
     byId("home-history-backdrop").setAttribute("aria-label", isMarket ? "关闭指数切换" : "关闭历史对话");
-    byId("home-history-hide")?.setAttribute("aria-expanded", String(!collapsed));
-    byId("market-sidebar-hide").setAttribute("aria-expanded", String(!collapsed));
+    byId("home-history-hide")?.setAttribute("aria-expanded", String(usesSidebar && !collapsed));
+    byId("market-sidebar-hide").setAttribute("aria-expanded", String(usesSidebar && !collapsed));
   }
 
   function setHomeHistoryCollapsed(collapsed) {
     if (document.body.classList.contains("market-active")) marketSidebarCollapsed = collapsed;
     else homeHistoryCollapsed = collapsed;
-    renderHomeHistoryState();
-  }
-
-  function syncHomeNavigation(isHome) {
-    const sidebar = byId("home-history-sidebar");
-    const brand = document.querySelector(".brand");
-    const navigation = document.querySelector(".nav-section-primary");
-    const profile = byId("persona-switcher-bar");
-    const settings = document.querySelector(".topbar-more-menu");
-    const homeMain = byId("home-navigation-main");
-    const homeNavigation = byId("home-primary-navigation");
-    const homeActions = byId("home-navigation-actions");
-    const topbar = document.querySelector(".topbar");
-    if (isHome) {
-      if (brand.parentElement !== homeMain) homeMain.insertBefore(brand, homeNavigation);
-      if (navigation.parentElement !== homeNavigation) homeNavigation.append(navigation);
-      if (profile.parentElement !== homeActions) homeActions.append(profile, settings);
-    } else {
-      if (brand.parentElement !== sidebar) sidebar.prepend(brand);
-      const sidebarNavigation = sidebar.querySelector(".nav-list");
-      if (navigation.parentElement !== sidebarNavigation) sidebarNavigation.prepend(navigation);
-      if (profile.parentElement !== topbar) topbar.append(profile, settings);
-    }
     renderHomeHistoryState();
   }
 
@@ -6999,8 +6976,10 @@
     document.body.classList.toggle("portfolio-active", isOverview);
     document.body.classList.toggle("profile-active", isProfile);
     document.body.classList.toggle("profile-questionnaire-active", isQuestionnaire);
-    document.body.classList.toggle("sidebar-layout-active", isCopilot || isMarket || isOverview || isProfile);
-    syncHomeNavigation(isCopilot || isMarket || isOverview || isProfile);
+    document.body.classList.toggle("page-without-sidebar", !isCopilot && !isMarket);
+    byId("persona-switcher-bar").open = false;
+    document.querySelector(".topbar-more-menu").open = false;
+    renderHomeHistoryState();
     byId("profile-overview-view").hidden = isQuestionnaire;
     byId("profile-questionnaire-view").hidden = !isQuestionnaire;
     byId("profile").setAttribute("aria-labelledby", isQuestionnaire ? "profile-questionnaire-heading" : "profile-title");
@@ -7117,7 +7096,9 @@
   function initializeNavigation() {
     const items = [...document.querySelectorAll(".nav-item, #workspace-page-tabs a")];
     items.forEach((item) => {
-      item.addEventListener("click", () => syncNavigation(item.hash.slice(1)));
+      item.addEventListener("click", () => {
+        if (item.hash === window.location.hash) syncNavigation(item.hash.slice(1));
+      });
     });
     window.addEventListener("hashchange", () => syncNavigation());
     syncNavigation();
@@ -13564,7 +13545,8 @@
     renderHomeHistoryState();
   });
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && homeMobileViewport.matches && !document.body.classList.contains("home-history-collapsed") && document.body.classList.contains("sidebar-layout-active")) {
+    if (event.key === "Escape" && homeMobileViewport.matches && !document.body.classList.contains("home-history-collapsed")
+      && !document.body.classList.contains("page-without-sidebar")) {
       setHomeHistoryCollapsed(true);
       byId("home-history-show").focus();
     }

@@ -1,6 +1,4 @@
-/* Prism UI v2 compatibility layer.
-   Agent home is defined here as a complete composition so legacy component
-   declarations in styles.css cannot leak into the production surface. */
+/* 问财智投的页面布局与组件样式 */
 
 body.prism-ui-v2 {
   min-width: 320px;
@@ -30,18 +28,14 @@ body.prism-ui-v2 {
 
 .prism-ui-v2 .app-shell {
   display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .prism-ui-v2 .sidebar {
   position: sticky;
-  top: 0;
   display: flex;
   flex-direction: column;
   width: auto;
-  height: 100vh;
-  padding: 18px 10px 14px;
   overflow: hidden;
   border: 0;
   border-right: 1px solid var(--border);
@@ -57,7 +51,7 @@ body.prism-ui-v2 {
   gap: 10px;
   min-height: 44px;
   margin: 0;
-  padding: 4px 8px 18px;
+  padding: 0;
   color: inherit;
   text-decoration: none;
 }
@@ -84,7 +78,6 @@ body.prism-ui-v2 {
 
 .prism-ui-v2 .brand strong { color: var(--text-primary); font-size: 15px; line-height: 1.25; }
 .prism-ui-v2 .brand span:not(.brand-mark) { color: var(--text-muted); font-size: 10px; }
-.prism-ui-v2 .nav-list { display: grid; gap: 3px; }
 .prism-ui-v2 .nav-section-primary { display: grid; gap: 3px; }
 .prism-ui-v2 .nav-item,
 .prism-ui-v2 .nav-section-primary .nav-item,
@@ -163,31 +156,8 @@ body.prism-ui-v2 {
   padding: 0 clamp(12px, 2vw, 28px) 64px;
 }
 
-.prism-ui-v2 .topbar {
-  position: relative;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  min-height: 104px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
-}
-
-.prism-ui-v2 .topbar-title-area { min-width: 0; flex: 1; margin: 0; }
-.prism-ui-v2 .topbar-title-area .eyebrow { margin: 0 0 3px; color: var(--text-muted); font-size: 10px; letter-spacing: 0; text-transform: none; }
-.prism-ui-v2 .topbar-title-area h1 {
-  margin: 0;
-  color: var(--text-primary);
-  font: 700 clamp(19px, 2vw, 24px)/1.25 var(--sans);
-  letter-spacing: -0.025em;
-}
-.prism-ui-v2 .topbar-subtitle { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; }
 .prism-ui-v2 .profile-actions-menu,
-.prism-ui-v2 .topbar-more-menu { position: relative; flex: 0 0 auto; margin: 0; padding: 0; border: 0; background: transparent; }
+.prism-ui-v2 .topbar-more-menu { position: relative; flex: 0 0 auto; width: auto; margin: 0; padding: 0; overflow: visible; border: 0; background: transparent; }
 .prism-ui-v2 .profile-actions-menu > summary,
 .prism-ui-v2 .topbar-more-menu > summary {
   display: flex;
@@ -2306,10 +2276,6 @@ body.prism-ui-v2 {
   .prism-ui-v2 .nav-section-primary .nav-item { width: auto; min-width: 42px; flex: 0 0 auto; }
   .prism-ui-v2 .nav-section-primary .nav-item span:last-child { display: inline; }
   .prism-ui-v2 .main { padding: 0 16px 44px; }
-  .prism-ui-v2 .topbar { min-height: 88px; gap: 8px; }
-  .prism-ui-v2 .topbar-title-area .eyebrow,
-  .prism-ui-v2 .topbar-subtitle { display: none; }
-  .prism-ui-v2 .topbar-title-area h1 { font-size: 17px; }
   .prism-ui-v2 .profile-menu-copy { display: none; }
   .prism-ui-v2 .topbar-more-menu > summary span { display: none; }
   .prism-ui-v2 .topbar-more-menu > summary { min-width: 38px; padding-inline: 9px; }
@@ -2534,13 +2500,6 @@ body.prism-ui-v2 {
   .prism-ui-v2 .portfolio-report-actions { justify-content: flex-start; }
   .prism-ui-v2 .portfolio-report-grid { grid-template-columns: 1fr; }
   .prism-ui-v2 .portfolio-asset-structure { grid-template-columns: 1fr; }
-  .prism-ui-v2 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 0; }
-  .prism-ui-v2 .topbar-title-area { display: none; }
-  .prism-ui-v2 .topbar .profile-actions-menu { order: 1; margin: 0; }
-  .prism-ui-v2 .topbar .topbar-more-menu { order: 2; margin: 0; }
-}
-@media(max-width:600px) {
-  .prism-ui-v2 .topbar .profile-actions-menu,.prism-ui-v2 .topbar .topbar-more-menu { width: auto; min-width: 0; }
 }
 
 /* Quiet, persistent progress to the left of the composer actions. */
@@ -2774,7 +2733,7 @@ body.prism-ui-v2 {
 
 /* 共用导航与侧栏 */
 .prism-ui-v2 .home-only { display: none; }
-.prism-ui-v2 .sidebar-layout-only,
+.prism-ui-v2 .home-history-backdrop,
 .prism-ui-v2 .market-only { display: none; }
 .prism-ui-v2 .profile-actions-panel .home-only { display: none; }
 .prism-ui-v2.sidebar-layout-active {
@@ -2822,12 +2781,15 @@ body.prism-ui-v2 {
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-item > span:last-child { display: inline; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-shortcut-icon,
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-copilot-icon { display: none; }
+.prism-ui-v2.dev-mode .topbar-more-panel .nav-section-expert { display: block; margin-top: 7px; padding-top: 7px; }
+.prism-ui-v2 .home-navigation .topbar-more-panel .nav-item { width: 100%; min-height: 36px; font-size: 12px; }
+.prism-ui-v2 .home-navigation .topbar-more-panel .nav-item > span:last-child { font-size: 12px; }
+.prism-ui-v2 .home-navigation .topbar-more-panel .nav-shortcut-icon { display: inline; }
 .prism-ui-v2.copilot-active .sidebar-conversation-actions.home-only { display: grid; }
 .prism-ui-v2.copilot-active .sidebar .chat-history-panel.home-only { display: grid; }
 .prism-ui-v2.market-active .market-sidebar-panel.market-only { display: grid; }
 .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr); overflow-x: clip; transition: grid-template-columns 280ms cubic-bezier(.2, .8, .2, 1); }
 .prism-ui-v2.sidebar-layout-active .sidebar { grid-column: 1; grid-row: 2; top: 66px; width: 248px; min-width: 0; height: calc(100dvh - 66px); padding: 17px 13px 14px; border: 0; background: var(--surface-subtle); transform: translateX(0); opacity: 1; visibility: visible; transition: transform 280ms cubic-bezier(.2, .8, .2, 1), opacity 200ms ease, visibility 0s; }
-.prism-ui-v2.sidebar-layout-active .sidebar > .nav-list { display: none; }
 .prism-ui-v2.sidebar-layout-active .home-history-toolbar { display: flex; align-items: center; gap: 7px; min-height: 39px; padding: 0; margin: 0; }
 .prism-ui-v2.sidebar-layout-active .home-history-toolbar button,
 .prism-ui-v2.sidebar-layout-active .home-history-show { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 7px; border: 0; border-radius: 8px; color: var(--text-secondary); background: transparent; cursor: pointer; }
@@ -2888,13 +2850,7 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active .chat-session-actions { align-items: center; gap: 4px; }
 .prism-ui-v2.copilot-active .chat-session-rename { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: auto; min-width: 40px; padding: 0 6px; white-space: nowrap; font-weight: 500; }
 .prism-ui-v2.copilot-active .chat-session-delete { flex: 0 0 24px; }
-.prism-ui-v2.sidebar-layout-active .sidebar-note { display: none; }
-
 .prism-ui-v2.sidebar-layout-active .main { position: relative; grid-column: 2; grid-row: 2; padding: 0 clamp(18px, 4vw, 64px) 32px; }
-.prism-ui-v2.sidebar-layout-active .topbar { display: none; }
-.prism-ui-v2.copilot-active .topbar-title-area .eyebrow,
-.prism-ui-v2.copilot-active .topbar-subtitle { display: none; }
-.prism-ui-v2.copilot-active .topbar-title-area h1 { font-size: 15px; font-weight: 600; }
 .prism-ui-v2.sidebar-layout-active .profile-actions-menu > summary,
 .prism-ui-v2.sidebar-layout-active .topbar-more-menu > summary { min-height: 36px; border-color: transparent; background: transparent; }
 .prism-ui-v2.sidebar-layout-active .profile-menu-copy,
@@ -3042,9 +2998,8 @@ body.prism-ui-v2 {
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-chat-stream-panel { flex: 1; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-query-box { margin-top: auto; }
 
-@media (max-width: 760px) {
-  .prism-ui-v2.sidebar-layout-active .app-shell,
-  .prism-ui-v2.sidebar-layout-active.home-history-collapsed .app-shell { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 104px minmax(0, 1fr); transition: none; }
+@media (max-width: 900px) {
+  .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-rows: 104px minmax(0, 1fr); }
   .prism-ui-v2.sidebar-layout-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation-main { display: contents; }
   .prism-ui-v2.sidebar-layout-active .home-navigation .brand { order: 1; min-height: 52px; }
@@ -3053,6 +3008,14 @@ body.prism-ui-v2 {
   .prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary { width: max-content; min-height: 44px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary .nav-item { padding-inline: 9px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation .brand > div { display: block; }
+  .prism-ui-v2.sidebar-layout-active .sidebar { top: 104px; height: calc(100dvh - 104px); }
+  .prism-ui-v2 .home-navigation .profile-actions-panel,
+  .prism-ui-v2 .home-navigation .topbar-more-panel { position: fixed; top: 104px; right: 14px; left: 14px; width: auto; max-height: calc(100dvh - 118px); overflow-y: auto; }
+}
+
+@media (max-width: 760px) {
+  .prism-ui-v2.sidebar-layout-active .app-shell,
+  .prism-ui-v2.sidebar-layout-active.home-history-collapsed .app-shell { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 104px minmax(0, 1fr); transition: none; }
   .prism-ui-v2.sidebar-layout-active .sidebar { position: fixed; z-index: 65; top: 104px; left: 0; width: min(280px, calc(100vw - 52px)); height: calc(100dvh - 104px); padding: 15px 13px; border: 0; }
   .prism-ui-v2.sidebar-layout-active .home-history-backdrop { position: fixed; z-index: 64; inset: 104px 0 0; display: block; width: 100%; padding: 0; border: 0; border-radius: 0; background: rgba(15, 20, 25, .25); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 200ms ease, visibility 0s 280ms; }
   .prism-ui-v2.sidebar-layout-active:not(.home-history-collapsed) .home-history-backdrop { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
@@ -3069,6 +3032,16 @@ body.prism-ui-v2 {
   .prism-ui-v2.sidebar-layout-active .app-shell,
   .prism-ui-v2.sidebar-layout-active .sidebar,
   .prism-ui-v2.sidebar-layout-active .home-history-backdrop { transition: none; }
+}
+
+/* 独立页面共用顶部导航 */
+.prism-ui-v2.sidebar-layout-active.page-without-sidebar .app-shell { grid-template-columns: minmax(0, 1fr); transition: none; }
+.prism-ui-v2.page-without-sidebar .sidebar,
+.prism-ui-v2.page-without-sidebar .home-history-show,
+.prism-ui-v2.page-without-sidebar .home-history-backdrop { display: none; }
+.prism-ui-v2.page-without-sidebar .main { grid-column: 1; padding-top: 40px; }
+@media (max-width: 760px) {
+  .prism-ui-v2.page-without-sidebar .main { padding-top: 28px; }
 }
 
 /* 持仓分析按需展示详情 */
@@ -3279,14 +3252,6 @@ body.prism-ui-v2 {
 .prism-ui-v2 #profile #profile-display-form .modal-actions { margin: 20px 0 0; }
 
 @media (max-width: 900px) {
-  .prism-ui-v2.sidebar-layout-active.profile-active .app-shell { grid-template-rows: 104px minmax(0, 1fr); }
-  .prism-ui-v2.profile-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
-  .prism-ui-v2.profile-active .home-navigation-main { display: contents; }
-  .prism-ui-v2.profile-active .home-navigation .brand { order: 1; min-height: 52px; }
-  .prism-ui-v2.profile-active .home-navigation-actions { order: 2; margin-left: auto; gap: 3px; }
-  .prism-ui-v2.profile-active #home-primary-navigation { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .prism-ui-v2.profile-active .home-navigation .nav-section-primary { width: max-content; min-height: 44px; }
-  .prism-ui-v2.profile-active .home-navigation .nav-item { padding-inline: 9px; }
   .prism-ui-v2 #expert-workspace-grid > #profile { margin-top: 34px; }
   .prism-ui-v2 #profile .profile-center-hero { gap: 22px; padding: 24px; }
   .prism-ui-v2 #profile .profile-center-rating { padding-left: 22px; }
@@ -3331,14 +3296,6 @@ body.prism-ui-v2 {
 }
 
 @media (max-width: 900px) {
-  .prism-ui-v2.sidebar-layout-active.portfolio-active .app-shell { grid-template-rows: 104px minmax(0, 1fr); }
-  .prism-ui-v2.portfolio-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
-  .prism-ui-v2.portfolio-active .home-navigation-main { display: contents; }
-  .prism-ui-v2.portfolio-active .home-navigation .brand { order: 1; min-height: 52px; }
-  .prism-ui-v2.portfolio-active .home-navigation-actions { order: 2; margin-left: auto; gap: 3px; }
-  .prism-ui-v2.portfolio-active #home-primary-navigation { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .prism-ui-v2.portfolio-active .home-navigation .nav-section-primary { width: max-content; min-height: 44px; }
-  .prism-ui-v2.portfolio-active .home-navigation .nav-item { padding-inline: 9px; }
   .prism-ui-v2 .portfolio-page { margin-top: 38px; }
 }
 @media (max-width: 520px) {

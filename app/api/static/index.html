@@ -7,16 +7,16 @@
     <meta name="description" content="问财智投可解释证券研究与决策支持工作台">
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
-    <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-personal-center">
+    <link rel="stylesheet" href="/static/styles.css?v=20261003-shared-navigation">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-shared-navigation">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261003-personal-center" defer></script>
+    <script src="/static/app.js?v=20261003-shared-navigation" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
-  <body class="questionnaire-pending prism-ui-v2">
+  <body class="questionnaire-pending prism-ui-v2 sidebar-layout-active">
     <div id="questionnaire-entry-loading" class="questionnaire-entry-loading" role="status" aria-live="polite">
       <span class="questionnaire-entry-mark" aria-hidden="true">P</span>
       <strong>正在加载风险设置</strong>
@@ -123,130 +123,44 @@
     </svg>
 
     <div class="app-shell">
-      <header class="home-navigation sidebar-layout-only" id="home-navigation">
+      <header class="home-navigation" id="home-navigation">
         <div class="home-navigation-main" id="home-navigation-main">
-          <nav id="home-primary-navigation" aria-label="主导航"></nav>
-        </div>
-        <div class="home-navigation-actions" id="home-navigation-actions"></div>
-      </header>
-      <aside class="sidebar" id="home-history-sidebar" aria-label="导航与历史对话">
-        <div class="brand" aria-label="问财智投">
-          <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
-          <div>
-            <strong>问财智投</strong>
-            <span>个性化证券投顾</span>
-          </div>
-        </div>
-
-        <div class="sidebar-conversation-actions home-only">
-          <div class="home-history-toolbar">
-            <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
-            <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
-          </div>
-          <label class="sidebar-chat-search">
-            <svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg>
-            <input id="chat-session-search" type="search" placeholder="搜索对话" aria-label="搜索对话" autocomplete="off">
-          </label>
-        </div>
-
-        <nav class="nav-list" aria-label="工作区分区">
-          <!-- 普通用户固定为 PRD 的四个主页面；深度工具保留在开发者区域。 -->
-          <div class="nav-section-primary">
-            <a class="nav-item nav-item-copilot active" href="#copilot" id="nav-copilot" aria-current="location">
-              <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
-              <div class="nav-copilot-label">
-                <strong>AI 对话</strong>
-                <span>个性化投顾入口</span>
-              </div>
-            </a>
-            <a class="nav-item" href="#overview">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-              <span>持仓分析</span>
-            </a>
-            <a class="nav-item" href="#market">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <span>大盘鉴别</span>
-            </a>
-            <a class="nav-item" href="#trading-style">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-              <span>交易风格</span>
-            </a>
-            <a class="nav-item" href="#profile">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                <span>个人中心</span>
-            </a>
-          </div>
-
-          <!-- 系统治理仅对开发者模式开放。 -->
-          <div class="nav-section-expert collapsed dev-only" id="nav-expert-section">
-            <button class="nav-expert-header" id="nav-expert-toggle" type="button" aria-expanded="false" aria-controls="nav-expert-items" title="展开底层系统工具与评测">
-              <span>
-                <span class="nav-group-title">系统治理</span>
-                <small>评测看板与状态审计</small>
-              </span>
-              <span class="expert-toggle-indicator" id="expert-toggle-indicator" aria-hidden="true"><svg class="prism-icon"><use href="#icon-chevron-down"/></svg></span>
-            </button>
-            <div class="nav-expert-items" id="nav-expert-items">
-              <a class="nav-item" href="#evaluation-dashboard">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-                <span>评测看板</span>
-              </a>
-              <a class="nav-item" href="#context-memory">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-                <span>上下文记忆</span>
-              </a>
-              <a class="nav-item" href="#research-tracks">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-                <span>研究轨道</span>
-              </a>
-              <a class="nav-item" href="#advisor">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
-                <span>投顾查询</span>
-              </a>
-              <a class="nav-item" href="#dev-assist">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-                <span>研发辅助</span>
-              </a>
+          <div class="brand" aria-label="问财智投">
+            <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
+            <div>
+              <strong>问财智投</strong>
+              <span>个性化证券投顾</span>
             </div>
           </div>
-        </nav>
-
-        <aside class="chat-history-panel home-only" aria-labelledby="chat-history-title">
-          <header class="chat-history-head"><h3 id="chat-history-title">历史对话</h3></header>
-          <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
-            <p class="chat-history-empty">暂无历史对话</p>
-          </div>
-        </aside>
-
-        <section class="market-sidebar-panel market-only" aria-labelledby="market-sidebar-title">
-          <header class="home-history-toolbar market-sidebar-heading">
-            <h3 id="market-sidebar-title">指数切换</h3>
-            <button id="market-sidebar-hide" type="button" aria-label="收起指数切换" aria-controls="home-history-sidebar" aria-expanded="true" title="收起指数切换"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
-          </header>
-          <div class="market-region-tabs" role="tablist" aria-label="市场分类">
-            <button type="button" role="tab" data-market-region="CN" aria-selected="true">国内</button>
-            <button type="button" role="tab" data-market-region="HK" aria-selected="false">港股</button>
-            <button type="button" role="tab" data-market-region="US" aria-selected="false">美股</button>
-          </div>
-          <input id="market-index-input" type="hidden" value="sse-composite">
-          <div id="market-index-options" class="market-index-options" role="group" aria-label="选择大盘指数"></div>
-        </section>
-
-        <div class="sidebar-note">
-          <span class="eyebrow">使用提示</span>
-          <p>添加风险设置与持仓即可分析。结果包含结论、依据和可采取的下一步。</p>
+          <nav id="home-primary-navigation" aria-label="主导航">
+            <div class="nav-section-primary">
+              <a class="nav-item nav-item-copilot active" href="#copilot" id="nav-copilot" aria-current="location">
+                <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
+                <div class="nav-copilot-label">
+                  <strong>AI 对话</strong>
+                  <span>个性化投顾入口</span>
+                </div>
+              </a>
+              <a class="nav-item" href="#overview">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
+                <span>持仓分析</span>
+              </a>
+              <a class="nav-item" href="#market">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
+                <span>大盘鉴别</span>
+              </a>
+              <a class="nav-item" href="#trading-style">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
+                <span>交易风格</span>
+              </a>
+              <a class="nav-item" href="#profile">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                <span>个人中心</span>
+              </a>
+            </div>
+          </nav>
         </div>
-      </aside>
-      <button class="home-history-backdrop sidebar-layout-only" id="home-history-backdrop" type="button" aria-label="关闭历史对话"></button>
-
-      <main class="main">
-        <button class="home-history-show sidebar-layout-only" id="home-history-show" type="button" aria-label="展开历史对话" aria-controls="home-history-sidebar" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg><span>历史对话</span></button>
-        <header class="topbar">
-          <div class="topbar-title-area">
-            <span class="eyebrow">个人投资工作台</span>
-            <h1><span class="home-only">对话</span><span class="other-page-only">问财智投</span></h1>
-            <p class="topbar-subtitle">结合你的持仓、投资偏好与市场信息进行分析。</p>
-          </div>
+        <div class="home-navigation-actions" id="home-navigation-actions">
           <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
             <summary aria-label="打开风险与偏好菜单">
               <span class="profile-menu-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
@@ -292,7 +206,7 @@
               </details>
             </div>
           </details>
-          <details class="topbar-actions topbar-more-menu">
+          <details class="topbar-more-menu">
             <summary>
               <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
               <span class="other-page-only">更多</span><span class="home-only">设置</span>
@@ -313,9 +227,78 @@
               <button id="open-password-change" class="topbar-theme-toggle" type="button">修改密码</button>
               <button id="logout-local-session" class="topbar-logout" type="button">退出登录</button>
               <div class="health" id="health-status" aria-live="polite" hidden></div>
+              <div class="nav-section-expert collapsed dev-only" id="nav-expert-section">
+                <button class="nav-expert-header" id="nav-expert-toggle" type="button" aria-expanded="false" aria-controls="nav-expert-items" title="展开底层系统工具与评测">
+                  <span>
+                    <span class="nav-group-title">系统治理</span>
+                    <small>评测看板与状态审计</small>
+                  </span>
+                  <span class="expert-toggle-indicator" id="expert-toggle-indicator" aria-hidden="true"><svg class="prism-icon"><use href="#icon-chevron-down"/></svg></span>
+                </button>
+                <div class="nav-expert-items" id="nav-expert-items">
+                  <a class="nav-item" href="#evaluation-dashboard">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
+                    <span>评测看板</span>
+                  </a>
+                  <a class="nav-item" href="#context-memory">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                    <span>上下文记忆</span>
+                  </a>
+                  <a class="nav-item" href="#research-tracks">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
+                    <span>研究轨道</span>
+                  </a>
+                  <a class="nav-item" href="#advisor">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
+                    <span>投顾查询</span>
+                  </a>
+                  <a class="nav-item" href="#dev-assist">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                    <span>研发辅助</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </details>
-        </header>
+        </div>
+      </header>
+      <aside class="sidebar" id="home-history-sidebar" aria-label="历史对话">
+        <div class="sidebar-conversation-actions home-only">
+          <div class="home-history-toolbar">
+            <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
+            <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
+          </div>
+          <label class="sidebar-chat-search">
+            <svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg>
+            <input id="chat-session-search" type="search" placeholder="搜索对话" aria-label="搜索对话" autocomplete="off">
+          </label>
+        </div>
+
+        <aside class="chat-history-panel home-only" aria-labelledby="chat-history-title">
+          <header class="chat-history-head"><h3 id="chat-history-title">历史对话</h3></header>
+          <div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite">
+            <p class="chat-history-empty">暂无历史对话</p>
+          </div>
+        </aside>
+
+        <section class="market-sidebar-panel market-only" aria-labelledby="market-sidebar-title">
+          <header class="home-history-toolbar market-sidebar-heading">
+            <h3 id="market-sidebar-title">指数切换</h3>
+            <button id="market-sidebar-hide" type="button" aria-label="收起指数切换" aria-controls="home-history-sidebar" aria-expanded="true" title="收起指数切换"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
+          </header>
+          <div class="market-region-tabs" role="tablist" aria-label="市场分类">
+            <button type="button" role="tab" data-market-region="CN" aria-selected="true">国内</button>
+            <button type="button" role="tab" data-market-region="HK" aria-selected="false">港股</button>
+            <button type="button" role="tab" data-market-region="US" aria-selected="false">美股</button>
+          </div>
+          <input id="market-index-input" type="hidden" value="sse-composite">
+          <div id="market-index-options" class="market-index-options" role="group" aria-label="选择大盘指数"></div>
+        </section>
+      </aside>
+      <button class="home-history-backdrop" id="home-history-backdrop" type="button" aria-label="关闭历史对话"></button>
+
+      <main class="main">
+        <button class="home-history-show" id="home-history-show" type="button" aria-label="展开历史对话" aria-controls="home-history-sidebar" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg><span>历史对话</span></button>
 
         <!-- Agent 对话是默认首页；专业任务使用现有导航进入各自页面。 -->
         <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">

@@ -179,11 +179,6 @@ body > svg:first-child {
   text-transform: uppercase;
 }
 
-.nav-list {
-  display: grid;
-  gap: 2px;
-}
-
 .nav-item {
   display: flex;
   align-items: center;
@@ -231,23 +226,6 @@ body > svg:first-child {
   width: min(1340px, 100%);
   margin: 0 auto;
   padding: 30px 44px 72px;
-}
-
-/* 顶部栏 */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 26px;
-  border-bottom: 1px solid var(--outline-light);
-  margin-bottom: 26px;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .companion-trigger-btn {
@@ -1147,12 +1125,6 @@ dd { margin: 2px 0 0; font: 12px var(--mono); color: var(--ink); }
 }
 
 /* 顶部 Persona 切换栏 */
-.topbar-title-area h1 {
-  margin: 0;
-  font: 700 20px var(--serif);
-  letter-spacing: 0.01em;
-}
-
 .persona-switcher-bar {
   display: flex;
   align-items: center;
@@ -3714,7 +3686,6 @@ dd { margin: 2px 0 0; font: 12px var(--mono); color: var(--ink); }
   .sidebar { position: static; width: 100%; height: auto; padding: 16px; }
   .brand { padding-bottom: 14px; margin-bottom: 12px; }
   .nav-group { margin-bottom: 12px; }
-  .nav-list { display: flex; overflow-x: auto; padding-bottom: 4px; }
   .sidebar-note { display: none; }
   .main { padding: 22px 18px 56px; }
   .hero, .workspace-grid { grid-template-columns: 1fr; }
@@ -3877,12 +3848,6 @@ textarea:focus-visible {
   font-family: var(--sans);
   letter-spacing: 0.02em;
   font-size: 11px;
-}
-
-.nav-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .nav-section-primary,
@@ -4085,29 +4050,6 @@ textarea:focus-visible {
   padding: 28px clamp(22px, 4vw, 56px) 72px;
 }
 
-.topbar {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
-  align-items: center;
-  gap: 18px;
-  padding-bottom: 22px;
-  margin-bottom: 28px;
-  border-bottom-color: var(--outline);
-}
-
-.topbar-title-area h1 {
-  margin-top: 2px;
-  font: 700 clamp(22px, 2vw, 29px)/1.2 var(--serif);
-  letter-spacing: -0.02em;
-}
-
-.topbar-subtitle {
-  margin: 6px 0 0;
-  color: var(--ink-subtle);
-  font-size: 12px;
-}
-
-.topbar .eyebrow,
 .copilot-intro .eyebrow {
   font-family: var(--sans);
   letter-spacing: 0.04em;
@@ -4235,11 +4177,6 @@ textarea:focus-visible {
   justify-content: flex-start;
   border-radius: var(--radius-sm);
   box-shadow: none;
-}
-
-.topbar-actions {
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .mode-toggle-btn {
@@ -4811,22 +4748,6 @@ textarea:focus-visible {
 }
 
 @media (max-width: 1280px) {
-  .topbar {
-    grid-template-columns: minmax(200px, 1fr) auto;
-  }
-
-  .persona-switcher-bar {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-content: flex-start;
-    padding-top: 2px;
-  }
-
-  .topbar-actions {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
   .copilot-intro {
     align-items: flex-start;
     flex-direction: column;
@@ -4855,10 +4776,6 @@ textarea:focus-visible {
     padding-bottom: 16px;
   }
 
-  .nav-list {
-    gap: 14px;
-  }
-
   .nav-section-shortcuts {
     display: flex;
     align-items: center;
@@ -4885,26 +4802,6 @@ textarea:focus-visible {
   .main {
     width: 100%;
     padding: 22px 18px 56px;
-  }
-
-  .topbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .topbar-title-area {
-    flex: 1 1 280px;
-  }
-
-  .topbar-actions {
-    flex: 0 0 auto;
-  }
-
-  .persona-switcher-bar {
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 2px;
   }
 
   #expert-workspace-grid {
@@ -4940,11 +4837,6 @@ textarea:focus-visible {
 @media (max-width: 620px) {
   .main {
     padding-inline: 14px;
-  }
-
-  .topbar-actions {
-    width: 100%;
-    justify-content: flex-start;
   }
 
   .health {
@@ -6128,7 +6020,6 @@ body.questionnaire-pending .app-shell { visibility: hidden; }
   .brand-mark { width: 24px; height: 24px; border-radius: 7px; font-size: 13px; }
   .brand strong { font-size: 13px; }
   .brand span:not(.brand-mark) { display: none; }
-  .nav-list { display: block; }
   .nav-section-primary {
     display: flex;
     gap: 6px;
@@ -6150,27 +6041,7 @@ body.questionnaire-pending .app-shell { visibility: hidden; }
   .nav-copilot-label span { display: none; }
   .nav-section-primary .nav-item > span:last-child,
   .nav-copilot-label strong { font-size: 11px; }
-  .nav-section-expert { display: none; }
-  .topbar { gap: 9px; padding-bottom: 12px; }
-  .topbar-title-area { display: none; }
-  .persona-switcher-bar {
-    flex-wrap: nowrap;
-    order: 1;
-    padding: 0 0 3px;
-    overflow-x: auto;
-  }
-  .persona-switcher-bar > * { flex: 0 0 auto; }
   .switcher-label { display: none; }
-  .topbar-actions {
-    order: 2;
-    display: flex;
-    width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-  .topbar-actions #open-companion-btn,
-  .topbar-actions #view-mode-toggle,
-  .topbar-actions .health { display: none; }
   .global-data-mode-btn { min-height: 34px; }
   .agent-home-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
   .agent-home-grid,
@@ -6181,7 +6052,7 @@ body.questionnaire-pending .app-shell { visibility: hidden; }
   .agent-conversation .copilot-submit-btn { justify-content: center; width: 100%; }
 }
 
-/* Prism UI v2 integration: shell, topbar, and Agent home */
+/* Prism UI v2：共用组件与 Agent 首页 */
 .prism-ui-v2 {
   color: var(--text-primary);
   background: var(--page);
@@ -6201,7 +6072,6 @@ body.questionnaire-pending .app-shell { visibility: hidden; }
   box-shadow: none;
 }
 .prism-ui-v2 .brand strong,
-.prism-ui-v2 .topbar-title-area h1,
 .prism-ui-v2 .agent-home-heading h2 { font-family: inherit; }
 .prism-ui-v2 .nav-item {
   border: 1px solid transparent;
@@ -6234,20 +6104,6 @@ body.questionnaire-pending .app-shell { visibility: hidden; }
   width: min(100% - 40px, 1480px);
   padding-top: 24px;
 }
-.prism-ui-v2 .topbar {
-  position: relative;
-  z-index: 30;
-  align-items: center;
-  gap: 12px;
-  min-height: 76px;
-  margin-bottom: 26px;
-  padding: 0 0 18px;
-  border-bottom: 1px solid var(--border);
-}
-.prism-ui-v2 .topbar-title-area { margin-right: auto; }
-.prism-ui-v2 .topbar-title-area h1 { color: var(--text-primary); font-size: 20px; }
-.prism-ui-v2 .topbar-subtitle { color: var(--text-muted); }
-
 .prism-ui-v2 .profile-actions-menu,
 .prism-ui-v2 .topbar-more-menu { position: relative; flex: 0 0 auto; }
 .prism-ui-v2 .profile-actions-menu > summary,
@@ -6420,7 +6276,6 @@ body.questionnaire-pending .app-shell { visibility: hidden; }
 
 @media (max-width: 700px) {
   .prism-ui-v2 .main { width: min(100% - 24px, 1480px); padding-top: 12px; }
-  .prism-ui-v2 .topbar { justify-content: flex-end; min-height: 54px; }
   .prism-ui-v2 .profile-menu-copy { min-width: 92px; }
   .prism-ui-v2 .profile-actions-panel,
   .prism-ui-v2 .topbar-more-panel { position: fixed; top: 66px; right: 12px; left: 12px; width: auto; }

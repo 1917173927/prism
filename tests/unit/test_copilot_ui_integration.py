@@ -194,7 +194,7 @@ def test_prism_ui_v2_design_tokens_are_semantic_and_legacy_compatible() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     styles = (STATIC / "styles.css").read_text(encoding="utf-8")
 
-    assert 'class="questionnaire-pending prism-ui-v2"' in markup
+    assert 'class="questionnaire-pending prism-ui-v2 sidebar-layout-active"' in markup
     for token in (
         "--text-primary: #202124",
         "--page: #f7f7f8",
@@ -252,8 +252,14 @@ def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     assert 'class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar"' in markup
-    assert 'class="topbar-actions topbar-more-menu"' in markup
+    assert 'class="topbar-more-menu"' in markup
     assert 'id="profile-menu-current-label"' in markup
+    assert markup.index('id="home-navigation"') < markup.index('id="home-primary-navigation"') < markup.index('id="home-history-sidebar"')
+    assert markup.index('id="home-navigation-actions"') < markup.index('id="persona-switcher-bar"') < markup.index('id="home-history-sidebar"')
+    assert 'class="topbar"' not in markup
+    assert 'class="nav-list"' not in markup
+    assert "topbar-actions" not in markup
+    assert "function syncHomeNavigation(" not in script
     for node_id in (
         "btn-custom-profile-chip",
         "open-profile-modal-btn",
@@ -269,7 +275,7 @@ def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> Non
     ):
         assert markup.count(f'id="{node_id}"') == 1
 
-    assert "/* Prism UI v2 integration: shell, topbar, and Agent home */" in styles
+    assert "/* Prism UI v2：共用组件与 Agent 首页 */" in styles
     for selector in (
         ".prism-ui-v2 .app-shell",
         ".prism-ui-v2 .profile-actions-menu",
@@ -312,7 +318,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=' in markup
     assert '<link rel="stylesheet" href="/static/prism-v2.css?v=' in markup
     assert '<script src="/static/app.js?v=' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
@@ -380,7 +386,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert 'window.location.hash = "market";' not in market_block
 
 
-    assert "Agent home is defined here as a complete composition" in v2_styles
+    assert ".prism-ui-v2.sidebar-layout-active .home-navigation {" in v2_styles
     for selector in (
         ".prism-ui-v2 .agent-home-grid",
         ".prism-ui-v2 .agent-conversation",
@@ -427,7 +433,7 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
     for node_id in ("chat-history-title", "new-chat-session", "chat-session-list", "active-chat-title"):
         assert f'id="{node_id}"' in markup
     assert "暂无历史对话" in markup
-    assert markup.index('id="new-chat-session"') < markup.index('class="nav-list"') < markup.index('id="chat-session-list"')
+    assert markup.index('id="new-chat-session"') < markup.index('id="chat-history-title"') < markup.index('id="chat-session-list"')
     for token in (
         'const CHAT_SESSIONS_STORAGE_KEY = "prism_copilot_chat_sessions_v1"',
         "function renderChatSessionList()",

@@ -15,7 +15,7 @@ const temporaryDirectory = path.join(browserDirectory, "temporary");
 await mkdir(temporaryDirectory);
 const browser = await puppeteer.launch({executablePath, headless: true,
   userDataDir: path.join(browserDirectory, "profile"), env: {...process.env, TMPDIR: temporaryDirectory}});
-const evidence = {requests: [], geometries: [], checks: []};
+const evidence = {requests: [], geometries: [], navigation: [], checks: []};
 
 try {
   const page = await browser.newPage();
@@ -45,8 +45,113 @@ try {
     await page.click("#portfolio-page-more > summary");
     await page.click(button);
   }
+  async function assertNavigation(expectedHref, hasSidebar = false) {
+    await page.waitForFunction(href => document.querySelector('#home-navigation .nav-item[aria-current]')?.getAttribute("href") === href,
+      {}, expectedHref);
+    const navigation = await page.evaluate(() => {
+      const header = document.querySelector("#home-navigation");
+      const sidebar = document.querySelector("#home-history-sidebar");
+      const visible = node => node.getClientRects().length > 0 && getComputedStyle(node).visibility !== "hidden";
+      return {
+        route: location.hash,
+        width: innerWidth,
+        headerVisible: visible(header),
+        headerWidth: header.getBoundingClientRect().width,
+        headerHeight: header.getBoundingClientRect().height,
+        headerScrollWidth: header.scrollWidth,
+        brandParent: document.querySelector(".brand").parentElement.id,
+        navigationParent: document.querySelector(".nav-section-primary").parentElement.id,
+        accountParent: document.querySelector("#persona-switcher-bar").parentElement.id,
+        settingsParent: document.querySelector(".topbar-more-menu").parentElement.id,
+        activeLinks: [...header.querySelectorAll(".nav-item[aria-current]")].map(link => link.getAttribute("href")),
+        legacyLayoutCount: document.querySelectorAll(".topbar, .nav-list, .topbar-actions, .sidebar .brand, .sidebar .nav-item").length,
+        sidebarTop: sidebar.getBoundingClientRect().top,
+        sidebarVisible: visible(sidebar),
+        sidebarInert: sidebar.inert,
+        historyControlVisible: visible(document.querySelector("#home-history-show")),
+        backdropVisible: visible(document.querySelector("#home-history-backdrop")),
+        boxes: ["#home-navigation-main", ".brand", "#home-primary-navigation", ".nav-section-primary", "#home-navigation-actions"].map(selector => {
+          const node = document.querySelector(selector);
+          const rectangle = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return {selector, left: rectangle.left, right: rectangle.right, top: rectangle.top, width: rectangle.width,
+            display: style.display, overflow: style.overflowX, flex: style.flex, position: style.position};
+        }),
+      };
+    });
+    assert.equal(navigation.headerVisible, true, JSON.stringify(navigation));
+    assert.equal(navigation.brandParent, "home-navigation-main");
+    assert.equal(navigation.navigationParent, "home-primary-navigation");
+    assert.equal(navigation.accountParent, "home-navigation-actions");
+    assert.equal(navigation.settingsParent, "home-navigation-actions");
+    assert.deepEqual(navigation.activeLinks, [expectedHref]);
+    assert.equal(navigation.legacyLayoutCount, 0);
+    assert.equal(navigation.headerHeight, navigation.width <= 900 ? 104 : 66);
+    assert.ok(navigation.headerWidth <= navigation.width + 1 && navigation.headerScrollWidth <= navigation.width + 1, JSON.stringify(navigation));
+    if (!hasSidebar) {
+      assert.equal(navigation.sidebarVisible, false);
+      assert.equal(navigation.sidebarInert, true);
+      assert.equal(navigation.historyControlVisible, false);
+      assert.equal(navigation.backdropVisible, false);
+    } else if (navigation.sidebarVisible) {
+      assert.ok(navigation.sidebarTop >= navigation.headerHeight - 1, JSON.stringify(navigation));
+    }
+    evidence.navigation.push(navigation);
+  }
+  async function testResearchNavigation() {
+    await page.click(".topbar-more-menu > summary");
+    const menu = await page.$eval(".topbar-more-panel", node => {
+      const box = node.getBoundingClientRect();
+      return {left: box.left, right: box.right, width: innerWidth};
+    });
+    assert.ok(menu.left >= 0 && menu.right <= menu.width + 1, JSON.stringify(menu));
+    await page.click("#view-mode-toggle");
+    await page.waitForSelector("#stock-research:not([hidden])");
+    assert.equal(await page.$eval(".topbar-more-menu", node => node.open), false);
+    for (const section of ["stock-research", "fund-research", "convertible-bond-research"]) {
+      await page.click(`#workspace-page-tabs a[href="#${section}"]`);
+      await page.waitForSelector(`#${section}:not([hidden])`);
+      await assertNavigation("#copilot");
+    }
+    await page.click('.nav-section-primary a[href="#overview"]');
+    await assertNavigation("#overview");
+  }
+  async function testAccountMenu() {
+    await page.click("#persona-switcher-bar > summary");
+    const menu = await page.$eval(".profile-actions-panel", node => {
+      const box = node.getBoundingClientRect();
+      return {left: box.left, right: box.right, width: innerWidth};
+    });
+    assert.ok(menu.left >= 0 && menu.right <= menu.width + 1, JSON.stringify(menu));
+    await page.click("#open-portfolio-modal-btn");
+    await page.waitForSelector("#portfolio-modal[open]");
+    await page.click("#close-portfolio-modal-btn");
+    await page.waitForFunction(() => !document.querySelector("#portfolio-modal").open);
+    await page.click("#persona-switcher-bar > summary");
+    await assertNavigation("#overview");
+  }
+  async function testSystemNavigation() {
+    for (let count = 0; count < 5; count++) await page.click(".brand");
+    await page.waitForSelector("body.dev-mode");
+    await page.click(".topbar-more-menu > summary");
+    await page.click("#nav-expert-toggle");
+    await page.waitForSelector("#evaluation-dashboard:not([hidden])");
+    await assertNavigation("#evaluation-dashboard");
+    for (const section of ["context-memory", "research-tracks", "advisor", "dev-assist"]) {
+      await page.click(".topbar-more-menu > summary");
+      await page.click(`#nav-expert-items a[href="#${section}"]`);
+      await page.waitForSelector(`#${section}:not([hidden])`);
+      await assertNavigation(`#${section}`);
+    }
+    await page.click("#dev-mode-badge");
+    await page.waitForSelector("body:not(.dev-mode)");
+    await page.click('.nav-section-primary a[href="#overview"]');
+    await waitReport(2);
+    await assertNavigation("#overview");
+  }
   async function waitReport(count) {
     await page.waitForFunction(expected => document.querySelector("#overview-position-count").textContent === String(expected)
+      && !document.querySelector("#overview").hidden
       && !document.querySelector("#portfolio-report-card").hidden
       && !document.querySelector("#portfolio-source-line").hidden, {}, count);
     return api("/api/v1/advisor/portfolio/report");
@@ -75,8 +180,19 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.prismMode === "LIVE");
   if (await page.$eval("#questionnaire-welcome", node => node.open)) await page.click("#welcome-later");
   const home = await page.$eval("#home-navigation", node => ({height: node.getBoundingClientRect().height, x: node.getBoundingClientRect().x}));
+  await assertNavigation("#copilot", true);
+  for (const section of ["trading-style", "market", "profile"]) {
+    await page.click(`.nav-section-primary a[href="#${section}"]`);
+    await page.waitForSelector(`#${section}:not([hidden])`);
+    await assertNavigation(`#${section}`, section === "market");
+  }
+  await page.click("#profile-questionnaire-open");
+  await page.waitForSelector("#profile-questionnaire-view:not([hidden])");
+  await assertNavigation("#profile");
   await page.click('.nav-section-primary a[href="#overview"]');
+  await page.waitForSelector("#overview", {visible: true});
   await page.waitForSelector("#portfolio-empty:not([hidden])");
+  await assertNavigation("#overview");
   assert.equal(await visible("#home-history-sidebar"), false);
   assert.equal(await visible("#workspace-page-tabs"), false);
   assert.equal(await visible("#portfolio-page-more"), false);
@@ -85,6 +201,7 @@ try {
   assert.deepEqual(await page.$eval("#home-navigation", node => ({height: node.getBoundingClientRect().height, x: node.getBoundingClientRect().x})), home);
   evidence.checks.push("空持仓单一入口与共用导航");
   console.log(evidence.checks.at(-1));
+  await testResearchNavigation();
 
   await page.click("#portfolio-empty [data-open-portfolio]");
   await page.waitForSelector("#portfolio-modal[open]");
@@ -220,8 +337,25 @@ try {
     await page.waitForSelector(`#${section}:not([hidden])`);
     await page.waitForFunction(() => !document.querySelector("#portfolio-analysis-drawer").open
       && !document.body.classList.contains("portfolio-dialog-open"));
+    await assertNavigation("#overview");
+    await page.goBack({waitUntil: "domcontentloaded"});
+    await page.waitForSelector("#overview:not([hidden])");
+    await assertNavigation("#overview");
+    await page.goForward({waitUntil: "domcontentloaded"});
+    await page.waitForSelector(`#${section}:not([hidden])`);
+    await assertNavigation("#overview");
+    await page.reload({waitUntil: "domcontentloaded"});
+    await page.waitForSelector("body:not(.questionnaire-pending)");
+    await page.waitForSelector(`#${section}:not([hidden])`);
+    await assertNavigation("#overview");
+    for (const tab of ["portfolio-optimization", "portfolio-rebalancing", "scenario-simulation"]) {
+      await page.click(`#workspace-page-tabs a[href="#${tab}"]`);
+      await page.waitForSelector(`#${tab}:not([hidden])`);
+      await assertNavigation("#overview");
+    }
     await page.click('.nav-section-primary a[href="#overview"]');
     await waitReport(2);
+    await assertNavigation("#overview");
   }
   evidence.checks.push("更多分析的三个业务入口与返回导航");
   console.log(evidence.checks.at(-1));
@@ -237,7 +371,28 @@ try {
     assert.ok(drawer.left >= 0 && drawer.right <= width + 1 && drawer.scrollWidth <= drawer.width + 1, JSON.stringify(drawer));
     await page.click("#portfolio-holdings-details > summary");
     assert.equal(await page.$eval("#portfolio-analysis-drawer", node => node.scrollWidth <= node.clientWidth), true);
-    await page.click("#portfolio-details-close");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector("#portfolio-analysis-drawer").open);
+    assert.equal(await page.evaluate(() => document.activeElement.id), "portfolio-details-entry");
+    for (const section of ["trading-style", "profile", "copilot", "market"]) {
+      await page.click(`.nav-section-primary a[href="#${section}"]`);
+      await page.waitForSelector(`#${section}:not([hidden])`);
+      await assertNavigation(`#${section}`, ["copilot", "market"].includes(section));
+    }
+    await page.click('.nav-section-primary a[href="#overview"]');
+    await waitReport(2);
+    await testAccountMenu();
+    await testResearchNavigation();
+    for (const section of ["portfolio-optimization", "portfolio-rebalancing", "scenario-simulation"]) {
+      await page.click("#portfolio-details-entry");
+      await page.click("#portfolio-more-details > summary");
+      await page.click(`.portfolio-tool-links a[href="#${section}"]`);
+      await page.waitForSelector(`#${section}:not([hidden])`);
+      await assertNavigation("#overview");
+      await page.click('.nav-section-primary a[href="#overview"]');
+      await waitReport(2);
+    }
+    if (width === 320 || width === 1440) await testSystemNavigation();
     evidence.geometries.push({...geometry, drawer});
   }
   evidence.checks.push("四种窗口尺寸的主页面与详情窗口");
@@ -273,13 +428,18 @@ try {
   assert.equal(await visible("#portfolio-empty"), true);
   assert.equal(await visible("#portfolio-page-more"), false);
   await page.click('.nav-section-primary a[href="#copilot"]');
+  await page.waitForSelector("#copilot:not([hidden])");
+  await assertNavigation("#copilot", true);
   assert.equal(await visible("#home-history-sidebar"), true);
   await page.click('.nav-section-primary a[href="#market"]');
+  await page.waitForSelector("#market:not([hidden])");
+  await assertNavigation("#market", true);
   assert.equal(await visible(".market-sidebar-panel"), true);
   assert.deepEqual(errors, []);
   evidence.checks.push("删除全部持仓、首页与大盘导航恢复、无页面错误");
+  evidence.checks.push("主导航、附加分析、研究及系统工具、账户菜单、前进后退、刷新与四种窗口宽度的导航一致");
   await writeFile(path.join(output, "verification.json"), JSON.stringify(evidence, null, 2));
-  console.log(JSON.stringify({checks: evidence.checks, geometries: evidence.geometries, requests: evidence.requests.length}));
+  console.log(JSON.stringify({checks: evidence.checks, geometries: evidence.geometries, navigation: evidence.navigation.length, requests: evidence.requests.length}));
 } finally {
   await browser.close();
 }
