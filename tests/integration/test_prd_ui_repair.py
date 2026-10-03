@@ -1,7 +1,11 @@
 import asyncio
 from pathlib import Path
+import re
+import shutil
+import subprocess
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import create_app
@@ -161,14 +165,55 @@ def test_unlocked_chat_strips_unverified_personal_context(monkeypatch, tmp_path)
     assert captured["history"][0].role == "assistant"
 
 
-def test_dynamic_quick_tags_keep_direct_live_intent_route():
+def test_dynamic_quick_tags_prefill_without_executing_research():
     app_js = (Path(__file__).parents[2] / "app" / "api" / "static" / "app.js").read_text(encoding="utf-8")
     block = app_js[app_js.index("function renderQuickTags"):app_js.index("function handleCopilotIntent")]
-    assert "handleCopilotIntent(t.intent, t.target)" in block
+    assert "fillChatPrompt(t.label)" in block
+    assert "handleCopilotIntent(t.intent, t.target)" not in block
     assert "handleStreamingChat(t.label)" not in block
     intent_block = app_js[app_js.index("function handleCopilotIntent"):app_js.index("function buildCopilotLoadingCard")]
     assert "runCopilotStockResearch(target)" in intent_block
     assert "async function runCopilotStockResearch()" in app_js
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js required for quick-tag behavior regression")
+    functions = "\n".join(
+        re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", app_js).group()
+        for name in ["renderQuickTags", "fillChatPrompt"]
+    )
+    probe = r'''
+const assert = require("node:assert/strict");
+class Element {
+  constructor() { this.children = []; this.value = ""; this.listeners = new Map(); }
+  append(...children) { this.children.push(...children); }
+  addEventListener(type, callback) { this.listeners.set(type, callback); }
+  focus() { document.activeElement = this; }
+}
+const nodes = new Map();
+const byId = id => { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
+const document = {activeElement: null, createElement: () => new Element()};
+const clear = element => { element.children = []; };
+const executions = [];
+const handleCopilotIntent = (...args) => executions.push(["intent", ...args]);
+const handleStreamingChat = (...args) => executions.push(["stream", ...args]);
+const fetch = (...args) => { executions.push(["request", ...args]); throw Error("unexpected request"); };
+const createPersistedChatSession = (...args) => executions.push(["session", ...args]);
+''' + functions + r'''
+renderQuickTags([
+  {label: "  研究华天科技  ", intent: "RESEARCH_STOCK", target: "002185.SZ"},
+  {label: "检查持仓", intent: "CHECK_PORTFOLIO"},
+  {label: "组合调整", intent: "REBALANCE_PORTFOLIO"},
+  {label: "不展示的第四项", intent: "SCENARIO_SHOCK"},
+]);
+assert.equal(byId("copilot-quick-tags").children.length, 3);
+const button = byId("copilot-quick-tags").children[0].children[0];
+button.listeners.get("click")();
+assert.equal(byId("copilot-natural-input").value, "研究华天科技");
+assert.equal(document.activeElement, byId("copilot-natural-input"));
+assert.deepEqual(executions, [], "choosing a suggestion must wait for explicit Send");
+'''
+    result = subprocess.run([node, "-e", probe], capture_output=True, text=True, encoding="utf-8", timeout=10)
+    assert result.returncode == 0, result.stderr
 
 
 def test_delete_last_position_and_restore_empty_portfolio(tmp_path):

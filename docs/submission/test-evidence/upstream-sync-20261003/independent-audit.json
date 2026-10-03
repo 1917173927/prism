@@ -1,0 +1,2109 @@
+{
+  "schema_version": "prism-upstream-independent-audit.v1",
+  "generated_at": "2026-10-03T05:16:15.948793+00:00",
+  "audit_method": "AGENT_ASSISTED_READ_ONLY_EXACT_BYTES_AND_GIT_FILTERED_BLOBS",
+  "local_parent": "c272c0463f7ae4a1c903f4e4d9b642ef530a2fbc",
+  "upstream_parent": "a85d29e4444e988b7fb374426cd32b25857068aa",
+  "merge_base": "09331874b79ddcb29ee7b2fea9150b19618a4c5f",
+  "snapshot_scope": "Current working tree during pending merge; root must verify final commit and push separately.",
+  "archive_manifest_path": "docs/submission/test-evidence/research-quality-20261003/manifest.json",
+  "counts": {
+    "archive_files": 17,
+    "frozen_raw_byte_hashes": 1,
+    "frozen_canonical_hashes": 1,
+    "zip_members": 8,
+    "exact_evidence_checks": 27,
+    "protected_backend_research_files": 282,
+    "upstream_changed_files": 20,
+    "original_research_feature_markers": 5,
+    "errors": 0,
+    "zip_declared_evidence_members": 8,
+    "zip_internal_hash_manifest_members": 1,
+    "zip_total_members": 9,
+    "zip_internal_hash_manifest_consistency_checks": 1,
+    "zip_membership_checks": 1
+  },
+  "evidence_checks": [
+    {
+      "category": "archive_file",
+      "name": "browser-proof.json",
+      "bytes": 2326,
+      "expected_sha256": "7df319f5dfd5e6913f2fa8f121cdf55ae54dc3784da75f850096f67663f829ec",
+      "actual_sha256": "7df319f5dfd5e6913f2fa8f121cdf55ae54dc3784da75f850096f67663f829ec",
+      "passed": true,
+      "expected_bytes": 2326
+    },
+    {
+      "category": "archive_file",
+      "name": "hybrid-execution.json",
+      "bytes": 984440,
+      "expected_sha256": "d94af5f72b2e43c05aa5176f6c08a5a0ea79030859b93b1889eb58e3f7575f93",
+      "actual_sha256": "d94af5f72b2e43c05aa5176f6c08a5a0ea79030859b93b1889eb58e3f7575f93",
+      "passed": true,
+      "expected_bytes": 984440
+    },
+    {
+      "category": "archive_file",
+      "name": "hybrid-review.json",
+      "bytes": 5952789,
+      "expected_sha256": "a1cd27943cb9e6ba5883a20410bb634fb8fa06d31ad6ebd78fcbeccc5ca6942e",
+      "actual_sha256": "a1cd27943cb9e6ba5883a20410bb634fb8fa06d31ad6ebd78fcbeccc5ca6942e",
+      "passed": true,
+      "expected_bytes": 5952789
+    },
+    {
+      "category": "archive_file",
+      "name": "hybrid-summary.json",
+      "bytes": 2821,
+      "expected_sha256": "52f30f84d72fbb3098feae412b982e41afcc02b745850054321df8ae97059a23",
+      "actual_sha256": "52f30f84d72fbb3098feae412b982e41afcc02b745850054321df8ae97059a23",
+      "passed": true,
+      "expected_bytes": 2821
+    },
+    {
+      "category": "archive_file",
+      "name": "icbc-announcement-table-page3.png",
+      "bytes": 301122,
+      "expected_sha256": "28474ffe38d3d911cc995832be299c4e8ab55e4664a06ce9e60b4a60bbdd491c",
+      "actual_sha256": "28474ffe38d3d911cc995832be299c4e8ab55e4664a06ce9e60b4a60bbdd491c",
+      "passed": true,
+      "expected_bytes": 301122
+    },
+    {
+      "category": "archive_file",
+      "name": "icbc-annual-report-table-page11.png",
+      "bytes": 146907,
+      "expected_sha256": "648f9eb42c1fecdcc775d9b5dae30101fcf94fad061b40095cff76ff12217b92",
+      "actual_sha256": "648f9eb42c1fecdcc775d9b5dae30101fcf94fad061b40095cff76ff12217b92",
+      "passed": true,
+      "expected_bytes": 146907
+    },
+    {
+      "category": "archive_file",
+      "name": "independent-audits.zip",
+      "bytes": 1079219,
+      "expected_sha256": "49712a9978e253008d0695ce6898e0a922085449e456c8ffd95f9abb6b214c73",
+      "actual_sha256": "49712a9978e253008d0695ce6898e0a922085449e456c8ffd95f9abb6b214c73",
+      "passed": true,
+      "expected_bytes": 1079219
+    },
+    {
+      "category": "archive_file",
+      "name": "independent-source-findings-v3.json",
+      "bytes": 78394,
+      "expected_sha256": "a328518842d8c0d54e46e38d88239c2c177d0734fb7325854d967f1ccbf4ea91",
+      "actual_sha256": "a328518842d8c0d54e46e38d88239c2c177d0734fb7325854d967f1ccbf4ea91",
+      "passed": true,
+      "expected_bytes": 78394
+    },
+    {
+      "category": "archive_file",
+      "name": "keyword-execution.json",
+      "bytes": 690302,
+      "expected_sha256": "192a6d24b2a1793788e724d4a8d1269de65488e9f0f233afef4f3fabfb129412",
+      "actual_sha256": "192a6d24b2a1793788e724d4a8d1269de65488e9f0f233afef4f3fabfb129412",
+      "passed": true,
+      "expected_bytes": 690302
+    },
+    {
+      "category": "archive_file",
+      "name": "keyword-review.json",
+      "bytes": 4252046,
+      "expected_sha256": "2b83f2f7dd5c38035c2c90bae56e153c27e21e87f3282c75aaa865c6731ffbee",
+      "actual_sha256": "2b83f2f7dd5c38035c2c90bae56e153c27e21e87f3282c75aaa865c6731ffbee",
+      "passed": true,
+      "expected_bytes": 4252046
+    },
+    {
+      "category": "archive_file",
+      "name": "keyword-summary.json",
+      "bytes": 2822,
+      "expected_sha256": "a271cb68bd05197e893abc0e1ae6289628f684ba254cfad2933dbd0a82507fb1",
+      "actual_sha256": "a271cb68bd05197e893abc0e1ae6289628f684ba254cfad2933dbd0a82507fb1",
+      "passed": true,
+      "expected_bytes": 2822
+    },
+    {
+      "category": "archive_file",
+      "name": "nbs-final-newspaper-page1.png",
+      "bytes": 1346459,
+      "expected_sha256": "12a929c5e3ccee5f24879265d92864bc7d3a33ed7bd02177d8bb46cad9bddc6d",
+      "actual_sha256": "12a929c5e3ccee5f24879265d92864bc7d3a33ed7bd02177d8bb46cad9bddc6d",
+      "passed": true,
+      "expected_bytes": 1346459
+    },
+    {
+      "category": "archive_file",
+      "name": "publication-authenticity-checks-v2.json",
+      "bytes": 6577,
+      "expected_sha256": "0f0408507ce72da770068b86ceb90f1ea9d193a787038cdf4d74d7a29ec82044",
+      "actual_sha256": "0f0408507ce72da770068b86ceb90f1ea9d193a787038cdf4d74d7a29ec82044",
+      "passed": true,
+      "expected_bytes": 6577
+    },
+    {
+      "category": "archive_file",
+      "name": "review-agent-100.png",
+      "bytes": 68224,
+      "expected_sha256": "8e44742014f92592af00afada8eab17816bd0442507364ee3f0e7046d5b81f3d",
+      "actual_sha256": "8e44742014f92592af00afada8eab17816bd0442507364ee3f0e7046d5b81f3d",
+      "passed": true,
+      "expected_bytes": 68224
+    },
+    {
+      "category": "archive_file",
+      "name": "review-agent-export.png",
+      "bytes": 92394,
+      "expected_sha256": "3c04abe77b7a48fde79905d2b2a566c8cc5163eb44a8a32ea5eae324d3759bb4",
+      "actual_sha256": "3c04abe77b7a48fde79905d2b2a566c8cc5163eb44a8a32ea5eae324d3759bb4",
+      "passed": true,
+      "expected_bytes": 92394
+    },
+    {
+      "category": "archive_file",
+      "name": "source-cache-manifest.json",
+      "bytes": 7447,
+      "expected_sha256": "1fff03702e61e5229ed1ced6fd25fa5f6e37f499e48e77b4fd13cce6ce6208c2",
+      "actual_sha256": "1fff03702e61e5229ed1ced6fd25fa5f6e37f499e48e77b4fd13cce6ce6208c2",
+      "passed": true,
+      "expected_bytes": 7447
+    },
+    {
+      "category": "archive_file",
+      "name": "verification.json",
+      "bytes": 1133,
+      "expected_sha256": "dee35b8ecdac0a594c43bf447ab334476e33df82fcc5b2b0cd34d24e05166725",
+      "actual_sha256": "dee35b8ecdac0a594c43bf447ab334476e33df82fcc5b2b0cd34d24e05166725",
+      "passed": true,
+      "expected_bytes": 1133
+    },
+    {
+      "category": "frozen_raw_bytes",
+      "name": "eval_cases/research/real_macro_bank_100.json",
+      "bytes": 312858,
+      "expected_sha256": "5d25680176ffca70ef37aa1c0da0ad2ee0816d33a1ae2b4158a31fa2254c3892",
+      "actual_sha256": "5d25680176ffca70ef37aa1c0da0ad2ee0816d33a1ae2b4158a31fa2254c3892",
+      "passed": true
+    },
+    {
+      "category": "frozen_canonical_compact",
+      "name": "eval_cases/research/real_macro_bank_100.json",
+      "expected_sha256": "1e266dd16ef1070a94412394bc5d53fc160dbb174828edc5a62b168d6c75e48c",
+      "actual_sha256": "1e266dd16ef1070a94412394bc5d53fc160dbb174828edc5a62b168d6c75e48c",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "keyword-review.json",
+      "bytes": 3060121,
+      "expected_sha256": "fc710ea03a01d50e9c882c1c94ff3f952d45d2045d6620d71326e147d5ff7802",
+      "actual_sha256": "fc710ea03a01d50e9c882c1c94ff3f952d45d2045d6620d71326e147d5ff7802",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "hybrid-review.json",
+      "bytes": 4325884,
+      "expected_sha256": "3dfb2af4a4f38fe8563911de6e700388fe63df8789092f7643c1d97e2a8f3847",
+      "actual_sha256": "3dfb2af4a4f38fe8563911de6e700388fe63df8789092f7643c1d97e2a8f3847",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "audit-keyword-first50-v3.json",
+      "bytes": 3200842,
+      "expected_sha256": "132e4f785dedc0dce7d198099960ae61e915a18ba772e403a0817a48b3860b1e",
+      "actual_sha256": "132e4f785dedc0dce7d198099960ae61e915a18ba772e403a0817a48b3860b1e",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "audit-keyword-last50-v3.json",
+      "bytes": 1484453,
+      "expected_sha256": "1ddb4a34eaeeb6f9fd75f6f25bd72b0bb5ac99ddc7045e3d9e1c0aac8c4a5e32",
+      "actual_sha256": "1ddb4a34eaeeb6f9fd75f6f25bd72b0bb5ac99ddc7045e3d9e1c0aac8c4a5e32",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "audit-hybrid-first50-v3.json",
+      "bytes": 4581154,
+      "expected_sha256": "eea51932732afe8b768feec865e518c495d226e39ad0bea437dea7fd029cd712",
+      "actual_sha256": "eea51932732afe8b768feec865e518c495d226e39ad0bea437dea7fd029cd712",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "audit-hybrid-last50-v3.json",
+      "bytes": 1949107,
+      "expected_sha256": "4920a4a9a2bf9c268e602045a102824ae4dfed00371e47319ab3798d6df0f51c",
+      "actual_sha256": "4920a4a9a2bf9c268e602045a102824ae4dfed00371e47319ab3798d6df0f51c",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "alignment-hybrid-v2-v3-first50.json",
+      "bytes": 1178,
+      "expected_sha256": "db4546f05e38b0b8c2d4cbfc951d5d3be705d6a53fc8ef0e96fbf7253e9ae411",
+      "actual_sha256": "db4546f05e38b0b8c2d4cbfc951d5d3be705d6a53fc8ef0e96fbf7253e9ae411",
+      "passed": true
+    },
+    {
+      "category": "zip_member",
+      "name": "alignment-keyword-v2-v3-first50.json",
+      "bytes": 953,
+      "expected_sha256": "05cd1c1bd733319b47ee3df21b4511624bb810aceb984808ad2b11cda9e438a1",
+      "actual_sha256": "05cd1c1bd733319b47ee3df21b4511624bb810aceb984808ad2b11cda9e438a1",
+      "passed": true
+    }
+  ],
+  "protected_file_checks": [
+    {
+      "path": ".env.example",
+      "expected_git_blob": "abfc0cd5b0bdc9807628a2589830948491e82312",
+      "actual_git_blob": "abfc0cd5b0bdc9807628a2589830948491e82312",
+      "passed": true
+    },
+    {
+      "path": ".gitattributes",
+      "expected_git_blob": "144ed24206438315f115c5dbc1efc2f657b233e1",
+      "actual_git_blob": "144ed24206438315f115c5dbc1efc2f657b233e1",
+      "passed": true
+    },
+    {
+      "path": "app/__init__.py",
+      "expected_git_blob": "f5535ef1408f606a62c43e4661ea2bfdfe1da3bd",
+      "actual_git_blob": "f5535ef1408f606a62c43e4661ea2bfdfe1da3bd",
+      "passed": true
+    },
+    {
+      "path": "app/allocation/__init__.py",
+      "expected_git_blob": "b015a498d4e9973028da82cc6cbb4ba5299774c6",
+      "actual_git_blob": "b015a498d4e9973028da82cc6cbb4ba5299774c6",
+      "passed": true
+    },
+    {
+      "path": "app/allocation/contracts.py",
+      "expected_git_blob": "5c36998b1395abe3b90eb9d7b1c5c6aee9b8edaf",
+      "actual_git_blob": "5c36998b1395abe3b90eb9d7b1c5c6aee9b8edaf",
+      "passed": true
+    },
+    {
+      "path": "app/allocation/envelope.py",
+      "expected_git_blob": "bd6c4d773149229c96c852753dbf5f168225c74b",
+      "actual_git_blob": "bd6c4d773149229c96c852753dbf5f168225c74b",
+      "passed": true
+    },
+    {
+      "path": "app/api/__init__.py",
+      "expected_git_blob": "7c890760ef63e3569ba3008b6bb410a4e4871265",
+      "actual_git_blob": "7c890760ef63e3569ba3008b6bb410a4e4871265",
+      "passed": true
+    },
+    {
+      "path": "app/api/access.py",
+      "expected_git_blob": "47f857591bd89f64ed2cf4422b63070b8bc46538",
+      "actual_git_blob": "47f857591bd89f64ed2cf4422b63070b8bc46538",
+      "passed": true
+    },
+    {
+      "path": "app/api/algorithm_routes.py",
+      "expected_git_blob": "37655ab524d606f5b5e2411eb22213af16332427",
+      "actual_git_blob": "37655ab524d606f5b5e2411eb22213af16332427",
+      "passed": true
+    },
+    {
+      "path": "app/api/contracts.py",
+      "expected_git_blob": "0b42974181fad66abb26952f78e31c99688a7176",
+      "actual_git_blob": "0b42974181fad66abb26952f78e31c99688a7176",
+      "passed": true
+    },
+    {
+      "path": "app/api/knowledge_routes.py",
+      "expected_git_blob": "abd23c7894d7a18b0e186beca380ef145f0c39b9",
+      "actual_git_blob": "abd23c7894d7a18b0e186beca380ef145f0c39b9",
+      "passed": true
+    },
+    {
+      "path": "app/api/main.py",
+      "expected_git_blob": "e928a81506daffea60f37a7642bf50e8a7c93a96",
+      "actual_git_blob": "e928a81506daffea60f37a7642bf50e8a7c93a96",
+      "passed": true
+    },
+    {
+      "path": "app/api/research_routes.py",
+      "expected_git_blob": "1750bbbf944a70a07a4d16044881d14691a66164",
+      "actual_git_blob": "1750bbbf944a70a07a4d16044881d14691a66164",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-platform.css",
+      "expected_git_blob": "7917ec87665098dd9c06b21345966908ffb5c3e6",
+      "actual_git_blob": "7917ec87665098dd9c06b21345966908ffb5c3e6",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-platform.js",
+      "expected_git_blob": "e41e91e8e631a7da22a980065055a571bafe5cc2",
+      "actual_git_blob": "e41e91e8e631a7da22a980065055a571bafe5cc2",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-quality-review-demo.json",
+      "expected_git_blob": "0a550a38db4749ceec9766a7e9ab71075ee3612e",
+      "actual_git_blob": "0a550a38db4749ceec9766a7e9ab71075ee3612e",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-quality-review-real-template.json",
+      "expected_git_blob": "03246ac17dd95352fc44731877804ddea5d1286b",
+      "actual_git_blob": "03246ac17dd95352fc44731877804ddea5d1286b",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-quality-review.html",
+      "expected_git_blob": "44c7613e17b5d3295654b5a24cfef58043fa9658",
+      "actual_git_blob": "44c7613e17b5d3295654b5a24cfef58043fa9658",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-quality-review.js",
+      "expected_git_blob": "8a8028a6c8661ac207ae78e8d4cdcca702f03a6f",
+      "actual_git_blob": "8a8028a6c8661ac207ae78e8d4cdcca702f03a6f",
+      "passed": true
+    },
+    {
+      "path": "app/api/static/research-tools.js",
+      "expected_git_blob": "a7a538f5978954fe7e0a76722cbb02e1eb16a82b",
+      "actual_git_blob": "a7a538f5978954fe7e0a76722cbb02e1eb16a82b",
+      "passed": true
+    },
+    {
+      "path": "app/contracts/__init__.py",
+      "expected_git_blob": "b2afb6725b89ee2e60a44429975cf974502c23ca",
+      "actual_git_blob": "b2afb6725b89ee2e60a44429975cf974502c23ca",
+      "passed": true
+    },
+    {
+      "path": "app/contracts/evidence.py",
+      "expected_git_blob": "a2eda31fb115918893dd67cf0b71fa4b46aa384f",
+      "actual_git_blob": "a2eda31fb115918893dd67cf0b71fa4b46aa384f",
+      "passed": true
+    },
+    {
+      "path": "app/convertible_bond/__init__.py",
+      "expected_git_blob": "9c5ce45ee26aa24050d57661f23af48abab1a7e4",
+      "actual_git_blob": "9c5ce45ee26aa24050d57661f23af48abab1a7e4",
+      "passed": true
+    },
+    {
+      "path": "app/convertible_bond/contracts.py",
+      "expected_git_blob": "2c8e87f81d6d63fde5b2bcb402dc0e3b3252fe24",
+      "actual_git_blob": "2c8e87f81d6d63fde5b2bcb402dc0e3b3252fe24",
+      "passed": true
+    },
+    {
+      "path": "app/dev_assist/__init__.py",
+      "expected_git_blob": "29e01bfbbb2cdffe428e50bf548b1b573c414a5c",
+      "actual_git_blob": "29e01bfbbb2cdffe428e50bf548b1b573c414a5c",
+      "passed": true
+    },
+    {
+      "path": "app/dev_assist/contracts.py",
+      "expected_git_blob": "ad9c18015b2f12936439a3e14637e5dfb2c0ce8c",
+      "actual_git_blob": "ad9c18015b2f12936439a3e14637e5dfb2c0ce8c",
+      "passed": true
+    },
+    {
+      "path": "app/dev_assist/service.py",
+      "expected_git_blob": "7c6895ff2f522b91f1953d908443c4d6d64b0769",
+      "actual_git_blob": "7c6895ff2f522b91f1953d908443c4d6d64b0769",
+      "passed": true
+    },
+    {
+      "path": "app/evaluation/__init__.py",
+      "expected_git_blob": "26bced312ec5b104fe2278a9b6d36d7356520e72",
+      "actual_git_blob": "26bced312ec5b104fe2278a9b6d36d7356520e72",
+      "passed": true
+    },
+    {
+      "path": "app/evaluation/contracts.py",
+      "expected_git_blob": "0c0d6601c266e0043aee15bd042f638537786adb",
+      "actual_git_blob": "0c0d6601c266e0043aee15bd042f638537786adb",
+      "passed": true
+    },
+    {
+      "path": "app/explainability/__init__.py",
+      "expected_git_blob": "3de5c8233161284c55c8f550dcb5f7e833b68244",
+      "actual_git_blob": "3de5c8233161284c55c8f550dcb5f7e833b68244",
+      "passed": true
+    },
+    {
+      "path": "app/explainability/contracts.py",
+      "expected_git_blob": "4bc7fd9155268af1d95399ee3d9d66bb899bede8",
+      "actual_git_blob": "4bc7fd9155268af1d95399ee3d9d66bb899bede8",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/advisor/providers/advisor_company_data_a.json",
+      "expected_git_blob": "9f625d9ad68c233fa631419ce863548bb65b0835",
+      "actual_git_blob": "9f625d9ad68c233fa631419ce863548bb65b0835",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/advisor/providers/advisor_company_data_b.json",
+      "expected_git_blob": "9ca764f75be0c8780f1b1a857b9ecf59840efd83",
+      "actual_git_blob": "9ca764f75be0c8780f1b1a857b9ecf59840efd83",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/advisor/query_template.json",
+      "expected_git_blob": "bf35e5b874e5c2137714ab1863b17a5805775097",
+      "actual_git_blob": "bf35e5b874e5c2137714ab1863b17a5805775097",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/advisor/two_lineage_research.json",
+      "expected_git_blob": "628584a270b2ff73b10b08fc878a0a1a69c07d73",
+      "actual_git_blob": "628584a270b2ff73b10b08fc878a0a1a69c07d73",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/convertible_bond/convertible_bond_research_manifest.json",
+      "expected_git_blob": "9683d59c4ddc4507eaefea19dc280c94734ef3fd",
+      "actual_git_blob": "9683d59c4ddc4507eaefea19dc280c94734ef3fd",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/convertible_bond/providers/convertible_bond_research_source_a.json",
+      "expected_git_blob": "f8f7dfbb8c112f87ebecafd8c13a733f5824ddd5",
+      "actual_git_blob": "f8f7dfbb8c112f87ebecafd8c13a733f5824ddd5",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/convertible_bond/providers/convertible_bond_research_source_b.json",
+      "expected_git_blob": "f211013067ea14a90ccfaafaeadf696b245bc70b",
+      "actual_git_blob": "f211013067ea14a90ccfaafaeadf696b245bc70b",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/fund/fund_research_manifest.json",
+      "expected_git_blob": "833c4e45a155c7b36dece11ed89a7f2e7d53c586",
+      "actual_git_blob": "833c4e45a155c7b36dece11ed89a7f2e7d53c586",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/fund/providers/fund_research_source_a.json",
+      "expected_git_blob": "5b8cdec645cb6db1185edab4a3f718515ac8f096",
+      "actual_git_blob": "5b8cdec645cb6db1185edab4a3f718515ac8f096",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/fund/providers/fund_research_source_b.json",
+      "expected_git_blob": "5e5bbe8c128e0aa4852a9a5461d5264ae63f2895",
+      "actual_git_blob": "5e5bbe8c128e0aa4852a9a5461d5264ae63f2895",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/optimization/portfolio_optimization_template.json",
+      "expected_git_blob": "9c63fb290fec7c55922beb2d7f530ef1b0060afc",
+      "actual_git_blob": "9c63fb290fec7c55922beb2d7f530ef1b0060afc",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/fund_source_a.json",
+      "expected_git_blob": "1bf83cf69369df2c9ae32b0667b17ffd3d9711c0",
+      "actual_git_blob": "1bf83cf69369df2c9ae32b0667b17ffd3d9711c0",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/fund_source_b.json",
+      "expected_git_blob": "4bd57c72d23f549e0dd5e98a4f28b56a28469a54",
+      "actual_git_blob": "4bd57c72d23f549e0dd5e98a4f28b56a28469a54",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/industry_source_a.json",
+      "expected_git_blob": "e93784fa94d3e7a09c8ca9d6ed4523e1b01adcfa",
+      "actual_git_blob": "e93784fa94d3e7a09c8ca9d6ed4523e1b01adcfa",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/industry_source_b.json",
+      "expected_git_blob": "906f15e2b5a8d07da8a9ab314b5f3f43f575aece",
+      "actual_git_blob": "906f15e2b5a8d07da8a9ab314b5f3f43f575aece",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/macro_source_a.json",
+      "expected_git_blob": "e9105c4d9692efb0b1dd6fbe6156bc967bc33787",
+      "actual_git_blob": "e9105c4d9692efb0b1dd6fbe6156bc967bc33787",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/macro_source_b.json",
+      "expected_git_blob": "bc44e54911fa5cbcf6e344b782377b7f5deab3a1",
+      "actual_git_blob": "bc44e54911fa5cbcf6e344b782377b7f5deab3a1",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/stock_source_a.json",
+      "expected_git_blob": "720b0fd01d3b1d5862f054bc2de547ffc1aeca78",
+      "actual_git_blob": "720b0fd01d3b1d5862f054bc2de547ffc1aeca78",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/providers/stock_source_b.json",
+      "expected_git_blob": "6747b9734fb2615d43d0907822ce24039374bc49",
+      "actual_git_blob": "6747b9734fb2615d43d0907822ce24039374bc49",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/research/specialist_matrix.json",
+      "expected_git_blob": "d65ed18214a957c76bbc8422c1e852d939873d06",
+      "actual_git_blob": "d65ed18214a957c76bbc8422c1e852d939873d06",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/stock/providers/stock_research_source_a.json",
+      "expected_git_blob": "a775b842b0d242915c0f6a9d5e1501e0acc259f8",
+      "actual_git_blob": "a775b842b0d242915c0f6a9d5e1501e0acc259f8",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/stock/providers/stock_research_source_b.json",
+      "expected_git_blob": "1c4e5cf5d6e0d8233cea627aae5db01f3431ff35",
+      "actual_git_blob": "1c4e5cf5d6e0d8233cea627aae5db01f3431ff35",
+      "passed": true
+    },
+    {
+      "path": "app/fixtures/stock/stock_research_manifest.json",
+      "expected_git_blob": "4614d5d1f82db16f87d98e6a55a8eb784f4c69ba",
+      "actual_git_blob": "4614d5d1f82db16f87d98e6a55a8eb784f4c69ba",
+      "passed": true
+    },
+    {
+      "path": "app/fund/__init__.py",
+      "expected_git_blob": "c28524de80ef8aecc855dd2907b7c47f13720f1a",
+      "actual_git_blob": "c28524de80ef8aecc855dd2907b7c47f13720f1a",
+      "passed": true
+    },
+    {
+      "path": "app/fund/contracts.py",
+      "expected_git_blob": "619674f89715da701b3908891b6f61d8ee09d030",
+      "actual_git_blob": "619674f89715da701b3908891b6f61d8ee09d030",
+      "passed": true
+    },
+    {
+      "path": "app/gates/__init__.py",
+      "expected_git_blob": "37b6ce4dd8067d56c2ffd6bc0abbb13613ca49bc",
+      "actual_git_blob": "37b6ce4dd8067d56c2ffd6bc0abbb13613ca49bc",
+      "passed": true
+    },
+    {
+      "path": "app/gates/compliance.py",
+      "expected_git_blob": "f4773e53c962c2d2a472f3a513bb2721d8514db2",
+      "actual_git_blob": "f4773e53c962c2d2a472f3a513bb2721d8514db2",
+      "passed": true
+    },
+    {
+      "path": "app/gates/contracts.py",
+      "expected_git_blob": "9f33987d5dd3d5d26b2bf898d08a0af4bf412013",
+      "actual_git_blob": "9f33987d5dd3d5d26b2bf898d08a0af4bf412013",
+      "passed": true
+    },
+    {
+      "path": "app/gates/fingerprint.py",
+      "expected_git_blob": "520ed9045517d2102679cca4e7760811fecf4f47",
+      "actual_git_blob": "520ed9045517d2102679cca4e7760811fecf4f47",
+      "passed": true
+    },
+    {
+      "path": "app/gates/pipeline.py",
+      "expected_git_blob": "02ae63f638ab527822409f5e0caa7c0fc1c158bc",
+      "actual_git_blob": "02ae63f638ab527822409f5e0caa7c0fc1c158bc",
+      "passed": true
+    },
+    {
+      "path": "app/gates/risk.py",
+      "expected_git_blob": "158f7310ae19e1346a772510745baef261dafdfd",
+      "actual_git_blob": "158f7310ae19e1346a772510745baef261dafdfd",
+      "passed": true
+    },
+    {
+      "path": "app/history/__init__.py",
+      "expected_git_blob": "a47d1c5a57e93f04434a691d99e628c67cd39102",
+      "actual_git_blob": "a47d1c5a57e93f04434a691d99e628c67cd39102",
+      "passed": true
+    },
+    {
+      "path": "app/history/contracts.py",
+      "expected_git_blob": "dba71e261e8cb1e9f18acb2620a3a7c986b226fd",
+      "actual_git_blob": "dba71e261e8cb1e9f18acb2620a3a7c986b226fd",
+      "passed": true
+    },
+    {
+      "path": "app/llm/__init__.py",
+      "expected_git_blob": "72575f8ed16e92d8e0ab57c9d4a54edba4130634",
+      "actual_git_blob": "72575f8ed16e92d8e0ab57c9d4a54edba4130634",
+      "passed": true
+    },
+    {
+      "path": "app/llm/agent.py",
+      "expected_git_blob": "368a469093a5aae152fec056cfc87a3b3c561c41",
+      "actual_git_blob": "368a469093a5aae152fec056cfc87a3b3c561c41",
+      "passed": true
+    },
+    {
+      "path": "app/llm/client.py",
+      "expected_git_blob": "feb914695abfccf244aca2903fd08b19da6ef3f7",
+      "actual_git_blob": "feb914695abfccf244aca2903fd08b19da6ef3f7",
+      "passed": true
+    },
+    {
+      "path": "app/llm/ocr_portfolio_parser.py",
+      "expected_git_blob": "1474e6862cdfe1a04027346632100f3ed3e01d93",
+      "actual_git_blob": "1474e6862cdfe1a04027346632100f3ed3e01d93",
+      "passed": true
+    },
+    {
+      "path": "app/llm/prompts.py",
+      "expected_git_blob": "c0bc99a7ef076f596f846e89dbbe449b2e06381d",
+      "actual_git_blob": "c0bc99a7ef076f596f846e89dbbe449b2e06381d",
+      "passed": true
+    },
+    {
+      "path": "app/market_analysis.py",
+      "expected_git_blob": "5e3b5db7a376e0e255ac253d9b6d223e2ca84b03",
+      "actual_git_blob": "5e3b5db7a376e0e255ac253d9b6d223e2ca84b03",
+      "passed": true
+    },
+    {
+      "path": "app/market_research.py",
+      "expected_git_blob": "c3898e1bdeec892e8cbd84565128d700f9b3c8ca",
+      "actual_git_blob": "c3898e1bdeec892e8cbd84565128d700f9b3c8ca",
+      "passed": true
+    },
+    {
+      "path": "app/optimization/__init__.py",
+      "expected_git_blob": "da3f60adede7b81e11bb1d7f1c2bfc324ff362e5",
+      "actual_git_blob": "da3f60adede7b81e11bb1d7f1c2bfc324ff362e5",
+      "passed": true
+    },
+    {
+      "path": "app/optimization/contracts.py",
+      "expected_git_blob": "b9711ea0f26d6515c1b31196f7b130bd0a68e7c8",
+      "actual_git_blob": "b9711ea0f26d6515c1b31196f7b130bd0a68e7c8",
+      "passed": true
+    },
+    {
+      "path": "app/orchestration/__init__.py",
+      "expected_git_blob": "bdb8ac04228e5d48d7e5cb36c4cbccf4c02aef52",
+      "actual_git_blob": "bdb8ac04228e5d48d7e5cb36c4cbccf4c02aef52",
+      "passed": true
+    },
+    {
+      "path": "app/orchestration/contracts.py",
+      "expected_git_blob": "3e9409e7e5763c89599dcebf8102c0037ffc54a2",
+      "actual_git_blob": "3e9409e7e5763c89599dcebf8102c0037ffc54a2",
+      "passed": true
+    },
+    {
+      "path": "app/orchestration/executor.py",
+      "expected_git_blob": "dfdffbb239c41e609259d378238847980773f28f",
+      "actual_git_blob": "dfdffbb239c41e609259d378238847980773f28f",
+      "passed": true
+    },
+    {
+      "path": "app/orchestration/state_machine.py",
+      "expected_git_blob": "c02ba0193d1b0e00435cf7bfe45b881ccea9463a",
+      "actual_git_blob": "c02ba0193d1b0e00435cf7bfe45b881ccea9463a",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/__init__.py",
+      "expected_git_blob": "aab97cc2cfdec52879d8828196e7a637c0f474af",
+      "actual_git_blob": "aab97cc2cfdec52879d8828196e7a637c0f474af",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/confirmation.py",
+      "expected_git_blob": "78decc9bfd0cd04f7c3ed3cf9bf39c46925d10fa",
+      "actual_git_blob": "78decc9bfd0cd04f7c3ed3cf9bf39c46925d10fa",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/contracts.py",
+      "expected_git_blob": "2a01923bbce9970ea216ddfb77be61cfeedc861d",
+      "actual_git_blob": "2a01923bbce9970ea216ddfb77be61cfeedc861d",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/exposure.py",
+      "expected_git_blob": "3de680d62a5f974f035955ee91d3184298a4271b",
+      "actual_git_blob": "3de680d62a5f974f035955ee91d3184298a4271b",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/health.py",
+      "expected_git_blob": "aa98fc877a04eec304125f8f87273ba4ec945635",
+      "actual_git_blob": "aa98fc877a04eec304125f8f87273ba4ec945635",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/refresh.py",
+      "expected_git_blob": "51b40ea8126a614493ec1f32bae3aa0c330d1c0a",
+      "actual_git_blob": "51b40ea8126a614493ec1f32bae3aa0c330d1c0a",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/report.py",
+      "expected_git_blob": "7d056f3042646914832ed3d15ecaa0a8205d9bd0",
+      "actual_git_blob": "7d056f3042646914832ed3d15ecaa0a8205d9bd0",
+      "passed": true
+    },
+    {
+      "path": "app/portfolio/summary.py",
+      "expected_git_blob": "b952d4da2a18a9b71e361f562813ca0a1784af9c",
+      "actual_git_blob": "b952d4da2a18a9b71e361f562813ca0a1784af9c",
+      "passed": true
+    },
+    {
+      "path": "app/profile/__init__.py",
+      "expected_git_blob": "aaaccb6068d0b5502e9b975ca6d6ba76801ed131",
+      "actual_git_blob": "aaaccb6068d0b5502e9b975ca6d6ba76801ed131",
+      "passed": true
+    },
+    {
+      "path": "app/profile/behavior.py",
+      "expected_git_blob": "4aa3bdcd432cf375045755bc1b2b69ba5e77a6b2",
+      "actual_git_blob": "4aa3bdcd432cf375045755bc1b2b69ba5e77a6b2",
+      "passed": true
+    },
+    {
+      "path": "app/profile/contracts.py",
+      "expected_git_blob": "6d68f17c17facfee93b08b7254b3368814712c30",
+      "actual_git_blob": "6d68f17c17facfee93b08b7254b3368814712c30",
+      "passed": true
+    },
+    {
+      "path": "app/profile/presentation.py",
+      "expected_git_blob": "dfef9391120ec306c4fcad51434c600ebbcd3d97",
+      "actual_git_blob": "dfef9391120ec306c4fcad51434c600ebbcd3d97",
+      "passed": true
+    },
+    {
+      "path": "app/profile/questionnaire.py",
+      "expected_git_blob": "b454bfffe4c01817ad1a0717c35dda6147044fc4",
+      "actual_git_blob": "b454bfffe4c01817ad1a0717c35dda6147044fc4",
+      "passed": true
+    },
+    {
+      "path": "app/profile/scoring.py",
+      "expected_git_blob": "dd04eb3c256ba7b48f6e546f77a1b27c0f5e6fd6",
+      "actual_git_blob": "dd04eb3c256ba7b48f6e546f77a1b27c0f5e6fd6",
+      "passed": true
+    },
+    {
+      "path": "app/providers/__init__.py",
+      "expected_git_blob": "b19465a7b98edc24cfb53c0789f0132b5758e701",
+      "actual_git_blob": "b19465a7b98edc24cfb53c0789f0132b5758e701",
+      "passed": true
+    },
+    {
+      "path": "app/providers/contracts.py",
+      "expected_git_blob": "a231cd4317b7b45e2d378b734624732583ca2113",
+      "actual_git_blob": "a231cd4317b7b45e2d378b734624732583ca2113",
+      "passed": true
+    },
+    {
+      "path": "app/providers/etnet.py",
+      "expected_git_blob": "fb002af5316b201cbdb517669323fe1119b13b95",
+      "actual_git_blob": "fb002af5316b201cbdb517669323fe1119b13b95",
+      "passed": true
+    },
+    {
+      "path": "app/providers/fingerprint.py",
+      "expected_git_blob": "8496cae41bb79b995f7759d4961ecca605289656",
+      "actual_git_blob": "8496cae41bb79b995f7759d4961ecca605289656",
+      "passed": true
+    },
+    {
+      "path": "app/providers/fixture.py",
+      "expected_git_blob": "22c14d9142fb61c9d3fa4616dd98fea95c4be78b",
+      "actual_git_blob": "22c14d9142fb61c9d3fa4616dd98fea95c4be78b",
+      "passed": true
+    },
+    {
+      "path": "app/providers/fixture_wencai.py",
+      "expected_git_blob": "cb80b3d6b8f1cd822d974101bfdcef6c7d064bcb",
+      "actual_git_blob": "cb80b3d6b8f1cd822d974101bfdcef6c7d064bcb",
+      "passed": true
+    },
+    {
+      "path": "app/providers/fuyao.py",
+      "expected_git_blob": "cfdaf775e6ca79d408d49ca9c1d7061f55635b43",
+      "actual_git_blob": "cfdaf775e6ca79d408d49ca9c1d7061f55635b43",
+      "passed": true
+    },
+    {
+      "path": "app/providers/ifind_quant.py",
+      "expected_git_blob": "d57915f6a6737bbc7c18f6b79195a73150e2561b",
+      "actual_git_blob": "d57915f6a6737bbc7c18f6b79195a73150e2561b",
+      "passed": true
+    },
+    {
+      "path": "app/providers/industry.py",
+      "expected_git_blob": "347aafa0eb8416390c6d603d097011eec568a880",
+      "actual_git_blob": "347aafa0eb8416390c6d603d097011eec568a880",
+      "passed": true
+    },
+    {
+      "path": "app/providers/iwencai_skills.json",
+      "expected_git_blob": "a272f80685cb6cbe6814b2e0f1714218c38962be",
+      "actual_git_blob": "a272f80685cb6cbe6814b2e0f1714218c38962be",
+      "passed": true
+    },
+    {
+      "path": "app/providers/live_market.py",
+      "expected_git_blob": "168c2ca85ac8cab7c7bee33307d9c64b26a00f7a",
+      "actual_git_blob": "168c2ca85ac8cab7c7bee33307d9c64b26a00f7a",
+      "passed": true
+    },
+    {
+      "path": "app/providers/live_wencai.py",
+      "expected_git_blob": "8e8149bf870e289628b96e92e4c2b3d41331edda",
+      "actual_git_blob": "8e8149bf870e289628b96e92e4c2b3d41331edda",
+      "passed": true
+    },
+    {
+      "path": "app/providers/normalization.py",
+      "expected_git_blob": "890930c4c7e24107e811600a55587c45343a0464",
+      "actual_git_blob": "890930c4c7e24107e811600a55587c45343a0464",
+      "passed": true
+    },
+    {
+      "path": "app/providers/resilience.py",
+      "expected_git_blob": "0a5cfa538acfb90f18ad781ad3f55971f8eb724e",
+      "actual_git_blob": "0a5cfa538acfb90f18ad781ad3f55971f8eb724e",
+      "passed": true
+    },
+    {
+      "path": "app/providers/runtime.py",
+      "expected_git_blob": "0b1045540db4a718daee08d73fc54cc34da9ab0e",
+      "actual_git_blob": "0b1045540db4a718daee08d73fc54cc34da9ab0e",
+      "passed": true
+    },
+    {
+      "path": "app/providers/security_codes.py",
+      "expected_git_blob": "2b9f35f64be4432c750c5e5b78b13bfd1fc96910",
+      "actual_git_blob": "2b9f35f64be4432c750c5e5b78b13bfd1fc96910",
+      "passed": true
+    },
+    {
+      "path": "app/providers/security_directory.py",
+      "expected_git_blob": "2a82f466342b5a936f9d45f70d9aef8e4234319b",
+      "actual_git_blob": "2a82f466342b5a936f9d45f70d9aef8e4234319b",
+      "passed": true
+    },
+    {
+      "path": "app/providers/skillhub.py",
+      "expected_git_blob": "0fba51c574fbee1bdb25199801d3b855424a151f",
+      "actual_git_blob": "0fba51c574fbee1bdb25199801d3b855424a151f",
+      "passed": true
+    },
+    {
+      "path": "app/providers/wencai_normalization.py",
+      "expected_git_blob": "cc1432e881bd609e6e9859e7a3f6005ecd6f2864",
+      "actual_git_blob": "cc1432e881bd609e6e9859e7a3f6005ecd6f2864",
+      "passed": true
+    },
+    {
+      "path": "app/providers/yahoo_finance.py",
+      "expected_git_blob": "b92839e10a68de3dcd2fa0ed9b1f544edd94a680",
+      "actual_git_blob": "b92839e10a68de3dcd2fa0ed9b1f544edd94a680",
+      "passed": true
+    },
+    {
+      "path": "app/rebalancing/__init__.py",
+      "expected_git_blob": "ad4d03037d7312eab3a110cd36a8e180bd4b7eb1",
+      "actual_git_blob": "ad4d03037d7312eab3a110cd36a8e180bd4b7eb1",
+      "passed": true
+    },
+    {
+      "path": "app/rebalancing/contracts.py",
+      "expected_git_blob": "3167ef9e1e38a0dba484a6ef1db6f5added5a781",
+      "actual_git_blob": "3167ef9e1e38a0dba484a6ef1db6f5added5a781",
+      "passed": true
+    },
+    {
+      "path": "app/recommendation/__init__.py",
+      "expected_git_blob": "72f58fc29fabe7139e453de8dea12a1065bfc1da",
+      "actual_git_blob": "72f58fc29fabe7139e453de8dea12a1065bfc1da",
+      "passed": true
+    },
+    {
+      "path": "app/recommendation/composer.py",
+      "expected_git_blob": "bffa35258789cc689f0cdacd03170ebdf64f87b7",
+      "actual_git_blob": "bffa35258789cc689f0cdacd03170ebdf64f87b7",
+      "passed": true
+    },
+    {
+      "path": "app/recommendation/contracts.py",
+      "expected_git_blob": "b8d454f6bd9014aed6093be92c0e7d9db1a1b5d9",
+      "actual_git_blob": "b8d454f6bd9014aed6093be92c0e7d9db1a1b5d9",
+      "passed": true
+    },
+    {
+      "path": "app/recommendation/receipt.py",
+      "expected_git_blob": "fc16c17d368547c044d23d3a9c493df94cd80d2b",
+      "actual_git_blob": "fc16c17d368547c044d23d3a9c493df94cd80d2b",
+      "passed": true
+    },
+    {
+      "path": "app/research/__init__.py",
+      "expected_git_blob": "3e702816fbad798bc1906b38ab037d610d35a1bb",
+      "actual_git_blob": "3e702816fbad798bc1906b38ab037d610d35a1bb",
+      "passed": true
+    },
+    {
+      "path": "app/research/contracts.py",
+      "expected_git_blob": "9cb2a8f1d459fb376030fbe6d9d001f19eea1932",
+      "actual_git_blob": "9cb2a8f1d459fb376030fbe6d9d001f19eea1932",
+      "passed": true
+    },
+    {
+      "path": "app/research/cross_validation.py",
+      "expected_git_blob": "65955254c9175a6d15f37248e0ca6e0391b50ce6",
+      "actual_git_blob": "65955254c9175a6d15f37248e0ca6e0391b50ce6",
+      "passed": true
+    },
+    {
+      "path": "app/research/evidence_bridge.py",
+      "expected_git_blob": "f2745498f291f9e27e7913ff6749613b2b957f7c",
+      "actual_git_blob": "f2745498f291f9e27e7913ff6749613b2b957f7c",
+      "passed": true
+    },
+    {
+      "path": "app/research/pipeline.py",
+      "expected_git_blob": "285a65f3055f870d971e70baaec9a063fb211644",
+      "actual_git_blob": "285a65f3055f870d971e70baaec9a063fb211644",
+      "passed": true
+    },
+    {
+      "path": "app/research/specialists.py",
+      "expected_git_blob": "b77e1e3af4d7edf1ca91a510da9b59232a19ae2a",
+      "actual_git_blob": "b77e1e3af4d7edf1ca91a510da9b59232a19ae2a",
+      "passed": true
+    },
+    {
+      "path": "app/risk/__init__.py",
+      "expected_git_blob": "43ed893c23c2afe69f24de33ae7e690367b8d10c",
+      "actual_git_blob": "43ed893c23c2afe69f24de33ae7e690367b8d10c",
+      "passed": true
+    },
+    {
+      "path": "app/risk/budget.py",
+      "expected_git_blob": "3201ae4bae3b0fc61583a714de8c23ab8e3489d1",
+      "actual_git_blob": "3201ae4bae3b0fc61583a714de8c23ab8e3489d1",
+      "passed": true
+    },
+    {
+      "path": "app/risk/concentration.py",
+      "expected_git_blob": "e74626c4fe15228145c43bcfce0bc9fc107da30f",
+      "actual_git_blob": "e74626c4fe15228145c43bcfce0bc9fc107da30f",
+      "passed": true
+    },
+    {
+      "path": "app/risk/contracts.py",
+      "expected_git_blob": "bbd017c1bd04bcf0f7a21de899259625be8f7aac",
+      "actual_git_blob": "bbd017c1bd04bcf0f7a21de899259625be8f7aac",
+      "passed": true
+    },
+    {
+      "path": "app/runtime/__init__.py",
+      "expected_git_blob": "4aab6c29b027f86522b5dfa8b7cdd389f8554835",
+      "actual_git_blob": "4aab6c29b027f86522b5dfa8b7cdd389f8554835",
+      "passed": true
+    },
+    {
+      "path": "app/runtime/mode.py",
+      "expected_git_blob": "01238ad751ed975e13aa1df053b32daca5816d6b",
+      "actual_git_blob": "01238ad751ed975e13aa1df053b32daca5816d6b",
+      "passed": true
+    },
+    {
+      "path": "app/runtime/paths.py",
+      "expected_git_blob": "e8bfde4871b4280c202ec9683d3a3efbdb5c021f",
+      "actual_git_blob": "e8bfde4871b4280c202ec9683d3a3efbdb5c021f",
+      "passed": true
+    },
+    {
+      "path": "app/scenarios/__init__.py",
+      "expected_git_blob": "cf38cb8ab5708c637e1ca364e24813438fd6b87a",
+      "actual_git_blob": "cf38cb8ab5708c637e1ca364e24813438fd6b87a",
+      "passed": true
+    },
+    {
+      "path": "app/scenarios/custom_stress.py",
+      "expected_git_blob": "e2c737e73e2d603c9777aa0f67090d09bfc3c6aa",
+      "actual_git_blob": "e2c737e73e2d603c9777aa0f67090d09bfc3c6aa",
+      "passed": true
+    },
+    {
+      "path": "app/security/__init__.py",
+      "expected_git_blob": "92ba7ef693fdbb4a5ef6e80646ae7a01765ca373",
+      "actual_git_blob": "92ba7ef693fdbb4a5ef6e80646ae7a01765ca373",
+      "passed": true
+    },
+    {
+      "path": "app/security/store.py",
+      "expected_git_blob": "1515739f7c3adf7aebd8a4ce04f00e20e5dc3467",
+      "actual_git_blob": "1515739f7c3adf7aebd8a4ce04f00e20e5dc3467",
+      "passed": true
+    },
+    {
+      "path": "app/service/__init__.py",
+      "expected_git_blob": "e06b10932624fafbf919d2236136cb04978dae9b",
+      "actual_git_blob": "e06b10932624fafbf919d2236136cb04978dae9b",
+      "passed": true
+    },
+    {
+      "path": "app/service/advanced_explainability.py",
+      "expected_git_blob": "0152a5b1d8a2eb749e916e2869db82aae3876299",
+      "actual_git_blob": "0152a5b1d8a2eb749e916e2869db82aae3876299",
+      "passed": true
+    },
+    {
+      "path": "app/service/advisor_query.py",
+      "expected_git_blob": "22dd5a680c5ad3b054005d82c2835757114e85fa",
+      "actual_git_blob": "22dd5a680c5ad3b054005d82c2835757114e85fa",
+      "passed": true
+    },
+    {
+      "path": "app/service/contracts.py",
+      "expected_git_blob": "78fc9b9c66fad44bba2e8392509d4a3b68254de7",
+      "actual_git_blob": "78fc9b9c66fad44bba2e8392509d4a3b68254de7",
+      "passed": true
+    },
+    {
+      "path": "app/service/convertible_bond_research.py",
+      "expected_git_blob": "0e663d8edf645c355880cede8ed1a64feea1c485",
+      "actual_git_blob": "0e663d8edf645c355880cede8ed1a64feea1c485",
+      "passed": true
+    },
+    {
+      "path": "app/service/evaluation_dashboard.py",
+      "expected_git_blob": "e7bf08894cc5762f048ce449ea89f7bd654c8f03",
+      "actual_git_blob": "e7bf08894cc5762f048ce449ea89f7bd654c8f03",
+      "passed": true
+    },
+    {
+      "path": "app/service/fund_research.py",
+      "expected_git_blob": "d688705cbe4b9a6112a6c2b15d9a0cf0aa36db88",
+      "actual_git_blob": "d688705cbe4b9a6112a6c2b15d9a0cf0aa36db88",
+      "passed": true
+    },
+    {
+      "path": "app/service/intent_planning.py",
+      "expected_git_blob": "2316697237ae17ec3001fd02d1e59feb85f90b4b",
+      "actual_git_blob": "2316697237ae17ec3001fd02d1e59feb85f90b4b",
+      "passed": true
+    },
+    {
+      "path": "app/service/knowledge.py",
+      "expected_git_blob": "138a2ef483630138d797bebff1e42d98e08b292a",
+      "actual_git_blob": "138a2ef483630138d797bebff1e42d98e08b292a",
+      "passed": true
+    },
+    {
+      "path": "app/service/knowledge_crawler.py",
+      "expected_git_blob": "e3711d82b23c85c5656e0a54feb7dd1437c1985f",
+      "actual_git_blob": "e3711d82b23c85c5656e0a54feb7dd1437c1985f",
+      "passed": true
+    },
+    {
+      "path": "app/service/knowledge_embedding.py",
+      "expected_git_blob": "e8bf37505bb752d1891c53de3d664c083134e829",
+      "actual_git_blob": "e8bf37505bb752d1891c53de3d664c083134e829",
+      "passed": true
+    },
+    {
+      "path": "app/service/live_research.py",
+      "expected_git_blob": "c06763db0b8c53e3eb342f9d6cf0702e4c4550cd",
+      "actual_git_blob": "c06763db0b8c53e3eb342f9d6cf0702e4c4550cd",
+      "passed": true
+    },
+    {
+      "path": "app/service/live_stock_analysis.py",
+      "expected_git_blob": "bbb608a8f216e5a81937f0c9e8fa6c7e31d63251",
+      "actual_git_blob": "bbb608a8f216e5a81937f0c9e8fa6c7e31d63251",
+      "passed": true
+    },
+    {
+      "path": "app/service/natural_profile.py",
+      "expected_git_blob": "7b33a23633ede27b6d195bf77a4ea149e9f80164",
+      "actual_git_blob": "7b33a23633ede27b6d195bf77a4ea149e9f80164",
+      "passed": true
+    },
+    {
+      "path": "app/service/portfolio_optimization.py",
+      "expected_git_blob": "7ccb91b089f96df0155dc498eaf072da66e97035",
+      "actual_git_blob": "7ccb91b089f96df0155dc498eaf072da66e97035",
+      "passed": true
+    },
+    {
+      "path": "app/service/portfolio_rebalancing.py",
+      "expected_git_blob": "cbfac46d1bd48266bcdf1a480d220028a3a1198c",
+      "actual_git_blob": "cbfac46d1bd48266bcdf1a480d220028a3a1198c",
+      "passed": true
+    },
+    {
+      "path": "app/service/profile_confirmation.py",
+      "expected_git_blob": "4d2f4e2eb7ed15089986f65e7c547f0bacf945af",
+      "actual_git_blob": "4d2f4e2eb7ed15089986f65e7c547f0bacf945af",
+      "passed": true
+    },
+    {
+      "path": "app/service/profile_proposal.py",
+      "expected_git_blob": "51a35b1b094f34f4ecb37c24dfc58d9593aeabe8",
+      "actual_git_blob": "51a35b1b094f34f4ecb37c24dfc58d9593aeabe8",
+      "passed": true
+    },
+    {
+      "path": "app/service/recommendation_history.py",
+      "expected_git_blob": "6b277f07d49942604d3dae793442760cba0a8100",
+      "actual_git_blob": "6b277f07d49942604d3dae793442760cba0a8100",
+      "passed": true
+    },
+    {
+      "path": "app/service/research_algorithms.py",
+      "expected_git_blob": "1cbdab668dc4dc1f7e78d6a4cb5123d415e1484d",
+      "actual_git_blob": "1cbdab668dc4dc1f7e78d6a4cb5123d415e1484d",
+      "passed": true
+    },
+    {
+      "path": "app/service/research_facts.py",
+      "expected_git_blob": "ca1a8aa8994e9850ef759b524f1c9c762cba977a",
+      "actual_git_blob": "ca1a8aa8994e9850ef759b524f1c9c762cba977a",
+      "passed": true
+    },
+    {
+      "path": "app/service/research_runtime.py",
+      "expected_git_blob": "66b952db1d7c0852f80b8fc4d7e64c53d4513041",
+      "actual_git_blob": "66b952db1d7c0852f80b8fc4d7e64c53d4513041",
+      "passed": true
+    },
+    {
+      "path": "app/service/scenario_simulation.py",
+      "expected_git_blob": "b8ab2a6f35823c4e8c11f8120a3d3ce72b2e7bb4",
+      "actual_git_blob": "b8ab2a6f35823c4e8c11f8120a3d3ce72b2e7bb4",
+      "passed": true
+    },
+    {
+      "path": "app/service/semantic_memory.py",
+      "expected_git_blob": "59ec55ab6fef45da5cdbbac1972f1348b02ffa3a",
+      "actual_git_blob": "59ec55ab6fef45da5cdbbac1972f1348b02ffa3a",
+      "passed": true
+    },
+    {
+      "path": "app/service/session_truth.py",
+      "expected_git_blob": "ecefa4671e6fd8c4f4e3e222c1eab0b624f29fdd",
+      "actual_git_blob": "ecefa4671e6fd8c4f4e3e222c1eab0b624f29fdd",
+      "passed": true
+    },
+    {
+      "path": "app/service/skill_registry.py",
+      "expected_git_blob": "1c25b1c28e05c074e88f5075aaedac373dd68ae2",
+      "actual_git_blob": "1c25b1c28e05c074e88f5075aaedac373dd68ae2",
+      "passed": true
+    },
+    {
+      "path": "app/service/specialist_matrix.py",
+      "expected_git_blob": "926d81401a3d4ad06ca479966959e80824cc0e8f",
+      "actual_git_blob": "926d81401a3d4ad06ca479966959e80824cc0e8f",
+      "passed": true
+    },
+    {
+      "path": "app/service/stock_research.py",
+      "expected_git_blob": "906cee0b0c4521c0f2407a12baaafda26a4ed5e5",
+      "actual_git_blob": "906cee0b0c4521c0f2407a12baaafda26a4ed5e5",
+      "passed": true
+    },
+    {
+      "path": "app/service/workflow.py",
+      "expected_git_blob": "5f0898be058671933078c04745dbbe235553ceb1",
+      "actual_git_blob": "5f0898be058671933078c04745dbbe235553ceb1",
+      "passed": true
+    },
+    {
+      "path": "app/simulation/__init__.py",
+      "expected_git_blob": "bdcc05dbc4dba157dbc746bc961e3e0e09caf93d",
+      "actual_git_blob": "bdcc05dbc4dba157dbc746bc961e3e0e09caf93d",
+      "passed": true
+    },
+    {
+      "path": "app/simulation/contracts.py",
+      "expected_git_blob": "d9e6a8e7d5bf0ea49657723da739de504c5321ff",
+      "actual_git_blob": "d9e6a8e7d5bf0ea49657723da739de504c5321ff",
+      "passed": true
+    },
+    {
+      "path": "app/simulation/overlays.py",
+      "expected_git_blob": "1a954aff9e9516bb5221383474dbe6c61f864db9",
+      "actual_git_blob": "1a954aff9e9516bb5221383474dbe6c61f864db9",
+      "passed": true
+    },
+    {
+      "path": "app/stock/__init__.py",
+      "expected_git_blob": "8239f7634fff7aa3f858c0e1b011536f14d243d1",
+      "actual_git_blob": "8239f7634fff7aa3f858c0e1b011536f14d243d1",
+      "passed": true
+    },
+    {
+      "path": "app/stock/contracts.py",
+      "expected_git_blob": "6a7783bf017dc0d642ad972368aca54964bd3ac5",
+      "actual_git_blob": "6a7783bf017dc0d642ad972368aca54964bd3ac5",
+      "passed": true
+    },
+    {
+      "path": "app/store/__init__.py",
+      "expected_git_blob": "1fbc34af15e50cd8c94d62c4fdd75db353c3de76",
+      "actual_git_blob": "1fbc34af15e50cd8c94d62c4fdd75db353c3de76",
+      "passed": true
+    },
+    {
+      "path": "app/store/context.py",
+      "expected_git_blob": "dfe1c75c6b9f7caedc65870fba60316f669ea4dc",
+      "actual_git_blob": "dfe1c75c6b9f7caedc65870fba60316f669ea4dc",
+      "passed": true
+    },
+    {
+      "path": "app/store/contracts.py",
+      "expected_git_blob": "16582b8db486b6eb8099111509f4e467b0d265b5",
+      "actual_git_blob": "16582b8db486b6eb8099111509f4e467b0d265b5",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/001_decision_events.sql",
+      "expected_git_blob": "12b6ab64cef1a4be30d544bec2dc694b3d66e0af",
+      "actual_git_blob": "12b6ab64cef1a4be30d544bec2dc694b3d66e0af",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/002_context_memory.sql",
+      "expected_git_blob": "9f593576ffa1c1141fa2d3a47f4ee20874f2f7a2",
+      "actual_git_blob": "9f593576ffa1c1141fa2d3a47f4ee20874f2f7a2",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/003_behavior_profiles.sql",
+      "expected_git_blob": "f18121bc4e9eaeaf4ac9f6269d5c68ae0c4d8504",
+      "actual_git_blob": "f18121bc4e9eaeaf4ac9f6269d5c68ae0c4d8504",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/004_behavior_rule_versions.sql",
+      "expected_git_blob": "aaec788f62c5d0f719c45acc894a125f8438cf0e",
+      "actual_git_blob": "aaec788f62c5d0f719c45acc894a125f8438cf0e",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/005_questionnaire_snapshots.sql",
+      "expected_git_blob": "7475bf6d3125715084c237dd73823b0051d12712",
+      "actual_git_blob": "7475bf6d3125715084c237dd73823b0051d12712",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/006_current_portfolios.sql",
+      "expected_git_blob": "2eb525e6ab829808a8bd98e3c6eeaeff72e1abf5",
+      "actual_git_blob": "2eb525e6ab829808a8bd98e3c6eeaeff72e1abf5",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/007_access_audit.sql",
+      "expected_git_blob": "a32a85c14f10b34206fc157a8ceda94879ef44c7",
+      "actual_git_blob": "a32a85c14f10b34206fc157a8ceda94879ef44c7",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/008_session_truth.sql",
+      "expected_git_blob": "bda35c5638c699ecdd15f98720a9db0e5d66d659",
+      "actual_git_blob": "bda35c5638c699ecdd15f98720a9db0e5d66d659",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/009_workflow_definitions.sql",
+      "expected_git_blob": "cd119f12a4c9bfc313cce689a2f6ef4938ba599a",
+      "actual_git_blob": "cd119f12a4c9bfc313cce689a2f6ef4938ba599a",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/010_user_preferences.sql",
+      "expected_git_blob": "568b1670d35f5838179ba07702316defe553c795",
+      "actual_git_blob": "568b1670d35f5838179ba07702316defe553c795",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/011_local_accounts.sql",
+      "expected_git_blob": "865ca918356125517c30ce0338db5ff13ad44f0c",
+      "actual_git_blob": "865ca918356125517c30ce0338db5ff13ad44f0c",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/012_portfolio_reports.sql",
+      "expected_git_blob": "4a0820c2ea71397548602da9366b224290456bf4",
+      "actual_git_blob": "4a0820c2ea71397548602da9366b224290456bf4",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/013_repair_legacy_011_collision.sql",
+      "expected_git_blob": "865ca918356125517c30ce0338db5ff13ad44f0c",
+      "actual_git_blob": "865ca918356125517c30ce0338db5ff13ad44f0c",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/014_trading_history.sql",
+      "expected_git_blob": "d0eb8324d48604e4558bb906de5b1a2fda02dbce",
+      "actual_git_blob": "d0eb8324d48604e4558bb906de5b1a2fda02dbce",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/015_profile_presentation_rules_v2.sql",
+      "expected_git_blob": "24aa8ea3676f1f1d3641bb6908d2d4e3e7cac4da",
+      "actual_git_blob": "24aa8ea3676f1f1d3641bb6908d2d4e3e7cac4da",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/016_ocr_confirmation_versions.sql",
+      "expected_git_blob": "68a3b70b383f595d470b4eb5db4fa7ff0ff63006",
+      "actual_git_blob": "68a3b70b383f595d470b4eb5db4fa7ff0ff63006",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/017_copilot_conversations.sql",
+      "expected_git_blob": "f83a68428784755c863b2c0683f3dd0e9dd5ba96",
+      "actual_git_blob": "f83a68428784755c863b2c0683f3dd0e9dd5ba96",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/018_skill_registry.sql",
+      "expected_git_blob": "9e892686780608c136063e26e37187157bdb4942",
+      "actual_git_blob": "9e892686780608c136063e26e37187157bdb4942",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/019_knowledge_library.sql",
+      "expected_git_blob": "d718eec7664c30261484d926f3a7ee7eeed22550",
+      "actual_git_blob": "d718eec7664c30261484d926f3a7ee7eeed22550",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/020_research_facts.sql",
+      "expected_git_blob": "388b8382bc420fb5407ec435967519834c34d6bb",
+      "actual_git_blob": "388b8382bc420fb5407ec435967519834c34d6bb",
+      "passed": true
+    },
+    {
+      "path": "app/store/migrations/021_research_fact_payloads.sql",
+      "expected_git_blob": "54ab48b18a09c46e4e9f67ca2f64d1b861ec85ca",
+      "actual_git_blob": "54ab48b18a09c46e4e9f67ca2f64d1b861ec85ca",
+      "passed": true
+    },
+    {
+      "path": "app/store/postgres.py",
+      "expected_git_blob": "8b330c1d45f073622913c38ec857e39a16a60cd6",
+      "actual_git_blob": "8b330c1d45f073622913c38ec857e39a16a60cd6",
+      "passed": true
+    },
+    {
+      "path": "app/store/sqlite.py",
+      "expected_git_blob": "ef5b5f6e62029bc2fd781d67e0ca7b6c7acbdb30",
+      "actual_git_blob": "ef5b5f6e62029bc2fd781d67e0ca7b6c7acbdb30",
+      "passed": true
+    },
+    {
+      "path": "app/trading_history/__init__.py",
+      "expected_git_blob": "8f361b8ccdd127e3f6c15463b8b28f5530c6fad8",
+      "actual_git_blob": "8f361b8ccdd127e3f6c15463b8b28f5530c6fad8",
+      "passed": true
+    },
+    {
+      "path": "app/trading_history/analysis.py",
+      "expected_git_blob": "2d6ea4166c356a0b2e6c0a347ffd09b51d6d258a",
+      "actual_git_blob": "2d6ea4166c356a0b2e6c0a347ffd09b51d6d258a",
+      "passed": true
+    },
+    {
+      "path": "app/trading_history/contracts.py",
+      "expected_git_blob": "b69872fa33897160e9b8a66d81dc61f76036bb6c",
+      "actual_git_blob": "b69872fa33897160e9b8a66d81dc61f76036bb6c",
+      "passed": true
+    },
+    {
+      "path": "app/trading_history/insights.py",
+      "expected_git_blob": "7195d535040ce6fd5508f9cc4f9c1cb290948239",
+      "actual_git_blob": "7195d535040ce6fd5508f9cc4f9c1cb290948239",
+      "passed": true
+    },
+    {
+      "path": "docs/plans/2026-09-30-research-platform-tasks.md",
+      "expected_git_blob": "0e4976a2d5abfd10ade0c9016f9bb09d998fde85",
+      "actual_git_blob": "0e4976a2d5abfd10ade0c9016f9bb09d998fde85",
+      "passed": true
+    },
+    {
+      "path": "docs/research-platform-methods.md",
+      "expected_git_blob": "f4f8a0013ac8fd32991496dea7fc892be9d3e364",
+      "actual_git_blob": "f4f8a0013ac8fd32991496dea7fc892be9d3e364",
+      "passed": true
+    },
+    {
+      "path": "docs/research-platform-operations.md",
+      "expected_git_blob": "b5a1190c1016ad8d76a938e803d750b94a6d5ec3",
+      "actual_git_blob": "b5a1190c1016ad8d76a938e803d750b94a6d5ec3",
+      "passed": true
+    },
+    {
+      "path": "docs/research-quality-review-guide.md",
+      "expected_git_blob": "cbf9be25f308666d8925c045080edabd15fd34c8",
+      "actual_git_blob": "cbf9be25f308666d8925c045080edabd15fd34c8",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/research-platform-acceptance-20261001.md",
+      "expected_git_blob": "be0df0ad76ed1e6c4404652a62317aa5263b81b7",
+      "actual_git_blob": "be0df0ad76ed1e6c4404652a62317aa5263b81b7",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/research-platform-followup-20261001.md",
+      "expected_git_blob": "26720c718f475073191dc90dd7eb836fd5020e8f",
+      "actual_git_blob": "26720c718f475073191dc90dd7eb836fd5020e8f",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/research-quality-agent-review-20261003.md",
+      "expected_git_blob": "666144eec8fa647b0af190c9019be94d1af300b9",
+      "actual_git_blob": "666144eec8fa647b0af190c9019be94d1af300b9",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-automated-verification-20261001.json",
+      "expected_git_blob": "d21044e87d094100e35dc82a32c3db0e5bbfc5a7",
+      "actual_git_blob": "d21044e87d094100e35dc82a32c3db0e5bbfc5a7",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-crawler-live-20261001.json",
+      "expected_git_blob": "5e072e64d08a2b272aacb956a5d68fd13cc5c142",
+      "actual_git_blob": "5e072e64d08a2b272aacb956a5d68fd13cc5c142",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-evidence-manifest-20261001.json",
+      "expected_git_blob": "20ce01e883964b9c90b7d45cdf1fe3da54b6251a",
+      "actual_git_blob": "20ce01e883964b9c90b7d45cdf1fe3da54b6251a",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-followup-verification-20261001.json",
+      "expected_git_blob": "d8f514653fd53ee49cfe2f505ee314253e4eb05a",
+      "actual_git_blob": "d8f514653fd53ee49cfe2f505ee314253e4eb05a",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-knowledge-comparison-20261001.json",
+      "expected_git_blob": "8365a48be8a744fcc7912ab5f649cd30807d6e1b",
+      "actual_git_blob": "8365a48be8a744fcc7912ab5f649cd30807d6e1b",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-knowledge-hybrid-20261001.json",
+      "expected_git_blob": "2cc10788223b0d3b73d2a4999c918d6eb8412a0a",
+      "actual_git_blob": "2cc10788223b0d3b73d2a4999c918d6eb8412a0a",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-knowledge-keyword-20261001.json",
+      "expected_git_blob": "a943d6d038d5c07f19aa18bdf00b926e391c4017",
+      "actual_git_blob": "a943d6d038d5c07f19aa18bdf00b926e391c4017",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-pages-deployment-20261001.json",
+      "expected_git_blob": "17fb7bb9e84d51d1de20e6bc18097805fc805155",
+      "actual_git_blob": "17fb7bb9e84d51d1de20e6bc18097805fc805155",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-postgres-installed-20261001.json",
+      "expected_git_blob": "b9ed701e9e04d2da58ac62d47820423286a88616",
+      "actual_git_blob": "b9ed701e9e04d2da58ac62d47820423286a88616",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-postgres-verification-20261001.json",
+      "expected_git_blob": "4c4db0ba7d53be018e597cc4edbcc34ceddbac60",
+      "actual_git_blob": "4c4db0ba7d53be018e597cc4edbcc34ceddbac60",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/browser-proof.json",
+      "expected_git_blob": "637e68960122972d949d92bc04da377d096c505d",
+      "actual_git_blob": "637e68960122972d949d92bc04da377d096c505d",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/hybrid-execution.json",
+      "expected_git_blob": "9102c6a2d5a7a8c54022df03a54c84af2b641f2b",
+      "actual_git_blob": "9102c6a2d5a7a8c54022df03a54c84af2b641f2b",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/hybrid-review.json",
+      "expected_git_blob": "7289ac554380069dbd8c3f0ee2a915842d55f3f4",
+      "actual_git_blob": "7289ac554380069dbd8c3f0ee2a915842d55f3f4",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/hybrid-summary.json",
+      "expected_git_blob": "4f8efcf3ae7182c693f44e4d6f9a2a96d957012c",
+      "actual_git_blob": "4f8efcf3ae7182c693f44e4d6f9a2a96d957012c",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/icbc-announcement-table-page3.png",
+      "expected_git_blob": "0aeba14f97e20f66f15cc44862901122810183d2",
+      "actual_git_blob": "0aeba14f97e20f66f15cc44862901122810183d2",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/icbc-annual-report-table-page11.png",
+      "expected_git_blob": "979cd7b60ceff660a62bcb120dc48b3d955a9cb2",
+      "actual_git_blob": "979cd7b60ceff660a62bcb120dc48b3d955a9cb2",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/independent-audits.zip",
+      "expected_git_blob": "89876dc37a1975de95d5d21fa3c0d4f8bbdd1677",
+      "actual_git_blob": "89876dc37a1975de95d5d21fa3c0d4f8bbdd1677",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/independent-source-findings-v3.json",
+      "expected_git_blob": "7625d558f1fb61a8adb01aae2efe23848accac64",
+      "actual_git_blob": "7625d558f1fb61a8adb01aae2efe23848accac64",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/keyword-execution.json",
+      "expected_git_blob": "0626f86ecd4c507aef67d4813a895dbb23c8ee84",
+      "actual_git_blob": "0626f86ecd4c507aef67d4813a895dbb23c8ee84",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/keyword-review.json",
+      "expected_git_blob": "196d239e333caf8ca28d62e689abb054dd08e642",
+      "actual_git_blob": "196d239e333caf8ca28d62e689abb054dd08e642",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/keyword-summary.json",
+      "expected_git_blob": "d61e0c7cee882355a1e0fa6aeb9aafc4e5d06903",
+      "actual_git_blob": "d61e0c7cee882355a1e0fa6aeb9aafc4e5d06903",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/manifest.json",
+      "expected_git_blob": "f4e9fc166c5afe80fcdfa133e908c8081a4c21e4",
+      "actual_git_blob": "f4e9fc166c5afe80fcdfa133e908c8081a4c21e4",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/nbs-final-newspaper-page1.png",
+      "expected_git_blob": "39d9afd69431edd6c8f20b05db147f34f9856138",
+      "actual_git_blob": "39d9afd69431edd6c8f20b05db147f34f9856138",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/publication-authenticity-checks-v2.json",
+      "expected_git_blob": "ae6162db0a8d3c7d535a6ad860713f01921091ff",
+      "actual_git_blob": "ae6162db0a8d3c7d535a6ad860713f01921091ff",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/review-agent-100.png",
+      "expected_git_blob": "5e38c0629fb6283c288044526a4f948ccd61311a",
+      "actual_git_blob": "5e38c0629fb6283c288044526a4f948ccd61311a",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/review-agent-export.png",
+      "expected_git_blob": "e44c68bbef418acffc214f3e306b6d62b90479c4",
+      "actual_git_blob": "e44c68bbef418acffc214f3e306b6d62b90479c4",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/source-cache-manifest.json",
+      "expected_git_blob": "8c5e132df461f4e87ebb62c6df9936259a23b15a",
+      "actual_git_blob": "8c5e132df461f4e87ebb62c6df9936259a23b15a",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-20261003/verification.json",
+      "expected_git_blob": "07074653f924c128cd6b78b8e03cf1642ecf0b6c",
+      "actual_git_blob": "07074653f924c128cd6b78b8e03cf1642ecf0b6c",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-quality-review/review-390.png",
+      "expected_git_blob": "8fe9cb01b9a59085cd9eca3315c5954166faa7c3",
+      "actual_git_blob": "8fe9cb01b9a59085cd9eca3315c5954166faa7c3",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-retained-history-20261001.json",
+      "expected_git_blob": "209a4f7a6bed4d7f50a2042f48c471450bff0648",
+      "actual_git_blob": "209a4f7a6bed4d7f50a2042f48c471450bff0648",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-service-load-controlled-20261001.json",
+      "expected_git_blob": "6e9a4b482bbea7bcc74701fdaacae98acf1d68fe",
+      "actual_git_blob": "6e9a4b482bbea7bcc74701fdaacae98acf1d68fe",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-service-load-real-20261001.json",
+      "expected_git_blob": "271485474e31b4bb354047f8faf97235af20bf68",
+      "actual_git_blob": "271485474e31b4bb354047f8faf97235af20bf68",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/live-research-1440.png",
+      "expected_git_blob": "3373d7c62c9a4159b4f4ddee6c2db987edd9d638",
+      "actual_git_blob": "3373d7c62c9a4159b4f4ddee6c2db987edd9d638",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/live-research-390.png",
+      "expected_git_blob": "61a77baeb1fe74f679011aa333553c6de4e48fb7",
+      "actual_git_blob": "61a77baeb1fe74f679011aa333553c6de4e48fb7",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-algorithms-1440.png",
+      "expected_git_blob": "f3719734c202b764acd751859a3ab32a5d30bb5f",
+      "actual_git_blob": "f3719734c202b764acd751859a3ab32a5d30bb5f",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-algorithms-390.png",
+      "expected_git_blob": "55310adc145f7f3726092cf674fd164aa257825d",
+      "actual_git_blob": "55310adc145f7f3726092cf674fd164aa257825d",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-knowledge-1440.png",
+      "expected_git_blob": "c010821f358a148b59316ba4a6df0929a172b1cb",
+      "actual_git_blob": "c010821f358a148b59316ba4a6df0929a172b1cb",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/research-knowledge-390.png",
+      "expected_git_blob": "756b4feb4d840575a221b49f070fa032f8610155",
+      "actual_git_blob": "756b4feb4d840575a221b49f070fa032f8610155",
+      "passed": true
+    },
+    {
+      "path": "docs/submission/test-evidence/research-ui/summary.json",
+      "expected_git_blob": "beb354ecaa0b966d4b1bd7775838e60ef5a636d9",
+      "actual_git_blob": "beb354ecaa0b966d4b1bd7775838e60ef5a636d9",
+      "passed": true
+    },
+    {
+      "path": "eval_cases/research/knowledge_100.json",
+      "expected_git_blob": "9e3cda2957fc3eec8719a786f704715c7ddce612",
+      "actual_git_blob": "9e3cda2957fc3eec8719a786f704715c7ddce612",
+      "passed": true
+    },
+    {
+      "path": "eval_cases/research/real_macro_bank_100.json",
+      "expected_git_blob": "b7d276cba81ebfabaca985958c854a6f50c7411a",
+      "actual_git_blob": "b7d276cba81ebfabaca985958c854a6f50c7411a",
+      "passed": true
+    },
+    {
+      "path": "pyproject.toml",
+      "expected_git_blob": "9537859a04bd0a44980407a6347c096299f00630",
+      "actual_git_blob": "9537859a04bd0a44980407a6347c096299f00630",
+      "passed": true
+    },
+    {
+      "path": "tools/__init__.py",
+      "expected_git_blob": "65cada382ea5c05ff80a5635d18c0123dae8a082",
+      "actual_git_blob": "65cada382ea5c05ff80a5635d18c0123dae8a082",
+      "passed": true
+    },
+    {
+      "path": "tools/advanced_evidence_ui_smoke.cjs",
+      "expected_git_blob": "9180db8096d4ecc81083b7009a5bf951d2632bf7",
+      "actual_git_blob": "9180db8096d4ecc81083b7009a5bf951d2632bf7",
+      "passed": true
+    },
+    {
+      "path": "tools/build_markdown.mjs",
+      "expected_git_blob": "74edef960832dc6daf57e36f7e7a3ab87259f8d4",
+      "actual_git_blob": "74edef960832dc6daf57e36f7e7a3ab87259f8d4",
+      "passed": true
+    },
+    {
+      "path": "tools/build_system_test_report.py",
+      "expected_git_blob": "ab4d8c28cf704099b661b13f749f4d1c9e65742c",
+      "actual_git_blob": "ab4d8c28cf704099b661b13f749f4d1c9e65742c",
+      "passed": true
+    },
+    {
+      "path": "tools/build_technical_docx.py",
+      "expected_git_blob": "a8f36a45aaccb5c855d194ca1d9b3000e5b5e699",
+      "actual_git_blob": "a8f36a45aaccb5c855d194ca1d9b3000e5b5e699",
+      "passed": true
+    },
+    {
+      "path": "tools/build_workflow.mjs",
+      "expected_git_blob": "adeaeb9c43d9d1605e28b10d44ef60d6ca76fb6a",
+      "actual_git_blob": "adeaeb9c43d9d1605e28b10d44ef60d6ca76fb6a",
+      "passed": true
+    },
+    {
+      "path": "tools/cache_research_model.py",
+      "expected_git_blob": "dc3d389b39ad931b08b0434ba771bd07b131a820",
+      "actual_git_blob": "dc3d389b39ad931b08b0434ba771bd07b131a820",
+      "passed": true
+    },
+    {
+      "path": "tools/capture_pages_snapshot.mjs",
+      "expected_git_blob": "73522a403ccc5e1069c0f0f90ff74275082666f3",
+      "actual_git_blob": "73522a403ccc5e1069c0f0f90ff74275082666f3",
+      "passed": true
+    },
+    {
+      "path": "tools/capture_showcase.cjs",
+      "expected_git_blob": "6f15e829c1315e159f7e22693479aefeac1b07f8",
+      "actual_git_blob": "6f15e829c1315e159f7e22693479aefeac1b07f8",
+      "passed": true
+    },
+    {
+      "path": "tools/collect_system_http_evidence.py",
+      "expected_git_blob": "0131201bf08c2d5175308dc6def62cf80e8de392",
+      "actual_git_blob": "0131201bf08c2d5175308dc6def62cf80e8de392",
+      "passed": true
+    },
+    {
+      "path": "tools/collect_system_test_evidence.py",
+      "expected_git_blob": "ac873147e5e4af4b75fd3eb0be9a14e166949e72",
+      "actual_git_blob": "ac873147e5e4af4b75fd3eb0be9a14e166949e72",
+      "passed": true
+    },
+    {
+      "path": "tools/context_memory_load_test.py",
+      "expected_git_blob": "c2edd6a50accfbdb98d36315a7dc858348073426",
+      "actual_git_blob": "c2edd6a50accfbdb98d36315a7dc858348073426",
+      "passed": true
+    },
+    {
+      "path": "tools/database_backup.py",
+      "expected_git_blob": "04d173057d3582a7a8b4dd0f9687b0ad5a137f2f",
+      "actual_git_blob": "04d173057d3582a7a8b4dd0f9687b0ad5a137f2f",
+      "passed": true
+    },
+    {
+      "path": "tools/dev_preview.py",
+      "expected_git_blob": "1044953dea78da71a22127809619830fc461707d",
+      "actual_git_blob": "1044953dea78da71a22127809619830fc461707d",
+      "passed": true
+    },
+    {
+      "path": "tools/evaluate_mvp.py",
+      "expected_git_blob": "8e46f6829013059558adcf3c6c39d96a38afaa14",
+      "actual_git_blob": "8e46f6829013059558adcf3c6c39d96a38afaa14",
+      "passed": true
+    },
+    {
+      "path": "tools/evaluate_research_knowledge.py",
+      "expected_git_blob": "bb4e097a11b281f18079d500bb184fd2dbc44828",
+      "actual_git_blob": "bb4e097a11b281f18079d500bb184fd2dbc44828",
+      "passed": true
+    },
+    {
+      "path": "tools/export_technical_word.ps1",
+      "expected_git_blob": "fbbcaa246df058470cea80147bbef2b77682adc8",
+      "actual_git_blob": "fbbcaa246df058470cea80147bbef2b77682adc8",
+      "passed": true
+    },
+    {
+      "path": "tools/generate_competition_solution_docx.py",
+      "expected_git_blob": "b76680573af827fa254c110e80140afc6a817923",
+      "actual_git_blob": "b76680573af827fa254c110e80140afc6a817923",
+      "passed": true
+    },
+    {
+      "path": "tools/generate_word_doc.py",
+      "expected_git_blob": "a933f1560558c930bd791eafaba1a784e89b8389",
+      "actual_git_blob": "a933f1560558c930bd791eafaba1a784e89b8389",
+      "passed": true
+    },
+    {
+      "path": "tools/http_load_test.py",
+      "expected_git_blob": "8b78597a68144de06745cdf34574d2df43988378",
+      "actual_git_blob": "8b78597a68144de06745cdf34574d2df43988378",
+      "passed": true
+    },
+    {
+      "path": "tools/load_test.py",
+      "expected_git_blob": "c9b8423248bb39eaa541df3aaa9502923f0d4298",
+      "actual_git_blob": "c9b8423248bb39eaa541df3aaa9502923f0d4298",
+      "passed": true
+    },
+    {
+      "path": "tools/local_account.py",
+      "expected_git_blob": "3c21eaf92f99debf1af4501d6bcc60891980b926",
+      "actual_git_blob": "3c21eaf92f99debf1af4501d6bcc60891980b926",
+      "passed": true
+    },
+    {
+      "path": "tools/local_postgres.py",
+      "expected_git_blob": "4cdee2f68ac07f8ec1f6559a1f9335eb89b3e150",
+      "actual_git_blob": "4cdee2f68ac07f8ec1f6559a1f9335eb89b3e150",
+      "passed": true
+    },
+    {
+      "path": "tools/provider_resilience_load_test.py",
+      "expected_git_blob": "53b157aaff5821c7715fd6a58116115a0fbe0cd2",
+      "actual_git_blob": "53b157aaff5821c7715fd6a58116115a0fbe0cd2",
+      "passed": true
+    },
+    {
+      "path": "tools/render_document_architecture.mjs",
+      "expected_git_blob": "160f71d20605a3c8dafe918cca4c41dd07007fc9",
+      "actual_git_blob": "160f71d20605a3c8dafe918cca4c41dd07007fc9",
+      "passed": true
+    },
+    {
+      "path": "tools/render_judge_figures.py",
+      "expected_git_blob": "e25814da998f35f482f2bef96c8c3088ca70835e",
+      "actual_git_blob": "e25814da998f35f482f2bef96c8c3088ca70835e",
+      "passed": true
+    },
+    {
+      "path": "tools/research_platform_load_test.py",
+      "expected_git_blob": "70341193c7b0138d1cad88341917dd9f62b42771",
+      "actual_git_blob": "70341193c7b0138d1cad88341917dd9f62b42771",
+      "passed": true
+    },
+    {
+      "path": "tools/run_real_research_quality.py",
+      "expected_git_blob": "faffe0d9825a04519afd11bf83f1c6d5ce674ab7",
+      "actual_git_blob": "faffe0d9825a04519afd11bf83f1c6d5ce674ab7",
+      "passed": true
+    },
+    {
+      "path": "tools/scenario_simulation_smoke.cjs",
+      "expected_git_blob": "46b4300058048cdf1ce1214a5bddca415b860d34",
+      "actual_git_blob": "46b4300058048cdf1ce1214a5bddca415b860d34",
+      "passed": true
+    },
+    {
+      "path": "tools/summarize_research_quality_review.py",
+      "expected_git_blob": "2c7220801209705a81d08ed8e146ad313e33ae6c",
+      "actual_git_blob": "2c7220801209705a81d08ed8e146ad313e33ae6c",
+      "passed": true
+    },
+    {
+      "path": "tools/verify_research_public_sources.py",
+      "expected_git_blob": "4b89bbd20c2e10f1daa6b24bbfa08b18e60d9f49",
+      "actual_git_blob": "4b89bbd20c2e10f1daa6b24bbfa08b18e60d9f49",
+      "passed": true
+    },
+    {
+      "path": "tools/verify_research_snapshot_algorithms.py",
+      "expected_git_blob": "ca2cff154b18cba162ac70edcb6529e85789518c",
+      "actual_git_blob": "ca2cff154b18cba162ac70edcb6529e85789518c",
+      "passed": true
+    },
+    {
+      "path": "tools/verify_system_test_report.py",
+      "expected_git_blob": "cb20f383400871db7d16841d1ba176023f7778ee",
+      "actual_git_blob": "cb20f383400871db7d16841d1ba176023f7778ee",
+      "passed": true
+    },
+    {
+      "path": "tools/wencai_setup.py",
+      "expected_git_blob": "50e3b8b14faa8c5de47cef9af317b6e60ca7b783",
+      "actual_git_blob": "50e3b8b14faa8c5de47cef9af317b6e60ca7b783",
+      "passed": true
+    },
+    {
+      "path": "uv.lock",
+      "expected_git_blob": "cc653e54ef4cc40424e3c96b42cc918eef82592d",
+      "actual_git_blob": "cc653e54ef4cc40424e3c96b42cc918eef82592d",
+      "passed": true
+    }
+  ],
+  "upstream_changed_file_parent_comparisons": [
+    {
+      "path": "LOG.md",
+      "current_git_blob": "51f0b1b28f9fa8885c984767d5177a4c5d354294",
+      "local_parent_blob": "bce3adfea22d939ebc22373864a7697793cbaecc",
+      "upstream_parent_blob": "45c46f7c199482bb7215dca390e0fd69be410dfb"
+    },
+    {
+      "path": "TODO.md",
+      "current_git_blob": "10fc49f6498ab9561d8310a1babbf53c510d7f66",
+      "local_parent_blob": "b37ec67a2d8185c4034c8db3b30682429e9b20af",
+      "upstream_parent_blob": "8450f110cdbf462613fe5e3ce8929ca437325676"
+    },
+    {
+      "path": "app/api/static/app.js",
+      "current_git_blob": "812c766c20d093dfc822f6da4f7c0b33fe93f6d6",
+      "local_parent_blob": "0302c2a13b642d4e8a2a71d010341ac89981b760",
+      "upstream_parent_blob": "a0a145dfa17e8112024eaf38b09a7cb4014a935f"
+    },
+    {
+      "path": "app/api/static/demos/trading-style-layout-preview.html",
+      "current_git_blob": "97daae497405e67c7cc126d760980269bb0850ec",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "97daae497405e67c7cc126d760980269bb0850ec"
+    },
+    {
+      "path": "app/api/static/index.html",
+      "current_git_blob": "5064808221e36ce4db3f6004b0c99be1407ee01d",
+      "local_parent_blob": "b3d609a4a8718b0cca5273893c9aa5741b2322f4",
+      "upstream_parent_blob": "7b28f369c96cfd5bfdba7e4864c24bec0b23269d"
+    },
+    {
+      "path": "app/api/static/prism-v2.css",
+      "current_git_blob": "41244d5d72de9b39cbe87777675cede6b7ccaf8a",
+      "local_parent_blob": "f7601001cf9b570a7acea15c7d00d9461e348f63",
+      "upstream_parent_blob": "eee349a9b2ac575b9be7bf101e88b06a74929d55"
+    },
+    {
+      "path": "app/trading_history/importer.py",
+      "current_git_blob": "ccbeb3b4e538f39873b2c7a6d27d8b35a890fc78",
+      "local_parent_blob": "f70efbc0beab5ab91acd2432cf133bbc193989c0",
+      "upstream_parent_blob": "6fc55f7e73dc5ed160d6c101256e406105a2ef48"
+    },
+    {
+      "path": "docs/plans/2026-10-02-personal-center.md",
+      "current_git_blob": "8b6241661fa307d8396b7500222578886e6e3742",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "8b6241661fa307d8396b7500222578886e6e3742"
+    },
+    {
+      "path": "docs/plans/2026-10-02-portfolio-disclosure.md",
+      "current_git_blob": "6e22b1e5f9148a5045cd2c0a0a1256104e79d222",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "6e22b1e5f9148a5045cd2c0a0a1256104e79d222"
+    },
+    {
+      "path": "docs/showcase/personal-center-preview.html",
+      "current_git_blob": "baaf2b53530dc2de884bed3aa03e6b1475ff4026",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "baaf2b53530dc2de884bed3aa03e6b1475ff4026"
+    },
+    {
+      "path": "docs/showcase/portfolio-disclosure-preview.html",
+      "current_git_blob": "fc32b3129b87aadbfccf47e72420d4da8fc16a7d",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "fc32b3129b87aadbfccf47e72420d4da8fc16a7d"
+    },
+    {
+      "path": "tests/browser/test_agent_home.mjs",
+      "current_git_blob": "ebdb25f0f2d0867d2391378db55c570dae48c38a",
+      "local_parent_blob": "bc14635baa070fa18d72aad97f88d36b50f1b463",
+      "upstream_parent_blob": "ebdb25f0f2d0867d2391378db55c570dae48c38a"
+    },
+    {
+      "path": "tests/browser/test_chat_home_ui.mjs",
+      "current_git_blob": "9a100c7384d590c2b7cb288a29c95e0f4fdebb14",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "9a100c7384d590c2b7cb288a29c95e0f4fdebb14"
+    },
+    {
+      "path": "tests/browser/test_market_sidebar.mjs",
+      "current_git_blob": "0643ec1e4004667c1f46cca83590e45e9aeceec2",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "0643ec1e4004667c1f46cca83590e45e9aeceec2"
+    },
+    {
+      "path": "tests/browser/test_personal_center.mjs",
+      "current_git_blob": "3bf0e6998c5727d29cde8bc53b08b5dc621e6cca",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "dfdbf73edf015b21f3c207213d3c11cef8372dd1"
+    },
+    {
+      "path": "tests/browser/test_portfolio_disclosure.mjs",
+      "current_git_blob": "81a7dfaea1aac72aa1645518bd61665539610a04",
+      "local_parent_blob": null,
+      "upstream_parent_blob": "81a7dfaea1aac72aa1645518bd61665539610a04"
+    },
+    {
+      "path": "tests/browser/test_trading_style_insights.mjs",
+      "current_git_blob": "70b4a62bcbeeff4945ffb761b9980b568d3de244",
+      "local_parent_blob": "1b5c4eb198b570bc77633d1f88ea86dbaa1dc9f8",
+      "upstream_parent_blob": "70b4a62bcbeeff4945ffb761b9980b568d3de244"
+    },
+    {
+      "path": "tests/integration/test_trading_history_api.py",
+      "current_git_blob": "4ea35957df965d557bdbfcd7414e304e5a783007",
+      "local_parent_blob": "2411520e2192850b9b603d719107dbf6f55f151b",
+      "upstream_parent_blob": "4ea35957df965d557bdbfcd7414e304e5a783007"
+    },
+    {
+      "path": "tests/unit/test_copilot_ui_integration.py",
+      "current_git_blob": "3aa713275bc2a83d678a3ba348a3a0f43e875aa3",
+      "local_parent_blob": "35a8ab0a2c0ce830230820029fa5454232e06517",
+      "upstream_parent_blob": "3aa713275bc2a83d678a3ba348a3a0f43e875aa3"
+    },
+    {
+      "path": "tests/unit/test_profile_workbench_ui.py",
+      "current_git_blob": "97ce14667801785b3f1f27d00c8d1fc7c230dc7b",
+      "local_parent_blob": "96514e55e5e00f9662ac56c21f04d43142daf2fe",
+      "upstream_parent_blob": "97ce14667801785b3f1f27d00c8d1fc7c230dc7b"
+    }
+  ],
+  "pages_deletion": {
+    "working_tree_absent": true,
+    "head_tree_absent": true,
+    "upstream_tree_present": true,
+    "staged_addition": false,
+    "passed": true
+  },
+  "original_research_feature_markers": {
+    "research_subpage_routes": true,
+    "research_tools_navigation": true,
+    "research_ui_resources": true,
+    "questionnaire_draft": true,
+    "navigation_scroll_preserved": true
+  },
+  "errors": [],
+  "passed": true,
+  "zip_internal_hash_manifest": {
+    "member_name": "member-hashes.json",
+    "bytes": 814,
+    "raw_byte_sha256": "6c165b1a516d5055a88721a7c77fe270d9720d05bdd061f21ff65954991ab9e1",
+    "declared_member_hashes_match_external_manifest": true,
+    "digest_protection": "The containing ZIP exact byte hash is independently checked against the external manifest; this internal manifest does not recursively hash itself.",
+    "passed": true
+  },
+  "zip_membership": {
+    "declared_evidence_members": 8,
+    "internal_hash_manifest_members": 1,
+    "total_members": 9,
+    "missing": [],
+    "unexpected": [],
+    "duplicate_names": [],
+    "passed": true
+  }
+}

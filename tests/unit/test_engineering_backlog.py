@@ -333,7 +333,9 @@ def test_micro_store_rejects_stale_persona_results_and_invalidates_mode_runs():
     script = script_path.read_text(encoding="utf-8")
     prefix, separator, _ = script.partition("  microStore.subscribe((store) => {")
     assert separator, "unable to isolate Micro-Store implementation"
-    probe = prefix + r'''
+    # The isolated state harness provides the browser media query used by the shared navigation.
+    browser_environment = 'const window = {matchMedia: query => ({media: query, matches: false})};\n'
+    probe = browser_environment + prefix + r'''
   state.ownerId = "demo-owner";
   state.selectedPersona = "persona-a";
   state.profile = {profile: {risk_level: "BALANCED"}};
