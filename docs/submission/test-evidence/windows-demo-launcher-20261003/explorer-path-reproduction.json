@@ -1,0 +1,40 @@
+{
+  "scope": "actual registry PATH; no PATH changes; only loopback existing preview reused",
+  "results": [
+    {
+      "scenario": "old_portable_explorer_path",
+      "expected": 1,
+      "exit_code": 1,
+      "stdout": "Python 3.9 or newer is required. Install Python with its Windows launcher or add Python to PATH.\r\nPress any key to continue . . . \r\n",
+      "stderr": ""
+    },
+    {
+      "scenario": "new_portable_default_py",
+      "expected": 0,
+      "exit_code": 0,
+      "stdout": "Reusing the running product demo: http://127.0.0.1:8861/demos/product-demo/#overview\r\n",
+      "stderr": ""
+    },
+    {
+      "scenario": "new_portable_where_python",
+      "expected": 0,
+      "exit_code": 0,
+      "stdout": "Reusing the running product demo: http://127.0.0.1:8861/demos/product-demo/#overview\r\n",
+      "stderr": ""
+    },
+    {
+      "scenario": "new_project_default_py",
+      "expected": 0,
+      "exit_code": 0,
+      "stdout": "Reusing the running product demo: http://127.0.0.1:8861/demos/product-demo/#overview\r\n",
+      "stderr": ""
+    },
+    {
+      "scenario": "new_project_where_python",
+      "expected": 0,
+      "exit_code": 0,
+      "stdout": "Reusing the running product demo: http://127.0.0.1:8861/demos/product-demo/#overview\r\n",
+      "stderr": ""
+    }
+  ]
+}

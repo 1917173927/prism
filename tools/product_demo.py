@@ -11,8 +11,9 @@ from urllib.parse import unquote, urlsplit
 from urllib.request import ProxyHandler, build_opener
 import webbrowser
 
-BASE = Path(__file__).resolve().parent
-STATIC = BASE / "static" if (BASE / "static").is_dir() else BASE.parent / "app/api/static"
+FROZEN = bool(getattr(sys, "frozen", False))
+BASE = Path(sys.executable if FROZEN else __file__).resolve().parent
+STATIC = BASE / "static" if FROZEN or (BASE / "static").is_dir() else BASE.parent / "app/api/static"
 ENTRY = "/demos/product-demo/"
 HEALTH = "/__prism_demo__/health"
 SERVER_ID = "prism-offline-product-demo.v1"
@@ -112,7 +113,7 @@ def main(argv=None):
     parser.add_argument("--port", type=int, default=8860)
     parser.add_argument("--open", dest="open_browser", action="store_true", help="open the demo in your browser")
     parser.add_argument("--no-open", dest="open_browser", action="store_false", help="do not open a browser")
-    parser.set_defaults(open_browser=False)
+    parser.set_defaults(open_browser=FROZEN)
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")

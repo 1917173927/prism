@@ -1,5 +1,6 @@
 """Verify that the documentation delivery runs without the original repository."""
 from html.parser import HTMLParser
+import json
 from pathlib import Path
 import socket
 import subprocess
@@ -13,6 +14,7 @@ from zipfile import ZipFile
 import pytest
 
 from tools import package_frontend_documentation_demo as package
+from tools import package_product_demo
 
 
 class ResourceLinks(HTMLParser):
@@ -27,11 +29,33 @@ class ResourceLinks(HTMLParser):
                     self.links.append(value)
 
 
+@pytest.mark.parametrize("damage, reason", [
+    ("executable", "damaged"), ("source", "out of date"), ("license", "license does not match"),
+])
+def test_package_rejects_damaged_or_stale_windows_runtime(tmp_path, monkeypatch, damage, reason):
+    files = package_product_demo.windows_runtime_files()
+    if damage == "executable":
+        files["preview.exe"] += b"damaged"
+    elif damage == "source":
+        manifest = json.loads(files["build-manifest.json"])
+        manifest["source_sha256"] = "0" * 64
+        files["build-manifest.json"] = json.dumps(manifest).encode("utf-8")
+    else:
+        files["runtime-LICENSE.txt"] += b"damaged"
+    for name, content in files.items():
+        (tmp_path / name).write_bytes(content)
+    monkeypatch.setattr(package_product_demo, "WINDOWS_RUNTIME", tmp_path)
+    with pytest.raises(ValueError, match=reason):
+        package.build(tmp_path / "delivery", tmp_path / "frontend.zip")
+    assert not (tmp_path / "frontend.zip").exists()
+    assert not (tmp_path / "delivery").exists()
+
+
 def test_package_is_self_contained_and_preserves_verified_resources(tmp_path):
     destination = tmp_path / "independent demo space"
     archive_path = tmp_path / "frontend.zip"
     files = package.build(destination, archive_path)
-    assert len(files) == 26
+    assert len(files) == 29
     assert len([name for name in files if name.endswith(".jpg")]) == 12
     assert not any(part in {".git", ".env", "__pycache__"} for name in files for part in Path(name).parts)
     for resource in package.RESOURCES:

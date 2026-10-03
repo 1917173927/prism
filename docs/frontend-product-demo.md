@@ -48,4 +48,4 @@
 
 初版验证为27次页面检查、18项交互、11项专项及全量1110通过、1跳过。本轮投资工作台修改后的全量回归为1119通过、1跳过，包含本机PostgreSQL；集成后72项定向、Demo27页、正式12页及17项实际交互均通过。设计自问自答与终审采用Agent口径，见[设计复核记录](submission/investor-workbench-design-review-20261003.md)。启动修复`d82209e`、界面与最新截图`c567890`已分别推送。
 
-产品文档另交付[独立前端包](showcase/standalone-frontend-20261003/prism-frontend-demo.zip)，包含九页交互前端、12张截图、页面写作参考与独立启动入口，共26文件。无需原仓库、业务服务、数据库或接口密钥，运行需Python 3.9以上；使用步骤及本机展开目录见[独立交付说明](standalone-frontend-demo.md)。本次包及启动相关23项验证、独立预览三视口27页检查通过，未重复执行上一阶段全量回归。
+产品文档最新交付[Windows独立前端包](showcase/standalone-frontend-20261003/prism-frontend-demo-windows.zip)，包含九页交互前端、12张截图、页面写作参考及自带Windows启动程序，共29文件。Windows 64位版无需安装Python、原仓库、业务服务、数据库或接口密钥；其他系统使用Python 3.9以上。使用步骤及本机展开目录见[独立交付说明](standalone-frontend-demo.md)。启动修复及打包覆盖33项不同场景，真实EXE三视口27页通过，未重复执行上一阶段全量回归；原26文件Python版保留历史记录。

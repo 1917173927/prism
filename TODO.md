@@ -376,3 +376,7 @@ The remaining legal, quota and competition-document inputs block production redi
 ## 2026-10-03 产品文档独立前端
 
 - [x] 交付26文件独立前端包、九页说明及12张产品截图；脱离仓库启动、23项定向验证及独立浏览器三视口27页检查通过，提交`ef3e866`已推送`origin/main`。
+
+## 2026-10-03 Windows独立启动修复
+
+- [ ] 修复旧版Python抢先命中及uv版本选择遗漏，交付29文件无需安装Python的Windows包；真实EXE/CMD、原23项回归、追加3项保护及自带程序27页验证通过，待提交推送后关闭。
