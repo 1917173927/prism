@@ -1,0 +1,54 @@
+{
+  "file_count": 26,
+  "screenshots": 12,
+  "zip_crc": "PASS",
+  "archive_sha256": "0cc4ac42b2d142c6d7b3cfca90ed14be3a0317ee4259d9a7aff108955468db92",
+  "expanded_directory": "E:\\prism\\output\\frontend-documentation-demo\\prism-frontend-demo",
+  "archive": "docs\\showcase\\standalone-frontend-20261003\\prism-frontend-demo.zip",
+  "resource_byte_equality": "PASS",
+  "isolated_python_mode_test": "PASS",
+  "unit_tests": {
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "command": "python -m pytest tests/unit/test_frontend_documentation_demo_package.py tests/unit/test_product_demo_launcher.py tests/unit/test_product_demo.py tests/unit/test_product_demo_snapshot_server.py -q"
+  },
+  "windows_cmd_repeat_launch": {
+    "port": 8861,
+    "exit_code": 0,
+    "result": "identified existing independent preview"
+  },
+  "agent_review": {
+    "relative_links_checked": 35,
+    "missing_links": 0,
+    "private_data_files": 0
+  },
+  "file_sha256": {
+    "static/demos/product-demo/index.html": "c1f1e00d073d137d1d6ab8eb4ecfc75f9dd7b165cd5e6958b5b9d0e91de6fa25",
+    "static/demos/product-demo/demo.css": "821bbb9c31cd3f840115170597166eccdca449085b4f10c96cc9e87d82ef59e2",
+    "static/demos/product-demo/demo.js": "3fb1b37a23184f5c100c8d937ae39affbc562918796fbaa963a20bac74083f4f",
+    "static/demos/product-demo/data.js": "533bcf95c60ec1bc5d6e5a0045085de766edc740cd41185c787469118e25ba4e",
+    "static/design-tokens.css": "364f1c79f70101684afdceb2bf5d0ef1c9e74383fa2e624ecf21dcdd5eca0a91",
+    "static/product-theme.css": "ab73d66d2c38622e79116e3857a8adfa09c9c5c341ad1ed75cf985caa3116ba1",
+    "static/wencai-zhitou-logo.svg": "f8259f93a36e81957c415844a9f5fa8daf94ad38ac524e71317fd1236e059246",
+    "static/lightweight-charts.js": "e21cc5caa0226ef30bd8549c50b9ef926615f2a4ee6b4e486353477a55f598cf",
+    "static/lightweight-charts.LICENSE.txt": "70c9d5382506dd184465425c08a99ad9bd6d9ac1313c252968ba0b585e5ef823",
+    "preview.py": "6207f52d2a331a9adeeb535ac3250ab13f278f22e54203d5820245263049a615",
+    "start-demo.cmd": "ee7ef1b12f7eb490cf8f41610b9b6a33356d5ecc1acf5d5850bdad18a6d1d7c8",
+    "README.md": "4df5b1aa8688fe00d71b478808f05f1ca58287c8f1be8d434048e5cb490c9976",
+    "PRODUCT-GUIDE.md": "e43b33b18fb91aa545200132d6ab979c36d1762f558cbe9612915f797f22103a",
+    "screenshots/01-copilot.jpg": "a23621c72166f0267c797ad6bfaa05990ccd8ed523e0bd19424b11d66ce11d20",
+    "screenshots/02-overview.jpg": "646a30eff8dd06dbe73b006d3bd0484031e05a7b25dd45b4ad7b0977f79f95b6",
+    "screenshots/03-market.jpg": "f911e3e6c9ae32f662716b9ad9241c551988314f125d31a0f5c93bf8510872ed",
+    "screenshots/04-trading-style.jpg": "80490c9a37c55afe8010c2839963f4917fd8a5c8d107fb51cb31bde6a09c2e81",
+    "screenshots/05-profile.jpg": "ec065223d40a6d97bc1f23330a582b17fd178032cdff307b3222a227c1b917f0",
+    "screenshots/06-skill-store.jpg": "5586e9e11d8b003dcca4ead4012d4e344bcbc80abcff78c9126c323a8b141596",
+    "screenshots/07-research-knowledge.jpg": "08ef7c3f80381b79f52d75f4e95f2b10cac36eece9e6a79316f09a3a62cbf522",
+    "screenshots/08-live-research.jpg": "60e576025ac9293645beaf175940e84650ee2b2cd76a7afeb3b0198d58269bc9",
+    "screenshots/09-research-algorithms.jpg": "69542e6fb028b3d51cde5f5369fe74ae14e55224bd28600b22ba90bdd0eb4292",
+    "screenshots/overview-1024.jpg": "a93f78c69aa5495d9c9c30f6e6c282367e08c3d302029d051546d9600e24f51b",
+    "screenshots/overview-390.jpg": "b125d81fe5d783febe2074878c3c404aa0bd430c68ae30f04ba5b575472757a1",
+    "screenshots/research-algorithms-390.jpg": "8f649f7761408ff496fd0acf94db70bd618425f28f427eb321f5ed04dc9b5a97",
+    "screenshots/index.html": "44370c059074b93f4d56792a77278ce5586e7435e6eeaadce25a7e63fa3028ad"
+  }
+}
