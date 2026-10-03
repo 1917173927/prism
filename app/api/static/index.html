@@ -16,9 +16,9 @@
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261003-research-upstream-merge" defer></script>
-    <script src="/static/research-platform.js?v=20261001" defer></script>
-    <script src="/static/research-tools.js?v=20261001" defer></script>
+    <script src="/static/app.js?v=20261003-investor-workbench" defer></script>
+    <script src="/static/research-platform.js?v=20261003-investor-workbench" defer></script>
+    <script src="/static/research-tools.js?v=20261003-investor-workbench" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -170,11 +170,11 @@
             </a>
             <a class="nav-item" href="#market">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <span>大盘鉴别</span>
+              <span>市场观察</span>
             </a>
             <a class="nav-item" href="#trading-style">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-              <span>交易风格</span>
+              <span>交易复盘</span>
             </a>
             <a class="nav-item" href="#profile">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
@@ -182,11 +182,11 @@
             </a>
             <a class="nav-item" href="#skill-store">
               <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-              <span>技能商店</span>
+              <span>研究工具</span>
             </a>
-            <a class="nav-item" href="#research-knowledge"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span><span>研究知识库</span></a>
-            <a class="nav-item" href="#live-research"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span><span>LIVE 研究</span></a>
-            <a class="nav-item" href="#research-algorithms"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span><span>论文算法</span></a>
+            <a class="nav-item" href="#research-knowledge"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span><span>研究资料</span></a>
+            <a class="nav-item" href="#live-research"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span><span>研究任务</span></a>
+            <a class="nav-item" href="#research-algorithms"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span><span>风险分析</span></a>
           </div>
 
           <!-- 系统治理仅对开发者模式开放。 -->
@@ -942,7 +942,7 @@
         </section>
 
         <section class="workspace-page-section market-page" id="market" hidden aria-labelledby="market-title">
-          <h2 id="market-title" class="sr-only">大盘鉴别</h2>
+          <h2 id="market-title" class="sr-only">市场观察</h2>
           <section class="surface market-result" aria-live="polite" data-subpage="market-quotes">
             <div class="market-result-heading">
               <div id="market-result-content">正在读取行情…</div>
@@ -977,33 +977,33 @@
           </section>
           <section id="market-industries-section" class="surface portfolio-detail-card" data-subpage="market-sectors">
             <h3>行业轮动观察</h3><p>对照固定观察行业的短中期涨跌幅，查看相对强弱变化。</p>
-            <div class="research-action-row"><label class="research-form-field">关联个股代码<input id="market-stock-research-code" placeholder="例如 600519.SH" maxlength="12"></label><button id="market-stock-research-open" type="button" class="copilot-action-btn secondary">进入个股 LIVE 研究</button></div>
+            <div class="research-action-row"><label class="research-form-field">关联个股代码<input id="market-stock-research-code" placeholder="例如 600519.SH" maxlength="12"></label><button id="market-stock-research-open" type="button" class="copilot-action-btn secondary">进入个股研究</button></div>
             <button id="market-load-industries" type="button" class="copilot-action-btn secondary">读取行业表现</button>
             <div id="market-industries" aria-live="polite"></div>
           </section>
         </section>
 
         <section class="workspace-page-section" id="skill-store" hidden aria-labelledby="skill-store-title">
-          <div class="page-heading"><div><span class="eyebrow">研究能力</span><h2 id="skill-store-title">同花顺技能商店</h2><p>查看受控数据能力及个人启用状态。</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">研究工具</span><h2 id="skill-store-title">研究工具</h2><p>选择研究可使用的数据工具，查看连接和启用状态。</p></div></div>
           <section class="surface doc-callout doc-callout-info" id="skill-store-content" role="status" aria-live="polite"><strong>目录待加载</strong><p>能力状态以服务端注册和权限验证结果为准。</p></section>
         </section>
 
         <section class="workspace-page-section research-tools-page" id="research-knowledge" hidden aria-labelledby="research-knowledge-title">
-          <div class="page-heading"><div><span class="eyebrow">资料与证据</span><h2 id="research-knowledge-title">研究知识库</h2><p>保留原文、公告时点及版本；检索相关性不代表金融事实已核验。</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">资料与依据</span><h2 id="research-knowledge-title">研究资料</h2><p>搜索公告、报告及方法说明，核对结论的原文依据。</p></div></div>
           <div id="knowledge-workspace"></div>
         </section>
         <section class="workspace-page-section research-tools-page" id="live-research" hidden aria-labelledby="live-research-title">
-          <div class="page-heading"><div><span class="eyebrow">结构化研究任务</span><h2 id="live-research-title">LIVE 研究</h2><p>编辑节点与依赖，查看实际执行状态和单源观察证据。</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">研究进度与结果</span><h2 id="live-research-title">研究任务</h2><p>启动真实数据研究，查看进度、结果及仍需核对的资料。</p></div></div>
           <div id="live-research-workspace"></div>
         </section>
         <section class="workspace-page-section research-tools-page" id="research-algorithms" hidden aria-labelledby="research-algorithms-title">
-          <div class="page-heading"><div><span class="eyebrow">确定性研究计算</span><h2 id="research-algorithms-title">论文算法</h2><p>输入有来源和时点的数据；计算状态不证明原始数据或全市场覆盖。</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">风险与分散</span><h2 id="research-algorithms-title">风险分析</h2><p>根据导入资料分析波动环境、资产联动与市场风格；资料不足时保留待补充状态。</p></div></div>
           <div id="algorithm-workspace"></div>
         </section>
 
         <section class="workspace-page-section trading-style-page" id="trading-style" hidden aria-labelledby="trading-style-title">
           <div class="page-heading">
-            <h2 id="trading-style-title">交易风格</h2>
+            <h2 id="trading-style-title">交易复盘</h2>
             <button id="open-trade-import" type="button" class="copilot-action-btn primary" hidden>导入历史交易</button>
           </div>
           <div id="trade-style-error" class="notice error" role="alert" hidden></div>

@@ -1,0 +1,145 @@
+{
+  "schema_version": "investor-workbench-verification.v1",
+  "reviewer": "AGENT_ASSISTED",
+  "full_suite": {
+    "passed": 1119,
+    "skipped": 1,
+    "warnings": 2,
+    "duration_seconds": 121.92,
+    "real_postgres": true
+  },
+  "final_focused_suite": {
+    "passed": 72
+  },
+  "real_financial_data_acceptance": false,
+  "browser": {
+    "demo_pages": 27,
+    "formal_pages": 12,
+    "interactions": 17,
+    "axis_refinement": 3,
+    "console_errors": 0
+  },
+  "launcher_commit": "d82209e",
+  "screenshots": [
+    {
+      "file": "01-copilot.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "a23621c72166f0267c797ad6bfaa05990ccd8ed523e0bd19424b11d66ce11d20"
+    },
+    {
+      "file": "02-overview.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "646a30eff8dd06dbe73b006d3bd0484031e05a7b25dd45b4ad7b0977f79f95b6"
+    },
+    {
+      "file": "03-market.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "f911e3e6c9ae32f662716b9ad9241c551988314f125d31a0f5c93bf8510872ed"
+    },
+    {
+      "file": "04-trading-style.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "80490c9a37c55afe8010c2839963f4917fd8a5c8d107fb51cb31bde6a09c2e81"
+    },
+    {
+      "file": "05-profile.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "ec065223d40a6d97bc1f23330a582b17fd178032cdff307b3222a227c1b917f0"
+    },
+    {
+      "file": "06-skill-store.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "5586e9e11d8b003dcca4ead4012d4e344bcbc80abcff78c9126c323a8b141596"
+    },
+    {
+      "file": "07-research-knowledge.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "08ef7c3f80381b79f52d75f4e95f2b10cac36eece9e6a79316f09a3a62cbf522"
+    },
+    {
+      "file": "08-live-research.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "60e576025ac9293645beaf175940e84650ee2b2cd76a7afeb3b0198d58269bc9"
+    },
+    {
+      "file": "09-research-algorithms.jpg",
+      "format": "JPEG",
+      "width": 1424,
+      "height": 1198,
+      "sha256": "69542e6fb028b3d51cde5f5369fe74ae14e55224bd28600b22ba90bdd0eb4292"
+    },
+    {
+      "file": "overview-1024.jpg",
+      "format": "JPEG",
+      "width": 1009,
+      "height": 757,
+      "sha256": "a93f78c69aa5495d9c9c30f6e6c282367e08c3d302029d051546d9600e24f51b"
+    },
+    {
+      "file": "overview-390.jpg",
+      "format": "JPEG",
+      "width": 375,
+      "height": 812,
+      "sha256": "b125d81fe5d783febe2074878c3c404aa0bd430c68ae30f04ba5b575472757a1"
+    },
+    {
+      "file": "research-algorithms-390.jpg",
+      "format": "JPEG",
+      "width": 374,
+      "height": 1871,
+      "sha256": "8f649f7761408ff496fd0acf94db70bd618425f28f427eb321f5ed04dc9b5a97"
+    }
+  ],
+  "package": {
+    "files": [
+      "prism-product-demo/static/demos/product-demo/index.html",
+      "prism-product-demo/static/demos/product-demo/demo.css",
+      "prism-product-demo/static/demos/product-demo/demo.js",
+      "prism-product-demo/static/demos/product-demo/data.js",
+      "prism-product-demo/static/design-tokens.css",
+      "prism-product-demo/static/product-theme.css",
+      "prism-product-demo/static/wencai-zhitou-logo.svg",
+      "prism-product-demo/static/lightweight-charts.js",
+      "prism-product-demo/static/lightweight-charts.LICENSE.txt",
+      "prism-product-demo/preview.py",
+      "prism-product-demo/start-demo.cmd",
+      "prism-product-demo/README.txt"
+    ],
+    "sha256": "62f259260cf4f919edfca62ad19fc11bbcd98d2288009908099591df6cf9457c",
+    "resource_matches": true,
+    "shared_preview": true,
+    "crc_valid": true
+  },
+  "source_hash_basis": "Working-tree bytes at validation; checkout newline conversion may change byte hashes without changing content.",
+  "source_sha256": {
+    "app/api/static/demos/product-demo/index.html": "c1f1e00d073d137d1d6ab8eb4ecfc75f9dd7b165cd5e6958b5b9d0e91de6fa25",
+    "app/api/static/demos/product-demo/demo.css": "821bbb9c31cd3f840115170597166eccdca449085b4f10c96cc9e87d82ef59e2",
+    "app/api/static/demos/product-demo/demo.js": "3fb1b37a23184f5c100c8d937ae39affbc562918796fbaa963a20bac74083f4f",
+    "app/api/static/demos/product-demo/data.js": "533bcf95c60ec1bc5d6e5a0045085de766edc740cd41185c787469118e25ba4e",
+    "app/api/static/design-tokens.css": "364f1c79f70101684afdceb2bf5d0ef1c9e74383fa2e624ecf21dcdd5eca0a91",
+    "app/api/static/product-theme.css": "ab73d66d2c38622e79116e3857a8adfa09c9c5c341ad1ed75cf985caa3116ba1",
+    "app/api/static/wencai-zhitou-logo.svg": "f8259f93a36e81957c415844a9f5fa8daf94ad38ac524e71317fd1236e059246",
+    "app/api/static/lightweight-charts.js": "e21cc5caa0226ef30bd8549c50b9ef926615f2a4ee6b4e486353477a55f598cf",
+    "app/api/static/lightweight-charts.LICENSE.txt": "70c9d5382506dd184465425c08a99ad9bd6d9ac1313c252968ba0b585e5ef823",
+    "app/api/static/index.html": "821f92517637dc0f65cad220cfbed455939a63fa483f2b138ca5780e4b6acfc0",
+    "app/api/static/app.js": "8a88ca54bd82aaf81756118f0b1d79914bf1df8285706954f26e54d39159281b",
+    "app/api/static/research-tools.js": "c5bf9fd4d801d887bef91c6f1664f45af08b148aa4a3e2423261c2c1b5a9061a",
+    "app/api/static/research-platform.js": "66836db7ce32e7b996c7da6675c9909f300a81e139dfe03be64b649f12bf4a37"
+  }
+}

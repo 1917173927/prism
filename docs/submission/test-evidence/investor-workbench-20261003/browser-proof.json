@@ -1,0 +1,795 @@
+{
+  "created_at": "2026-10-03T07:57:46.465Z",
+  "reviewer": "AGENT_ASSISTED",
+  "real_data_acceptance": false,
+  "pages": [
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "AI 投资助手",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1425,
+      "title": "AI 投资助手",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "组合总览",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1425,
+      "title": "组合总览",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "overview",
+      "expected": "组合总览",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "市场观察",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1425,
+      "title": "市场观察",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "market",
+      "expected": "市场观察",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "交易复盘",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1425,
+      "title": "交易复盘",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "投资偏好",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1440,
+      "title": "投资偏好",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1440,
+      "route": "profile",
+      "expected": "投资偏好",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究工具",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1440,
+      "title": "研究工具",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1440,
+      "route": "skill-store",
+      "expected": "研究工具",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究资料",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1425,
+      "title": "研究资料",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究任务",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1440,
+      "title": "研究任务",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1440,
+      "route": "live-research",
+      "expected": "研究任务",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "风险分析",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1425,
+      "title": "风险分析",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "AI 投资助手",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "AI 投资助手",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "组合总览",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "组合总览",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "overview",
+      "expected": "组合总览",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "市场观察",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "市场观察",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "market",
+      "expected": "市场观察",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "交易复盘",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "交易复盘",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "投资偏好",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "投资偏好",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "profile",
+      "expected": "投资偏好",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究工具",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "研究工具",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "skill-store",
+      "expected": "研究工具",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究资料",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "研究资料",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究任务",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "研究任务",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "live-research",
+      "expected": "研究任务",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "风险分析",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 1009,
+      "title": "风险分析",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "AI 投资助手",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "AI 投资助手",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "组合总览",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "组合总览",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "overview",
+      "expected": "组合总览",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "市场观察",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "市场观察",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "market",
+      "expected": "市场观察",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "交易复盘",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "交易复盘",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "投资偏好",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "投资偏好",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "profile",
+      "expected": "投资偏好",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究工具",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "研究工具",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "skill-store",
+      "expected": "研究工具",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究资料",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "研究资料",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "研究任务",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "研究任务",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "live-research",
+      "expected": "研究任务",
+      "pass": true
+    },
+    {
+      "boundary": "演示数据",
+      "breadcrumb": "风险分析",
+      "missing": [],
+      "rawTerms": [],
+      "scrollWidth": 375,
+      "title": "风险分析",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "pass": true
+    }
+  ],
+  "interactions": [
+    {
+      "name": "risk_matrix_details",
+      "pass": true
+    },
+    {
+      "name": "selected_index_metrics",
+      "pass": true,
+      "before": "当日涨跌\n+0.10\n%\n\n与前一交易日收盘价相比\n\n近 20 日涨跌\n+5.94\n%\n\n固定 20 个交易日窗口\n\n年化波动率\n9.59\n%\n\n按近 20 日收益波动估算，不代表未来涨跌\n\n距阶段高点回撤\n0.00\n%\n\n相对近 100 个交易日最高收盘价",
+      "after": {
+        "text": "当日涨跌\n-0.79\n%\n\n与前一交易日收盘价相比\n\n近 20 日涨跌\n+1.22\n%\n\n固定 20 个交易日窗口\n\n年化波动率\n12.22\n%\n\n按近 20 日收益波动估算，不代表未来涨跌\n\n距阶段高点回撤\n-1.53\n%\n\n相对近 100 个交易日最高收盘价",
+        "title": "深证成指"
+      }
+    },
+    {
+      "name": "monthly_chart",
+      "pass": true
+    },
+    {
+      "name": "browser_back",
+      "pass": true
+    },
+    {
+      "name": "browser_forward",
+      "pass": true
+    },
+    {
+      "name": "cancel_run",
+      "pass": true
+    },
+    {
+      "name": "leave_running_task_cancels",
+      "pass": true
+    },
+    {
+      "name": "keyword_search",
+      "pass": true
+    },
+    {
+      "name": "citation_scope",
+      "pass": true
+    },
+    {
+      "name": "citation_escape",
+      "pass": true
+    },
+    {
+      "name": "tool_selection",
+      "pass": true
+    },
+    {
+      "name": "empty_tool_search",
+      "pass": true
+    },
+    {
+      "name": "preferences_only_explanation",
+      "pass": true
+    },
+    {
+      "name": "market_explanation",
+      "pass": true
+    },
+    {
+      "name": "unsupported_question",
+      "pass": true
+    },
+    {
+      "name": "formal_insufficient_returns",
+      "pass": true
+    },
+    {
+      "name": "formal_task_auth_failure",
+      "pass": true
+    }
+  ],
+  "console": [],
+  "screenshots": [
+    {
+      "filename": "01-copilot.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "02-overview.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "03-market.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "04-trading-style.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "05-profile.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "06-skill-store.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "07-research-knowledge.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "08-live-research.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "09-research-algorithms.jpg",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "fullPage": true
+    },
+    {
+      "filename": "overview-1024.jpg",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "overview-390.jpg",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "fullPage": false
+    },
+    {
+      "filename": "research-algorithms-390.jpg",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "fullPage": true
+    }
+  ],
+  "formal": [
+    {
+      "scrollWidth": 1440,
+      "technicalTokens": [],
+      "title": "研究工具",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1440,
+      "route": "skill-store",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1425,
+      "technicalTokens": [],
+      "title": "研究资料",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "research-knowledge",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1425,
+      "technicalTokens": [],
+      "title": "研究任务",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "route": "live-research",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1440,
+      "technicalTokens": [],
+      "title": "风险分析",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1440,
+      "route": "research-algorithms",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1009,
+      "technicalTokens": [],
+      "title": "研究工具",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "skill-store",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1009,
+      "technicalTokens": [],
+      "title": "研究资料",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "research-knowledge",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1009,
+      "technicalTokens": [],
+      "title": "研究任务",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "route": "live-research",
+      "pass": true
+    },
+    {
+      "scrollWidth": 1024,
+      "technicalTokens": [],
+      "title": "风险分析",
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1024,
+      "route": "research-algorithms",
+      "pass": true
+    },
+    {
+      "scrollWidth": 375,
+      "technicalTokens": [],
+      "title": "研究工具",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "skill-store",
+      "pass": true
+    },
+    {
+      "scrollWidth": 375,
+      "technicalTokens": [],
+      "title": "研究资料",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "research-knowledge",
+      "pass": true
+    },
+    {
+      "scrollWidth": 375,
+      "technicalTokens": [],
+      "title": "研究任务",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "live-research",
+      "pass": true
+    },
+    {
+      "scrollWidth": 375,
+      "technicalTokens": [],
+      "title": "风险分析",
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "route": "research-algorithms",
+      "pass": true
+    }
+  ],
+  "axisRefinement": [
+    {
+      "canvases": 7,
+      "scrollWidth": 1425,
+      "viewport": [
+        1440,
+        1000
+      ],
+      "width": 1425,
+      "pass": true
+    },
+    {
+      "canvases": 7,
+      "scrollWidth": 1009,
+      "viewport": [
+        1024,
+        768
+      ],
+      "width": 1009,
+      "pass": true
+    },
+    {
+      "canvases": 7,
+      "scrollWidth": 375,
+      "viewport": [
+        390,
+        844
+      ],
+      "width": 375,
+      "pass": true
+    }
+  ],
+  "finalTerminology": {
+    "style_analysis": true,
+    "tools_financial_role_preserved": true
+  }
+}

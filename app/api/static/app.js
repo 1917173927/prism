@@ -8367,7 +8367,7 @@
     label.className = "drilldown-label";
     label.textContent = "想了解更多依据？";
     row.append(label);
-    const destinations = [{href: "#holdings-report", text: "组合详细报告"}, {href: "#live-research", text: "LIVE 研究与证据"}, {href: "#research-knowledge", text: "资料原文与引用"}];
+    const destinations = [{href: "#holdings-report", text: "组合详细报告"}, {href: "#live-research", text: "研究任务与依据"}, {href: "#research-knowledge", text: "资料原文与引用"}];
     [...links, ...destinations.filter(item => !links.some(link => link.href === item.href))].forEach(l => {
       const a = document.createElement("a");
       a.href = l.href;

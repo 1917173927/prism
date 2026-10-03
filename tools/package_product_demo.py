@@ -40,9 +40,9 @@ GUIDE = '''Prism 产品演示
 打开：http://127.0.0.1:8860/demos/product-demo/#overview
 截图：http://127.0.0.1:8860/demos/product-demo/?capture=1#overview
 
-9 页导航可直接切换。截图模式隐藏演示工具栏，DEMO 标记一直保留。
+9 页导航可直接切换。截图模式隐藏演示工具栏，“演示数据”标记一直保留。
 Esc 先关闭引用，未打开引用时退出截图模式。重置演示恢复固定初始状态。
-所有资料、数值、技能和任务状态均为演示样例；不连接真实金融数据、模型或账户。
+所有资料、数值、工具选择和任务状态均为演示样例；不连接真实金融数据、模型或账户。
 不含用户数据、凭据或模型权重；Lightweight Charts 授权见 static/lightweight-charts.LICENSE.txt。
 '''
 

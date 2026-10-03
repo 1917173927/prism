@@ -33,9 +33,9 @@
     container.style.height = "auto";
     const metric = metricData?.research_metrics?.[selectedMetric];
     const points = metric?.series || [];
-    metadata.textContent = metric ? `${METRIC_LABELS[selectedMetric]} · ${metric.unit || "单位未提供"} · ${metric.input_start || "起点缺失"} 至 ${metric.input_end || "终点缺失"} · ${metric.source || "来源未提供"} · ${metric.method_version || "方法版本未提供"}` : "";
+    metadata.textContent = metric ? `${METRIC_LABELS[selectedMetric]} · ${metric.unit || "单位未提供"} · ${metric.input_start || "起点缺失"} 至 ${metric.input_end || "终点缺失"} · ${metric.source || "来源未提供"}` : "";
     if (!metricAvailable(metric) || !points.length) {
-      container.append(node("p", metric?.missing_reason || "尚无可展示的时间序列。", "empty-state"));
+      container.append(node("p", "资料或计算条件不足，尚无可展示的时间序列。具体原因可在数据与方法中查看。", "empty-state"));
       return;
     }
     if (!window.LightweightCharts) { container.append(node("p", "行情图组件未能加载。")); return; }
@@ -71,13 +71,13 @@
     metricData = detail.data || null;
     cards.replaceChildren();
     if (!metricData) {
-      status.textContent = detail.status === "LOADING" ? "正在读取" : "UNAVAILABLE";
+      status.textContent = detail.status === "LOADING" ? "正在读取" : "暂无法分析";
       cards.append(node("p", detail.status === "LOADING" ? "正在读取新的指标输入；上一结果已失效。" : detail.message || "尚未取得研究指标。", "empty-state"));
       renderMetricChart();
       return;
     }
     const metrics = metricData.research_metrics || {};
-    status.textContent = Object.values(metrics).some(metricAvailable) ? "CALCULATED" : "UNAVAILABLE";
+    status.textContent = Object.values(metrics).some(metricAvailable) ? "已计算" : "暂无法分析";
     for (const [key, label] of Object.entries(METRIC_LABELS)) {
       const metric = metrics[key];
       const available = metricAvailable(metric);
@@ -92,7 +92,7 @@
         cards.querySelectorAll("[data-research-metric]").forEach(item => item.setAttribute("aria-pressed", String(item.dataset.researchMetric === key)));
         renderMetricChart();
       });
-      card.append(button, node("small", available ? `CALCULATED · 样本 ${metric.sample_count} · 日频` : `UNAVAILABLE · ${metric?.missing_reason || "后端未提供该指标"}`));
+      card.append(button, node("small", available ? `已计算 · 样本 ${metric.sample_count} · 日频` : "暂无法分析 · 资料或计算条件不足"));
       const details = node("details");
       details.append(node("summary", "数据与方法"));
       const definition = node("dl");
@@ -100,7 +100,7 @@
         "计算窗口": metric ? `${metric.input_start || "未提供"} 至 ${metric.input_end || "未提供"}` : "未提供",
         "来源": metric?.source || "未提供", "方法版本": metric?.method_version || "未提供",
         "参数": metric?.parameters ? JSON.stringify(metric.parameters) : "未提供",
-        "输入快照": metric?.snapshot_id || metricData.input_snapshot_id || "未提供",
+        "输入快照": metric?.snapshot_id || metricData.input_snapshot_id || "未提供", "缺少条件": metric?.missing_reason || "未报告",
       };
       for (const [name, value] of Object.entries(fields)) definition.append(node("dt", name), node("dd", value));
       details.append(definition);
@@ -176,10 +176,10 @@
     skillDetailItem = item || null;
     output.hidden = !item;
     if (!item) return;
-    output.append(node("h3", `${item.name} · ${item.version}`), node("p", `${SKILL_STATUS[item.status] || item.status} · 注册状态 ${item.callable ? "可调用" : "不可调用"} · 修订 ${item.revision}`));
+    output.append(node("h3", `${item.name} · ${item.version}`), node("p", `${SKILL_STATUS[item.status] || "状态待确认"} · ${item.callable ? "当前可用" : "当前不可用"}`));
     const data = node("dl", null, "research-detail-list");
     for (const [label, value] of Object.entries({"能力标识": item.skill_id, "用途": OPERATION_LABELS[item.operation] || item.operation, "执行方式": "受控 API 适配器", "审核接口": item.endpoint, "渠道": item.channel || "不适用", "更新时间": item.updated_at, "包哈希": item.package_sha256 || "未提供", "完整性状态": item.package_integrity === "REGISTERED_HASH_ONLY" ? "仅登记哈希；未执行下载包" : "未提供哈希"})) data.append(node("dt", label), node("dd", value));
-    output.append(data);
+    const connection = node("details"); connection.append(node("summary", "连接与版本信息"), data); output.append(connection);
     if (skillAdmin && !isReadOnly()) {
       const controls = node("div", null, "research-action-row");
       if (item.status === "PENDING") controls.append(actionButton("验证能力", () => mutateSkill(() => api(`${skillPath(item)}/verify`, {method: "POST", body: JSON.stringify({expected_revision: item.revision})}), result => result.status === "PASS" ? "验证通过，版本已启用。" : `验证未通过，保持待验证。${result.error_code ? `原因：${result.error_code}` : ""}`), skillMutation));
@@ -212,8 +212,8 @@
       card.dataset.skillId = item.skill_id;
       card.dataset.skillVersion = item.version;
       const header = node("div", null, "research-skill-heading");
-      header.append(node("h3", item.name), node("span", SKILL_STATUS[item.status] || item.status, "status-chip"));
-      card.append(header, node("p", `${OPERATION_LABELS[item.operation] || item.operation} · ${item.version}`), node("small", `注册状态：${item.callable ? "可调用" : "不可调用"} · ${item.enabled ? "全局启用" : "全局停用"}`));
+      header.append(node("h3", item.name), node("span", SKILL_STATUS[item.status] || "状态待确认", "status-chip"));
+      card.append(header, node("p", `${OPERATION_LABELS[item.operation] || "研究工具"} · ${item.version}`), node("small", `${item.callable ? "当前可用" : "当前不可用"} · ${item.enabled ? "全局启用" : "全局停用"}`));
       const selection = node("label", null, "research-skill-selection");
       const input = node("input"); input.type = "checkbox"; input.checked = item.personal_enabled;
       input.disabled = skillMutation || isReadOnly() || item.status === "UNINSTALLED";

@@ -126,6 +126,7 @@ assert.equal(captureIcon.children[0].tagName,'SVG');assert.equal(captureIcon.get
 assert.equal(get('[data-page-menu]').value,'copilot');assert.equal(get('[data-page-name]').textContent,'copilot');
 assert.equal(Object.isFrozen(window.PRISM_DEMO_DATA.portfolio),true);
 assert.equal(algorithmStatus.classList.contains('pass'),!unavailable);assert.equal(algorithmStatus.classList.contains('warning'),unavailable);
+assert.equal(algorithmStatus.textContent,unavailable?'暂无法分析':'已计算');
 assert.equal(algorithmReason.hidden,!unavailable);if(unavailable)assert.equal(algorithmReason.textContent,'共同有效收益不足，无法计算');
 route('market');assert.equal(createdCharts.length,1);assert.equal(observers.filter(observer=>observer.connected).length,1);
 assert.equal(createdCharts[0].series[0].options.upColor,'#e14444');
@@ -134,17 +135,20 @@ click('[data-nav="market"]');assert.equal(document.body.classList.contains('nav-
 click('[data-market-period="monthly"]');flushFrames();assert.equal(chartRemoved,1);
 observers[0].callback([{contentRect:{width:600}}]);
 assert.equal(createdCharts.at(-1).series[0].data,window.PRISM_DEMO_DATA.market.instruments.shanghai.monthly);
-window.scrollY=312;route('overview');assert.equal(chartRemoved,2);assert.equal(createdCharts.at(-1).series[0].options.lineColor,'#ab6100');route('market');assert.equal(window.scrollY,312);
+click(get('[data-market-instrument="shenzhen"]'));flushFrames();
+assert.equal(get('[data-list="market-metrics"]').children[0].children[1].textContent,window.PRISM_DEMO_DATA.market.instruments.shenzhen.metrics[0].value);
+click(get('[data-market-instrument="shanghai"]'));flushFrames();
+window.scrollY=312;route('overview');assert.equal(chartRemoved,4);assert.equal(createdCharts.at(-1).series[0].options.lineColor,'#ab6100');route('market');assert.equal(window.scrollY,312);
 findings.routing_and_chart_cleanup=true;
 
 route('live-research');click('[data-action="live-start"]');assert.equal(timers.size,1);
-assert.equal(get('[data-live-status]').textContent,'DEMO · 演示执行中');
-click('[data-action="live-cancel"]');assert.equal(timers.size,0);tick();assert.equal(get('[data-live-status]').textContent,'DEMO · 已取消');
+assert.equal(get('[data-live-status]').textContent,'演示进行中');
+click('[data-action="live-cancel"]');assert.equal(timers.size,0);tick();assert.equal(get('[data-live-status]').textContent,'已取消');
 click('[data-action="live-start"]');route('copilot');assert.equal(timers.size,0);
-assert.equal(get('[data-live-status]').textContent,'DEMO · 已取消');
+assert.equal(get('[data-live-status]').textContent,'已取消');
 route('live-research');click('[data-action="live-start"]');
 for(let index=0;index<window.PRISM_DEMO_DATA.live.steps.length;index++)tick();
-assert.equal(get('[data-live-status]').textContent,'DEMO · 演示已完成');assert.equal(timers.size,0);
+assert.equal(get('[data-live-status]').textContent,'演示已完成');assert.equal(timers.size,0);
 assert.equal(get('[data-list="live-result"]').children.length,window.PRISM_DEMO_DATA.live.result.length);
 findings.live_cancel_and_completion=true;
 
@@ -154,7 +158,7 @@ assert.ok(get('[data-list="copilot"]').textContent.includes('演示样例未覆�
 assert.equal(get('[data-list="copilot"]').querySelectorAll('img').length,0);
 input.value=window.PRISM_DEMO_DATA.copilot.presets[0].query;emit('submit',get('[data-form="copilot"]'));
 const citation=get('[data-citation="doc-portfolio"]');click(citation);assert.equal(drawer.hidden,false);
-assert.ok(get('[data-citation="meta"]').textContent.includes('DEMO'));emit('keydown',document.body,{key:'Escape'});
+assert.ok(get('[data-citation="meta"]').textContent.includes('演示资料'));emit('keydown',document.body,{key:'Escape'});
 assert.equal(drawer.hidden,true);assert.equal(document.activeElement,citation);
 assert.equal(document.body.classList.contains('capture-mode'),true);
 emit('keydown',document.body,{key:'Escape'});assert.equal(document.body.classList.contains('capture-mode'),false);assert.equal(new URLSearchParams(location.search).has('capture'),false);
@@ -173,10 +177,14 @@ route('research-knowledge');get('[data-search="knowledge"]').value='no matching 
 assert.ok(get('[data-list="documents"]').textContent.includes('未找到匹配'));
 click('[data-action="reset"]');emitWindow('hashchange');flushFrames();assert.equal(location.hash,'#copilot');
 assert.equal(get(`[data-skill-toggle="${skill.id}"]`).getAttribute('aria-pressed'),String(original));
-assert.equal(get('[data-search="knowledge"]').value,'');assert.equal(get('[data-live-status]').textContent,'DEMO · 待演示');
+assert.equal(get('[data-search="knowledge"]').value,'');assert.equal(get('[data-live-status]').textContent,'待开始');
 assert.equal(JSON.stringify(window.PRISM_DEMO_DATA),snapshot);
 findings.search_and_reset_preserve_snapshot=true;
 
+route('research-algorithms');
+assert.equal(createdCharts.at(-1).series[0].data,window.PRISM_DEMO_DATA.algorithms.regime.display_series);
+assert.equal(createdCharts.at(-1).series[0].options.priceFormat.type,'percent');
+assert.deepEqual(JSON.parse(JSON.stringify(createdCharts.at(-1).series[0].options.autoscaleInfoProvider())),{priceRange:{minValue:0,maxValue:100}});
 route('market');assert.equal(observers.filter(observer=>observer.connected).length,1);
 emitWindow('pagehide');assert.equal(observers.filter(observer=>observer.connected).length,0);assert.equal(frames.size,0);assert.equal(timers.size,0);
 assert.equal(networkCalls,0);

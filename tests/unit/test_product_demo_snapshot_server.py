@@ -40,6 +40,7 @@ def test_demo_snapshot_preserves_currency_weights_and_failure_boundaries():
     assert np.linalg.eigvalsh(matrix).min() >= -1e-10
     assert 0 <= float(data["algorithms"]["covariance"]["shrinkage"]) <= 1
     assert all(0 <= p["value"] <= 1 for p in data["algorithms"]["regime"]["series"])
+    assert all(abs(low["value"] * 100 + high["value"] - 100) <= 1e-10 for low, high in zip(data["algorithms"]["regime"]["series"], data["algorithms"]["regime"]["display_series"]))
     for instrument in data["market"]["instruments"].values():
         candles = instrument["candles"]
         assert [p["time"] for p in candles] == sorted({p["time"] for p in candles})
@@ -54,7 +55,7 @@ def test_demo_build_retains_unavailable_algorithm_reasons_without_zero_substitut
         "status": "UNAVAILABLE", "reason": "MODEL_NOT_CONVERGED", "method_version": "gaussian-hmm-2state-ashare.v1",
     })
     monkeypatch.setattr(builder, "constant_correlation_shrinkage", lambda request: {
-        "status": "UNAVAILABLE", "reason": "ZERO_VARIANCE_ASSET", "sample_count": 100,
+        "status": "UNAVAILABLE", "reason": "ZERO_VARIANCE_ASSET",
     })
     data = builder.build()
     assert data["algorithms"]["regime"]["reason"] == "MODEL_NOT_CONVERGED"
@@ -62,6 +63,7 @@ def test_demo_build_retains_unavailable_algorithm_reasons_without_zero_substitut
     covariance = data["algorithms"]["covariance"]
     assert covariance["reason"] == "ZERO_VARIANCE_ASSET"
     assert covariance["shrinkage"] == "不可计算"
+    assert covariance["samples"] == "未提供"
     assert covariance["matrix"] == covariance["matrix_display"] == []
 
 

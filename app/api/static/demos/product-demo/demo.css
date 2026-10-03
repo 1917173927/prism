@@ -15,3 +15,48 @@ h1[tabindex]:focus{outline:none}.capture-mode .topbar [data-action="capture-togg
 
 @media(max-width:600px){.capture-mode .topbar [data-action="capture-toggle"]{display:grid}}
 @media(max-width:640px){.sidebar{visibility:hidden}.nav-open .sidebar{visibility:visible}}
+
+/* Investment tasks lead the page; calculation details remain available on demand. */
+.risk-scope{display:flex;align-items:flex-start;gap:9px;margin:-3px 0 13px;color:var(--text-secondary);font-size:11px;line-height:1.7}
+.risk-scope>.icon{width:16px;height:16px;margin-top:2px;color:var(--brand);flex:none}
+.risk-account-check{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 16px;margin-bottom:20px;border:1px solid var(--warning-border,#efe1ce);border-radius:10px;background:var(--warning-soft,#fcf7ef)}
+.risk-account-check>div{display:flex;align-items:center;gap:10px;min-width:0}
+.risk-account-check p{font-size:11px;color:var(--text-secondary);line-height:1.65}
+.risk-account-check .number{color:var(--text-primary);letter-spacing:0}
+.risk-conclusion{padding:16px 17px;border:1px solid var(--border-subtle);border-radius:10px;background:var(--surface-subtle);margin-bottom:19px}
+.risk-conclusion>span{display:block;font-size:10px;color:var(--text-muted);margin-bottom:6px}
+.risk-conclusion>strong{display:block;font-size:19px;line-height:1.45;letter-spacing:-.3px}
+.risk-conclusion>p{font-size:11px;line-height:1.75;color:var(--text-secondary);margin-top:7px;overflow-wrap:anywhere}
+.risk-environment-card .algorithm-summary{gap:35px;padding-bottom:13px}
+.risk-environment-card .algorithm-summary span{font-size:10px}
+.risk-environment-card .algorithm-summary strong{font-size:22px;letter-spacing:0}
+.risk-environment-card .regime-chart{height:167px}
+.risk-context{font-size:10px;color:var(--text-secondary);margin-top:13px;line-height:1.7}
+.risk-guide{list-style:none;padding:0;margin:6px 0 22px;display:grid;gap:19px}
+.risk-guide li{display:flex;align-items:flex-start;gap:12px}
+.risk-guide-marker{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:7px;background:var(--brand-soft);color:var(--brand-hover);font-size:11px;font-weight:600}
+.risk-guide strong{font-size:12px;line-height:1.5}
+.risk-guide p{font-size:11px;line-height:1.8;margin-top:4px;color:var(--text-secondary)}
+.calculation-details{margin-top:16px;border-top:1px solid var(--border-subtle);font-size:10px;color:var(--text-secondary)}
+.calculation-details>summary{padding:12px 0 0;cursor:pointer;font-size:10px;font-weight:550;color:var(--text-secondary)}
+.calculation-details>summary:hover{color:var(--brand-hover)}
+.calculation-details>summary:focus-visible{outline:3px solid var(--brand-soft);outline-offset:3px;border-radius:3px}
+.calculation-details>div{padding-top:13px}
+.calculation-details p{font-size:11px;line-height:1.8;overflow-wrap:anywhere}
+.detail-facts{display:grid;gap:7px;margin:12px 0 0}
+.detail-facts>div{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+.detail-facts dt{color:var(--text-muted)}
+.detail-facts dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.calculation-details .matrix-table{margin-top:12px}
+.calculation-details .matrix-table+.small{margin-top:12px;font-size:9px}
+.factor-requirements h3{font-size:11px;margin-bottom:13px}
+.factor-requirements .text-link{margin-top:14px}
+.factor-card .factor-chips span{font-family:inherit;font-size:10px;color:var(--text-secondary)}
+.factor-card .factor-explanation{font-size:11px;line-height:1.9}
+.factor-card .gap-list{gap:10px 16px}
+.factor-card .gap-item{font-size:10px;line-height:1.6;align-items:flex-start}
+.factor-card .gap-item:before{margin-top:6px}
+.run-details{margin:0 0 20px;padding:0 4px}
+@media(max-width:1199px){.risk-account-check{align-items:flex-start}.risk-account-check>div{align-items:flex-start}.risk-account-check .status{margin-top:1px}.risk-account-check p{font-size:10px}.risk-conclusion{padding:14px}.risk-conclusion>strong{font-size:17px}.risk-environment-card .algorithm-summary{gap:22px}.risk-environment-card .algorithm-summary strong{font-size:20px}.risk-guide{gap:15px}.risk-guide strong{font-size:11px}.risk-guide p{font-size:10px}}
+@media(max-width:900px){.risk-linkage-card .risk-guide{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.risk-linkage-card .risk-guide li{display:block}.risk-guide-marker{margin-bottom:9px}.risk-environment-card .regime-chart{height:185px}.risk-account-check{gap:12px}.risk-account-check>div{gap:8px}}
+@media(max-width:640px){.risk-scope{font-size:10px;margin-bottom:12px}.risk-account-check{padding:12px;margin-bottom:16px;flex-direction:column;gap:8px}.risk-account-check .text-link{margin-left:0}.risk-account-check>div{display:block}.risk-account-check p{margin-top:7px}.risk-conclusion{padding:14px;margin-bottom:17px}.risk-conclusion>strong{font-size:18px}.risk-conclusion>p{font-size:11px}.risk-environment-card .algorithm-summary{gap:20px;flex-wrap:nowrap}.risk-environment-card .algorithm-summary>div{min-width:0;flex:1}.risk-environment-card .algorithm-summary span{font-size:9px}.risk-environment-card .algorithm-summary strong{font-size:20px}.risk-linkage-card .risk-guide{grid-template-columns:1fr}.risk-linkage-card .risk-guide li{display:flex;gap:11px}.risk-guide-marker{margin-bottom:0}.risk-guide strong{font-size:11px}.risk-guide p{font-size:10px}.factor-card .factor-explanation{font-size:10px}.factor-card .gap-item{font-size:10px}.factor-card .gap-list{grid-template-columns:1fr}.factor-body{gap:19px}.calculation-details p{font-size:10px}.detail-facts{font-size:9px}.detail-facts>div{gap:12px}.calculation-details .matrix-table th,.calculation-details .matrix-table td{padding-left:9px;padding-right:9px;font-size:9px}.run-details{padding:0}}
