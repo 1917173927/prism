@@ -19,7 +19,9 @@ const assert = require('node:assert/strict');
 class Element {
   constructor(){this.children=['old'];this.value='query';this.hidden=false;this.style={};}
   replaceChildren(...items){this.children=items;}
+  focus(){focusedElement=this;}
 }
+let focusedElement=null;
 const nodes=new Map();
 const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
 let abortCount=0;
@@ -44,20 +46,33 @@ const renderChatWelcome=()=>byId('copilot-chat-messages').children.push('welcome
 const renderActiveChatMessages=()=>{clear(byId('copilot-chat-messages'));renderChatWelcome();byId('copilot-chat-panel').style.display='block';};
 const renderChatSessionList=()=>{};
 const persistChatSessions=()=>{};
-const setAgentFeatureToolsCompact=()=>{};
+let featureToolsOpen=true, featureConfigOpen=true, uploadFilename='old.csv', historyCollapsed=false;
+const setAgentFeatureToolsOpen=open=>{featureToolsOpen=open;};
+const closeAgentFeatureConfig=()=>{featureConfigOpen=false;};
+const clearHomeUploadFile=()=>{uploadFilename=null;};
+const homeMobileViewport={matches:true};
+const setHomeHistoryCollapsed=collapsed=>{historyCollapsed=collapsed;};
 const setError=()=>{};
-const createPersistedChatSession=async()=>{const session={id:'new-session',title:'新对话',messages:[]};chatSessions.push(session);activeChatSessionId=session.id;};
+let createdSessions=0;
+const createPersistedChatSession=async()=>{createdSessions++;};
 '''+function+r'''
 clearConversationContext();
 assert.equal(abortCount,1);
 assert.equal(chatContextRevision,1);
 assert.deepEqual(chatHistory,[]);
-assert.equal(chatSessions.length,2);
-assert.equal(activeChatSessionId,'new-session');
+assert.equal(chatSessions.length,1);
+assert.equal(chatSessions[0].id,'old-session');
+assert.equal(activeChatSessionId,null);
+assert.equal(createdSessions,0,'an unsent draft must not create a server conversation');
 assert.equal(storage.has('owner:chat'),false);
 assert.equal(storage.get('owner:model'),'model-secret-reference');
 assert.equal(storage.get('owner:portfolio'),'portfolio-snapshot');
 assert.equal(byId('copilot-natural-input').value,'');
+assert.equal(focusedElement,byId('copilot-natural-input'));
+assert.equal(featureToolsOpen,false);
+assert.equal(featureConfigOpen,false);
+assert.equal(uploadFilename,null);
+assert.equal(historyCollapsed,true);
 assert.equal(byId('chat-send-progress').hidden,false);
 assert.match(byId('chat-send-progress').textContent,/理解问题/);
 
@@ -106,6 +121,8 @@ class Element {
 }
 let truthTurnCounter=0, activeChatController=null, chatContextRevision=0;
 const clearChatEmptyState=()=>{};
+let featureToolsOpen=true;
+const setAgentFeatureToolsOpen=open=>{featureToolsOpen=open;};
 const nodes=new Map();
 const byId=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
 const document={createElement:()=>new Element()};
@@ -138,8 +155,9 @@ const fetch=async(url,options)=>{fetchCalls++;lastFetchOptions=options;return ne
  ]){
   wire=data.replaceAll('\\n','\n');
   // The Python raw string preserves JS newline escapes, evaluated by Node.
-  nodes.clear();chatHistory.length=0;completed=0;
+  nodes.clear();chatHistory.length=0;completed=0;featureToolsOpen=true;
   await handleStreamingChat('检查当前前提');
+  assert.equal(featureToolsOpen,false);
   assert.match(byId('copilot-chat-messages').textContent,new RegExp(message));
   assert.equal(chatHistory.filter(x=>x.role==='assistant').length,0);
   assert.equal(completed,0);

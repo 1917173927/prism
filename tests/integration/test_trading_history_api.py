@@ -163,10 +163,13 @@ def test_trade_page_is_a_primary_navigation_workspace() -> None:
     assert 'id="trade-history-rows"' in html
     assert 'id="trade-mapping-details"' in html
     assert 'id="trade-import-workflow"' in html
-    assert 'id="trade-import-success"' in html
-    assert 'id="continue-trade-import"' in html
+    assert 'id="trade-import-dialog"' in html
+    assert 'id="open-trade-import"' in html
+    assert 'id="empty-trade-import"' in html
+    assert 'id="close-trade-import"' in html
     assert 'id="trade-advanced-filters"' in html
-    assert 'id="trade-boundary-details"' in html
+    assert 'id="trade-history-details"' in html
+    assert 'id="trade-market-details"' in html
     assert 'id="trading-style-more"' in html
     assert 'id="trade-style-insights"' in html
     assert 'id="trade-guidance-list"' in html
@@ -181,16 +184,16 @@ def test_trade_page_is_a_primary_navigation_workspace() -> None:
     assert "function renderTradingStyleProfile(" in script
     assert "function previewTradeImport(" in script
     assert "mappingDetails.open = Boolean(preview.review_count || preview.rejected_count || requiredMissing)" in script
-    assert "workflow.open = false" in script
+    assert 'byId("trade-import-dialog").close()' in script
     assert "function resetTradeImportWorkflow(" in script
-    assert "workflow.open = !state.hasTradeHistory" in script
+    assert "function syncTradeImportFiles(" in script
     assert "function renderTradingStyleInsights(" in script
     assert "function loadTradingStyleInsights(" in script
     assert "tradeStyleInsightsAbortController?.abort()" in script
     assert ".trading-style-page" in styles
     assert ".trading-style-hero" in styles
     assert ".trade-style-insights" in styles
-    assert ".trade-day-range-marker" in styles
+    assert ".trade-market-table" in styles
 
 
 def test_trading_style_insights_are_owner_scoped_and_use_live_quotes() -> None:

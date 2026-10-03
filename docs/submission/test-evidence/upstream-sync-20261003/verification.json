@@ -1,0 +1,26 @@
+{
+  "schema_version": "upstream-sync-verification.v1",
+  "local_parent": "c272c0463f7ae4a1c903f4e4d9b642ef530a2fbc",
+  "upstream_parent": "a85d29e4444e988b7fb374426cd32b25857068aa",
+  "full_suite": {
+    "command": ".venv/Scripts/python.exe -m tools.local_postgres test --full",
+    "passed": 1099,
+    "skipped": 1,
+    "failed": 0,
+    "warnings": 2,
+    "elapsed_seconds": 96.27,
+    "includes_local_postgresql": true
+  },
+  "final_css_followup": {
+    "scope": "Two scoped profile CSS rules changed after the full suite; affected UI and dialog tests rerun",
+    "passed": 58,
+    "failed": 0,
+    "browser_geometry": "All three fixed viewports: heading one line, history trigger hidden, no document overflow"
+  },
+  "javascript_syntax": ["app/api/static/app.js", "tests/browser/test_personal_center.mjs"],
+  "independent_audit": {"evidence_hash_checks": 27, "protected_files": 282, "errors": 0},
+  "browser": {"navigation_checks": 27, "viewports": [[1440,1000],[1024,768],[390,844]], "errors_or_warnings": 0},
+  "pages_workflow_restored": false,
+  "remote_quota_or_real_research_reacceptance_claimed": false,
+  "git_archival": "See LOG.md and Git history for subsequent commit, PR merge and remote confirmation"
+}

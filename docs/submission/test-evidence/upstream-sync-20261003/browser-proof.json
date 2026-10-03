@@ -1,0 +1,568 @@
+{
+  "schema_version": "upstream-sync-browser.v1",
+  "scope": "Authenticated isolated test account; interface regression, not upstream quota or real research reacceptance",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "route_checks": [
+    {
+      "docWidth": 1440,
+      "hash": "#skill-store",
+      "headings": [
+        "对话问财智投",
+        "同花顺技能商店"
+      ],
+      "nav": "技能商店",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1425,
+      "hash": "#research-knowledge",
+      "headings": [
+        "对话问财智投",
+        "研究知识库"
+      ],
+      "nav": "研究知识库",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1425,
+      "hash": "#live-research",
+      "headings": [
+        "对话问财智投",
+        "LIVE 研究"
+      ],
+      "nav": "LIVE 研究",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1425,
+      "hash": "#research-algorithms",
+      "headings": [
+        "对话问财智投",
+        "论文算法"
+      ],
+      "nav": "论文算法",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1440,
+      "hash": "#trading-style",
+      "headings": [
+        "对话问财智投",
+        "交易风格"
+      ],
+      "nav": "交易风格",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1440,
+      "hash": "#overview",
+      "headings": [
+        "持仓分析"
+      ],
+      "nav": "持仓分析",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1440,
+      "hash": "#market",
+      "headings": [
+        "大盘鉴别"
+      ],
+      "nav": "大盘鉴别",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1425,
+      "hash": "#profile",
+      "headings": [
+        "投资者问卷"
+      ],
+      "nav": "个人中心",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1440,
+      "hash": "#copilot",
+      "headings": [
+        "我们从哪里开始？"
+      ],
+      "nav": "AI 对话",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#skill-store",
+      "headings": [
+        "对话问财智投",
+        "同花顺技能商店"
+      ],
+      "nav": "技能商店",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#research-knowledge",
+      "headings": [
+        "对话问财智投",
+        "研究知识库"
+      ],
+      "nav": "研究知识库",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#live-research",
+      "headings": [
+        "对话问财智投",
+        "LIVE 研究"
+      ],
+      "nav": "LIVE 研究",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#research-algorithms",
+      "headings": [
+        "对话问财智投",
+        "论文算法"
+      ],
+      "nav": "论文算法",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1024,
+      "hash": "#trading-style",
+      "headings": [
+        "对话问财智投",
+        "交易风格"
+      ],
+      "nav": "交易风格",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#overview",
+      "headings": [
+        "持仓分析"
+      ],
+      "nav": "持仓分析",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#market",
+      "headings": [
+        "大盘鉴别"
+      ],
+      "nav": "大盘鉴别",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1009,
+      "hash": "#profile",
+      "headings": [
+        "投资者问卷"
+      ],
+      "nav": "个人中心",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 1024,
+      "hash": "#copilot",
+      "headings": [
+        "我们从哪里开始？"
+      ],
+      "nav": "AI 对话",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "docWidth": 375,
+      "hash": "#skill-store",
+      "headings": [
+        "同花顺技能商店"
+      ],
+      "nav": "技能商店",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 375,
+      "hash": "#research-knowledge",
+      "headings": [
+        "研究知识库"
+      ],
+      "nav": "研究知识库",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 375,
+      "hash": "#live-research",
+      "headings": [
+        "LIVE 研究"
+      ],
+      "nav": "LIVE 研究",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 375,
+      "hash": "#research-algorithms",
+      "headings": [
+        "论文算法"
+      ],
+      "nav": "论文算法",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 390,
+      "hash": "#trading-style",
+      "headings": [
+        "交易风格"
+      ],
+      "nav": "交易风格",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 390,
+      "hash": "#overview",
+      "headings": [
+        "持仓分析"
+      ],
+      "nav": "持仓分析",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 375,
+      "hash": "#market",
+      "headings": [
+        "大盘鉴别"
+      ],
+      "nav": "大盘鉴别",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 375,
+      "hash": "#profile",
+      "headings": [
+        "投资者问卷"
+      ],
+      "nav": "个人中心",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    },
+    {
+      "docWidth": 390,
+      "hash": "#copilot",
+      "headings": [
+        "我们从哪里开始？"
+      ],
+      "nav": "AI 对话",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    }
+  ],
+  "questionnaire": {
+    "draft_answer_survived_navigation_and_reload": true,
+    "active_section_survived_reload": 2,
+    "required_answers": 18,
+    "preview_requires_explicit_confirmation": true,
+    "saved_snapshot_version": 1,
+    "display_preference_saved": "简洁",
+    "rating_preserved": "C1",
+    "risk_score_preserved": 10
+  },
+  "market": {
+    "subpages": [
+      "market-quotes",
+      "market-risk",
+      "market-sectors"
+    ],
+    "chart_checks": [
+      {
+        "canvases": [
+          {
+            "height": 451,
+            "rectWidth": 960,
+            "width": 1440
+          },
+          {
+            "height": 451,
+            "rectWidth": 960,
+            "width": 1440
+          },
+          {
+            "height": 451,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 451,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 136,
+            "rectWidth": 960,
+            "width": 1440
+          },
+          {
+            "height": 136,
+            "rectWidth": 960,
+            "width": 1440
+          },
+          {
+            "height": 136,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 136,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 42,
+            "rectWidth": 960,
+            "width": 1440
+          },
+          {
+            "height": 42,
+            "rectWidth": 960,
+            "width": 1440
+          },
+          {
+            "height": 42,
+            "rectWidth": 66,
+            "width": 99
+          }
+        ],
+        "hash": "#market"
+      },
+      {
+        "canvases": [
+          {
+            "height": 451,
+            "rectWidth": 1208,
+            "width": 1812
+          },
+          {
+            "height": 451,
+            "rectWidth": 1208,
+            "width": 1812
+          },
+          {
+            "height": 451,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 451,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 136,
+            "rectWidth": 1208,
+            "width": 1812
+          },
+          {
+            "height": 136,
+            "rectWidth": 1208,
+            "width": 1812
+          },
+          {
+            "height": 136,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 136,
+            "rectWidth": 66,
+            "width": 99
+          },
+          {
+            "height": 42,
+            "rectWidth": 1208,
+            "width": 1812
+          },
+          {
+            "height": 42,
+            "rectWidth": 1208,
+            "width": 1812
+          },
+          {
+            "height": 42,
+            "rectWidth": 66,
+            "width": 99
+          }
+        ],
+        "hash": "#market-quotes"
+      }
+    ],
+    "collapse_expands_plot": true
+  },
+  "dialog_navigation": {
+    "reproduction": "portfolio-modal remained open after browser back to profile",
+    "patched": true,
+    "back_open_dialogs": 0,
+    "forward_open_dialogs": 0,
+    "scroll_lock_cleared": true
+  },
+  "quick_prompt": {
+    "draft": "研究 300750",
+    "automatic_execution": false
+  },
+  "console_warnings_errors": [],
+  "profile_geometry_after_css_fix": [
+    {
+      "docWidth": 1425,
+      "historyTriggerVisible": false,
+      "refreshWidth": 59.33333587646485,
+      "title": {
+        "height": 36.39583587646485,
+        "lineHeight": "36.4px",
+        "width": 108.64583587646484
+      },
+      "width": 1440
+    },
+    {
+      "docWidth": 1009,
+      "historyTriggerVisible": false,
+      "refreshWidth": 59.33333587646485,
+      "title": {
+        "height": 36.39583587646485,
+        "lineHeight": "36.4px",
+        "width": 108.64583587646484
+      },
+      "width": 1024
+    },
+    {
+      "docWidth": 375,
+      "historyTriggerVisible": false,
+      "refreshWidth": 59.33333587646485,
+      "title": {
+        "height": 31.197917938232425,
+        "lineHeight": "31.2px",
+        "width": 93.125
+      },
+      "width": 390
+    }
+  ]
+}

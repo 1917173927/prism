@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
+  <title>交易风格 · 界面预览</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c66326'/%3E%3Cpath d='M8 19l5-8 6 10 5-8' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --page: #f7f7f8;
+      --surface: #ffffff;
+      --ink: #272b30;
+      --secondary: #626870;
+      --muted: #737982;
+      --line: #e7e8eb;
+      --accent: #ba551c;
+      --accent-hover: #a24715;
+      --accent-light: #fcf2eb;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.65 var(--sans); }
+    button, input, select { font: inherit; }
+    button, summary { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; color: var(--muted); background: #f0f1f3; border-color: var(--line); }
+    :is(button, a, summary, input, select):focus-visible { outline: 3px solid #bd622b; outline-offset: 4px; }
+    h1, h2, h3, p, dl { margin: 0; }
+    .icon { width: 20px; height: 20px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .preview-toolbar { width: min(100% - 64px, 1000px); margin: 0 auto 30px; min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line); }
+    .preview-label { color: var(--muted); font-size: 12px; }
+    .preview-switch { display: flex; gap: 3px; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .preview-switch button { min-height: 44px; padding: 5px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--secondary); font-size: 12px; }
+    .preview-switch button[aria-pressed="true"] { background: #f0f1f3; color: var(--ink); font-weight: 600; }
+    main { width: min(100% - 64px, 1000px); margin: 48px auto 0; padding-bottom: 32px; }
+    .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+    h1 { font-size: 28px; line-height: 1.35; font-weight: 600; letter-spacing: -.035em; }
+    .primary-button, .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px; border: 1px solid transparent; border-radius: 8px; text-decoration: none; white-space: nowrap; }
+    .primary-button { background: var(--accent); color: white; font-weight: 500; }
+    .primary-button:hover:not(:disabled) { background: var(--accent-hover); }
+    .secondary-button { background: var(--surface); color: var(--ink); border-color: #d8dade; }
+    .secondary-button:hover:not(:disabled) { background: #f5f5f6; }
+    .summary-card { padding: 32px 32px 0; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .section-label { color: var(--secondary); font-size: 13px; font-weight: 500; }
+    .style-title { margin: 12px 0 32px; font-size: 36px; line-height: 1.3; font-weight: 550; letter-spacing: -.04em; }
+    .sample-meta { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 18px; color: var(--muted); font-size: 12px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); padding: 25px 0; }
+    .metric { min-width: 0; padding: 0 25px; }
+    .metric:first-child { padding-left: 0; }
+    .metric:last-child { padding-right: 0; }
+    .metric + .metric { border-left: 1px solid var(--line); }
+    .metric dt { color: var(--secondary); font-size: 13px; }
+    .metric dd { margin: 7px 0 3px; font-size: 29px; line-height: 1.35; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .metric dd small { font-size: 13px; font-weight: 400; margin-left: 7px; color: var(--muted); }
+    .guidance { padding: 34px 3px; }
+    .section-heading { margin-bottom: 22px; }
+    .section-heading h2 { font-size: 17px; font-weight: 550; }
+    .guidance-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+    .guidance-list li { min-width: 0; padding: 0 24px; }
+    .guidance-list li:first-child { padding-left: 0; }
+    .guidance-list li:last-child { padding-right: 0; }
+    .guidance-list li + li { border-left: 1px solid var(--line); }
+    .guidance-list h3 { font-size: 14px; font-weight: 550; margin-bottom: 7px; }
+    .guidance-list p { color: var(--secondary); font-size: 13px; }
+    .supporting-content { margin-top: 8px; padding: 0 25px; border: 1px solid var(--line); border-radius: 10px; }
+    .disclosure + .disclosure { border-top: 1px solid var(--line); }
+    summary { cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    .disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 60px; padding: 18px 0; }
+    .disclosure-title { min-width: 0; color: var(--secondary); }
+    .disclosure-title strong { font-size: 14px; font-weight: 500; }
+    .disclosure > summary .icon { width: 16px; height: 16px; color: var(--muted); transition: transform 160ms ease; }
+    .disclosure[open] > summary .icon { transform: rotate(180deg); }
+    .disclosure-content { padding: 0 0 24px; color: var(--secondary); font-size: 13px; }
+    .detail-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: #fbfbfc; }
+    .detail-metrics .metric { padding: 0 18px; }
+    .detail-metrics .metric:first-child { padding-left: 0; }
+    .detail-metrics .metric:last-child { padding-right: 0; }
+    .detail-metrics .metric dd { font-size: 23px; }
+    .supporting-content .disclosure { margin-top: 10px; }
+    .table-wrap { max-width: 100%; overflow: auto; border: 1px solid var(--line); border-radius: 9px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+    th { padding: 11px 13px; background: #f9f9fa; border-bottom: 1px solid var(--line); color: var(--secondary); font-weight: 500; white-space: nowrap; }
+    td { padding: 26px 16px; color: var(--muted); text-align: center; }
+    .history-table { min-width: 740px; }
+    .market-table { min-width: 600px; }
+    .record-tools { display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 14px; }
+    input, select { min-width: 0; min-height: 42px; padding: 8px 11px; color: var(--ink); background: var(--surface); border: 1px solid #d8dade; border-radius: 7px; }
+    .record-tools > input { flex: 1 1 250px; }
+    .record-tools .secondary-button { min-height: 42px; padding: 8px 13px; }
+    .advanced-filters { flex: 0 1 auto; }
+    .advanced-filters > summary { padding: 8px 12px; min-height: 42px; border: 1px solid #d8dade; border-radius: 7px; white-space: nowrap; }
+    .advanced-filters[open] { flex-basis: 100%; }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .filter-grid label { display: grid; gap: 5px; font-size: 12px; }
+    .empty-card { display: flex; align-items: center; justify-content: center; flex-direction: column; min-height: 390px; padding: 45px 28px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; }
+    .empty-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 22px; border-radius: 15px; color: var(--accent); background: var(--accent-light); }
+    .empty-icon .icon { width: 29px; height: 29px; }
+    .empty-card h2 { margin-bottom: 26px; font-size: 23px; font-weight: 550; letter-spacing: -.025em; }
+    dialog { width: min(650px, calc(100% - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 0; overflow: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 24px 80px #272b3020; }
+    dialog::backdrop { background: #272b3048; }
+    .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 27px; border-bottom: 1px solid var(--line); }
+    .dialog-heading h2 { font-size: 20px; font-weight: 550; }
+    .icon-button { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 7px; color: var(--secondary); background: transparent; }
+    .icon-button:hover { background: #f0f1f3; }
+    .dialog-body { padding: 23px 27px 27px; }
+    .upload-area { padding: 38px 22px; border: 1px dashed #cbd0d6; border-radius: 10px; background: #fcfcfd; text-align: center; }
+    .upload-area > p:first-child { color: var(--secondary); margin-bottom: 18px; }
+    .file-picker { position: relative; cursor: pointer; }
+    .file-picker input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
+    .file-picker:focus-within { outline: 3px solid #bd622b; outline-offset: 4px; }
+    .file-status { margin-top: 14px; color: var(--secondary); font-size: 12px; overflow-wrap: anywhere; }
+    .dialog-footer { display: flex; justify-content: flex-end; padding: 18px 27px; border-top: 1px solid var(--line); }
+    @media (max-width: 720px) {
+      .preview-toolbar, main { width: calc(100% - 36px); }
+      main { margin-top: 28px; }
+      .page-heading { align-items: flex-start; gap: 16px; }
+      h1 { font-size: 25px; }
+      .summary-card { padding: 24px 23px 0; }
+      .style-title { font-size: 34px; }
+      .guidance-list { grid-template-columns: 1fr; gap: 17px; }
+      .guidance-list li, .guidance-list li:first-child, .guidance-list li:last-child { padding: 0; }
+      .guidance-list li + li { border-left: 0; }
+      .guidance-list h3 { margin-bottom: 4px; }
+      .supporting-content { padding: 0 21px; }
+      .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric { padding: 0 15px; }
+    }
+    @media (max-width: 480px) {
+      .preview-toolbar, main { width: calc(100% - 28px); }
+      .preview-toolbar { min-height: 58px; gap: 8px; }
+      .preview-switch button { padding-inline: 9px; }
+      .page-heading { flex-direction: column; align-items: stretch; gap: 18px; }
+      .page-heading .primary-button { align-self: flex-start; }
+      .summary-card { padding: 21px 20px 0; }
+      .style-title { font-size: 30px; margin-bottom: 26px; }
+      .metrics, .detail-metrics { grid-template-columns: 1fr; padding: 0; }
+      .metric, .metric:first-child, .metric:last-child { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; padding: 14px 0; }
+      .metric + .metric { border-left: 0; border-top: 1px solid var(--line); }
+      .metric dd { grid-column: 2; margin: 0; font-size: 26px; }
+      .detail-metrics { padding: 4px 17px; }
+      .detail-metrics .metric, .detail-metrics .metric:first-child, .detail-metrics .metric:last-child { padding: 14px 0; }
+      .supporting-content { padding-inline: 18px; }
+      .disclosure > summary { gap: 12px; }
+      .empty-card { min-height: 370px; padding-inline: 23px; }
+      .dialog-heading { padding: 17px 20px; }
+      .dialog-body { padding: 21px 20px; }
+      .dialog-footer { padding: 16px 20px; }
+      .upload-area { padding: 21px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .disclosure > summary .icon { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="page-heading">
+      <div>
+        <h1>交易风格</h1>
+      </div>
+      <button id="open-import" class="primary-button" type="button">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
+        导入历史交易
+      </button>
+    </header>
+
+    <div id="analysis-layout">
+      <section class="summary-card" aria-labelledby="style-title">
+        <span class="section-label">风格分析</span>
+        <h2 id="style-title" class="style-title">待分析</h2>
+        <dl class="metrics">
+          <div class="metric"><dt>月均交易</dt><dd>—<small>笔</small></dd></div>
+          <div class="metric"><dt>中位持有期</dt><dd>—<small>天</small></dd></div>
+          <div class="metric"><dt>历史成交集中度</dt><dd>—<small>%</small></dd></div>
+        </dl>
+      </section>
+
+      <section class="guidance" aria-labelledby="guidance-title">
+        <div class="section-heading"><h2 id="guidance-title">行为建议</h2></div>
+        <ol class="guidance-list">
+          <li><h3>交易纪律</h3><p>—</p></li>
+          <li><h3>风险控制</h3><p>—</p></li>
+          <li><h3>定期复核</h3><p>—</p></li>
+        </ol>
+      </section>
+
+      <details id="more-details" class="supporting-content disclosure">
+        <summary><span class="disclosure-title"><strong>更多数据</strong></span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <div class="disclosure-content">
+          <div class="sample-meta"><span>交易记录 —</span><span>观察周期 —</span></div>
+          <dl class="detail-metrics">
+            <div class="metric"><dt>单笔中位金额</dt><dd>—<small>元</small></dd></div>
+            <div class="metric"><dt>成交集中程度</dt><dd>—</dd></div>
+            <div class="metric"><dt>90 日换手率</dt><dd>—<small>%</small></dd></div>
+          </dl>
+
+          <details id="market-details" class="disclosure">
+            <summary><span class="disclosure-title"><strong>重点标的</strong></span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="disclosure-content">
+              <div class="table-wrap"><table class="market-table"><thead><tr><th scope="col">证券</th><th scope="col">历史成交占比</th><th scope="col">现价</th><th scope="col">涨跌幅</th><th scope="col">更新时间</th></tr></thead><tbody><tr><td colspan="5">暂无记录</td></tr></tbody></table></div>
+            </div>
+          </details>
+
+          <details id="history-details" class="disclosure">
+            <summary><span class="disclosure-title"><strong>交易明细</strong></span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="disclosure-content">
+              <div class="record-tools">
+                <input id="security-search" type="search" placeholder="证券代码或名称" aria-label="查找交易证券">
+                <button class="secondary-button" type="button" disabled>筛选</button>
+                <details class="advanced-filters"><summary>高级筛选</summary><div class="filter-grid">
+                  <label>交易方向<select><option>全部方向</option><option>买入</option><option>卖出</option></select></label>
+                  <label>记录状态<select><option>全部状态</option><option>有效</option><option>已撤销</option></select></label>
+                  <label>开始日期<input type="date"></label>
+                  <label>结束日期<input type="date"></label>
+                </div></details>
+              </div>
+              <div class="table-wrap"><table class="history-table"><thead><tr><th scope="col">时间</th><th scope="col">证券</th><th scope="col">方向</th><th scope="col">数量</th><th scope="col">成交价格</th><th scope="col">成交金额</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><tr><td colspan="8">暂无记录</td></tr></tbody></table></div>
+            </div>
+          </details>
+        </div>
+      </details>
+    </div>
+
+    <div id="empty-layout" hidden>
+      <section class="empty-card" aria-labelledby="empty-title">
+        <div class="empty-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H5a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8l-6-6Zm0 0v6h6M8 13h8m-8 4h5"/></svg></div>
+        <h2 id="empty-title">导入成交记录，查看交易风格</h2>
+        <button id="empty-import" class="primary-button" type="button">导入历史交易</button>
+      </section>
+    </div>
+  </main>
+
+  <footer class="preview-toolbar" aria-label="界面预览设置">
+    <span class="preview-label">界面预览</span>
+    <div class="preview-switch" role="group" aria-label="选择预览状态">
+      <button id="show-analysis" type="button" aria-pressed="true" aria-controls="analysis-layout">分析状态</button>
+      <button id="show-empty" type="button" aria-pressed="false" aria-controls="empty-layout">未导入</button>
+    </div>
+  </footer>
+
+  <dialog id="import-dialog" aria-labelledby="import-title" aria-describedby="import-description">
+    <div class="dialog-heading"><h2 id="import-title">导入历史交易</h2><button id="close-import" class="icon-button" type="button" aria-label="关闭导入面板" autofocus><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+    <div class="dialog-body">
+      <div class="upload-area"><p id="import-description">上传表格或成交截图</p><label class="secondary-button file-picker"><input id="trade-import-files" type="file" accept=".csv,.xlsx,image/png,image/jpeg,image/webp" multiple aria-label="选择成交记录文件"><span>选择文件</span></label><p id="file-status" class="file-status" role="status" aria-live="polite" hidden></p></div>
+    </div>
+    <div class="dialog-footer"><button class="primary-button" type="button" disabled>开始分析</button></div>
+  </dialog>
+
+  <script>
+    const analysisLayout = document.getElementById("analysis-layout");
+    const emptyLayout = document.getElementById("empty-layout");
+    const analysisButton = document.getElementById("show-analysis");
+    const emptyButton = document.getElementById("show-empty");
+    const importButton = document.getElementById("open-import");
+    const importDialog = document.getElementById("import-dialog");
+
+    function showLayout(isAnalysis) {
+      analysisLayout.hidden = !isAnalysis;
+      emptyLayout.hidden = isAnalysis;
+      importButton.hidden = !isAnalysis;
+      analysisButton.setAttribute("aria-pressed", String(isAnalysis));
+      emptyButton.setAttribute("aria-pressed", String(!isAnalysis));
+    }
+
+    analysisButton.addEventListener("click", () => showLayout(true));
+    emptyButton.addEventListener("click", () => showLayout(false));
+    importButton.addEventListener("click", () => importDialog.showModal());
+    document.getElementById("empty-import").addEventListener("click", () => importDialog.showModal());
+    document.getElementById("close-import").addEventListener("click", () => importDialog.close());
+    document.getElementById("trade-import-files").addEventListener("change", (event) => {
+      const files = Array.from(event.target.files);
+      const fileStatus = document.getElementById("file-status");
+      fileStatus.hidden = files.length === 0;
+      fileStatus.textContent = files.length
+        ? `已选择 ${files.length} 个文件：${files.map(file => file.name).join("、")}`
+        : "";
+    });
+  </script>
+</body>
+</html>
