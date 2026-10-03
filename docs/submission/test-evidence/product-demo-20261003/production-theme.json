@@ -1,0 +1,474 @@
+{
+  "schema_version": "product-theme-browser.v1",
+  "checks": [
+    {
+      "brand": "#e86f00",
+      "docWidth": 1440,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#skill-store",
+      "page": "技能商店",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "同花顺技能商店"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1425,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#research-knowledge",
+      "page": "研究知识库",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "研究知识库"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1425,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#live-research",
+      "page": "LIVE 研究",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "LIVE 研究"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1425,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#research-algorithms",
+      "page": "论文算法",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "论文算法"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1440,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#trading-style",
+      "page": "交易风格",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "交易风格"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1440,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#overview",
+      "page": "持仓分析",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "持仓分析"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1440,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#market",
+      "page": "大盘鉴别",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "21px",
+          "text": "大盘鉴别"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1425,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#profile",
+      "page": "个人中心",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "个人中心"
+        }
+      ]
+    },
+    {
+      "docWidth": 1440,
+      "hash": "#copilot",
+      "page": "AI 对话",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "viewportWidth": 1440
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#skill-store",
+      "page": "技能商店",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "同花顺技能商店"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#research-knowledge",
+      "page": "研究知识库",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "研究知识库"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#live-research",
+      "page": "LIVE 研究",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "LIVE 研究"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#research-algorithms",
+      "page": "论文算法",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "论文算法"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1024,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#trading-style",
+      "page": "交易风格",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "交易风格"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#overview",
+      "page": "持仓分析",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "持仓分析"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#market",
+      "page": "大盘鉴别",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "21px",
+          "text": "大盘鉴别"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 1009,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#profile",
+      "page": "个人中心",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024,
+      "visibleHeadings": [
+        {
+          "size": "28px",
+          "text": "个人中心"
+        }
+      ]
+    },
+    {
+      "docWidth": 1024,
+      "hash": "#copilot",
+      "page": "AI 对话",
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      },
+      "viewportWidth": 1024
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#skill-store",
+      "page": "技能商店",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "同花顺技能商店"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#research-knowledge",
+      "page": "研究知识库",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "研究知识库"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#live-research",
+      "page": "LIVE 研究",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "LIVE 研究"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#research-algorithms",
+      "page": "论文算法",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "论文算法"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 390,
+      "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Noto Sans SC\", sans-serif",
+      "hash": "#trading-style",
+      "page": "交易风格",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "交易风格"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#overview",
+      "page": "持仓分析",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "持仓分析"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#market",
+      "page": "大盘鉴别",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "21px",
+          "text": "大盘鉴别"
+        }
+      ]
+    },
+    {
+      "brand": "#e86f00",
+      "docWidth": 375,
+      "font": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+      "hash": "#profile",
+      "page": "个人中心",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390,
+      "visibleHeadings": [
+        {
+          "size": "24px",
+          "text": "个人中心"
+        }
+      ]
+    },
+    {
+      "docWidth": 390,
+      "hash": "#copilot",
+      "page": "AI 对话",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "viewportWidth": 390
+    }
+  ],
+  "dark": {
+    "background": "rgb(19, 24, 32)",
+    "dark": true,
+    "surface": "#1b2430",
+    "text": "rgb(236, 240, 246)"
+  },
+  "logs": []
+}

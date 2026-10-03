@@ -359,3 +359,9 @@ The remaining legal, quota and competition-document inputs block production redi
 - [x] 全量 1099 项通过、1 项跳过；最后局部样式修改再验相关 58 项及三视口。
 - [x] 27 项既有证据哈希和 282 个后端、研究及验收文件保留审计通过。
 - [x] 集成提交 `519d955` 已推送；[PR #3](https://github.com/1917173927/prism/pull/3) 已合入 `origin/main`，合并提交 `d953f69`；本地已快进，落后上游 0 个提交。
+
+## 2026-10-03 统一前端与产品 Demo
+
+- [x] 正式 9 页接入统一视觉变量与主题，62 项相关回归及三视口 27 次导航通过。
+- [ ] 交付独立离线 9 页产品 Demo、交互与截图模式。
+- [ ] 留存主要页面截图、使用说明及验证；提交推送至 `origin/main`。
