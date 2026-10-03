@@ -16,7 +16,7 @@ const temporary = path.join(directory, "temporary");
 await mkdir(temporary);
 const browser = await puppeteer.launch({executablePath, headless: true,
   userDataDir: path.join(directory, "profile"), env: {...process.env, TMPDIR: temporary}});
-const evidence = {checks: [], geometries: [], requests: [], importChecked: false};
+const evidence = {checks: [], geometries: [], requests: [], importChecked: false, marketRefreshChecked: false};
 
 try {
   const page = await browser.newPage();
@@ -192,17 +192,22 @@ try {
     await page.click("#trade-advanced-filters > summary");
     await checkWidths("history", true);
 
-    await page.setViewport({width: 1440, height: 1000});
-    await page.click("#trade-market-details > summary");
-    const insightsResponse = waitResponse("/api/v1/advisor/trading-style/insights");
-    await page.click("#refresh-trade-market");
-    assert.equal((await insightsResponse).status(), 200);
-    await page.waitForFunction(() => !document.querySelector("#refresh-trade-market").disabled);
     const insights = await api("/api/v1/advisor/trading-style/insights");
-    assert.equal(await page.$$("#trade-market-securities tr").then(nodes => nodes.length), insights.securities.length);
-    await checkWidths("market", true);
+    assert.equal(await page.$eval("#trade-market-details", node => node.hidden), insights.securities.length === 0);
+    if (insights.securities.length) {
+      await page.setViewport({width: 1440, height: 1000});
+      await page.click("#trade-market-details > summary");
+      const insightsResponse = waitResponse("/api/v1/advisor/trading-style/insights");
+      await page.click("#refresh-trade-market");
+      assert.equal((await insightsResponse).status(), 200);
+      await page.waitForFunction(() => !document.querySelector("#refresh-trade-market").disabled);
+      assert.equal(await page.$$("#trade-market-securities tr").then(nodes => nodes.length), insights.securities.length);
+      await checkWidths("market", true);
+      evidence.marketRefreshChecked = true;
+      record("历史成交包含重点标的，行情刷新检查通过");
+    }
     evidence.importChecked = true;
-    record("真实文件导入、结果层级、交易筛选、编辑弹窗与行情刷新检查通过");
+    record("真实文件导入、结果层级、交易筛选与编辑弹窗检查通过");
   }
 
   await page.setViewport({width: 1440, height: 1000});
