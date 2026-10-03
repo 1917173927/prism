@@ -11,21 +11,32 @@ RESOURCES = [
     "design-tokens.css", "product-theme.css", "wencai-zhitou-logo.svg",
     "lightweight-charts.js", "lightweight-charts.LICENSE.txt",
 ]
-PREVIEW = '''from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-root = Path(__file__).resolve().parent / "static"
-print("Open http://127.0.0.1:8860/demos/product-demo/#overview", flush=True)
-with ThreadingHTTPServer(("127.0.0.1", 8860), partial(SimpleHTTPRequestHandler, directory=str(root))) as server:
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-'''
-LAUNCH = '@echo off\r\ncd /d "%~dp0"\r\npy -3 preview.py\r\nif errorlevel 1 pause\r\n'
+LAUNCH = '''@echo off
+setlocal
+cd /d "%~dp0"
+py -3 -c "import sys; raise SystemExit(sys.version_info < (3, 9))" >nul 2>nul
+if not errorlevel 1 (
+  py -3 "preview.py" --open %*
+  goto :done
+)
+python -c "import sys; raise SystemExit(sys.version_info < (3, 9))" >nul 2>nul
+if not errorlevel 1 (
+  python "preview.py" --open %*
+  goto :done
+)
+echo Python 3.9 or newer is required. Install Python with its Windows launcher or add Python to PATH.
+pause
+exit /b 1
+:done
+set "demo_exit_code=%errorlevel%"
+if errorlevel 1 pause
+endlocal & exit /b %demo_exit_code%
+'''.replace("\n", "\r\n")
 GUIDE = '''Prism 产品演示
 
-启动：安装有 Python 3 的 Windows 电脑双击 start-demo.cmd；其他系统运行 python preview.py。
+启动：安装有 Python 3.9 或以上版本的 Windows 电脑双击 start-demo.cmd，将自动打开浏览器；其他系统运行 python preview.py --open。
+重复启动会复用已有演示服务。首次启动的窗口需保持打开；关闭该窗口将停止服务。
+如 8860 被其他服务占用，窗口会说明原因；可运行 start-demo.cmd --port 8861 改用其他端口。
 打开：http://127.0.0.1:8860/demos/product-demo/#overview
 截图：http://127.0.0.1:8860/demos/product-demo/?capture=1#overview
 
@@ -47,7 +58,7 @@ def main():
     with ZipFile(args.output, "w", ZIP_DEFLATED) as archive:
         for resource in RESOURCES:
             archive.write(STATIC / resource, "prism-product-demo/static/" + resource)
-        archive.writestr("prism-product-demo/preview.py", PREVIEW)
+        archive.writestr("prism-product-demo/preview.py", (ROOT / "tools/product_demo.py").read_text(encoding="utf-8"))
         archive.writestr("prism-product-demo/start-demo.cmd", LAUNCH)
         archive.writestr("prism-product-demo/README.txt", GUIDE)
     print(f"Portable demo: {args.output}")
