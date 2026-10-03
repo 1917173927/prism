@@ -10,6 +10,10 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 *.json text eol=lf
+
+# Frozen evidence hashes identify exact bytes, including original line endings.
+eval_cases/research/real_macro_bank_100.json -text whitespace=cr-at-eol
+docs/submission/test-evidence/research-quality-20261003/*.json -text whitespace=cr-at-eol
 *.ps1 text eol=crlf
 *.bat text eol=crlf
 

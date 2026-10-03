@@ -12,6 +12,7 @@ from app.contracts.evidence import (
     NonEmptyStr,
 )
 from app.gates import GateStatus
+from app.market_research import ResearchMetric
 from app.orchestration import ResearchNodeRunStatus, ResearchRunStatus
 from app.research import (
     ResearchNodeKind,
@@ -531,8 +532,37 @@ class MarketAnalysisResponse(ContractModel):
     bars: list[MarketBar] = Field(default_factory=list)
     volume: dict[str, Any] = Field(default_factory=dict)
     indicators: dict[str, Any] = Field(default_factory=dict)
+    research_metrics: dict[str, ResearchMetric] = Field(default_factory=dict)
+    research_interval: Literal["1d"] = "1d"
+    input_snapshot_id: str | None = None
     factors: list[MacroFactorAnalysis] = Field(default_factory=list)
     risk_notice: NonEmptyStr = "相关性不代表因果关系。仅供研究参考，不构成投资建议。"
+
+
+class IndustryObservation(ContractModel):
+    name: NonEmptyStr
+    symbol: NonEmptyStr
+    as_of: str | None = None
+    day_pct: Decimal | None = None
+    five_day_pct: Decimal | None = None
+    twenty_day_pct: Decimal | None = None
+    status: Literal["CALCULATED", "REVIEW_REQUIRED"]
+    error_code: str | None = None
+
+
+class IndustryObservationResponse(ContractModel):
+    status: Literal["CALCULATED", "REVIEW_REQUIRED"]
+    rows: list[IndustryObservation] = Field(default_factory=list)
+    observation_set_id: str = "ths-industry-first-12.v1"
+    requested_count: int = 12
+    observed_count: int = 0
+    coverage_pct: Decimal = Decimal(0)
+    coverage_scope: Literal["FIXED_OBSERVATION_SET"] = "FIXED_OBSERVATION_SET"
+    source: str = "同花顺金融数据 · 行业指数日线"
+    retrieved_at: datetime | None = None
+    method_version: str = "industry-return.v1"
+    unit: str = "%"
+    message: str
 
 
 class QuestionnairePreviewRequest(ContractModel):

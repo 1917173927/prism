@@ -1,0 +1,33 @@
+{
+  "schema_version": "research-automated-verification.v1",
+  "date": "2026-10-01",
+  "code_commit": "fa8fa30",
+  "python": "3.12.12",
+  "platform": "Windows",
+  "command": ".venv/Scripts/python.exe -m pytest --tb=short",
+  "exit_code": 0,
+  "passed": 1032,
+  "skipped": 13,
+  "failed": 0,
+  "warnings": 2,
+  "duration_seconds": 105.41,
+  "skip_reasons": {
+    "postgres_server_or_explicit_test_dsn_absent": 12,
+    "explicit_real_embedding_gate_not_set_in_default_full_run": 1
+  },
+  "real_local_embedding_separate_run": {
+    "command": "PRISM_RUN_REAL_KNOWLEDGE_EMBEDDING=1 .venv/Scripts/python.exe -m pytest tests/unit/test_knowledge_embedding.py",
+    "passed": 2,
+    "skipped": 0
+  },
+  "browser_scripts_passed": [
+    "tests/browser/test_research_navigation.mjs",
+    "tests/browser/test_research_metrics.mjs",
+    "tests/browser/test_skill_store.mjs",
+    "tests/browser/test_research_tools.mjs",
+    "tests/browser/test_research_ui_evidence.mjs"
+  ],
+  "browser_evidence": "research-ui/summary.json",
+  "real_data_acceptance": "SEPARATE_PARTIAL_OR_BLOCKED_ITEMS_IN_ACCEPTANCE_REPORT",
+  "source": "Recorded completed local pytest output and browser script results; counts are not assertions about upstream financial quality."
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": "research-quality-verification.v1",
+  "full_suite": {
+    "command": ".venv\\Scripts\\python.exe -m tools.local_postgres test --full",
+    "passed": 1087,
+    "skipped": 1,
+    "failed": 0,
+    "warnings": 2,
+    "seconds": 128.32,
+    "exit_code": 0,
+    "database": "REAL PostgreSQL 17.11 isolated test DB",
+    "source": "Observed terminal completion of actual execution",
+    "skip_reason": "Default local-model-specific test not enabled; skipped test is not counted as passed."
+  },
+  "targeted_suite": {
+    "files": [
+      "tests/unit/test_research_quality_review.py",
+      "tests/unit/test_real_research_quality.py",
+      "tests/unit/test_research_chat.py"
+    ],
+    "passed": 33,
+    "exit_code": 0
+  },
+  "javascript_syntax": {
+    "file": "app/api/static/research-quality-review.js",
+    "exit_code": 0
+  },
+  "browser_proof": "browser-proof.json",
+  "frozen_contract_validated": true,
+  "zip_member_hashes_verified": true,
+  "actual_answers_ordered_retrieval_sources_claims_immutable_verified": true,
+  "financial_provider_calls": 0,
+  "llm_planner_calls": 0
+}

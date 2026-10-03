@@ -2394,6 +2394,7 @@
   }
 
   function renderProfileSummary(summary, options = {}) {
+    byId("profile")?.classList.toggle("questionnaire-preview-visible", options.preview === true);
     const panel = byId(options.preview ? "questionnaire-result-content" : "profile-summary-content");
     if (!panel) return;
     clear(panel);
@@ -2882,7 +2883,7 @@
   let tradeStyleInsightsAbortController = null;
   let tradeStyleInsightsRequestSequence = 0;
 
-  function renderTradeMarketSecurity(item) {
+  function renderTradeMarketSecurity(item, dataMode) {
     const history = item.history || {};
     const quote = item.quote;
     const card = document.createElement("tr");
@@ -2890,6 +2891,62 @@
     const name = document.createElement("strong"); name.textContent = history.security_name || history.security_code;
     const code = document.createElement("small"); code.textContent = history.security_code;
     identity.append(name, code);
+    const verdict = document.createElement("span");
+    verdict.className = `cf-verdict ${item.quote_status === "PASS" ? "cf-verdict-pass" : "cf-verdict-warning"}`;
+    verdict.textContent = quote?.is_synthetic ? "MOCK" : item.quote_status || "UNAVAILABLE";
+    identity.append(verdict);
+    const details = document.createElement("details");
+    const summary = document.createElement("summary"); summary.textContent = "行情与交易明细";
+    details.append(summary);
+
+    if (quote) {
+      const quoteLine = document.createElement("div"); quoteLine.className = "trade-security-quote";
+      const price = document.createElement("strong"); price.textContent = `¥${tradeNumber(quote.price_cny)}`;
+      const change = document.createElement("span");
+      const changeNumber = quote.change_pct == null ? NaN : Number(quote.change_pct);
+      change.textContent = Number.isFinite(changeNumber) ? `${changeNumber >= 0 ? "+" : ""}${tradeNumber(changeNumber, "%")}` : "涨跌幅未提供";
+      if (Number.isFinite(changeNumber)) change.className = changeNumber >= 0 ? "is-up" : "is-down";
+      quoteLine.append(price, change); details.append(quoteLine);
+
+      if (quote.day_range_position_pct != null) {
+        const range = document.createElement("div"); range.className = "trade-day-range";
+        range.setAttribute("role", "img");
+        range.setAttribute("aria-label", `当日最低 ${tradeNumber(quote.low_price_cny)}，现价 ${tradeNumber(quote.price_cny)}，最高 ${tradeNumber(quote.high_price_cny)}`);
+        const rangeLabels = document.createElement("div");
+        const low = document.createElement("span"); low.textContent = `低 ${tradeNumber(quote.low_price_cny)}`;
+        const high = document.createElement("span"); high.textContent = `高 ${tradeNumber(quote.high_price_cny)}`;
+        rangeLabels.append(low, high);
+        const track = document.createElement("div"); track.className = "trade-day-range-track";
+        const marker = document.createElement("span"); marker.className = "trade-day-range-marker";
+        marker.style.left = `${Math.min(100, Math.max(0, Number(quote.day_range_position_pct)))}%`;
+        track.append(marker); range.append(rangeLabels, track); details.append(range);
+      }
+
+      const facts = document.createElement("dl"); facts.className = "trade-security-facts";
+      [["开盘", quote.open_price_cny], ["昨收", quote.previous_close_cny], ["涨跌额", quote.price_change_cny], ["成交额", quote.turnover_cny, true]].forEach(([label, value, compact]) => {
+        const dt = document.createElement("dt"); dt.textContent = label;
+        const dd = document.createElement("dd"); dd.textContent = value == null ? "—" : compact ? tradeCompactCny(value) : `¥${tradeNumber(value)}`;
+        facts.append(dt, dd);
+      });
+      details.append(facts);
+    } else {
+      const unavailable = document.createElement("p"); unavailable.className = "trade-security-unavailable"; unavailable.textContent = item.message || "当前未取得可验证行情。"; details.append(unavailable);
+    }
+
+    const historyLine = document.createElement("p"); historyLine.className = "trade-security-history";
+    historyLine.textContent = `历史 ${history.trade_count} 笔 · 买 ${history.buy_count} / 卖 ${history.sell_count} · 累计 ${tradeCompactCny(history.gross_amount_cny)} · 占比 ${tradeNumber(history.gross_amount_share_pct, "%")}`;
+    const lastTrade = document.createElement("small"); lastTrade.textContent = `最近交易：${tradeDateTime(history.last_traded_at)}`;
+    details.append(historyLine, lastTrade);
+    if (quote) {
+      const meta = document.createElement("small"); meta.className = "trade-security-meta";
+      meta.textContent = `${dataMode === "MOCK" ? "示例快照" : "行情观察"}：${tradeDateTime(quote.observed_at)} · ${quote.source}`;
+      details.append(meta);
+    }
+    identity.append(details);
+    if (/^\d{6}(?:\.(?:SH|SZ|BJ))?$/i.test(history.security_code || "")) {
+      const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = "进入个股研究";
+      research.addEventListener("click", () => openLiveResearchSubject(history.security_code)); identity.append(research);
+    }
     const share = document.createElement("td"); share.textContent = tradeNumber(history.gross_amount_share_pct, "%");
     const price = document.createElement("td"); price.textContent = quote?.price_cny == null ? "—" : `¥${tradeNumber(quote.price_cny)}`;
     const change = document.createElement("td");
@@ -2924,7 +2981,7 @@
     message.textContent = message.hidden ? "" : "行情暂时无法加载，请刷新重试。";
     byId("trade-market-details").hidden = !securities.length;
     const rows = byId("trade-market-securities"); clear(rows);
-    securities.forEach(item => rows.append(renderTradeMarketSecurity(item)));
+    securities.forEach(item => rows.append(renderTradeMarketSecurity(item, insights.data_mode)));
   }
 
   async function loadTradingStyleInsights() {
@@ -6653,6 +6710,10 @@
     system: "system",
     advisor: "system",
     profile: "profile",
+    "skill-store": "skills",
+    "research-knowledge": "knowledge",
+    "live-research": "live-research",
+    "research-algorithms": "algorithms",
     "research-tracks": "system",
     "context-memory": "system",
     "evaluation-dashboard": "system",
@@ -6914,6 +6975,31 @@
     if (wasPending && !window.location.hash) {
       window.history.replaceState(null, "", "#copilot");
       syncNavigation("copilot");
+    } else if (wasPending && window.location.hash === "#profile") {
+      syncNavigation("profile-results");
+    }
+  }
+
+  const RESEARCH_SUBPAGES = Object.freeze({
+    "profile-results": "profile", "profile-questionnaire": "profile", "profile-preferences": "profile",
+    "holdings-management": "overview", "holdings-report": "overview",
+    "market-quotes": "market", "market-risk": "market", "market-sectors": "market",
+  });
+  const navigationScrollPositions = new Map();
+  let activeNavigationRoute = null;
+  let navigationScrollFrame = null;
+
+  function syncPortfolioHoldingsLocation(routeId) {
+    const holdings = byId("portfolio-holdings-details");
+    const management = byId("portfolio-management-view");
+    const drawerSlot = byId("portfolio-holdings-drawer-slot");
+    if (!holdings || !management || !drawerSlot) return;
+    const inManagement = routeId === "holdings-management";
+    const destination = inManagement ? management : drawerSlot;
+    if (holdings.parentElement !== destination) {
+      byId("portfolio-analysis-drawer").close();
+      destination.append(holdings);
+      holdings.open = inManagement;
     }
   }
 
@@ -6970,9 +7056,14 @@
       decisions: "recommendation-history",
       system: "evaluation-dashboard",
       "expert-workspace-grid": "stock-research",
-      "profile-questionnaire": "profile",
     };
-    let requestedId = aliases[targetId] || targetId || "copilot";
+    const legacySubpages = {profile: state.questionnaireGate === "COMPLETE" ? "profile-results" : "profile-questionnaire", overview: "holdings-report", portfolio: "holdings-management", market: "market-quotes"};
+    const routeId = legacySubpages[targetId] || aliases[targetId] || targetId || "copilot";
+    let requestedId = RESEARCH_SUBPAGES[routeId] || routeId;
+    const routeChanged = activeNavigationRoute !== routeId;
+    if (routeChanged && activeNavigationRoute) navigationScrollPositions.set(activeNavigationRoute, window.scrollY);
+    activeNavigationRoute = routeId;
+    if (routeChanged && navigationScrollFrame) cancelAnimationFrame(navigationScrollFrame);
     let domain = DOMAIN_MAP[requestedId] || "copilot";
     if (domain === "system" && !document.body.classList.contains("dev-mode")) {
       requestedId = "copilot";
@@ -6984,14 +7075,16 @@
     const overviewSec = byId("overview");
     const marketSec = byId("market");
     const tradingStyleSec = byId("trading-style");
+    const skillStoreSec = byId("skill-store");
     const expertSec = byId("expert-workspace-grid");
     const pageTabs = byId("workspace-page-tabs");
 
     const isOverview = (requestedId === "overview");
     const isMarket = (requestedId === "market");
     const isTradingStyle = (requestedId === "trading-style");
+    const isSkillStore = requestedId === "skill-store";
     const isProfile = requestedId === "profile";
-    const isQuestionnaire = isProfile && targetId === "profile-questionnaire";
+    const isQuestionnaire = isProfile && routeId === "profile-questionnaire";
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
     document.body.classList.toggle("copilot-active", isCopilot);
@@ -7003,9 +7096,13 @@
     syncHomeNavigation(isCopilot || isMarket || isOverview || isProfile);
     byId("profile-overview-view").hidden = isQuestionnaire;
     byId("profile-questionnaire-view").hidden = !isQuestionnaire;
-    byId("profile").setAttribute("aria-labelledby", isQuestionnaire ? "profile-questionnaire-heading" : "profile-title");
+    byId("profile").setAttribute("aria-labelledby", isQuestionnaire ? "profile-questionnaire-heading" : routeId === "profile-preferences" ? "display-preference-title" : "profile-title");
     if (!isProfile || isQuestionnaire) byId("profile-display-dialog").close();
-    if (!isOverview) byId("portfolio-analysis-drawer").close();
+    if (!isOverview || routeChanged) {
+      ["portfolio-modal", "portfolio-analysis-drawer", "portfolio-diagnosis-drawer"].forEach(id => byId(id).close());
+      syncPortfolioDialogScroll();
+    }
+    syncPortfolioHoldingsLocation(routeId);
     if (!isTradingStyle) byId("trade-import-dialog").close();
     if (!isCopilot) {
       copilotSec?.classList.remove("context-open");
@@ -7019,8 +7116,22 @@
     if (overviewSec) overviewSec.hidden = !isOverview;
     if (marketSec) marketSec.hidden = !isMarket;
     if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
+    if (skillStoreSec) skillStoreSec.hidden = !isSkillStore;
+    const isResearchTool = ["research-knowledge", "live-research", "research-algorithms"].includes(requestedId);
+    for (const id of ["research-knowledge", "live-research", "research-algorithms"]) {
+      if (byId(id)) byId(id).hidden = requestedId !== id;
+    }
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
-    if (pageTabs) pageTabs.hidden = isCopilot || isOverview || isMarket || isTradingStyle || isProfile;
+    if (pageTabs) pageTabs.hidden = isCopilot || isTradingStyle || isSkillStore || isResearchTool;
+    for (const section of [overviewSec, marketSec, byId("profile")]) {
+      if (!section) continue;
+      section.dataset.activeSubpage = routeId;
+      section.querySelectorAll("[data-subpage]").forEach(node => {
+        node.classList.toggle("research-subpage-hidden", node.dataset.subpage !== routeId);
+      });
+    }
+    const preferenceLevel = byId("profile-answer-detail");
+    if (preferenceLevel) preferenceLevel.value = String(byId("ai-trust-score")?.value || 50);
 
     setExpertMode(isWorkspacePanel);
 
@@ -7032,16 +7143,16 @@
       });
     }
 
-    if (pageTabs && !isCopilot && !isOverview && !isMarket && !isProfile) {
+    if (pageTabs && !pageTabs.hidden) {
       [...pageTabs.querySelectorAll("a[data-domain]")].forEach((link) => {
         const visible = link.dataset.domain === domain;
         link.hidden = !visible;
-        const selected = visible && link.getAttribute("href") === `#${requestedId}`;
+        const selected = visible && link.getAttribute("href") === `#${routeId}`;
         link.classList.toggle("active", selected);
         if (selected) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
       });
-      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isTradingStyle ? tradingStyleSec : isWorkspacePanel ? requestedNode : null;
+      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isProfile ? byId(isQuestionnaire ? "profile-questionnaire-view" : routeId === "profile-preferences" ? "profile-preferences-view" : "profile-overview-view") : isWorkspacePanel ? requestedNode : null;
       const pageHeading = pageContainer?.querySelector(":scope > .page-heading, :scope > .overview-header-bar, :scope > .panel-head, :scope > .panel-header, :scope > header");
       if (pageHeading) pageHeading.insertAdjacentElement("afterend", pageTabs);
       else if (pageContainer) pageContainer.prepend(pageTabs);
@@ -7058,20 +7169,15 @@
 
     if (isOverview) {
       renderOverviewWorkspace();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (isMarket) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (isTradingStyle) {
       loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (isCopilot) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (isProfile) {
-      window.scrollTo({ top: 0, behavior: "instant" });
-      byId(isQuestionnaire ? "profile-questionnaire-heading" : "profile-title").focus({preventScroll: true});
-    } else if (isWorkspacePanel) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (isProfile && routeChanged) {
+      byId(isQuestionnaire ? "profile-questionnaire-heading" : routeId === "profile-preferences" ? "display-preference-title" : "profile-title")?.focus({preventScroll: true});
     }
+    if (routeChanged) navigationScrollFrame = requestAnimationFrame(() => {
+      window.scrollTo({top: navigationScrollPositions.get(routeId) || 0, behavior: "instant"});
+      navigationScrollFrame = null;
+    });
 
     if (requestedId === "evaluation-dashboard") {
       loadEvaluationSummary();
@@ -7102,6 +7208,7 @@
       research: "#stock-research",
       decisions: "#recommendation-history",
       profile: "#profile",
+      skills: "#skill-store",
     };
     const target = items.find((item) => item.getAttribute("href") === (primaryByDomain[domain] || `#${requestedId}`))
       || items.find((item) => item.getAttribute("href") === `#${requestedId}`)
@@ -7121,6 +7228,13 @@
     });
     window.addEventListener("hashchange", () => syncNavigation());
     syncNavigation();
+    byId("profile-save-detail")?.addEventListener("click", async () => {
+      const status = byId("profile-preference-status");
+      byId("ai-trust-score").value = byId("profile-answer-detail").value;
+      try { await saveDisplayPolicy(); status.textContent = "解释偏好已保存"; }
+      catch (error) { status.textContent = error.message || "保存失败，请重试。"; }
+    });
+    byId("profile-theme-toggle")?.addEventListener("click", () => saveThemePreference(document.body.classList.contains("prism-theme-dark") ? "LIGHT" : "DARK"));
   }
 
   async function loadUserPreferences() {
@@ -7252,6 +7366,7 @@
     marketAbortController?.abort();
     marketAbortController = new AbortController();
     status.textContent = "正在读取";
+    document.dispatchEvent(new CustomEvent("prism:market-analysis", {detail: {status: "LOADING"}}));
     byId("market-data-meta").textContent = "";
     byId("market-crosshair-info").textContent = "";
     byId("market-kline").replaceChildren();
@@ -7264,20 +7379,24 @@
       if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
       status.textContent = data.status;
       marketAnalysis = data;
-      const quote = data.price === null ? "未返回行情" : `${Number(data.price).toLocaleString("zh-CN", {minimumFractionDigits: data.precision, maximumFractionDigits: data.precision})}（${data.change_pct >= 0 ? "+" : ""}${Number(data.change_pct).toFixed(2)}%）`;
+      const change = data.change_pct == null ? "涨跌幅未提供" : `${data.change_pct >= 0 ? "+" : ""}${Number(data.change_pct).toFixed(2)}%`;
+      const quote = data.price == null ? "未返回行情" : `${Number(data.price).toLocaleString("zh-CN", {minimumFractionDigits: data.precision, maximumFractionDigits: data.precision})}（${change}）`;
       result.replaceChildren();
       const heading = document.createElement("h3"); heading.textContent = `${data.name}${data.symbol ? ` · ${data.symbol}` : ""}`;
       const detail = document.createElement("p"); detail.textContent = `${quote} · ${data.currency}`;
       detail.className = "market-quote-value";
       result.append(heading, detail);
-      byId("market-data-meta").textContent = [data.source, data.observed_at].filter(Boolean).join(" · ");
+      const historyLabel = data.history_status === "LIVE" ? "历史完整" : data.history_status === "REVIEW_REQUIRED" ? "历史窗口部分可用" : "历史不可用";
+      byId("market-data-meta").textContent = [data.source, data.observed_at, data.interval === "1M" ? "月线" : "日线", historyLabel, data.timezone].filter(Boolean).join(" · ");
       renderIndexCandles(data);
       renderMarketFactors(data.factors || []);
+      document.dispatchEvent(new CustomEvent("prism:market-analysis", {detail: {data}}));
     } catch (error) {
       if (sequence !== marketRequestSequence || owner !== state.ownerId) return;
       if (error.name === "AbortError") return;
       status.textContent = "REVIEW_REQUIRED";
       result.textContent = error.message || "市场数据暂不可用。";
+      document.dispatchEvent(new CustomEvent("prism:market-analysis", {detail: {status: "UNAVAILABLE", message: result.textContent}}));
     }
   }
 
@@ -8248,7 +8367,8 @@
     label.className = "drilldown-label";
     label.textContent = "想了解更多依据？";
     row.append(label);
-    links.forEach(l => {
+    const destinations = [{href: "#holdings-report", text: "组合详细报告"}, {href: "#live-research", text: "LIVE 研究与证据"}, {href: "#research-knowledge", text: "资料原文与引用"}];
+    [...links, ...destinations.filter(item => !links.some(link => link.href === item.href))].forEach(l => {
       const a = document.createElement("a");
       a.href = l.href;
       a.className = "drilldown-btn";
@@ -9699,6 +9819,9 @@
     deepHead.append(createSvgIcon("icon-activity", "prism-icon"), document.createTextNode(" 正在并行补齐五年财务、估值、动态证据和账户适配…"));
     deep.append(deepHead);
     body.append(deep);
+    const openReport = document.createElement("button"); openReport.type = "button"; openReport.className = "copilot-action-btn secondary"; openReport.textContent = "在研究页查看详细报告";
+    openReport.addEventListener("click", () => { document.dispatchEvent(new CustomEvent("prism:stock-report-open", {detail: {content: deep, subject: quote.symbol}})); window.location.hash = "live-research"; });
+    body.append(openReport);
     card.append(banner, body);
     return card;
   }
@@ -11392,6 +11515,14 @@
   }
 
   function openPortfolioDetails(sectionId = null) {
+    if (sectionId === "portfolio-holdings-details" && activeNavigationRoute === "holdings-management") {
+      byId("portfolio-page-more").open = false;
+      const holdings = byId(sectionId);
+      holdings.open = true;
+      holdings.scrollIntoView({block: "start", behavior: "instant"});
+      holdings.querySelector("summary")?.focus({preventScroll: true});
+      return;
+    }
     const drawer = byId("portfolio-analysis-drawer");
     drawer.querySelectorAll("details").forEach(section => { section.open = section.id === sectionId; });
     byId("portfolio-page-more").open = false;
@@ -12131,13 +12262,23 @@
       const response = await fetch("/api/v1/market/industries", {headers: {"X-Owner-ID": state.ownerId}});
       if (!response.ok) throw await apiError(response);
       const data = await response.json(); output.replaceChildren();
-      const note = document.createElement("p"); note.textContent = [data.source, data.message].filter(Boolean).join(" · "); output.append(note);
+      const note = document.createElement("p"); note.textContent = [data.source, data.message, data.coverage_pct == null ? null : `固定观察集 ${data.observed_count}/${data.requested_count} · 覆盖率 ${data.coverage_pct}%`, data.retrieved_at, data.method_version].filter(Boolean).join(" · "); output.append(note);
       const table = document.createElement("table"), header = document.createElement("tr");
       ["行业", "1 日", "5 日", "20 日", "观察日期"].forEach(label => { const th = document.createElement("th"); th.textContent = label; header.append(th); }); table.append(header);
-      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.append(td); }); table.append(tr); });
+      (data.rows || []).forEach(row => { const tr = document.createElement("tr"); [row.name, ...[row.day_pct, row.five_day_pct, row.twenty_day_pct].map(v => v == null ? "—" : `${v}%`), row.as_of || "未取得"].forEach((value, index) => { const td = document.createElement("td"); if (index === 0) { const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = value; research.title = "进入该行业的 LIVE 研究"; research.addEventListener("click", () => openLiveResearchSubject(row.name, "INDUSTRY_DATA", ["pe"], `${row.name}行业市盈率`)); td.append(research); } else td.textContent = value; if (index > 0 && index < 4 && value !== "—") td.className = Number(value.slice(0, -1)) >= 0 ? "research-heat-up" : "research-heat-down"; tr.append(td); }); table.append(tr); });
       output.append(table);
     } catch (error) { output.textContent = error.message; }
     finally { button.disabled = false; }
+  });
+
+  function openLiveResearchSubject(subject, operation = "MARKET_DATA", requiredFields = ["price"], query = null) {
+    document.dispatchEvent(new CustomEvent("prism:research-open", {detail: {subject, operation, required_fields: requiredFields, query}}));
+    window.location.hash = "live-research";
+  }
+  byId("market-stock-research-open")?.addEventListener("click", () => {
+    const code = byId("market-stock-research-code").value.trim().toUpperCase();
+    if (!/^\d{6}(?:\.(?:SH|SZ|BJ))?$/.test(code)) { setError("请填写六位 A 股证券代码，可附 .SH、.SZ 或 .BJ。"); return; }
+    openLiveResearchSubject(code);
   });
 
   function renderAssistantMarkdown(target, content) {
@@ -12612,7 +12753,12 @@
           await replacePortfolioRows(draft.positions.filter(p => p.asset_id !== row.asset_id), draft.cash_cny);
         } catch (error) { setError(error.message); remove.disabled = false; }
       });
-      actions.append(diagnose, remove); tr.append(actions); body.append(tr);
+      actions.append(diagnose, remove);
+      if (row.asset_type === "STOCK") {
+        const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = "个股研究";
+        research.addEventListener("click", () => openLiveResearchSubject(row.asset_id)); actions.append(research);
+      }
+      tr.append(actions); body.append(tr);
     });
     try {
       await refreshPortfolioReport(owner, mode);

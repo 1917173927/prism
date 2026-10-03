@@ -1,0 +1,157 @@
+{
+  "created_at": "2026-10-01T10:45:52.501Z",
+  "server": "http://127.0.0.1:8022/",
+  "browser": "Chrome/154.0.8037.92",
+  "python": ".venv Python 3.12.12",
+  "source": "isolated temporary SQLite, disabled live financial/model providers; synthetic calculations only",
+  "real_data_acceptance": false,
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "hash": "#research-knowledge",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1,
+      "screenshot": "research-knowledge-1440.png"
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "hash": "#live-research",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1,
+      "screenshot": "live-research-1440.png"
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "hash": "#research-algorithms",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1,
+      "screenshot": "research-algorithms-1440.png"
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "hash": "#research-knowledge",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "hash": "#live-research",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "hash": "#research-algorithms",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "hash": "#research-knowledge",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1,
+      "screenshot": "research-knowledge-390.png"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "hash": "#live-research",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1,
+      "screenshot": "live-research-390.png"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "hash": "#research-algorithms",
+      "overflow": false,
+      "browser_page_errors": 0,
+      "browser_console_errors": 1,
+      "screenshot": "research-algorithms-390.png"
+    }
+  ],
+  "console": [
+    {
+      "level": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    }
+  ],
+  "failed_resources": [
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "status": 404
+    }
+  ],
+  "readonly": {
+    "mode": "?pages=1",
+    "routes": [
+      {
+        "hash": "#research-knowledge",
+        "write_controls_disabled": true
+      },
+      {
+        "hash": "#live-research",
+        "write_controls_disabled": true
+      },
+      {
+        "hash": "#research-algorithms",
+        "write_controls_disabled": true
+      }
+    ],
+    "api_requests": [],
+    "mutating_api_requests": 0,
+    "search_post_control_disabled": true
+  },
+  "transitions": {
+    "stale_algorithm_response_suppressed": true,
+    "hidden_chart_destroyed_and_recreated": true,
+    "legacy_refresh": [
+      {
+        "requested_hash": "#profile",
+        "hash": "#profile",
+        "resolved_subpage": "profile-results",
+        "passed": true
+      },
+      {
+        "requested_hash": "#overview",
+        "hash": "#overview",
+        "resolved_subpage": "holdings-report",
+        "passed": true
+      },
+      {
+        "requested_hash": "#portfolio",
+        "hash": "#portfolio",
+        "resolved_subpage": "holdings-management",
+        "passed": true
+      },
+      {
+        "requested_hash": "#market",
+        "hash": "#market",
+        "resolved_subpage": "market-quotes",
+        "passed": true
+      }
+    ],
+    "uncompleted_questionnaire_refresh": {
+      "hash": "#profile",
+      "resolved_subpage": "profile-questionnaire",
+      "passed": true
+    }
+  },
+  "browser_page_errors": [],
+  "passed": true
+}

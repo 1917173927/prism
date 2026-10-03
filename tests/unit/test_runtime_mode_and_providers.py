@@ -814,10 +814,23 @@ class TestRuntimeModeApiEndpoints:
         assert mock_body["execution_context"]["data_mode"] == "MOCK"
         assert mock_body["execution_context"]["is_synthetic"] is True
 
-    def test_security_auto_index_and_dependency_completion(self):
+    def test_security_auto_index_and_dependency_completion(self, monkeypatch):
         from fastapi.testclient import TestClient
         from app.api.main import create_app
-        app = create_app()
+        from app.providers.live_market import A_SHARE_DATABASE, MarketDataProvider
+
+        class TestMarketProvider(MarketDataProvider):
+            async def get_quote(self, code):
+                return {
+                    "symbol": f"{code}.SH", "name": "隔离测试行情", "price_cny": 10.0,
+                    "provider_tier": "MOCK_TEST", "is_synthetic": True,
+                    "observed_at": "2026-09-14T00:00:00+00:00",
+                    "retrieved_at": "2026-09-14T00:00:00+00:00",
+                    "quote_latency_ms": 0.0, "staleness_seconds": 0.0, "missing_fields": [],
+                }
+
+        monkeypatch.setattr("app.api.main.A_SHARE_DATABASE", dict(A_SHARE_DATABASE))
+        app = create_app(market_provider=TestMarketProvider())
 
         client = TestClient(app)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import copy
 import json
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -78,6 +79,16 @@ class CopilotAgent:
         self.security_directory_provider = security_directory_provider
         self.on_wencai_failure = on_wencai_failure
 
+    def with_owner(self, owner_id: str, *, registry=None, knowledge_service=None):
+        """Clone request bindings without mutating the shared agent or providers."""
+        scoped = copy(self)
+        scoped.authorized_owner = owner_id
+        scoped.knowledge_service = knowledge_service
+        if registry is not None:
+            scoped.skillhub_provider = registry.scoped_provider(self.skillhub_provider, owner_id)
+            scoped.wencai_provider = scoped.skillhub_provider
+        return scoped
+
     async def stream_chat(
         self,
         user_message: str,
@@ -144,6 +155,7 @@ class CopilotAgent:
         if isinstance(active_client, AsyncLLMClient) and active_client.is_configured:
             try:
                 requires_tools = await active_client.requires_financial_tools(messages)
+                requires_tools = requires_tools or any(word in user_message for word in ("知识库", "已上传", "文献", "论文依据"))
             except ValueError as exc:
                 yield {"type": "error", "message": str(exc)}
                 yield {"type": "done", "timestamp": datetime.now(UTC).isoformat()}
@@ -273,6 +285,7 @@ class CopilotAgent:
             "query_fund_lookthrough": ({"fund_code"}, {"fund_code"}),
             "query_wencai_semantic": ({"query", "channel"}, {"query"}),
             "query_financial_data": ({"query", "category"}, {"query", "category"}),
+            "search_research_knowledge": ({"query", "subject", "period", "as_of"}, {"query"}),
             "run_portfolio_health_check": ({"portfolio_summary"}, set()),
             "generate_portfolio_rebalance": ({"target_sector_cap"}, set()),
         }
@@ -286,7 +299,7 @@ class CopilotAgent:
             "market", "company", "industry", "macro", "fund", "convertible_bond"
         ):
             return {}, "模型工具参数未通过契约校验。"
-        for key in ("symbol", "fund_code", "query", "portfolio_summary"):
+        for key in ("symbol", "fund_code", "query", "portfolio_summary", "subject", "period", "as_of"):
             if key in sanitized and (not isinstance(sanitized[key], str) or not sanitized[key].strip() or len(sanitized[key]) > 1000):
                 return {}, "模型工具参数未通过契约校验。"
             if key in sanitized:
@@ -566,6 +579,19 @@ class CopilotAgent:
                     "is_synthetic": not is_live,
                 },
             }
+
+        if name == "search_research_knowledge":
+            service = getattr(self, "knowledge_service", None)
+            owner = getattr(self, "authorized_owner", None)
+            if service is None or not owner:
+                return {"status": "UNAVAILABLE", "message": "研究资料服务未绑定当前认证账户。"}
+            try:
+                from functools import partial
+                result = await asyncio.to_thread(partial(service.search, owner, **args))
+                return {"status": "SUCCESS" if result["matches"] else "EMPTY", **result,
+                        "execution_context": {"data_mode": "DOCUMENTS", "is_synthetic": False}}
+            except ValueError:
+                return {"status": "FAILED", "message": "研究资料检索参数无效。"}
 
         if is_live:
             if name == "query_stock_quote":
@@ -1030,6 +1056,7 @@ class CopilotAgent:
             return Decimal(text)
 
         lines: list[str] = []
+
         for index, row in enumerate(rows, 1):
             if not isinstance(row, dict):
                 lines.append(f"- 记录 {index}：{render(row)}")
@@ -1086,6 +1113,24 @@ class CopilotAgent:
         tag = persona.get("tag", "R3 平衡型")
 
         lines: list[str] = []
+
+        knowledge_tool = next((t for t in executed_tools if t["tool"] == "search_research_knowledge"), None)
+        if knowledge_tool and len(executed_tools) == 1:
+            service = getattr(self, "knowledge_service", None)
+            owner = getattr(self, "authorized_owner", None)
+            result = knowledge_tool["result"]
+            lines.append(f"研究资料检索模式：{result.get('mode', 'UNAVAILABLE')}。")
+            for match in result.get("matches", []):
+                citation = {**match, "quote": match["text"]}
+                check = service.verify_citations(owner, [citation], as_of=knowledge_tool["args"].get("as_of")) if service and owner else {}
+                if check.get("status") != "PASS":
+                    continue
+                lines.append(f"\n原文摘录（文档 {match['document_id']}，修订 {match['revision']}）：")
+                lines.append("\n".join("> " + line for line in match["text"].splitlines()))
+            if len(lines) == 1:
+                lines.append("未取得当前仍有效的可见原文；本轮不形成有依据结论。")
+            lines.append("\n摘录仅通过原文与版本定位核验；不构成对金融数值或推论的独立确认。")
+            return "\n".join(lines)
 
         # Find tool results
         stock_tool = next((t for t in executed_tools if t["tool"] == "query_stock_quote"), None)

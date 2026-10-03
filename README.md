@@ -223,6 +223,8 @@ uv sync --extra dev --extra web
 uv run uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 ```
 
+研究平台的HMM与本地向量使用显式依赖：`uv sync --extra dev --extra web --extra research --extra knowledge`。固定模型缓存、单worker启动、结构化输入和验收入口见[研究平台运行与复验](docs/research-platform-operations.md)。
+
 ### 访问地址
 
 | 地址 | 用途 |
@@ -288,6 +290,10 @@ git diff --check
 | `/api/v1/advisor/context-memory*` | `GET`、`POST` | 历史上下文保存、读取和检索 |
 | `/api/v1/decision-events*` | `GET`、`POST` | 决策事件列表、详情和幂等写入 |
 | `/api/v1/advisor/workflow*` | `GET`、`POST` | 固定研究工作流读取、保存和运行 |
+| `/api/v1/skills*` | `GET`、`POST`、`PATCH`、`PUT` | 管理员受控版本、探测、启停及个人选择 |
+| `/api/v1/research/runs*` | `GET`、`POST`、`DELETE` | 独立LIVE模板、全局准入、节点证据与取消 |
+| `/api/v1/research/algorithms/*` | `POST` | 时点受控的状态概率、五因子及常相关协方差收缩 |
+| `/api/v1/research/knowledge/*` | `GET`、`POST`、`PUT`、`DELETE`、`PATCH` | 原文版本、上传、受控采集、检索、引用及原子声明 |
 
 认证模式下，服务端依据登录账户确定 `owner_id`。无认证开发模式中的 `X-Owner-ID` 只用于对象范围隔离。
 
@@ -297,7 +303,8 @@ git diff --check
 | --- | --- | --- | --- |
 | 实时研究 | 按运行能力调用问财、扶摇及其他已配置服务 | 凭据、额度、字段和来源满足要求 | 数据授权、长期稳定性与完整研究覆盖 |
 | 固定数据 | 用于演示、自动化测试和确定性回放 | 页面与接口明确标记数据模式 | 不用于证明市场准确率 |
-| 组合计算 | 提供暴露、预算、配置、情景和再平衡结果 | 画像、持仓、报价及规则版本有效 | 协方差、流动性压力、历史回测和全局约束求解 |
+| 组合计算 | 提供暴露、预算、配置、情景和再平衡结果 | 画像、持仓、报价及规则版本有效 | 研究协方差尚未接入优化；流动性压力、历史回测和全局约束求解 |
+| 论文与检索 | 确定性论文估计量、固定本地向量及版本引用 | 真实输入完整；混合默认启用需人工质量验收 | 缺数据、配额及数据库条件时不以测试结果替代真实验收 |
 | 模型服务 | 处理意图、字段、工具选择和表达 | 配置兼容 OpenAI API 的服务 | 具体模型质量和长期可用性 |
 | 外部操作 | 输出 `ADVISORY_ONLY` 研究与方案测算 | 用户检查结果及适用条件 | 券商同步、订单生成和交易执行 |
 | 部署安全 | 本地账户、用户隔离、受保护凭据和访问审计 | 本地或受控网络环境 | 公网身份服务、独立审计、限流和长期监控 |
@@ -313,6 +320,12 @@ git diff --check
 | [本地部署说明](docs/local-deployment.md) | 账户、凭据、数据库、备份恢复和运行维护 |
 | [问财数据接入说明](docs/iwencai-live-provider.md) | 问财配置、能力探测和真实查询规则 |
 | [PRD 对接指南](docs/prd-integration-guide.md) | 产品联调所需模块、接口和数据状态 |
+| [研究平台计算及资料契约](docs/research-platform-methods.md) | 三项论文方法、输入、单位、历史时点与检索边界 |
+| [研究平台运行与复验](docs/research-platform-operations.md) | 依赖、模型缓存、单worker、接口和验证命令 |
+| [研究平台验收报告](docs/submission/research-platform-acceptance-20261001.md) | 自动化、真实数据、负载、检索及外部阻塞证据 |
+| [研究平台续验收与操作](docs/submission/research-platform-followup-20261001.md) | PostgreSQL安装、问财额度、真实算法输入来源及Pages撤销 |
+| [人工质量评测指南](docs/research-quality-review-guide.md) | 独立标注页面、真实语料、逐声明依据及汇总门槛 |
+| [100题Agent质量评测](docs/submission/research-quality-agent-review-20261003.md) | 真实原文、实际检索回答、独立代理标注与页面导出；不包含真实模型规划 |
 | [ADR-0001](docs/adr/0001-modular-monolith.md) | 模块化单体架构决策 |
 | [TODO](TODO.md) · [LOG](LOG.md) | 当前任务与验证记录 |
 

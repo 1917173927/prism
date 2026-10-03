@@ -122,7 +122,7 @@ def volume_summary(bars: list[dict[str, Any]]) -> dict[str, Any]:
     latest = values[-1] if values else None
     def ratio(period: int) -> Decimal | None:
         window = values[-period:]
-        if latest is None or not window or any(value is None for value in window):
+        if latest is None or len(window) < period or any(value is None for value in window):
             return None
         average = sum(window, Decimal(0)) / Decimal(len(window))
         return (latest / average).quantize(Decimal("0.0001")) if average else None

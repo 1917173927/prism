@@ -1,0 +1,16 @@
+{
+  "schema_version": "research-pages-deployment.v1",
+  "repository": "1917173927/prism",
+  "head_sha": "59e5643a12d201f6b204d7756c1815bcae7be98e",
+  "git_push_status": "SUCCESS",
+  "workflow_run_id": 36851271343,
+  "workflow_url": "https://github.com/1917173927/prism/actions/runs/36851271343",
+  "status": "BLOCKED",
+  "failed_step": "Setup Pages",
+  "annotation": "Get Pages site failed. Please verify that the repository has Pages enabled and configured to build using GitHub Actions. Error: Not Found",
+  "artifact_upload_started": false,
+  "deployment_started": false,
+  "repository_settings_changed": false,
+  "remote_or_domain_changed": false,
+  "verification": "Public GitHub REST workflow jobs and check-run annotations; current configured origin. Local Pages compatibility passed independently."
+}

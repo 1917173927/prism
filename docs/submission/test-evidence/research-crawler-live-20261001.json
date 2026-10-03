@@ -1,0 +1,93 @@
+{
+  "schema_version": "research-public-source-verification.v1",
+  "generated_at": "2026-10-01T10:02:45.208016+00:00",
+  "execution": "REAL_PUBLIC_NETWORK_NO_FIXTURE_TRANSPORT",
+  "result": {
+    "status": "CALCULATED",
+    "sources": [
+      {
+        "source_id": "arxiv-quant-finance",
+        "status": "CALCULATED",
+        "ingested": 10,
+        "failed": 0,
+        "reason": null,
+        "coverage": {
+          "scope": "BOUNDED_FEED_NOT_FULL_ARCHIVE",
+          "start": 0,
+          "page_size": 10,
+          "entry_count": 18,
+          "dated_items": 10,
+          "total_results": 18,
+          "has_more": true
+        }
+      },
+      {
+        "source_id": "arxiv-retrieval-foundations",
+        "status": "CALCULATED",
+        "ingested": 3,
+        "failed": 0,
+        "reason": null,
+        "coverage": {
+          "scope": "BOUNDED_FEED_NOT_FULL_ARCHIVE",
+          "start": 0,
+          "page_size": 10,
+          "entry_count": 3,
+          "dated_items": 3,
+          "total_results": 3,
+          "has_more": false
+        }
+      }
+    ]
+  },
+  "source_statuses": [
+    {
+      "coverage": {
+        "dated_items": 10,
+        "entry_count": 18,
+        "has_more": true,
+        "page_size": 10,
+        "scope": "BOUNDED_FEED_NOT_FULL_ARCHIVE",
+        "start": 0,
+        "total_results": 18
+      },
+      "enabled": true,
+      "format": "RSS",
+      "kind": "PAPER",
+      "last_error": null,
+      "last_failed": 0,
+      "last_ingested": 10,
+      "last_run_at": "2026-10-01T10:02:33.130899+00:00",
+      "last_status": "CALCULATED",
+      "source_id": "arxiv-quant-finance",
+      "title": "arXiv Quantitative Finance RSS",
+      "url": "https://rss.arxiv.org/rss/q-fin"
+    },
+    {
+      "coverage": {
+        "dated_items": 3,
+        "entry_count": 3,
+        "has_more": false,
+        "page_size": 10,
+        "scope": "BOUNDED_FEED_NOT_FULL_ARCHIVE",
+        "start": 0,
+        "total_results": 3
+      },
+      "enabled": true,
+      "format": "ATOM",
+      "kind": "PAPER",
+      "last_error": null,
+      "last_failed": 0,
+      "last_ingested": 3,
+      "last_run_at": "2026-10-01T10:02:45.203018+00:00",
+      "last_status": "CALCULATED",
+      "next_start": 0,
+      "source_id": "arxiv-retrieval-foundations",
+      "title": "RAG、ALCE、Self-RAG 原始论文",
+      "url": "https://export.arxiv.org/api/query?id_list=2005.11401,2305.14627,2310.11511"
+    }
+  ],
+  "stored_document_count": 13,
+  "stored_chunk_count": 328,
+  "embedding_mode": "DISABLED_FOR_NETWORK_INGESTION_VALIDATION",
+  "limitations": "单轮受控来源采集；失败状态如实保留。不证明来源覆盖完整、金融声明真实性或长期采集稳定性。"
+}

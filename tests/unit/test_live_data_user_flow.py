@@ -291,27 +291,45 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
              "ensureDependency", "confirmProfileContext",
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
              "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing",
-             "loadSavedPortfolio", "openPortfolioModal", "buildRebalancingNotice",
+             "loadSavedPortfolio", "openPortfolioModal", "closePortfolioModal", "selectPortfolioImportTab",
+             "syncPortfolioDialogScroll", "buildRebalancingNotice",
              "profileLevelText", "currentProfileTag", "activeProfileTag"]
     functions = []
     for name in names:
         match = re.search(r"  (?:async )?function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source)
         assert match, name
         functions.append(match.group())
-    probe = prefix + "\n".join(functions) + r'''
+    # A desktop media query is part of the browser environment, independent of financial state.
+    browser_environment = 'const window = {matchMedia: query => ({media: query, matches: false})};\n'
+    probe = browser_environment + prefix + "\n".join(functions) + r'''
   const assert = require("node:assert/strict");
   class Element {
-    constructor() { this.children = []; this.style = {}; this.value = ""; this.classList = {add(){},remove(){},toggle(){}}; }
+    constructor() {
+      this.children = []; this.style = {}; this.value = ""; this.open = false; this.attributes = new Map();
+      const classes = new Set();
+      this.classList = {add: value => classes.add(value), remove: value => classes.delete(value),
+        contains: value => classes.has(value), toggle: (value, enabled) => enabled ? classes.add(value) : classes.delete(value)};
+    }
     set textContent(value) { this.children = [String(value)]; }
     get textContent() { return this.children.map(x => typeof x === "string" ? x : x.textContent).join(" "); }
     append(...children) { this.children.push(...children); }
     appendChild(child) { this.children.push(child); child.parentElement = this; }
-    setAttribute() {}
+    setAttribute(key, value) { this.attributes.set(key, value); }
+    getAttribute(key) { return this.attributes.get(key); }
     addEventListener() {}
+    showModal() { this.open = true; }
+    close() { this.open = false; }
   }
   const nodes = new Map();
   const byId = id => { if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
-  const document = {body: new Element(), createElement: () => new Element(), createElementNS: () => new Element(), createTextNode: text => String(text)};
+  const importTabs = ["ocr", "text", "manual"].map(name => {
+    const tab = byId(`tab-btn-${name}`); tab.id = `tab-btn-${name}`;
+    tab.setAttribute("aria-controls", `tab-${name}`); return tab;
+  });
+  const document = {body: new Element(), createElement: () => new Element(), createElementNS: () => new Element(),
+    createTextNode: text => String(text), querySelectorAll: selector => {
+      assert.equal(selector, ".portfolio-modal-tabs [role=tab]"); return importTabs;
+    }};
   const renderOverviewWorkspace = () => {};
   const clear = element => { element.children = []; };
   const createSvgIcon = () => new Element();
@@ -343,7 +361,9 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
       sector_hhi:5200,hhi_limit:3800,sectors:[{name:"现金",pct:60,cap:5,limitOperator:"MIN",
         verdictCode:"PASS",differencePctPoints:55,marginPctPoints:55,topHoldings:"现金"}]};
     renderHeroDonutChart("custom-user");
-    assert.match(byId("cf-hero-verdict-badge").textContent, /集中度需要关注.*HHI 5200/);
+    assert.match(byId("cf-hero-verdict-badge").textContent, /集中度需要关注/);
+    assert.equal(byId("cf-hero-verdict-badge").className, "cf-verdict cf-verdict-risk");
+    assert.match(byId("donut-cause-callout").textContent, /HHI 5200 超过参考值 3800/);
     assert.match(byId("donut-cause-callout").textContent, /各行业占比仍在设置范围内/);
     state.portfolioHealthRun = null;
     state.portfolio = {position_snapshot:{positions:[{asset_id:"510300.SH"}]}};
@@ -404,7 +424,14 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
 
     openPortfolioModal();
     assert.equal(byId("portfolio-modal").parentElement, document.body);
-    assert.equal(byId("portfolio-modal").style.display, "flex");
+    assert.equal(byId("portfolio-modal").open, true);
+    assert.equal(byId("tab-btn-ocr").getAttribute("aria-selected"), "true");
+    assert.equal(byId("tab-btn-text").getAttribute("aria-selected"), "false");
+    assert.equal(document.body.classList.contains("portfolio-dialog-open"), true);
+    closePortfolioModal();
+    syncPortfolioDialogScroll();
+    assert.equal(byId("portfolio-modal").open, false);
+    assert.equal(document.body.classList.contains("portfolio-dialog-open"), false);
     state.dataMode = "LIVE";
     state.portfolio = null;
     const saved = {data_mode:"LIVE", data:{portfolio:{owner_id:"test-owner"}, positions:[{quantity:600,cost_price:1680}],cash_cny:28000}};
