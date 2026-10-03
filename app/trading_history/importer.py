@@ -146,7 +146,7 @@ def _preview_row(row_number: int, row: dict[str, object], mapping: dict[str, str
     }
     issues: list[str] = []
     if currency not in {"CNY", "人民币", "RMB"}:
-        issues.append("仅支持人民币 CNY 交易")
+        issues.append("需要使用人民币金额")
     if traded_at is None:
         issues.append("缺少或无法识别交易时间")
     if not proposed["security_code"] and not proposed["security_name"]:
@@ -164,7 +164,7 @@ def _preview_row(row_number: int, row: dict[str, object], mapping: dict[str, str
     if layout_issue := str(row.get("版式校验") or "").strip():
         issues.append(layout_issue)
     if confidence < OCR_CONFIDENCE_THRESHOLD:
-        issues.append("OCR 置信度低于 85%，需要人工复核")
+        issues.append("识别结果需要人工核对")
     overbound = currency not in {"CNY", "人民币", "RMB"}
     return TradePreviewRow(
         row_number=row_number,
@@ -182,13 +182,13 @@ def _decode_csv(data: bytes) -> str:
             return data.decode(encoding)
         except UnicodeDecodeError:
             continue
-    raise ImportParseError("CSV encoding must be UTF-8, UTF-8 BOM or GB18030")
+    raise ImportParseError("无法读取表格文字，请使用 UTF-8 或 GB18030 编码保存文件")
 
 
 def _table_preview(filename: str, data: bytes, selected_sheet: str | None) -> tuple[str, list[str], list[dict[str, object]], tuple[str, ...], str | None]:
     suffix = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
     if len(data) > MAX_TABLE_BYTES:
-        raise ImportLimitError("table file exceeds 10 MiB")
+        raise ImportLimitError("表格文件超过 10 MiB，请减少文件内容")
     if suffix == "csv":
         text = _decode_csv(data)
         sample = text[:8192]
@@ -201,25 +201,25 @@ def _table_preview(filename: str, data: bytes, selected_sheet: str | None) -> tu
         rows = [{str(key or "").strip(): value for key, value in row.items()} for row in reader]
         return "CSV", columns, rows, (), None
     if suffix != "xlsx":
-        raise ImportParseError("only CSV and XLSX table files are supported")
+        raise ImportParseError("请选择 CSV 或 XLSX 表格")
     try:
         from openpyxl import load_workbook
     except ImportError as exc:
-        raise ImportParseError("XLSX support is not installed") from exc
+        raise ImportParseError("表格读取组件未安装，请联系管理员") from exc
     try:
         workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     except Exception as exc:
-        raise ImportParseError("XLSX workbook could not be opened") from exc
+        raise ImportParseError("无法打开表格，请检查文件是否完整") from exc
     sheets = tuple(workbook.sheetnames)
     if not sheets:
-        raise ImportParseError("XLSX workbook has no sheets")
+        raise ImportParseError("表格文件没有工作表")
     sheet_name = selected_sheet if selected_sheet in sheets else sheets[0]
     sheet = workbook[sheet_name]
     values = sheet.iter_rows(values_only=True)
     try:
         header = next(values)
     except StopIteration as exc:
-        raise ImportParseError("XLSX sheet is empty") from exc
+        raise ImportParseError("所选工作表没有内容") from exc
     columns = [str(item or "").strip() for item in header]
     rows = [dict(zip(columns, row)) for row in values if any(value not in (None, "") for value in row)]
     workbook.close()
@@ -335,7 +335,7 @@ def _ocr_rows(data: bytes) -> list[tuple[dict[str, object], Decimal]]:
     try:
         image = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception as exc:
-        raise ImportParseError("trade screenshot could not be opened") from exc
+        raise ImportParseError("无法打开成交截图，请检查图片文件") from exc
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     result, _ = OCRPortfolioParser.get_instance()._get_engine()(buffer.getvalue())
@@ -383,7 +383,7 @@ def _ocr_rows(data: bytes) -> list[tuple[dict[str, object], Decimal]]:
 
 def preview_trade_files(files: list[tuple[str, str, bytes]], *, selected_sheet: str | None = None) -> TradeImportPreview:
     if not files:
-        raise ImportParseError("at least one file is required")
+        raise ImportParseError("请选择成交记录文件")
     digest = sha256()
     for filename, content_type, data in files:
         digest.update(filename.encode("utf-8", errors="ignore"))
@@ -394,9 +394,9 @@ def preview_trade_files(files: list[tuple[str, str, bytes]], *, selected_sheet: 
     are_images = all(content_type in image_types for _, content_type, _ in files)
     if are_images:
         if len(files) > MAX_IMAGES:
-            raise ImportLimitError("image batch exceeds 10 files")
+            raise ImportLimitError("每次最多导入 10 张成交截图")
         if any(not data or len(data) > MAX_IMAGE_BYTES for _, _, data in files):
-            raise ImportLimitError("each image must be between 1 byte and 5 MiB")
+            raise ImportLimitError("请上传有内容且不超过 5 MiB 的图片")
         extracted: list[tuple[dict[str, object], Decimal]] = []
         for _, _, data in files:
             extracted.extend(_ocr_rows(data))
@@ -408,15 +408,15 @@ def preview_trade_files(files: list[tuple[str, str, bytes]], *, selected_sheet: 
         source_type, sheets, active_sheet = "IMAGE", (), None
     else:
         if len(files) != 1:
-            raise ImportParseError("table imports accept exactly one CSV or XLSX file")
+            raise ImportParseError("请每次选择一个表格文件")
         filename, _, data = files[0]
         source_type, columns, rows, sheets, active_sheet = _table_preview(filename, data, selected_sheet)
         if len(rows) > MAX_ROWS:
-            raise ImportLimitError("table exceeds 20,000 data rows")
+            raise ImportLimitError("表格超过 20,000 行，请分批导入")
         mapping = _mapping(columns)
         preview_rows = tuple(_preview_row(index, row, mapping) for index, row in enumerate(rows, 2))
     if len(preview_rows) > MAX_ROWS:
-        raise ImportLimitError("preview exceeds 20,000 rows")
+        raise ImportLimitError("识别结果超过 20,000 行，请分批导入")
     return TradeImportPreview(
         source_type=source_type,
         source_digest=digest.hexdigest(),
