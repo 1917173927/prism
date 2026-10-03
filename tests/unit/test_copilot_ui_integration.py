@@ -673,10 +673,11 @@ def test_portfolio_report_navigation_status_and_boundaries_are_restructured() ->
     assert markup.index('id="portfolio-report-risk-summary"') > drawer
     assert '.prism-ui-v2 .portfolio-disclosure > summary' in styles
     risk_renderer = script.split('function renderPortfolioRiskBoundaries', 1)[1].split('function renderPortfolioReport', 1)[0]
-    for label in ("单一标的集中度", "权益类占比", "行业及未分类资产", "现金比例", "计算口径"):
+    for label in ("最大持仓占比", "权益类占比", "现金比例", "当前占比", "参考范围", "结果"):
         assert label in risk_renderer
     assert '"REVIEW_REQUIRED"' in risk_renderer
-    assert "最大回撤容忍度来自投资者画像" in risk_renderer
+    assert 'if (!report.profile)' in risk_renderer
+    assert 'link.href = "#profile"' in risk_renderer
     assert 'renderPortfolioAnalysisStatus(error.message' in script
     assert 'setError(`持仓已保存' not in script
 

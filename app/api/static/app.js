@@ -8927,7 +8927,7 @@
 
     const metricsData = [
       { label: "最大行业占比", value: `${health.top_sector_weight_pct}% (${health.top_sector_name})`, status: maxSector?.verdictCode === "PASS" ? "在设置范围内" : "需要关注", isOk: maxSector?.verdictCode === "PASS" },
-      { label: "组合集中度 (HHI)", value: `${health.sector_hhi}`, status: health.hhi_verdict === "PASS" ? `低于参考值 ${health.hhi_limit}` : `超过参考值 ${health.hhi_limit}`, isOk: health.hhi_verdict === "PASS" },
+      { label: "行业集中度指数", value: `${health.sector_hhi}`, status: health.hhi_verdict === "PASS" ? `低于参考值 ${health.hhi_limit}` : `超过参考值 ${health.hhi_limit}`, isOk: health.hhi_verdict === "PASS" },
       { label: "现金与流动性", value: `${health.cash_weight_pct}%`, status: cashSector?.verdictCode === "PASS" ? `达到最低 ${health.cash_minimum_pct}%` : `低于最低 ${health.cash_minimum_pct}%`, isOk: cashSector?.verdictCode === "PASS" }
     ];
 
@@ -8995,7 +8995,7 @@
           : `${topOver.sector.name}超标 (+${topOver.verdict.diffVal.toFixed(1)}%)`;
         verdictBadge.append(vIcon, document.createTextNode(` 需要关注 · ${breachText}`));
       } else if (health.hhi_verdict === "OVERBOUND") {
-        verdictBadge.append(vIcon, document.createTextNode(` 集中度需要关注 · HHI ${health.sector_hhi}`));
+        verdictBadge.append(vIcon, document.createTextNode(" 集中度需要关注"));
       } else if (requiresReview) {
         verdictBadge.append(vIcon, document.createTextNode(" 部分数据需补充"));
       } else {
@@ -9232,7 +9232,7 @@
     }
 
     if (hhiChip) {
-      hhiChip.textContent = health.hhi_verdict === "PASS" ? `HHI ${health.sector_hhi} · 正常` : `HHI ${health.sector_hhi} · 需要关注`;
+      hhiChip.textContent = health.hhi_verdict === "PASS" ? `集中度指数 ${health.sector_hhi} · 正常` : `集中度指数 ${health.sector_hhi} · 需要关注`;
       hhiChip.className = health.hhi_verdict === "PASS" ? "status-chip ok" : "status-chip alert";
     }
 
@@ -12213,9 +12213,11 @@
   const reportPercent = value => value == null ? "—" : `${Number(value).toFixed(2)}%`;
   const reportStatusLabel = status => ({
     PASS: "通过",
+    OVERBOUND: "超过上限",
+    UNDERBOUND: "低于下限",
     REVIEW_REQUIRED: "需要复核",
-    BLOCKED: "已阻断",
-    UNAVAILABLE: "待补齐",
+    BLOCKED: "需要处理",
+    UNAVAILABLE: "待分析",
   }[status] || "待生成");
   const reportStatusClass = status => status === "PASS" ? "pass" : ["REVIEW_REQUIRED", "UNAVAILABLE"].includes(status) ? "review" : "blocked";
   const reportAssetTypeLabel = type => ({
@@ -12318,7 +12320,7 @@
     container.append(wrapper);
   }
 
-  function appendRiskBoundaryRow(body, {label, current, threshold, status, basis}) {
+  function appendRiskBoundaryRow(body, {label, current, threshold, status}) {
     const row = document.createElement("tr");
     [label, current, threshold].forEach(value => {
       const cell = document.createElement("td");
@@ -12328,23 +12330,29 @@
     const statusCell = document.createElement("td");
     const badge = document.createElement("span");
     badge.className = `status-chip ${reportStatusClass(status)}`;
-    badge.textContent = status;
+    badge.textContent = reportStatusLabel(status);
     statusCell.append(badge);
-    const basisCell = document.createElement("td");
-    basisCell.textContent = basis;
-    row.append(statusCell, basisCell);
+    row.append(statusCell);
     body.append(row);
   }
 
   function renderPortfolioRiskBoundaries(container, report) {
     clear(container);
+    if (!report.profile) {
+      const link = document.createElement("a");
+      link.className = "copilot-action-btn secondary";
+      link.href = "#profile";
+      link.textContent = "完成风险问卷";
+      container.append(link);
+      return;
+    }
     const tableWrap = document.createElement("div");
     tableWrap.className = "portfolio-risk-boundary-wrap";
     const table = document.createElement("table");
     table.className = "portfolio-report-table portfolio-risk-boundary-table";
     const head = document.createElement("thead");
     const headRow = document.createElement("tr");
-    ["约束", "当前值", "画像阈值", "状态", "计算口径"].forEach(label => {
+    ["项目", "当前占比", "参考范围", "结果"].forEach(label => {
       const cell = document.createElement("th");
       cell.textContent = label;
       headRow.append(cell);
@@ -12357,42 +12365,29 @@
       ? Number(topPosition.market_value_cny) / Number(report.total_value_cny) * 100
       : null;
     appendRiskBoundaryRow(body, {
-      label: "单一标的集中度",
-      current: report.concentration?.top_asset_weight_pct == null
-        ? "—"
-        : `${reportPercent(report.concentration.top_asset_weight_pct)}（证券持仓）${topTotalWeight == null ? "" : ` / ${reportPercent(topTotalWeight)}（总资产裁决）`}`,
-      threshold: report.concentration?.single_asset_limit_pct == null ? "未绑定画像" : `≤ ${reportPercent(report.concentration.single_asset_limit_pct)}`,
+      label: "最大持仓占比",
+      current: reportPercent(topTotalWeight),
+      threshold: report.concentration?.single_asset_limit_pct == null ? "—" : `≤ ${reportPercent(report.concentration.single_asset_limit_pct)}`,
       status: report.concentration?.single_asset_verdict || "UNAVAILABLE",
-      basis: "展示按证券持仓；上限裁决按组合总资产",
     });
     const equityWeight = report.profile?.equity_weight_pct
       ?? (report.asset_structure || []).filter(group => ["stock", "etf"].includes(group.group_key)).reduce((sum, group) => sum + Number(group.weight_pct), 0);
     appendRiskBoundaryRow(body, {
       label: "权益类占比",
       current: reportPercent(equityWeight),
-      threshold: report.profile ? `${reportPercent(report.profile.equity_minimum_pct)}–${reportPercent(report.profile.equity_maximum_pct)}` : "未绑定画像",
+      threshold: `${reportPercent(report.profile.equity_minimum_pct)}–${reportPercent(report.profile.equity_maximum_pct)}`,
       status: report.profile?.equity_verdict || "UNAVAILABLE",
-      basis: "组合总资产口径（股票 + ETF）",
     });
     const industryRows = (report.risk?.sectors || []).filter(sector => sector.sector_key !== "CASH");
     if (industryRows.length) {
       industryRows.forEach(sector => {
         const unclassified = sector.sector_key === "UNCLASSIFIED";
         appendRiskBoundaryRow(body, {
-          label: unclassified ? "未分类资产（非行业结论）" : sector.name,
+          label: unclassified ? "未分类资产" : sector.name,
           current: reportPercent(sector.weight_pct),
           threshold: `${sector.limit_operator === "MIN" ? "≥" : "≤"} ${reportPercent(sector.limit_pct)}`,
           status: unclassified && Number(sector.weight_pct) > 0 ? "REVIEW_REQUIRED" : sector.verdict,
-          basis: unclassified ? "组合总资产口径；待补齐行业字段" : "组合总资产口径",
         });
-      });
-    } else {
-      appendRiskBoundaryRow(body, {
-        label: "行业及未分类资产",
-        current: "—",
-        threshold: "—",
-        status: "UNAVAILABLE",
-        basis: "行业字段或组合体检未完成",
       });
     }
     const cashSector = (report.risk?.sectors || []).find(sector => sector.sector_key === "CASH");
@@ -12400,18 +12395,12 @@
     appendRiskBoundaryRow(body, {
       label: "现金比例",
       current: reportPercent(report.risk?.cash_weight_pct ?? cashStructure?.weight_pct),
-      threshold: report.risk?.cash_minimum_pct == null ? "体检未完成" : `≥ ${reportPercent(report.risk.cash_minimum_pct)}`,
+      threshold: report.risk?.cash_minimum_pct == null ? "—" : `≥ ${reportPercent(report.risk.cash_minimum_pct)}`,
       status: cashSector?.verdict === "OVERBOUND" ? "UNDERBOUND" : cashSector?.verdict || "UNAVAILABLE",
-      basis: "组合总资产口径",
     });
     table.append(head, body);
     tableWrap.append(table);
-    const note = document.createElement("details");
-    note.className = "portfolio-report-risk-line";
-    const noteSummary = document.createElement("summary"); noteSummary.textContent = "风险计算口径";
-    const noteText = document.createElement("p"); noteText.textContent = "单一标的占比以证券持仓市值为分母，上限对照以组合总资产为分母。行业分析包含基金穿透。最大回撤容忍度来自投资者画像；本报告未计算组合最大回撤。";
-    note.append(noteSummary, noteText);
-    container.append(tableWrap, note);
+    container.append(tableWrap);
   }
 
   function renderPortfolioReport(report) {
@@ -12423,8 +12412,7 @@
       byId("portfolio-attention-entry").hidden = true;
       byId("portfolio-source-line").hidden = true;
       ["portfolio-report-asset-structure", "portfolio-report-risk-summary", "portfolio-report-concentration-summary",
-        "portfolio-report-pnl-summary", "portfolio-report-protection-summary", "portfolio-report-observations",
-        "portfolio-report-disclosure", "portfolio-report-meta", "portfolio-pnl-note"].forEach(id => clear(byId(id)));
+        "portfolio-report-pnl-summary", "portfolio-report-protection-summary", "portfolio-report-meta"].forEach(id => clear(byId(id)));
       byId("portfolio-report-status").textContent = "待生成";
       return;
     }
@@ -12441,7 +12429,7 @@
       status.className = `status-chip ${reportStatusClass(reportStatus)}`;
     }
     const meta = byId("portfolio-report-meta");
-    if (meta) meta.textContent = `${report.data_mode} · 数据时点 ${new Date(report.source_as_of).toLocaleString("zh-CN")} · 报告编号 ${report.report_id}`;
+    if (meta) meta.textContent = `${report.data_mode === "MOCK" ? "演示持仓" : "已导入持仓"} · ${new Date(report.source_as_of).toLocaleString("zh-CN")}`;
     const source = byId("portfolio-source-line");
     source.hidden = false;
     source.textContent = `${report.data_mode === "MOCK" ? "演示数据 · " : ""}数据截至 ${new Date(report.source_as_of).toLocaleString("zh-CN")}`;
@@ -12454,33 +12442,19 @@
     const attention = byId("portfolio-attention-entry");
     attention.hidden = !issues.length;
     attention.textContent = `${issues.length} 项需要关注，查看风险详情`;
-    const observations = byId("portfolio-report-observations");
-    if (observations) {
-      clear(observations);
-      const title = document.createElement("h4"); title.textContent = "报告摘要";
-      const list = document.createElement("ul");
-      (report.observations || []).forEach(item => { const li = document.createElement("li"); li.textContent = item; list.append(li); });
-      observations.append(title, list);
-    }
     const structure = byId("portfolio-report-asset-structure");
     if (structure) renderPortfolioAssetStructure(structure, report.asset_structure);
     const risk = byId("portfolio-report-risk-summary");
     if (risk) {
       renderPortfolioRiskBoundaries(risk, report);
-      if (report.risk?.issues?.length && !portfolioMissingAnalysisData().sectorIncomplete) {
-        const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
-        report.risk.issues.forEach(item => { const li = document.createElement("li"); li.textContent = text(item); issues.append(li); });
-        risk.append(issues);
-      }
     }
     const concentration = byId("portfolio-report-concentration-summary");
     if (concentration) {
       clear(concentration);
       const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
-      appendReportMetric(metrics, "集中度状态", report.concentration?.status === "REVIEW_REQUIRED" ? "需要复核" : report.concentration?.status === "CALCULATED" ? "已计算" : "待补齐");
       appendReportMetric(metrics, "最高持仓", report.concentration?.top_asset_name || "未计算");
       appendReportMetric(metrics, "最高持仓占比", reportPercent(report.concentration?.top_asset_weight_pct));
-      appendReportMetric(metrics, "资产 HHI", report.concentration?.asset_hhi == null ? "未计算" : String(report.concentration.asset_hhi));
+      appendReportMetric(metrics, "集中度指数", report.concentration?.asset_hhi == null ? "—" : String(report.concentration.asset_hhi));
       concentration.append(metrics);
       if (report.concentration?.issues?.length) {
         const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
@@ -12491,25 +12465,30 @@
     const pnl = byId("portfolio-report-pnl-summary"); clear(pnl);
     appendReportMetric(pnl, "浮亏标的数", report.pnl_summary?.loss_position_count == null ? "待计算" : `${report.pnl_summary.loss_position_count} 项`);
     appendReportMetric(pnl, "浮亏市值占比", reportPercent(report.pnl_summary?.loss_weight_pct));
-    byId("portfolio-pnl-note").textContent = report.pnl_summary?.note || "收益数据暂不可用。";
     const protection = byId("portfolio-report-protection-summary");
     if (protection) {
       clear(protection);
       const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
       appendReportMetric(metrics, "防御性资产", reportAmount(report.base_protection?.defensive_market_value_cny));
       appendReportMetric(metrics, "防御性资产占比", reportPercent(report.base_protection?.defensive_weight_pct));
-      appendReportMetric(metrics, "画像防御参考", report.base_protection?.profile_reference_pct == null ? "未绑定画像" : reportPercent(report.base_protection.profile_reference_pct));
-      appendReportMetric(metrics, "参考状态", report.base_protection?.reference_verdict === "BELOW_REFERENCE" ? "低于参考" : report.base_protection?.reference_verdict === "PASS" ? "达到参考" : "仅展示事实");
+      if (report.base_protection?.profile_reference_pct != null) {
+        appendReportMetric(metrics, "参考比例", reportPercent(report.base_protection.profile_reference_pct));
+        appendReportMetric(metrics, "参考结果", report.base_protection.reference_verdict === "BELOW_REFERENCE" ? "低于参考" : report.base_protection.reference_verdict === "PASS" ? "达到参考" : "待分析");
+      }
       protection.append(metrics);
       const components = document.createElement("p"); components.className = "portfolio-report-risk-line";
-      components.textContent = `${(report.base_protection?.components || []).join("、")}。${report.base_protection?.note || ""}`;
+      components.textContent = (report.base_protection?.components || []).join("、");
       protection.append(components);
-      const guide = document.createElement("ul"); guide.className = "portfolio-report-issues";
-      (report.configuration_reference || []).forEach(item => { const li = document.createElement("li"); li.textContent = item; guide.append(li); });
-      if (guide.childElementCount) protection.append(guide);
+      const reference = {
+        UNDERBOUND: "权益类持仓低于风险参考范围。",
+        OVERBOUND: "权益类持仓超过风险参考范围。",
+        PASS: "权益类持仓处于风险参考范围内。",
+      }[report.profile?.equity_verdict];
+      if (reference) {
+        const guide = document.createElement("p"); guide.textContent = reference;
+        protection.append(guide);
+      }
     }
-    const disclosure = byId("portfolio-report-disclosure");
-    if (disclosure) disclosure.textContent = (report.disclosures || []).join(" ");
     renderPortfolioAnalysisStatus();
   }
 
@@ -12543,10 +12522,10 @@
     const content = byId("portfolio-diagnosis-content");
     if (!title || !code || !content || !position) return;
     title.textContent = position.asset_name || position.name || position.asset_id || "标的诊断";
-    code.textContent = `${position.asset_id || "—"} · ${reportAssetTypeLabel(position.asset_type)} · ${position.sector || "行业未分类"}`;
+    code.textContent = `${position.asset_id || "—"} · ${reportAssetTypeLabel(position.asset_type)}`;
     clear(content);
     const status = document.createElement("div"); status.className = `portfolio-diagnosis-status ${position.diagnosis_status === "PASS" ? "pass" : "review"}`;
-    status.textContent = position.diagnosis_status === "PASS" ? "当前快照未发现单项数据问题" : "当前快照需要复核";
+    status.textContent = position.diagnosis_status === "PASS" ? "数据完整" : "需要复核";
     const facts = document.createElement("div"); facts.className = "portfolio-diagnosis-facts";
     [
       ["持仓数量", position.quantity == null ? "—" : String(position.quantity)],
@@ -12557,12 +12536,16 @@
       ["累计盈亏", reportAmount(position.pnl_cny)],
       ["累计收益率", reportPercent(position.pnl_pct)],
     ].forEach(([label, value]) => appendReportMetric(facts, label, value));
-    const heading = document.createElement("h3"); heading.textContent = "诊断说明";
-    const list = document.createElement("ul"); list.className = "portfolio-diagnosis-list";
-    (position.diagnosis || ["当前持仓仅展示已确认快照事实。"]).forEach(item => { const li = document.createElement("li"); li.textContent = item; list.append(li); });
-    const note = document.createElement("p"); note.className = "portfolio-diagnosis-note";
-    note.textContent = "诊断只针对本次正式报告快照，不调用个股研究智能体，也不构成买卖指令。";
-    content.append(status, facts, heading, list, note);
+    content.append(status, facts);
+    const diagnosis = position.diagnosis || [];
+    const visibleDiagnosis = displayedPortfolioReport?.profile ? diagnosis : diagnosis.slice(0, 1);
+    if (!displayedPortfolioReport?.profile && !position.sector) visibleDiagnosis.push("行业信息待补充。");
+    if (visibleDiagnosis.length) {
+      const heading = document.createElement("h3"); heading.textContent = "诊断说明";
+      const list = document.createElement("ul"); list.className = "portfolio-diagnosis-list";
+      visibleDiagnosis.forEach(item => { const li = document.createElement("li"); li.textContent = item; list.append(li); });
+      content.append(heading, list);
+    }
   }
 
   function openPortfolioDiagnosis(assetId) {
@@ -12584,7 +12567,7 @@
           pnl_pct: row.cost_price && Number(row.cost_price) > 0 ? (Number(row.price) / Number(row.cost_price) - 1) * 100 : null,
           weight_pct: row.weight_pct,
           diagnosis_status: "REVIEW_REQUIRED",
-          diagnosis: ["正式报告尚未加载，当前仅展示持仓摘要；请稍后重试。"],
+          diagnosis: ["报告正在读取。"],
         };
       })();
     const drawer = byId("portfolio-diagnosis-drawer");
@@ -12651,7 +12634,7 @@
     byId("overview-portfolio-cash").textContent = `现金 ${amount(summary.cash_cny)}`;
     byId("overview-pnl-val").textContent = amount(summary.daily_pnl_cny);
     byId("overview-pnl-val").className = summary.daily_pnl_cny == null ? "mono" : `mono ${Number(summary.daily_pnl_cny) >= 0 ? "market-up" : "market-down"}`;
-    byId("overview-pnl-pct").textContent = summary.daily_pnl_cny == null ? "需取得可核验昨收价" : "基于昨收与当前持仓计算";
+    byId("overview-pnl-pct").textContent = summary.daily_pnl_cny == null ? "待更新昨收价" : "";
     byId("overview-benchmark-val").textContent = amount(summary.pnl_cny);
     byId("overview-benchmark-val").className = summary.pnl_cny == null ? "mono" : `mono ${Number(summary.pnl_cny) >= 0 ? "market-up" : "market-down"}`;
     byId("overview-benchmark-sub").textContent = summary.pnl_pct == null ? "补充成本后计算" : `${summary.pnl_pct}%`;

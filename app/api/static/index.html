@@ -13,7 +13,7 @@
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261002-portfolio-disclosure" defer></script>
+    <script src="/static/app.js?v=20261003-portfolio-details" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -880,7 +880,6 @@
                     <div><dt>累计收益率</dt><dd id="overview-benchmark-sub">—</dd></div>
                   </dl>
                   <div id="portfolio-report-pnl-summary"></div>
-                  <details class="portfolio-secondary-disclosure"><summary>收益计算口径</summary><p id="portfolio-pnl-note"></p></details>
                 </div>
               </details>
               <details id="portfolio-holdings-details" class="portfolio-disclosure">
@@ -903,9 +902,7 @@
                 </div>
               </details>
               <details id="portfolio-report-info" class="portfolio-secondary-disclosure">
-                <summary>报告信息与计算口径</summary><p id="portfolio-report-meta" class="portfolio-report-meta"></p><span id="portfolio-report-status" class="status-chip"></span>
-                <div id="portfolio-report-observations" class="portfolio-report-observations"></div>
-                <p id="portfolio-report-disclosure" class="portfolio-report-disclosure"></p>
+                <summary>报告信息</summary><p id="portfolio-report-meta" class="portfolio-report-meta"></p><span id="portfolio-report-status" class="status-chip"></span>
                 <button id="portfolio-report-refresh" type="button" class="copilot-action-btn secondary">重新读取报告</button>
               </details>
             </div>

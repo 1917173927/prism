@@ -122,7 +122,7 @@ try {
   await page.click("#portfolio-details-entry");
   assert.equal(await page.$$eval("#portfolio-analysis-drawer .portfolio-disclosure[open]", nodes => nodes.length), 0);
   await page.click("#portfolio-risk-details > summary");
-  assert.match(await text("#portfolio-report-concentration-summary"), /资产 HHI/);
+  assert.match(await text("#portfolio-report-concentration-summary"), /集中度指数/);
   await page.click("#portfolio-pnl-details > summary");
   await page.waitForFunction(() => !document.querySelector("#portfolio-risk-details").open);
   assert.equal(await page.$$eval("#portfolio-analysis-drawer .portfolio-disclosure[open]", nodes => nodes.length), 1);
@@ -188,7 +188,8 @@ try {
   report = await waitReport(2);
   assert.equal(await text("#overview-portfolio-aum"), amount(report.holdings_value_cny));
   await more("#portfolio-report-info-entry");
-  assert.match(await text("#portfolio-report-meta"), new RegExp(report.report_id));
+  const reportTime = await page.evaluate(value => new Date(value).toLocaleString("zh-CN"), report.source_as_of);
+  assert.ok((await text("#portfolio-report-meta")).includes(reportTime));
   await page.click("#portfolio-details-close");
   const session = await browser.target().createCDPSession();
   await session.send("Browser.setDownloadBehavior", {behavior: "allowAndName", downloadPath: output, eventsEnabled: true});
