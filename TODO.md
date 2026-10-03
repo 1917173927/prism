@@ -358,4 +358,4 @@ The remaining legal, quota and competition-document inputs block production redi
 - [x] 验证研究平台子页、三视口导航、问卷草稿与提交、市场图表及原生窗口路由清理。
 - [x] 全量 1099 项通过、1 项跳过；最后局部样式修改再验相关 58 项及三视口。
 - [x] 27 项既有证据哈希和 282 个后端、研究及验收文件保留审计通过。
-- [ ] 提交并推送集成分支，建立本仓库 PR，合并到 `origin/main` 后确认远端及双父历史。
+- [x] 集成提交 `519d955` 已推送；[PR #3](https://github.com/1917173927/prism/pull/3) 已合入 `origin/main`，合并提交 `d953f69`；本地已快进，落后上游 0 个提交。

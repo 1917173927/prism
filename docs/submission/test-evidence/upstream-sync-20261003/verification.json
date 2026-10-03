@@ -22,5 +22,16 @@
   "browser": {"navigation_checks": 27, "viewports": [[1440,1000],[1024,768],[390,844]], "errors_or_warnings": 0},
   "pages_workflow_restored": false,
   "remote_quota_or_real_research_reacceptance_claimed": false,
-  "git_archival": "See LOG.md and Git history for subsequent commit, PR merge and remote confirmation"
+  "git_archival": {
+    "integration_commit": "519d955cd97199da3e546734ac6ffb89030923ce",
+    "pull_request": "https://github.com/1917173927/prism/pull/3",
+    "merge_commit": "d953f69c14157c3366ab2774385221decda17a5a",
+    "merged_at": "2026-10-03T05:23:21Z",
+    "github_confirmed_merged": true,
+    "local_main_fast_forwarded": true,
+    "upstream_commits_behind": 0,
+    "remote_check_runs_count": 0,
+    "remote_commit_status_count": 0,
+    "final_document_archival_commit": "See subsequent Git history; this document does not contain its own eventual commit hash"
+  }
 }
