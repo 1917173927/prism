@@ -1,0 +1,93 @@
+{
+  "schema_version": "product-demo-verification.v1",
+  "full_suite": {
+    "passed": 1110,
+    "skipped": 1,
+    "warnings": 2,
+    "duration_seconds": 98.24,
+    "real_postgres": true
+  },
+  "final_focused_suite": {
+    "passed": 11
+  },
+  "screenshots": [
+    {
+      "file": "01-overview.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "c757ee918e371e1ef5f26483f8caab620c1998b2f01ba3e965aa46549e944a2f"
+    },
+    {
+      "file": "02-market.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "b78290264c29cb9f56ff0cc30689a72964ed3ae113033fbc45fcae5f3d6bf00e"
+    },
+    {
+      "file": "03-copilot.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "6115e071267b1f233436f35be3d8a06ad51c7c50cc43209f86563f4a95cd205f"
+    },
+    {
+      "file": "04-profile.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "25715a85b124334ab702618c25a611b35a5a28822907c0010e0aa838fcc010fc"
+    },
+    {
+      "file": "05-trading-style.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "376cf6a5307c87bd5b190f9d31a0c8a628e36f15ed5ef4d955cf737af1159949"
+    },
+    {
+      "file": "06-skill-store.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "375d150eca17c5766f97092550850aae1ddca3b403adeb8d5668a0ba1763e9b5"
+    },
+    {
+      "file": "07-research-knowledge.jpg",
+      "format": "JPEG",
+      "width": 1425,
+      "height": 990,
+      "sha256": "a6b58cf8fc6d0c4ce2c442f6bf5daf32beb379984bdb218c6a614804104a7a94"
+    },
+    {
+      "file": "08-live-research.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "9b6b78f9b554d5cf72841a3223ba4acd74464ecf853b5005ae82c2876ec27a91"
+    },
+    {
+      "file": "09-research-algorithms.jpg",
+      "format": "JPEG",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "9467473ddb51d3d4a7d0e7e7fff92f0ad0acb5a2fb182ad7ebeb5892f3dec4bb"
+    },
+    {
+      "file": "10-overview-1024.jpg",
+      "format": "JPEG",
+      "width": 1009,
+      "height": 757,
+      "sha256": "1aca974d370429e3167665c409eebe7b03e474569464691441d3767f8dd069bb"
+    },
+    {
+      "file": "11-overview-390.jpg",
+      "format": "JPEG",
+      "width": 375,
+      "height": 812,
+      "sha256": "8e87fa03c2fe8522b12a38466f807f913e5c20801a40f5b444bdaa9f454ba5bf"
+    }
+  ],
+  "image_note": "Native browser JPEG export; layout viewport dimensions are recorded separately."
+}

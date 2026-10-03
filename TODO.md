@@ -363,5 +363,6 @@ The remaining legal, quota and competition-document inputs block production redi
 ## 2026-10-03 统一前端与产品 Demo
 
 - [x] 正式 9 页接入统一视觉变量与主题，62 项相关回归及三视口 27 次导航通过。
-- [ ] 交付独立离线 9 页产品 Demo、交互与截图模式。
-- [ ] 留存主要页面截图、使用说明及验证；提交推送至 `origin/main`。
+- [x] 交付独立离线 9 页产品 Demo、交互与截图模式；本地资料匹配、技能选择、画像偏好、行情切换及演示取消通过。
+- [x] 留存 11 张产品截图、使用说明、便携包及三视口 27 次页面／18 项交互证据。
+- [x] Demo 11 项专项回归及含本机 PostgreSQL 的全量 1110 项通过、1 项跳过；阶段提交推送至 `origin/main`，编号见 LOG。
