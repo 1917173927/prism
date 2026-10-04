@@ -4,103 +4,64 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; form-action 'none';">
   <title>AI 对话与技能商店 · 布局预览</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232b2c30'/%3E%3Ctext x='9' y='24' font-size='23' font-family='Arial' fill='white'%3EP%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="../wencai-zhitou-logo.svg">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../prism-v2.css">
+  <link rel="stylesheet" href="../research-platform.css">
   <style>
-    :root {
+    /* 对话界面使用现有样式，保留确认的导航间距、侧栏宽度和发送箭头。 */
+    body.overlay-open { overflow: hidden; }
+    .prism-ui-v2.sidebar-layout-active .home-navigation { gap: 25px; padding-inline: 26px; }
+    .prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex: 0 0 209px; }
+    .prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary .nav-item { padding: 8px 12px; }
+    .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); }
+    .prism-ui-v2.sidebar-layout-active .sidebar { width: 248px; }
+    .prism-ui-v2.sidebar-layout-active.home-history-collapsed .app-shell { grid-template-columns: 0 minmax(0, 1fr); }
+    .prism-ui-v2.copilot-active .sidebar-conversation-actions #nav-store {
+      display: flex; align-items: center; gap: 9px; width: 100%; min-height: 43px;
+      padding: 10px; border: 0; border-radius: 9px; color: var(--text-secondary);
+      background: transparent; text-align: left; font: 14px/1.5 var(--sans);
+    }
+    .prism-ui-v2.copilot-active .sidebar-conversation-actions #nav-store:hover { background: var(--surface-hover); }
+    .prism-ui-v2.copilot-active .sidebar-conversation-actions #nav-store.is-active { color: #b95722; background: #fcf1e9; font-weight: 550; }
+    .prism-ui-v2.copilot-active .agent-conversation #copilot-submit-query {
+      display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px;
+      min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 50%;
+      color: white; background: #35363a; box-shadow: none;
+    }
+    .prism-ui-v2.copilot-active .agent-conversation #copilot-submit-query:disabled { opacity: 1; color: #a1a5ae; background: #e7e8eb; }
+    .prism-ui-v2.copilot-active #copilot-submit-query .prism-icon { width: 19px; height: 19px; }
+    .preview-config-dialog { width: min(540px, calc(100vw - 36px)); max-height: calc(100dvh - 40px); padding: 0; overflow-y: auto; border: 0; border-radius: var(--radius-lg); background: var(--surface); }
+    .preview-config-dialog::backdrop { background: rgba(0, 0, 0, .45); backdrop-filter: blur(4px); }
+    .preview-config-dialog .copilot-modal-content { width: 100%; max-width: none; border: 0; animation: none; }
+    .preview-config-dialog .preview-config-field { margin-bottom: 12px; }
+    .preview-config-dialog .preview-config-field label { display: block; margin-bottom: 4px; font-size: 12.5px; font-weight: 600; }
+    .preview-config-dialog .portfolio-textarea { height: 38px; padding: 6px 10px; }
+    .preview-config-dialog .modal-actions { gap: 8px; }
+    .store-page, #skill-dialog {
       --ink: #292b31;
       --secondary: #656a73;
       --muted: #828791;
       --line: #e8e9ec;
-      --sidebar: #f7f7f8;
-      --hover: #eeeff1;
       --accent: #b95722;
       --accent-light: #fcf1e9;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink); font: 14px/1.6 var(--sans);
     }
-    * { box-sizing: border-box; }
-    [hidden] { display: none !important; }
-    body { margin: 0; color: var(--ink); background: #fff; font: 14px/1.6 var(--sans); }
-    body.overlay-open { overflow: hidden; }
-    button, input, textarea, select { font: inherit; color: inherit; }
-    button { cursor: pointer; }
-    button, summary { -webkit-tap-highlight-color: transparent; }
-    button:disabled { cursor: default; opacity: .5; }
-    :is(button, input, textarea, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-    h1, h2, h3, p, dl { margin: 0; }
-    button { border: 0; background: transparent; }
-    input, textarea, select { min-width: 0; }
-    input::placeholder, textarea::placeholder { color: #8b9098; }
+    :where(.store-page, #skill-dialog) :is(h1, h2, h3, p, dl) { margin: 0; font-family: var(--sans); }
+    :where(.store-page, #skill-dialog) button { border: 0; background: transparent; color: inherit; font: inherit; }
+    :where(.store-page, #skill-dialog) :is(button, input, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .store-page input { min-width: 0; color: inherit; font: inherit; }
+    .store-page input::placeholder { color: #8b9098; }
     .icon { width: 19px; height: 19px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
     .svg-definitions { position: absolute; width: 0; height: 0; overflow: hidden; }
-    .topbar { position: sticky; top: 0; z-index: 20; min-height: 66px; display: flex; align-items: center; gap: 25px; padding: 0 26px; border-bottom: 1px solid var(--line); background: #fff; }
-    .brand { display: flex; align-items: center; gap: 10px; flex: 0 0 209px; }
-    .brand-mark { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 9px; color: white; background: #2c2d31; font: 650 20px/1 var(--sans); }
-    .brand strong { font-size: 16px; font-weight: 600; }
-    .global-nav { display: flex; align-items: center; gap: 3px; min-width: 0; }
-    .global-nav > span, .global-nav > button, .global-nav summary { display: block; padding: 8px 12px; border-radius: 7px; white-space: nowrap; color: var(--secondary); font-size: 13px; }
-    .global-nav .active { color: var(--ink); background: #f2f2f4; font-weight: 550; }
-    .nav-menu { position: relative; }
-    summary { cursor: pointer; list-style: none; }
-    summary::-webkit-details-marker { display: none; }
-    .nav-menu summary { display: flex; align-items: center; gap: 5px; }
-    .nav-menu summary .icon { width: 13px; height: 13px; }
-    .nav-menu-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 15; width: 170px; padding: 7px; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: 0 12px 32px #24272d12; }
-    .nav-menu-panel span { display: block; padding: 9px 10px; color: var(--secondary); font-size: 13px; }
-    .preview-badge { margin-left: auto; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
-    .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: calc(100dvh - 66px); }
-    .sidebar { position: sticky; top: 66px; height: calc(100dvh - 66px); display: flex; flex-direction: column; gap: 22px; padding: 20px 13px 13px; background: var(--sidebar); }
-    .sidebar-actions { display: grid; gap: 5px; }
-    .sidebar-action { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 43px; padding: 10px 12px; border-radius: 9px; text-align: left; font-size: 14px; }
-    .sidebar-action:hover { background: var(--hover); }
-    .sidebar-action.is-active { color: var(--accent); background: var(--accent-light); font-weight: 550; }
-    .sidebar-action .icon { width: 18px; height: 18px; }
-    .sidebar-search { display: flex; align-items: center; gap: 11px; min-height: 43px; padding: 8px 12px; color: var(--secondary); border: 1px solid transparent; border-radius: 9px; }
-    .sidebar-search:focus-within { background: white; border-color: #dedfe3; }
-    .sidebar-search input { width: 100%; padding: 0; border: 0; outline: none; background: transparent; font-size: 14px; }
-    .history { flex: 1; min-height: 90px; padding: 0 12px; }
-    .history h2 { margin-bottom: 15px; color: var(--muted); font-size: 12px; font-weight: 500; }
-    .history p { color: var(--muted); font-size: 13px; }
-    .account-button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px; border-radius: 10px; text-align: left; }
-    .account-button:hover { background: var(--hover); }
-    .account-avatar { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #dedfe3; border-radius: 50%; background: #fff; color: var(--secondary); }
-    .account-button > .icon { margin-left: auto; width: 16px; height: 16px; color: var(--muted); }
-    .sidebar-close, .mobile-sidebar-trigger, .sidebar-backdrop { display: none; }
-    main { min-width: 0; }
-    .chat-page { display: flex; flex-direction: column; min-height: calc(100dvh - 66px); padding: 20px 36px 17px; }
-    .conversation-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; }
-    .model-trigger { display: inline-flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 0; font-size: 15px; font-weight: 550; }
-    .model-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .model-trigger .icon { width: 14px; height: 14px; color: var(--muted); }
+    :where(.store-page, #skill-dialog) summary { cursor: pointer; list-style: none; }
+    :where(.store-page, #skill-dialog) summary::-webkit-details-marker { display: none; }
     .quiet-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 10px; border-radius: 8px; color: var(--secondary); font-size: 13px; }
     .quiet-button:hover { background: #f5f5f6; color: var(--ink); }
-    .chat-center { flex: 1; display: flex; flex-direction: column; justify-content: center; width: min(100%, 740px); margin: auto; padding: 35px 0 90px; }
-    .chat-center h1 { margin: 0 0 32px; text-align: center; font-size: clamp(27px, 3vw, 34px); line-height: 1.35; font-weight: 550; letter-spacing: -.025em; }
-    .composer { position: relative; border: 1px solid #d8dbe0; border-radius: 22px; background: #fff; box-shadow: 0 5px 22px #292c3307; }
-    .composer:focus-within { border-color: #bb7b56; box-shadow: 0 0 0 3px #b957220a; }
-    .composer textarea { display: block; width: 100%; min-height: 96px; padding: 20px 19px 8px; border: 0; outline: none; border-radius: 22px 22px 0 0; background: transparent; resize: vertical; font-size: 16px; line-height: 1.65; }
-    .composer-bottom { display: flex; align-items: center; gap: 7px; padding: 5px 11px 11px; }
-    .composer-bottom .quiet-button { min-height: 35px; }
-    .composer-bottom .icon-button { width: 35px; height: 35px; }
-    .composer-bottom .tool-trigger { font-size: 13px; }
-    .composer-bottom .tool-trigger .icon { width: 14px; height: 14px; }
-    .composer-spacer { flex: 1; }
-    .send-button { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #35363a; color: white; }
-    .send-button:disabled { opacity: 1; background: #e7e8eb; color: #a1a5ae; }
-    .selection-row { display: flex; flex-wrap: wrap; gap: 7px; padding: 13px 14px 0; }
-    .selection-row:not(:has(> :not([hidden]))) { display: none; }
-    .selection-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; color: var(--secondary); background: #f8f8f9; font-size: 12px; }
-    .selection-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .selection-chip button { padding: 0 3px; color: var(--secondary); }
-    .tools-menu { position: absolute; z-index: 10; bottom: 59px; left: 45px; width: 235px; padding: 6px; border: 1px solid var(--line); border-radius: 13px; background: #fff; box-shadow: 0 12px 32px #24272d16; }
-    .tools-menu button { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 40px; padding: 9px 11px; border-radius: 7px; text-align: left; }
-    .tools-menu button:hover { background: #f4f4f5; }
-    .tools-menu .icon { color: var(--secondary); width: 17px; height: 17px; }
-    .quick-prompts { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
-    .quick-prompts button { padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--secondary); font-size: 12px; }
-    .quick-prompts button:hover { background: #fafafa; border-color: #d7dae0; }
     .preview-footer { text-align: center; color: var(--muted); font-size: 11px; }
+    .prism-ui-v2.sidebar-layout-active .main:has(#store-page:not([hidden])) { padding: 0; background: white; }
     .store-page { width: min(100%, 1152px); min-height: calc(100dvh - 66px); margin: auto; padding: 49px 50px 24px; }
     .store-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
     .store-heading h1 { font-size: 31px; font-weight: 600; line-height: 1.35; letter-spacing: -.025em; }
@@ -147,8 +108,8 @@
     .skill-card-footer .selected { color: var(--accent); }
     .catalog-empty { padding: 64px 20px; border: 1px dashed var(--line); border-radius: 14px; color: var(--secondary); text-align: center; }
     .store-page .preview-footer { margin-top: 30px; }
-    dialog { width: min(540px, calc(100% - 36px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid var(--line); border-radius: 17px; overflow: auto; color: var(--ink); background: white; box-shadow: 0 24px 90px #23262d26; }
-    dialog::backdrop { background: #20232b40; }
+    #skill-dialog { width: min(540px, calc(100% - 36px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid var(--line); border-radius: 17px; overflow: auto; color: var(--ink); background: white; box-shadow: 0 24px 90px #23262d26; }
+    #skill-dialog::backdrop { background: #20232b40; }
     .dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 21px 26px 18px; border-bottom: 1px solid var(--line); }
     .dialog-header h2 { font-size: 19px; font-weight: 550; }
     .icon-button { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; padding: 0; border-radius: 8px; color: var(--secondary); }
@@ -173,58 +134,27 @@
     .dialog-footer small { color: var(--muted); font-size: 11px; }
     .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 39px; padding: 8px 17px; border-radius: 8px; color: white; background: #33353a; font-weight: 500; font-size: 13px; }
     .primary-button:hover { background: #484a50; }
-    .form-field { display: grid; gap: 7px; margin-bottom: 18px; font-size: 13px; }
-    .form-field input, .form-field select { width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid #dce0e5; border-radius: 8px; background: white; }
-    .form-field input:disabled { background: #f8f8f9; }
-    .modal-note { margin: 5px 0 21px; color: var(--muted); font-size: 12px; }
-    .dialog-body .disclosure .form-field:first-of-type { margin-top: 19px; }
-    .context-list { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 19px; font-size: 13px; }
-    .context-list dt { color: var(--secondary); }
-    .context-list dd { margin: 0; color: var(--muted); }
-    .detail-levels { display: flex; gap: 5px; padding: 4px; border-radius: 9px; background: #f3f3f5; }
-    .detail-levels button { flex: 1; min-height: 38px; padding: 7px 9px; border-radius: 7px; color: var(--secondary); font-size: 13px; }
-    .detail-levels button[aria-pressed="true"] { background: white; color: var(--ink); box-shadow: 0 1px 4px #23262d09; }
     @media (max-width: 1220px) {
-      .topbar { gap: 18px; padding-inline: 20px; }
-      .brand { flex-basis: 196px; }
-      .global-nav > span, .global-nav > button, .global-nav summary { padding-inline: 8px; font-size: 12px; }
-      .shell { grid-template-columns: 228px minmax(0, 1fr); }
+      .prism-ui-v2.sidebar-layout-active .home-navigation { gap: 18px; padding-inline: 20px; }
+      .prism-ui-v2.sidebar-layout-active .home-navigation-main { gap: 18px; }
+      .prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex-basis: 196px; }
+      .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 228px minmax(0, 1fr); }
+      .prism-ui-v2.sidebar-layout-active .sidebar { width: 228px; }
       .store-page { padding-inline: 30px; }
       .skill-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    @media (max-width: 980px) {
-      .topbar { flex-wrap: wrap; column-gap: 14px; row-gap: 0; padding: 0 17px; }
-      .brand { flex-basis: auto; min-height: 57px; }
-      .global-nav { order: 3; flex-basis: 100%; min-height: 45px; overflow-x: auto; scrollbar-width: none; }
-      .shell { min-height: calc(100dvh - 102px); }
-      .sidebar { top: 102px; height: calc(100dvh - 102px); }
-      .nav-menu-panel { position: fixed; top: 108px; right: 17px; }
-      .chat-page, .store-page { min-height: calc(100dvh - 102px); }
-      .chat-page { padding-inline: 24px; }
+    @media (max-width: 900px) {
+      .prism-ui-v2.sidebar-layout-active .home-navigation { gap: 0; padding-inline: 17px; }
+      .prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex-basis: auto; }
+      .store-page { min-height: calc(100dvh - 104px); }
       .store-page { padding-top: 34px; }
       .store-heading h1 { font-size: 28px; }
       .skill-card { padding: 18px; }
-      .quick-prompts { flex-direction: column; align-items: center; gap: 5px; }
-      .quick-prompts button { border-color: transparent; }
     }
-    @media (max-width: 720px) {
-      .topbar { padding-inline: 14px; }
-      .brand strong { font-size: 15px; }
-      .mobile-sidebar-trigger { display: grid; width: 29px; height: 34px; margin-right: 2px; }
-      .brand { gap: 8px; }
-      .shell { display: block; }
-      .sidebar { position: fixed; top: 0; left: 0; z-index: 30; width: min(280px, calc(100vw - 42px)); height: 100dvh; padding-top: 60px; visibility: hidden; transform: translateX(-100%); transition: transform 160ms ease, visibility 160ms ease; }
-      .sidebar.is-open { visibility: visible; transform: translateX(0); }
-      .sidebar-close { position: absolute; display: grid; top: 14px; right: 15px; }
-      .sidebar-backdrop { position: fixed; inset: 0; z-index: 29; display: block; width: 100%; height: 100%; background: #20232b40; }
-      .chat-page { padding: 15px 18px 17px; }
-      .conversation-header { gap: 9px; }
-      .model-trigger { font-size: 13px; }
-      .conversation-header > .quiet-button { padding-inline: 4px; font-size: 12px; white-space: nowrap; }
-      .conversation-header > .quiet-button .icon { display: none; }
-      .chat-center { padding: 28px 0 55px; }
-      .chat-center h1 { margin-bottom: 25px; }
-      .composer textarea { font-size: 15px; }
+    @media (max-width: 760px) {
+      .prism-ui-v2.sidebar-layout-active .app-shell,
+      .prism-ui-v2.sidebar-layout-active.home-history-collapsed .app-shell { grid-template-columns: minmax(0, 1fr); }
+      .prism-ui-v2.sidebar-layout-active .sidebar { width: min(280px, calc(100vw - 52px)); }
       .store-page { padding: 28px 20px 22px; }
       .store-heading { gap: 12px; margin-bottom: 25px; }
       .store-heading h1 { font-size: 27px; }
@@ -245,18 +175,18 @@
     }
   </style>
 </head>
-<body>
+<body class="prism-ui-v2 sidebar-layout-active copilot-active">
   <svg class="svg-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m16.65 16.65 4.35 4.35"/></symbol>
     <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-    <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></symbol>
-    <symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 7h7m4 0h5M4 17h2m4 0h10"/><circle cx="13" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="icon-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
     <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 4v16h17M7 14l4-4 4 2 5-7"/></symbol>
     <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9ZM14 3v6h6M8 13h8M8 17h5"/></symbol>
-    <symbol id="icon-layers" viewBox="0 0 24 24"><path d="m12 3 10 5-10 5L2 8Zm-9 10 9 5 9-5M3 18l9 5 9-5"/></symbol>
+    <symbol id="icon-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
     <symbol id="icon-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
     <symbol id="icon-pie" viewBox="0 0 24 24"><path d="M12 3v9h9A9 9 0 0 0 12 3ZM8 4a9 9 0 1 0 12 12"/></symbol>
     <symbol id="icon-bond" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h3m2 4 3-3 3 3"/></symbol>
@@ -266,64 +196,134 @@
     <symbol id="icon-right" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
     <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></symbol>
     <symbol id="icon-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="icon-panel-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8M8 17h8M8 9h2"/></symbol>
+    <symbol id="icon-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></symbol>
+    <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+    <symbol id="icon-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></symbol>
+    <symbol id="icon-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8a5 5 0 0 1-6 0ZM2 16l3-8 3 8a5 5 0 0 1-6 0ZM7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+    <symbol id="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
   </svg>
 
-  <header class="topbar">
-    <div class="brand">
-      <button id="sidebar-trigger" class="icon-button mobile-sidebar-trigger" type="button" aria-label="展开会话导航" aria-expanded="false" aria-controls="sidebar"><svg class="icon" aria-hidden="true"><use href="#icon-panel"/></svg></button>
-      <span class="brand-mark" aria-hidden="true">P</span><strong>问财智投</strong>
-    </div>
-    <nav class="global-nav" aria-label="主导航">
-      <button id="nav-chat" class="active" type="button" data-route="chat" aria-current="page">AI 对话</button>
-      <span>持仓分析</span><span>大盘鉴别</span><span>交易风格</span><span>个人中心</span>
-      <details class="nav-menu" id="research-navigation"><summary>研究工具<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div class="nav-menu-panel"><span>研究知识库</span><span>LIVE 研究</span><span>论文算法</span></div></details>
-    </nav>
-    <span class="preview-badge">布局预览</span>
-  </header>
-
-  <div class="shell">
-    <aside class="sidebar" id="sidebar" aria-label="会话导航">
-      <button id="sidebar-close" class="icon-button sidebar-close" type="button" aria-label="关闭会话导航"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button>
-      <div class="sidebar-actions">
-        <button id="nav-store" class="sidebar-action" type="button" data-route="store"><svg class="icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>技能商店</span></button>
-        <button id="new-conversation" class="sidebar-action" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg><span>新对话</span></button>
-        <label class="sidebar-search"><svg class="icon" aria-hidden="true"><use href="#icon-search"/></svg><input id="chat-search" name="conversation-query" type="search" placeholder="搜索对话" aria-label="搜索对话" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-      </div>
-      <section class="history" aria-labelledby="history-title"><h2 id="history-title">最近对话</h2><p id="history-empty" role="status">暂无历史对话</p></section>
-      <button id="account-trigger" class="account-button" type="button" aria-haspopup="dialog" aria-controls="account-dialog"><span class="account-avatar"><svg class="icon" aria-hidden="true"><use href="#icon-user"/></svg></span><span>账户与设置</span><svg class="icon" aria-hidden="true"><use href="#icon-sliders"/></svg></button>
-    </aside>
-    <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="关闭会话导航" hidden></button>
-
-    <main>
-      <section id="chat-page" class="chat-page" aria-labelledby="chat-title">
-        <header class="conversation-header">
-          <button id="model-trigger" class="model-trigger" type="button" aria-haspopup="dialog" aria-controls="model-dialog"><span id="model-label">deepseek-v4-flash</span><svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></button>
-          <button id="context-trigger" class="quiet-button" type="button" aria-haspopup="dialog" aria-controls="context-dialog"><svg class="icon" aria-hidden="true"><use href="#icon-file"/></svg>分析资料</button>
-        </header>
-        <div class="chat-center">
-          <h1 id="chat-title" tabindex="-1">我们从哪里开始？</h1>
-          <div class="composer">
-            <div class="selection-row"><div id="tool-chip" class="selection-chip" hidden><span id="tool-chip-label"></span><button id="clear-tool" type="button" aria-label="取消分析工具">×</button></div><div id="file-chip" class="selection-chip" hidden><span id="file-chip-label"></span><button id="clear-file" type="button" aria-label="移除文件">×</button></div></div>
-            <textarea id="chat-input" rows="3" placeholder="输入你的问题…" aria-label="对话输入" autocomplete="off"></textarea>
-            <div class="composer-bottom">
-              <button id="upload-trigger" class="icon-button" type="button" aria-label="添加持仓图片" title="添加持仓图片"><svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg></button>
-              <input id="upload-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-              <button id="tools-trigger" class="quiet-button tool-trigger" type="button" aria-controls="tools-menu" aria-expanded="false">分析工具<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></button>
-              <span class="composer-spacer"></span>
-              <button class="send-button" type="button" disabled aria-label="发送（布局预览）"><svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
-            </div>
-            <div id="tools-menu" class="tools-menu" role="group" aria-label="分析工具" hidden>
-              <button type="button" data-tool="大盘分析"><svg class="icon" aria-hidden="true"><use href="#icon-chart"/></svg>大盘分析</button>
-              <button type="button" data-tool="行业配置"><svg class="icon" aria-hidden="true"><use href="#icon-layers"/></svg>行业配置</button>
-              <button type="button" data-tool="个股分析"><svg class="icon" aria-hidden="true"><use href="#icon-chart"/></svg>个股分析</button>
-              <button type="button" data-tool="ETF 基金筛选"><svg class="icon" aria-hidden="true"><use href="#icon-pie"/></svg>ETF 基金筛选</button>
-              <button type="button" data-tool="可转债投资"><svg class="icon" aria-hidden="true"><use href="#icon-bond"/></svg>可转债投资</button>
-              <button type="button" data-tool="资产重组优化"><svg class="icon" aria-hidden="true"><use href="#icon-sliders"/></svg>资产重组优化</button>
-            </div>
-          </div>
-          <div class="quick-prompts" aria-label="常用提问"><button type="button">我的组合最需要关注什么？</button><button type="button">帮我分析 300750</button><button type="button">如何降低组合集中度？</button></div>
+  <div class="app-shell">
+    <header class="home-navigation" id="home-navigation">
+      <div class="home-navigation-main" id="home-navigation-main">
+        <div class="brand" aria-label="问财智投">
+          <span class="brand-mark" aria-hidden="true"><img src="../wencai-zhitou-logo.svg" alt=""></span>
+          <div><strong>问财智投</strong><span>个性化证券投顾</span></div>
         </div>
-        <p class="preview-footer">界面预览</p>
+        <nav id="home-primary-navigation" aria-label="主导航">
+          <div class="nav-section-primary">
+            <a id="nav-copilot" class="nav-item nav-item-copilot active" href="#copilot" data-route="chat" aria-current="page"><span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span><div class="nav-copilot-label"><strong>AI 对话</strong><span>个性化投顾入口</span></div></a>
+            <a class="nav-item" href="#overview"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span><span>持仓分析</span></a>
+            <a class="nav-item" href="#market"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span><span>大盘鉴别</span></a>
+            <a class="nav-item" href="#trading-style"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span><span>交易风格</span></a>
+            <a class="nav-item" href="#profile"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span><span>个人中心</span></a>
+            <a class="nav-item" href="#research-knowledge"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span><span>研究知识库</span></a>
+            <a class="nav-item" href="#live-research"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span><span>LIVE 研究</span></a>
+            <a class="nav-item" href="#research-algorithms"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span><span>论文算法</span></a>
+          </div>
+        </nav>
+      </div>
+      <div class="home-navigation-actions" id="home-navigation-actions">
+        <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
+          <summary aria-label="打开风险与偏好菜单"><span class="profile-menu-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span><span class="home-only home-account-label">账户</span><span class="profile-menu-copy"><small>风险与偏好</small><strong id="profile-menu-current-label">查看当前设置</strong></span><span class="profile-menu-chevron" aria-hidden="true">⌄</span></summary>
+          <div class="profile-actions-panel" aria-label="投资者画像管理">
+            <div class="active-profile-wrap"><span class="switcher-label">风险与偏好</span><button class="persona-chip active" id="btn-custom-profile-chip" type="button"><span class="persona-avatar" id="custom-profile-chip-avatar"><svg class="prism-icon"><use href="#icon-user"/></svg></span><span class="persona-name" id="custom-profile-chip-name">查看当前设置</span></button></div>
+            <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" disabled><span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-edit"/></svg></span><span class="persona-name">修改投资偏好</span></button>
+            <button class="persona-chip custom-portfolio-chip" id="open-portfolio-modal-btn" type="button" disabled><span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-plus"/></svg></span><span class="persona-name">添加持仓</span></button>
+            <button id="home-context-trigger" class="persona-chip home-only" type="button" aria-expanded="false" aria-controls="agent-profile-rail"><svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>查看分析资料</span></button>
+          </div>
+        </details>
+        <details class="topbar-more-menu" id="topbar-more-menu">
+          <summary><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg><span class="other-page-only">更多</span><span class="home-only">设置</span></summary>
+          <div class="topbar-more-panel">
+            <button id="data-source-status" class="data-source-status" type="button" aria-label="打开模型与数据来源设置"><span id="visible-ai-mode">AI · 正在确认</span><span id="visible-data-mode">工具数据 · 正在确认</span></button>
+            <button id="theme-toggle" class="topbar-theme-toggle" type="button" aria-pressed="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-eye"/></svg><span id="theme-toggle-label">切换深色主题</span></button>
+            <button id="view-mode-toggle" class="mode-toggle-btn" type="button" disabled><span id="mode-toggle-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span><span id="mode-toggle-text">更多工具</span></button>
+            <button id="open-password-change" class="topbar-theme-toggle" type="button" disabled>修改密码</button>
+            <button id="logout-local-session" class="topbar-logout" type="button" disabled>退出登录</button>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <aside class="sidebar" id="home-history-sidebar" aria-label="历史对话">
+      <div class="sidebar-conversation-actions home-only">
+        <button id="nav-store" type="button" data-route="store"><svg class="prism-icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>技能商店</span></button>
+        <div class="home-history-toolbar">
+          <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
+          <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
+        </div>
+        <label class="sidebar-chat-search"><svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg><input id="chat-session-search" name="conversation-query" type="search" placeholder="搜索对话" aria-label="搜索对话" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      </div>
+      <aside class="chat-history-panel home-only" aria-labelledby="chat-history-title"><header class="chat-history-head"><h3 id="chat-history-title">历史对话</h3></header><div class="chat-session-list" id="chat-session-list" role="list" aria-live="polite"><p class="chat-history-empty">暂无历史对话</p></div></aside>
+    </aside>
+    <button class="home-history-backdrop" id="home-history-backdrop" type="button" aria-label="关闭历史对话"></button>
+
+    <main class="main">
+      <button class="home-history-show" id="home-history-show" type="button" aria-label="展开历史对话" aria-controls="home-history-sidebar" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg><span>历史对话</span></button>
+      <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">
+        <div class="agent-home-heading"><h2 id="copilot-hero-title" tabindex="-1">我们从哪里开始？</h2></div>
+        <div class="agent-home-grid" id="agent-home-grid">
+          <div class="agent-workbench-column">
+            <section class="agent-feature-tools is-compact" id="agent-feature-tools" hidden>
+              <div class="agent-feature-popover" id="agent-feature-popover"><div class="agent-feature-grid" role="menu" aria-label="分析工具">
+                <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="market" data-chat-prefix="大盘分析" aria-checked="false"><span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-activity"/></svg></span><span class="agent-feature-copy"><strong>大盘分析</strong></span></button>
+                <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="industry" data-chat-prefix="行业配置" aria-checked="false"><span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-layers"/></svg></span><span class="agent-feature-copy"><strong>行业配置</strong></span></button>
+                <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="stock" data-chat-prefix="个股分析" aria-checked="false"><span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg></span><span class="agent-feature-copy"><strong>个股分析</strong></span></button>
+                <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="fund" data-chat-prefix="ETF 基金筛选" aria-checked="false"><span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-compass"/></svg></span><span class="agent-feature-copy"><strong>ETF 基金筛选</strong></span></button>
+                <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="convertible" data-chat-prefix="可转债投资" aria-checked="false"><span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-shuffle"/></svg></span><span class="agent-feature-copy"><strong>可转债投资</strong></span></button>
+                <button class="agent-feature-card" type="button" role="menuitemradio" data-feature-id="optimization" data-chat-prefix="资产重组优化" aria-checked="false"><span class="agent-feature-icon"><svg class="prism-icon" aria-hidden="true"><use href="#icon-scale"/></svg></span><span class="agent-feature-copy"><strong>资产重组优化</strong></span></button>
+              </div></div>
+            </section>
+            <section class="agent-conversation" id="agent-conversation" aria-label="投资 Agent 对话">
+              <div class="conversation-main">
+                <div class="copilot-chat-stream-panel" id="copilot-chat-panel"><header class="chat-panel-header conversation-head"><div class="chat-panel-title"><span class="chat-agent-glyph" aria-hidden="true">P</span><strong id="active-chat-title">投资研究会话</strong></div><button id="btn-clear-chat" class="clear-chat-btn" type="button">新对话</button></header><div class="copilot-chat-messages" id="copilot-chat-messages" aria-live="polite"><div class="agent-empty-state" data-chat-empty-state><span class="agent-empty-mark" aria-hidden="true">P</span><h3>从一个具体问题开始</h3><p>输入一个具体问题，我会结合你的持仓和投资偏好进行分析。</p></div></div></div>
+                <div class="copilot-query-box">
+                  <div class="home-composer-selections">
+                    <div id="home-selected-tool" class="home-selection-chip" hidden><button id="home-selected-tool-config" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg><span id="home-selected-tool-label"></span></button><button id="home-selected-tool-clear" type="button" aria-label="取消分析工具">×</button></div>
+                    <div id="home-upload-file" class="home-selection-chip" hidden><button id="home-upload-review" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span id="home-upload-filename"></span></button><button id="home-upload-remove" type="button" aria-label="移除文件标签">×</button></div>
+                  </div>
+                  <label class="sr-only" for="copilot-natural-input">向投资 Agent 提问</label>
+                  <textarea id="copilot-natural-input" class="copilot-natural-input" rows="3" placeholder="输入你的问题…" autocomplete="off"></textarea>
+                  <div class="copilot-composer-meta">
+                    <button id="home-upload-trigger" class="home-upload-trigger" type="button" aria-label="上传文件" title="上传文件" aria-haspopup="menu" aria-expanded="false" aria-controls="home-upload-menu"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg></button>
+                    <div id="home-upload-menu" class="home-upload-menu" role="menu" aria-label="上传文件" hidden><button id="home-upload-select" type="button" role="menuitem"><svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>上传文件<small>持仓图片 · PNG / JPEG / WebP</small></span></button></div>
+                    <input id="home-upload-input" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden>
+                    <button id="agent-feature-trigger" class="home-composer-tool" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="agent-feature-popover" aria-label="打开分析工具"><span>分析工具</span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></button>
+                    <span class="home-composer-spacer" aria-hidden="true"></span>
+                    <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
+                    <button id="home-model-trigger" class="home-model-trigger" type="button" aria-label="打开 API 配置" aria-haspopup="dialog" aria-controls="llm-config-modal"><span id="home-model-label">API 配置</span></button>
+                    <button id="chat-cancel-query" type="button" hidden>停止</button>
+                    <button id="copilot-submit-query" class="copilot-submit-btn" type="button" disabled aria-label="发送（布局预览）"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+                  </div>
+                </div>
+                <p id="home-upload-status" class="home-upload-status" role="alert" hidden></p>
+                <div class="home-quick-prompts"><ul class="copilot-quick-tags" id="copilot-quick-tags" aria-label="常用提问"><li><button class="quick-tag-chip" type="button">我的组合最需要关注什么？</button></li><li><button class="quick-tag-chip" type="button">帮我分析 300750</button></li><li><button class="quick-tag-chip" type="button">如何降低组合集中度？</button></li></ul></div>
+                <div class="copilot-output-container" id="copilot-decision-output" aria-live="polite"></div>
+              </div>
+            </section>
+          </div>
+          <aside class="agent-profile-rail" id="agent-profile-rail" aria-label="账户与偏好">
+            <button id="home-context-close" class="home-context-close" type="button">关闭分析资料</button>
+            <section class="agent-profile-summary">
+              <div class="agent-rail-head"><span>账户与偏好</span></div>
+              <div class="copilot-persona-badge"><span class="copilot-avatar" id="copilot-hero-avatar"><svg class="prism-icon prism-icon-xl"><use href="#icon-user"/></svg></span><div><strong id="copilot-hero-name">我的专属账户</strong><p class="copilot-persona-desc" id="copilot-hero-desc">投资目标：等待账户资料。</p></div></div>
+              <dl class="agent-constraint-list"><div><dt>风险等级</dt><dd><span class="copilot-tag" id="copilot-hero-tag">完善风险设置</span></dd></div><div><dt>持仓状态</dt><dd><span class="copilot-portfolio-badge" id="copilot-hero-portfolio-tag">待加载持仓</span></dd></div><div><dt>总资产</dt><dd id="copilot-stat-aum">—</dd></div><div><dt>行业上限</dt><dd id="copilot-stat-budget">—</dd></div></dl>
+              <details class="agent-rail-details account-details"><summary>查看账户详情</summary><div class="agent-detail-stack"><div class="agent-detail-row"><span>关键组合信息</span><strong id="copilot-stat-tech">—</strong></div><div id="copilot-stat-evidence-card"><span>分析依据</span><strong id="copilot-stat-evidence">—</strong></div><div id="portfolio-refresh-status" class="portfolio-refresh-status" role="status">等待持仓数据</div><section class="agent-session-truth" aria-label="分析资料"><span class="rail-label">分析资料</span><p id="session-truth-status">添加持仓与风险设置后，可查看本次分析使用的资料。</p><div class="agent-session-actions"><button id="refresh-session-truth" class="quiet-profile-action" type="button" disabled>刷新</button><button id="open-session-truth" class="quiet-profile-action" type="button" disabled>查看资料</button><button id="confirm-session-truth" class="quiet-profile-action" type="button" disabled>更新资料</button></div></section></div></details>
+            </section>
+            <section class="behavior-profile-card" id="behavior-profile-card">
+              <div class="agent-rail-head"><span>回答偏好</span></div>
+              <h3 id="behavior-profile-title">回答详细度 <span class="sr-only" id="ai-trust-score-value">标准</span></h3><p class="behavior-profile-intro">选择你希望看到的分析深度。</p>
+              <div class="display-policy-control"><fieldset class="display-policy-levels"><legend class="sr-only">回答详细度</legend><div class="display-policy-options" role="radiogroup" aria-label="解释详细度"><label class="display-policy-option"><input type="radio" name="display-policy-level" value="80"><span>简洁</span><small>先看结论</small></label><label class="display-policy-option"><input type="radio" name="display-policy-level" value="50" checked><span>标准</span><small>结论与关键依据</small></label><label class="display-policy-option"><input type="radio" name="display-policy-level" value="20"><span>详细</span><small>展开结论与依据</small></label></div><input id="ai-trust-score" type="hidden" value="50" aria-hidden="true"></fieldset></div>
+              <button id="start-conversation-profile-update" class="quiet-profile-action primary-rail-action" type="button" disabled>修改投资偏好</button>
+              <details class="agent-rail-details preference-details"><summary>更多偏好设置</summary><div class="agent-detail-stack"><span id="behavior-profile-status" class="cf-verdict cf-verdict-warning">可完善</span><div id="behavior-profile-content" class="behavior-profile-content"><p>这些设置用于让分析更符合你的投资目标。</p></div><small id="display-policy-hint" class="display-policy-hint">结论与关键依据</small><div class="agent-detail-actions"><button id="save-display-policy" class="quiet-profile-action" type="button" disabled>保存配置</button><button id="recompute-behavior-profile" class="quiet-profile-action" type="button" disabled>更新偏好</button></div><span id="display-policy-mode" class="status-chip">标准说明</span></div></details>
+            </section>
+          </aside>
+        </div>
       </section>
 
       <section id="store-page" class="store-page" aria-labelledby="store-title" hidden>
@@ -350,19 +350,21 @@
     <footer class="dialog-footer"><small>当前页面预览选择</small><button id="select-skill" class="primary-button" type="button">选择此技能</button></footer>
   </dialog>
 
-  <dialog id="model-dialog" aria-labelledby="model-dialog-title">
-    <header class="dialog-header"><h2 id="model-dialog-title">模型设置</h2><button class="icon-button" type="button" data-close="model-dialog" aria-label="关闭模型设置"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></header>
-    <form id="model-form"><div class="dialog-body"><p class="modal-note">模型配置由所有账户共享。</p><label class="form-field">模型名称<input id="model-name" type="text" value="deepseek-v4-flash" required autocomplete="off"></label><details id="model-advanced" class="disclosure"><summary>高级配置<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><label class="form-field">服务商预设<select><option>DeepSeek</option><option>通义千问</option><option>OpenAI</option></select></label><label class="form-field">API Base URL<input type="url" value="https://api.deepseek.com/v1" autocomplete="off"></label><label class="form-field">API Key<input type="password" disabled placeholder="API Key" autocomplete="off"></label></details></div><footer class="dialog-footer"><small>布局预览</small><button class="primary-button" type="submit">应用到预览</button></footer></form>
-  </dialog>
-
-  <dialog id="context-dialog" aria-labelledby="context-dialog-title">
-    <header class="dialog-header"><h2 id="context-dialog-title">分析资料</h2><button class="icon-button" type="button" data-close="context-dialog" aria-label="关闭分析资料"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></header>
-    <div class="dialog-body"><dl class="context-list"><dt>投资者画像</dt><dd>未加载</dd><dt>当前持仓</dt><dd>未加载</dd></dl><details class="disclosure"><summary>资料详情<svg class="icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><dl class="metadata"><dt>风险等级</dt><dd>—</dd><dt>持仓版本</dt><dd>—</dd><dt>更新时间</dt><dd>—</dd></dl></details></div>
-  </dialog>
-
-  <dialog id="account-dialog" aria-labelledby="account-dialog-title">
-    <header class="dialog-header"><h2 id="account-dialog-title">账户与设置</h2><button class="icon-button" type="button" data-close="account-dialog" aria-label="关闭账户与设置"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></header>
-    <div class="dialog-body"><label class="form-field">回答详细度</label><div class="detail-levels" role="group" aria-label="回答详细度"><button type="button" aria-pressed="false">简洁</button><button type="button" aria-pressed="true">标准</button><button type="button" aria-pressed="false">详细</button></div></div>
+  <dialog id="llm-config-modal" class="preview-config-dialog" aria-labelledby="llm-config-modal-title">
+    <div class="copilot-modal-content">
+      <header class="copilot-modal-header"><h3 id="llm-config-modal-title"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg> 配置大模型 API Key</h3><button id="close-llm-config-modal-btn" class="modal-close-btn" type="button" data-close="llm-config-modal" aria-label="关闭">×</button></header>
+      <form id="model-form" class="copilot-modal-body">
+        <div class="runtime-mode-switcher-wrap" id="runtime-mode-switcher-wrap" aria-label="数据模式控制"><button class="global-data-mode-btn" id="global-data-mode-toggle" type="button" disabled><span class="mode-status-indicator" aria-hidden="true"></span><span class="mode-label-text" id="global-data-mode-label">工具数据 · 正在确认</span></button></div>
+        <p class="source-mode-help">模型服务采用安装级全局配置；已登录账户保存后所有账户共享使用。</p>
+        <p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口。</p>
+        <div class="preview-config-field"><label for="llm-provider-select">服务商预设：</label><select id="llm-provider-select" class="portfolio-textarea"><option value="deepseek">DeepSeek (官方 api.deepseek.com)</option><option value="qwen">阿里云通义千问 (DashScope)</option><option value="openai">OpenAI (官方)</option></select></div>
+        <div class="preview-config-field"><label for="llm-api-key-input">API Key：</label><input id="llm-api-key-input" class="portfolio-textarea" type="password" disabled placeholder="sk-..." autocomplete="off"></div>
+        <div class="preview-config-field"><label for="llm-base-url-input">API Base URL：</label><input id="llm-base-url-input" class="portfolio-textarea" type="text" placeholder="默认: DeepSeek / 兼容 API 端点" autocomplete="off"></div>
+        <div class="preview-config-field"><label for="llm-model-input">模型名称 (Model)：</label><input id="llm-model-input" class="portfolio-textarea" type="text" value="deepseek-v4-flash" required autocomplete="off"></div>
+        <div class="modal-actions"><button id="btn-clear-llm-config" class="copilot-action-btn secondary" type="button">清除全局配置</button><button id="btn-save-llm-config" class="copilot-action-btn primary" type="submit"><svg class="prism-icon" aria-hidden="true"><use href="#icon-check"/></svg> 保存配置</button></div>
+        <p id="llm-config-status" class="modal-hint">布局预览 · 配置仅保留在当前页面</p>
+      </form>
+    </div>
   </dialog>
 
   <script>
@@ -381,7 +383,7 @@
       {skill_id: "report-search", name: "研报搜索", operation: "SEARCH_REPORTS", version: "1.0.0", endpoint: "/v1/comprehensive/search", icon: "file", tone: "green", description: "检索研究报告，查找相关研究观点与资料。"}
     ];
     const selectedSkills = new Set();
-    const mobileViewport = window.matchMedia("(max-width: 720px)");
+    const mobileViewport = window.matchMedia("(max-width: 760px)");
     let currentDirectory = "ALL";
     let currentCategory = "ALL";
     let detailSkill = null;
@@ -402,39 +404,72 @@
       return result;
     }
     function syncOverlayState() {
-      document.body.classList.toggle("overlay-open", Boolean(document.querySelector("dialog[open]")) || (mobileViewport.matches && byId("sidebar").classList.contains("is-open")));
+      document.body.classList.toggle("overlay-open", Boolean(document.querySelector("dialog[open]")) || (mobileViewport.matches && !document.body.classList.contains("home-history-collapsed")));
     }
     function setSidebarOpen(open) {
-      byId("sidebar").classList.toggle("is-open", open);
-      byId("sidebar").inert = mobileViewport.matches && !open;
-      byId("sidebar-backdrop").hidden = !open || !mobileViewport.matches;
-      byId("sidebar-trigger").setAttribute("aria-expanded", String(open));
+      document.body.classList.toggle("home-history-collapsed", !open);
+      byId("home-history-sidebar").inert = !open;
+      byId("home-history-backdrop").hidden = !open || !mobileViewport.matches;
+      byId("home-history-show").setAttribute("aria-expanded", String(open));
+      byId("home-history-hide").setAttribute("aria-expanded", String(open));
       syncOverlayState();
-      if (open && mobileViewport.matches) byId("sidebar-close").focus();
+      if (open && mobileViewport.matches) byId("nav-store").focus();
     }
     function showDialog(id) {
       setToolsOpen(false);
-      setSidebarOpen(false);
+      setUploadOpen(false);
+      if (mobileViewport.matches) setSidebarOpen(false);
+      setContextOpen(false);
+      byId("persona-switcher-bar").open = false;
+      byId("topbar-more-menu").open = false;
       byId(id).showModal();
       syncOverlayState();
     }
     function setRoute(route) {
-      byId("chat-page").hidden = route !== "chat";
+      byId("copilot").hidden = route !== "chat";
       byId("store-page").hidden = route !== "store";
       byId("nav-store").classList.toggle("is-active", route === "store");
-      byId("nav-chat").classList.toggle("active", route === "chat");
+      byId("nav-copilot").classList.toggle("active", route === "chat");
       byId("nav-store").removeAttribute("aria-current");
-      byId("nav-chat").removeAttribute("aria-current");
-      byId(route === "store" ? "nav-store" : "nav-chat").setAttribute("aria-current", "page");
-      byId("research-navigation").open = false;
+      byId("nav-copilot").removeAttribute("aria-current");
+      byId(route === "store" ? "nav-store" : "nav-copilot").setAttribute("aria-current", "page");
+      byId("persona-switcher-bar").open = false;
+      byId("topbar-more-menu").open = false;
       setToolsOpen(false);
-      setSidebarOpen(false);
-      byId(route === "store" ? "store-title" : "chat-title").focus({preventScroll: true});
+      setUploadOpen(false);
+      setContextOpen(false);
+      if (mobileViewport.matches) setSidebarOpen(false);
+      byId(route === "store" ? "store-title" : "copilot-hero-title").focus({preventScroll: true});
       window.scrollTo({top: 0, behavior: "instant"});
     }
+    function positionMenu(menu, trigger) {
+      const anchor = trigger.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(8, Math.min(anchor.left, window.innerWidth - menuRect.width - 8))}px`;
+      menu.style.top = `${Math.max(8, anchor.top - menuRect.height - 8)}px`;
+    }
     function setToolsOpen(open) {
-      byId("tools-menu").hidden = !open;
-      byId("tools-trigger").setAttribute("aria-expanded", String(open));
+      const menu = byId("agent-feature-tools");
+      menu.hidden = !open;
+      menu.classList.toggle("is-open", open);
+      byId("agent-feature-trigger").setAttribute("aria-expanded", String(open));
+      if (open) { setUploadOpen(false); positionMenu(menu, byId("agent-feature-trigger")); }
+    }
+    function setUploadOpen(open) {
+      const menu = byId("home-upload-menu");
+      menu.hidden = !open;
+      byId("home-upload-trigger").setAttribute("aria-expanded", String(open));
+      if (open) { setToolsOpen(false); positionMenu(menu, byId("home-upload-trigger")); }
+    }
+    function setContextOpen(open) {
+      byId("copilot").classList.toggle("context-open", open);
+      byId("home-context-trigger").setAttribute("aria-expanded", String(open));
+      if (open) {
+        byId("persona-switcher-bar").open = false;
+        setToolsOpen(false);
+        setUploadOpen(false);
+        byId("home-context-close").focus();
+      }
     }
     function renderSkills() {
       const search = byId("skill-search").value.trim().toLocaleLowerCase("zh-CN");
@@ -488,7 +523,7 @@
       button.addEventListener("click", () => { currentCategory = key; byId("skill-categories").querySelectorAll("button").forEach(item => item.setAttribute("aria-pressed", String(item === button))); renderSkills(); });
       byId("skill-categories").append(button);
     }
-    document.querySelectorAll("[data-route]").forEach(button => button.addEventListener("click", () => setRoute(button.dataset.route)));
+    document.querySelectorAll("[data-route]").forEach(button => button.addEventListener("click", event => { event.preventDefault(); setRoute(button.dataset.route); }));
     document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => byId(button.dataset.close).close()));
     document.querySelectorAll("dialog").forEach(dialog => {
       dialog.addEventListener("close", syncOverlayState);
@@ -520,45 +555,66 @@
       byId("skill-categories").querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === "ALL")));
       selectDirectory("ALL"); byId("store-filter").open = false;
     });
-    byId("chat-search").addEventListener("input", () => { byId("history-empty").textContent = byId("chat-search").value.trim() ? "没有匹配的对话" : "暂无历史对话"; });
+    byId("chat-session-search").addEventListener("input", () => { document.querySelector(".chat-history-empty").textContent = byId("chat-session-search").value.trim() ? "没有匹配的对话" : "暂无历史对话"; });
     // 搜索内容不保存，初次进入和页面恢复时保持空白。
-    function clearConversationSearch() { byId("chat-search").value = ""; byId("history-empty").textContent = "暂无历史对话"; }
+    function clearConversationSearch() { byId("chat-session-search").value = ""; document.querySelector(".chat-history-empty").textContent = "暂无历史对话"; }
     clearConversationSearch();
     window.addEventListener("pageshow", clearConversationSearch);
-    byId("new-conversation").addEventListener("click", () => {
-      clearConversationSearch(); byId("chat-input").value = ""; byId("tool-chip").hidden = true; byId("file-chip").hidden = true; byId("upload-input").value = ""; setRoute("chat"); byId("chat-input").focus();
+    byId("new-chat-session").addEventListener("click", () => {
+      clearConversationSearch(); byId("copilot-natural-input").value = ""; byId("home-selected-tool").hidden = true; byId("home-upload-file").hidden = true; byId("home-upload-input").value = "";
+      byId("agent-feature-tools").querySelectorAll("button").forEach(button => button.setAttribute("aria-checked", "false"));
+      setRoute("chat"); byId("copilot-natural-input").focus();
     });
-    byId("tools-trigger").addEventListener("click", () => { const open = byId("tools-menu").hidden; setToolsOpen(open); if (open) byId("tools-menu").querySelector("button").focus(); });
-    byId("tools-menu").querySelectorAll("button").forEach(button => button.addEventListener("click", () => { byId("tool-chip-label").textContent = button.dataset.tool; byId("tool-chip").hidden = false; setToolsOpen(false); byId("chat-input").focus(); }));
-    byId("clear-tool").addEventListener("click", () => { byId("tool-chip").hidden = true; byId("tools-trigger").focus(); });
-    document.querySelectorAll(".quick-prompts button").forEach(button => button.addEventListener("click", () => { byId("chat-input").value = button.textContent; byId("chat-input").focus(); }));
-    byId("upload-trigger").addEventListener("click", () => byId("upload-input").click());
-    byId("upload-input").addEventListener("change", () => { const file = byId("upload-input").files[0]; byId("file-chip").hidden = !file; byId("file-chip-label").textContent = file?.name || ""; });
-    byId("clear-file").addEventListener("click", () => { byId("upload-input").value = ""; byId("file-chip").hidden = true; byId("upload-trigger").focus(); });
-    byId("model-trigger").addEventListener("click", () => { byId("model-name").value = byId("model-label").textContent; byId("model-advanced").open = false; showDialog("model-dialog"); });
-    byId("model-form").addEventListener("submit", event => { event.preventDefault(); const model = byId("model-name").value.trim(); if (!model) { byId("model-name").focus(); return; } byId("model-label").textContent = model; byId("model-dialog").close(); });
-    byId("context-trigger").addEventListener("click", () => showDialog("context-dialog"));
-    byId("account-trigger").addEventListener("click", () => showDialog("account-dialog"));
-    document.querySelectorAll(".detail-levels button").forEach(button => button.addEventListener("click", () => document.querySelectorAll(".detail-levels button").forEach(item => item.setAttribute("aria-pressed", String(item === button)))));
-    byId("sidebar-trigger").addEventListener("click", () => setSidebarOpen(true));
-    byId("sidebar-close").addEventListener("click", () => { setSidebarOpen(false); byId("sidebar-trigger").focus(); });
-    byId("sidebar-backdrop").addEventListener("click", () => { setSidebarOpen(false); byId("sidebar-trigger").focus(); });
-    mobileViewport.addEventListener("change", () => setSidebarOpen(false));
+    byId("agent-feature-trigger").addEventListener("click", () => { const open = byId("agent-feature-tools").hidden; setToolsOpen(open); if (open) byId("agent-feature-tools").querySelector("button").focus(); });
+    byId("agent-feature-tools").querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
+      byId("home-selected-tool-label").textContent = button.dataset.chatPrefix; byId("home-selected-tool").hidden = false;
+      byId("agent-feature-tools").querySelectorAll("button").forEach(item => item.setAttribute("aria-checked", String(item === button)));
+      setToolsOpen(false); byId("copilot-natural-input").focus();
+    }));
+    byId("home-selected-tool-clear").addEventListener("click", () => { byId("home-selected-tool").hidden = true; byId("agent-feature-tools").querySelectorAll("button").forEach(button => button.setAttribute("aria-checked", "false")); byId("agent-feature-trigger").focus(); });
+    document.querySelectorAll(".quick-tag-chip").forEach(button => button.addEventListener("click", () => { byId("copilot-natural-input").value = button.textContent; byId("copilot-natural-input").focus(); }));
+    byId("home-upload-trigger").addEventListener("click", () => { const open = byId("home-upload-menu").hidden; setUploadOpen(open); if (open) byId("home-upload-select").focus(); });
+    byId("home-upload-select").addEventListener("click", () => { setUploadOpen(false); byId("home-upload-input").click(); });
+    byId("home-upload-input").addEventListener("change", () => { const file = byId("home-upload-input").files[0]; byId("home-upload-file").hidden = !file; byId("home-upload-filename").textContent = file?.name || ""; });
+    byId("home-upload-remove").addEventListener("click", () => { byId("home-upload-input").value = ""; byId("home-upload-file").hidden = true; byId("home-upload-trigger").focus(); });
+    byId("home-model-trigger").addEventListener("click", () => showDialog("llm-config-modal"));
+    byId("data-source-status").addEventListener("click", () => showDialog("llm-config-modal"));
+    byId("model-form").addEventListener("submit", event => { event.preventDefault(); byId("llm-model-input").value = byId("llm-model-input").value.trim(); if (byId("model-form").reportValidity()) byId("llm-config-modal").close(); });
+    byId("btn-clear-llm-config").addEventListener("click", () => byId("model-form").reset());
+    byId("llm-config-modal").addEventListener("close", () => (byId("copilot").hidden ? byId("topbar-more-menu").querySelector("summary") : byId("home-model-trigger")).focus({preventScroll: true}));
+    function openAccountContext() { if (byId("copilot").hidden) setRoute("chat"); setContextOpen(true); }
+    byId("home-context-trigger").addEventListener("click", openAccountContext);
+    byId("btn-custom-profile-chip").addEventListener("click", openAccountContext);
+    byId("home-context-close").addEventListener("click", () => { setContextOpen(false); byId("persona-switcher-bar").querySelector("summary").focus({preventScroll: true}); });
+    document.querySelectorAll('input[name="display-policy-level"]').forEach(input => input.addEventListener("change", () => { byId("ai-trust-score").value = input.value; byId("ai-trust-score-value").textContent = input.nextElementSibling.textContent; byId("display-policy-hint").textContent = input.parentElement.querySelector("small").textContent; }));
+    byId("theme-toggle").addEventListener("click", () => { const dark = document.body.classList.toggle("prism-theme-dark"); byId("theme-toggle").setAttribute("aria-pressed", String(dark)); byId("theme-toggle-label").textContent = dark ? "切换浅色主题" : "切换深色主题"; });
+    byId("home-history-show").addEventListener("click", () => setSidebarOpen(true));
+    byId("home-history-hide").addEventListener("click", () => { setSidebarOpen(false); byId("home-history-show").focus(); });
+    byId("home-history-backdrop").addEventListener("click", () => { setSidebarOpen(false); byId("home-history-show").focus(); });
+    mobileViewport.addEventListener("change", () => setSidebarOpen(!mobileViewport.matches));
+    window.addEventListener("resize", () => { setToolsOpen(false); setUploadOpen(false); });
     document.addEventListener("keydown", event => {
-      if (event.key === "Escape" && !byId("tools-menu").hidden) { setToolsOpen(false); byId("tools-trigger").focus(); }
-      if (event.key === "Escape" && byId("sidebar").classList.contains("is-open")) { setSidebarOpen(false); byId("sidebar-trigger").focus(); }
-      if (event.key === "Tab" && mobileViewport.matches && byId("sidebar").classList.contains("is-open") && !document.querySelector("dialog[open]")) {
-        const controls = [...byId("sidebar").querySelectorAll("button, input")].filter(element => !element.disabled && element.getClientRects().length);
+      if (document.querySelector("dialog[open]")) return;
+      if (event.key === "Escape") {
+        if (!byId("agent-feature-tools").hidden) { setToolsOpen(false); byId("agent-feature-trigger").focus(); }
+        else if (!byId("home-upload-menu").hidden) { setUploadOpen(false); byId("home-upload-trigger").focus(); }
+        else if (byId("copilot").classList.contains("context-open")) byId("home-context-close").click();
+        else if (mobileViewport.matches && !document.body.classList.contains("home-history-collapsed")) { setSidebarOpen(false); byId("home-history-show").focus(); }
+        byId("persona-switcher-bar").open = false; byId("topbar-more-menu").open = false; byId("store-filter").open = false;
+      }
+      if (event.key === "Tab" && mobileViewport.matches && !document.body.classList.contains("home-history-collapsed")) {
+        const controls = [...byId("home-history-sidebar").querySelectorAll("button, input")].filter(element => !element.disabled && element.getClientRects().length);
         const first = controls[0], last = controls[controls.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     });
     document.addEventListener("click", event => {
-      if (!byId("tools-menu").contains(event.target) && !byId("tools-trigger").contains(event.target)) setToolsOpen(false);
-      for (const id of ["store-filter", "research-navigation"]) if (!byId(id).contains(event.target)) byId(id).open = false;
+      if (!byId("agent-feature-tools").contains(event.target) && !byId("agent-feature-trigger").contains(event.target)) setToolsOpen(false);
+      if (!byId("home-upload-menu").contains(event.target) && !byId("home-upload-trigger").contains(event.target)) setUploadOpen(false);
+      for (const id of ["store-filter", "persona-switcher-bar", "topbar-more-menu"]) if (!byId(id).contains(event.target)) byId(id).open = false;
     });
-    setSidebarOpen(false);
+    setSidebarOpen(!mobileViewport.matches);
     renderSkills();
   </script>
 </body>
