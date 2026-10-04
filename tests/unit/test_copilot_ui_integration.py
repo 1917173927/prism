@@ -660,7 +660,7 @@ def test_market_choices_and_visible_source_controls_are_distinct() -> None:
     assert 'class="portfolio-holdings-layout"' not in markup
 
 
-def test_portfolio_report_navigation_status_and_boundaries_are_restructured() -> None:
+def test_portfolio_report_exposes_inline_panels_and_disclosed_risk_references() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
@@ -668,21 +668,32 @@ def test_portfolio_report_navigation_status_and_boundaries_are_restructured() ->
     heading = markup.index('class="overview-header-bar page-heading overview-heading"')
     tabs = markup.index('id="workspace-page-tabs"')
     card = markup.index('id="portfolio-report-card"', heading)
-    drawer = markup.index('id="portfolio-analysis-drawer"', card)
-    assert heading < tabs < card < drawer
+    details = markup.index('id="portfolio-analysis-details"', card)
+    assert heading < tabs < card < details
     assert 'insertAdjacentElement("afterend", pageTabs)' in script
+    assert '<section id="portfolio-analysis-details"' in markup
+    for route, panel, tab in (
+        ("portfolio-risk", "portfolio-risk-details", "portfolio-tab-risk"),
+        ("portfolio-profit", "portfolio-pnl-details", "portfolio-tab-profit"),
+        ("portfolio-style", "portfolio-style-details", "portfolio-tab-style"),
+        ("portfolio-holdings", "portfolio-holdings-details", "portfolio-tab-holdings"),
+    ):
+        assert f'data-portfolio-route="{route}" aria-controls="{panel}"' in markup
+        assert f'role="tabpanel" aria-labelledby="{tab}"' in markup
     assert 'id="portfolio-analysis-status"' in markup
     assert 'id="portfolio-analysis-retry"' in markup
     assert 'id="portfolio-extended-analysis"' in markup
-    assert markup.index('id="portfolio-report-asset-structure"') < drawer
-    assert markup.index('id="portfolio-report-risk-summary"') > drawer
+    assert markup.index('id="portfolio-report-asset-structure"') < details
+    assert markup.index('id="portfolio-report-risk-summary"') > details
+    assert 'id="portfolio-risk-reference"' in markup
+    assert 'id="portfolio-profile-entry" href="#profile"' in markup
     assert '.prism-ui-v2 .portfolio-disclosure > summary' in styles
     risk_renderer = script.split('function renderPortfolioRiskBoundaries', 1)[1].split('function renderPortfolioReport', 1)[0]
-    for label in ("最大持仓占比", "权益类占比", "现金比例", "当前占比", "参考范围", "结果"):
+    for label in ("最大持仓占比", "权益类占比", "现金比例", "当前", "参考范围", "结果"):
         assert label in risk_renderer
     assert '"REVIEW_REQUIRED"' in risk_renderer
     assert 'if (!report.profile)' in risk_renderer
-    assert 'link.href = "#profile"' in risk_renderer
+    assert 'row.status === "PASS" ? other : body' in risk_renderer
     assert 'renderPortfolioAnalysisStatus(error.message' in script
     assert 'setError(`持仓已保存' not in script
 

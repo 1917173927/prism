@@ -2970,6 +2970,7 @@
 
   let tradeStyleInsightsAbortController = null;
   let tradeStyleInsightsRequestSequence = 0;
+  let tradeRecordsRequestSequence = 0;
 
   function renderTradeMarketSecurity(item, dataMode) {
     const history = item.history || {};
@@ -2981,7 +2982,7 @@
     identity.append(name, code);
     const verdict = document.createElement("span");
     verdict.className = `cf-verdict ${item.quote_status === "PASS" ? "cf-verdict-pass" : "cf-verdict-warning"}`;
-    verdict.textContent = quote?.is_synthetic ? "MOCK" : item.quote_status || "UNAVAILABLE";
+    verdict.textContent = quote?.is_synthetic ? "演示行情" : quote ? "行情已更新" : "暂无行情";
     identity.append(verdict);
     const details = document.createElement("details");
     const summary = document.createElement("summary"); summary.textContent = "行情与交易明细";
@@ -3011,23 +3012,21 @@
       }
 
       const facts = document.createElement("dl"); facts.className = "trade-security-facts";
-      [["开盘", quote.open_price_cny], ["昨收", quote.previous_close_cny], ["涨跌额", quote.price_change_cny], ["成交额", quote.turnover_cny, true]].forEach(([label, value, compact]) => {
+      [["开盘", quote.open_price_cny], ["昨收", quote.previous_close_cny], ["涨跌额", quote.price_change_cny], ["成交额", quote.turnover_cny]].forEach(([label, value]) => {
         const dt = document.createElement("dt"); dt.textContent = label;
-        const dd = document.createElement("dd"); dd.textContent = value == null ? "—" : compact ? tradeCompactCny(value) : `¥${tradeNumber(value)}`;
+        const dd = document.createElement("dd"); dd.textContent = value == null ? "—" : `¥${tradeNumber(value)}`;
         facts.append(dt, dd);
       });
       details.append(facts);
-    } else {
-      const unavailable = document.createElement("p"); unavailable.className = "trade-security-unavailable"; unavailable.textContent = item.message || "当前未取得可验证行情。"; details.append(unavailable);
     }
 
     const historyLine = document.createElement("p"); historyLine.className = "trade-security-history";
-    historyLine.textContent = `历史 ${history.trade_count} 笔 · 买 ${history.buy_count} / 卖 ${history.sell_count} · 累计 ${tradeCompactCny(history.gross_amount_cny)} · 占比 ${tradeNumber(history.gross_amount_share_pct, "%")}`;
+    historyLine.textContent = `历史 ${history.trade_count} 笔 · 买入 ${history.buy_count} / 卖出 ${history.sell_count} · 累计 ¥${tradeNumber(history.gross_amount_cny)} · 占比 ${tradeNumber(history.gross_amount_share_pct, "%")}`;
     const lastTrade = document.createElement("small"); lastTrade.textContent = `最近交易：${tradeDateTime(history.last_traded_at)}`;
     details.append(historyLine, lastTrade);
     if (quote) {
       const meta = document.createElement("small"); meta.className = "trade-security-meta";
-      meta.textContent = `${dataMode === "MOCK" ? "示例快照" : "行情观察"}：${tradeDateTime(quote.observed_at)} · ${quote.source}`;
+      meta.textContent = `${dataMode === "MOCK" ? "示例时间" : "行情时间"}：${tradeDateTime(quote.observed_at)}`;
       details.append(meta);
     }
     identity.append(details);
@@ -3042,12 +3041,47 @@
     change.textContent = Number.isFinite(changeNumber) ? `${changeNumber >= 0 ? "+" : ""}${tradeNumber(changeNumber, "%")}` : "—";
     if (Number.isFinite(changeNumber)) change.className = changeNumber >= 0 ? "is-up" : "is-down";
     const time = document.createElement("td"); time.textContent = quote?.observed_at ? tradeDateTime(quote.observed_at) : "—";
+    [identity, share, price, change, time].forEach((cell, index) => { cell.dataset.label = ["证券", "历史成交占比", "现价", "涨跌幅", "更新时间"][index]; });
     card.append(identity, share, price, change, time);
     return card;
   }
 
+  function renderPortfolioTradeRelations() {
+    const rows = byId("portfolio-trade-relations"); clear(rows);
+    const securities = state.tradingStyleInsights?.securities || [];
+    const portfolio = displayedPortfolioReport || displayedPortfolioSummary;
+    securities.forEach(({history}) => {
+      const position = portfolio?.positions?.find(item => item.asset_id === history.security_code);
+      const row = document.createElement("tr");
+      const identity = document.createElement("td"); identity.dataset.label = "标的";
+      const name = document.createElement(position ? "button" : "strong");
+      name.textContent = history.security_name || position?.asset_name || position?.name || history.security_code;
+      if (position) {
+        name.type = "button"; name.className = "portfolio-holding-link";
+        name.addEventListener("click", () => { selectedPortfolioAsset = position.asset_id; window.location.hash = "portfolio-holdings"; });
+      }
+      const code = document.createElement("small"); code.textContent = history.security_code; identity.append(name, code); row.append(identity);
+      const values = [position ? reportPercent(portfolioTotalWeight(position, portfolio)) : portfolio ? "未持有" : "待读取", reportPercent(history.gross_amount_share_pct), tradeDateTime(history.last_traded_at)];
+      values.forEach((value, index) => { const cell = document.createElement("td"); cell.dataset.label = ["占总资产", "股票成交占比", "最近成交"][index]; cell.textContent = value; row.append(cell); });
+      rows.append(row);
+    });
+    if (!securities.length) {
+      const row = document.createElement("tr"), cell = document.createElement("td"); cell.colSpan = 4;
+      cell.textContent = state.tradingStyleInsights ? "当前没有股票成交记录" : "正在读取成交记录…"; row.append(cell); rows.append(row);
+    }
+  }
+
+  function openPortfolioTradeHistory(assetId) {
+    byId("trade-filter-security").value = assetId;
+    ["trade-filter-side", "trade-filter-status", "trade-filter-from", "trade-filter-to"].forEach(id => { byId(id).value = ""; });
+    byId("trade-history-details").open = true;
+    if (activeNavigationRoute === "portfolio-style") loadTradeRecords(true).catch(error => setTradeImportError(error.message));
+    else window.location.hash = "portfolio-style";
+  }
+
   function renderTradingStyleInsights(insights) {
     state.tradingStyleInsights = insights;
+    renderPortfolioTradeRelations();
     const section = byId("trade-style-insights");
     if (!section) return;
     if (!insights?.primary_style || !insights.guidance?.length) {
@@ -3117,7 +3151,8 @@
     byId("open-trade-import").hidden = !hasTrades;
     byId("trading-style-sample-meta").hidden = !hasTrades;
     secondary.hidden = !hasTrades;
-    more.hidden = !hasTrades && !state.hasTradeHistory;
+    more.hidden = !hasTrades;
+    byId("trade-history-details").hidden = !hasTrades && !state.hasTradeHistory;
     if (!metrics || Number(metrics.trade_count) === 0) {
       byId("trade-style-insights").hidden = true;
       byId("trade-market-details").hidden = true;
@@ -3130,21 +3165,22 @@
     core.append(
       tradeMetricCard("月均交易", tradeNumber(metrics.trades_per_month, " 笔")),
       tradeMetricCard("中位持有期", tradeNumber(metrics.median_holding_days, " 天")),
-      tradeMetricCard("历史成交集中度", tradeNumber(metrics.top3_symbol_share_pct, "%")),
     );
     panel.append(core);
     byId("trading-style-sample-meta").textContent = `交易记录 ${metrics.trade_count} 笔 · 观察周期 ${tradeNumber(metrics.observed_span_days, " 天")}`;
     secondary.append(
       tradeMetricCard("单笔中位金额", metrics.median_trade_amount_cny == null ? "—" : `¥${tradeNumber(metrics.median_trade_amount_cny)}`),
-      tradeMetricCard("成交集中程度", tradeNumber(metrics.symbol_hhi)),
+      tradeMetricCard("前3标的成交占比", tradeNumber(metrics.top3_symbol_share_pct, "%")),
       tradeMetricCard("90 日换手率", tradeNumber(metrics.turnover_90d_pct, "%")),
     );
   }
 
   async function loadTradingStyleProfile() {
-    const response = await fetch("/api/v1/advisor/trading-style/profile", {headers: {"X-Owner-ID": state.ownerId}});
+    const owner = state.ownerId;
+    const response = await fetch("/api/v1/advisor/trading-style/profile", {headers: {"X-Owner-ID": owner}});
     if (!response.ok) throw await apiError(response);
     const result = await response.json();
+    if (owner !== state.ownerId) return null;
     renderTradingStyleProfile(result.profile);
     return result.profile;
   }
@@ -3367,9 +3403,11 @@
     if (!state.tradeRecords.length) { const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 8; td.className = "empty-state"; td.textContent = "暂无符合条件的交易记录。"; tr.append(td); tbody.append(tr); }
     state.tradeRecords.forEach((item) => {
       const tr = document.createElement("tr"); if (item.status === "WITHDRAWN") tr.className = "trade-row-withdrawn";
+      tr.dataset.tradeId = item.trade_id; tr.dataset.revision = String(item.revision);
       const values = [new Date(item.traded_at).toLocaleString("zh-CN"), `${item.security_name || ""}${item.security_code ? ` · ${item.security_code}` : ""}`, item.side === "BUY" ? "买入" : "卖出", tradeNumber(item.quantity), `¥${tradeNumber(item.price_cny)}`, `¥${tradeNumber(item.gross_amount_cny)}`, item.status === "ACTIVE" ? "有效" : "已撤销"];
-      values.forEach((value) => { const td = document.createElement("td"); td.textContent = value; tr.append(td); });
+      values.forEach((value, index) => { const td = document.createElement("td"); td.dataset.label = ["时间", "证券", "方向", "数量", "成交价", "成交金额", "状态"][index]; td.textContent = value; tr.append(td); });
       const actions = document.createElement("td"); actions.className = "trade-row-actions";
+      actions.dataset.label = "操作";
       if (item.status === "ACTIVE") {
         const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "编辑"; edit.addEventListener("click", () => openTradeEdit(item));
         const withdraw = document.createElement("button"); withdraw.type = "button"; withdraw.textContent = "撤销"; withdraw.addEventListener("click", () => withdrawTrade(item)); actions.append(edit, withdraw);
@@ -3384,14 +3422,17 @@
   async function loadTradeRecords(reset = true) {
     const cursor = reset ? 0 : state.tradeListCursor;
     if (cursor == null) return;
-    const response = await fetch(`/api/v1/advisor/trading-history/trades?${tradeListQuery(cursor)}`, {headers: {"X-Owner-ID": state.ownerId}});
+    const sequence = ++tradeRecordsRequestSequence;
+    const owner = state.ownerId;
+    const response = await fetch(`/api/v1/advisor/trading-history/trades?${tradeListQuery(cursor)}`, {headers: {"X-Owner-ID": owner}});
     if (!response.ok) throw await apiError(response);
     const result = await response.json();
+    if (owner !== state.ownerId || sequence !== tradeRecordsRequestSequence) return;
     state.tradeRecords = reset ? result.items : [...state.tradeRecords, ...result.items]; state.tradeListCursor = result.next_cursor;
     state.tradeTotal = result.total;
     if (result.total > 0) state.hasTradeHistory = true;
     byId("trade-history-count").textContent = `${result.total} 笔`; renderTradeRecords();
-    byId("trading-style-more").hidden = !state.hasTradeHistory && !(Number(state.tradingStyleProfile?.metrics?.trade_count) > 0);
+    byId("trade-history-details").hidden = !state.hasTradeHistory && !(Number(state.tradingStyleProfile?.metrics?.trade_count) > 0);
   }
 
   function openTradeEdit(item) {
@@ -3403,30 +3444,42 @@
     byId("trade-edit-error").hidden = true; byId("trade-edit-dialog").showModal();
   }
 
+  function applyTradeMutation(result) {
+    tradeRecordsRequestSequence += 1;
+    state.tradeRecords = state.tradeRecords.map(item => item.trade_id === result.trade.trade_id ? result.trade : item);
+    renderTradeRecords();
+  }
+
   async function saveTradeEdit(event) {
     event.preventDefault(); const error = byId("trade-edit-error"); error.hidden = true;
     const id = byId("trade-edit-id").value;
+    const owner = state.ownerId;
     try {
-      const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(id)}`, {method: "PATCH", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId}, body: JSON.stringify({
+      const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(id)}`, {method: "PATCH", headers: {"Content-Type": "application/json", "X-Owner-ID": owner}, body: JSON.stringify({
         schema_version: "trade-update-request.v1", expected_revision: Number(byId("trade-edit-revision").value), traded_at: new Date(byId("trade-edit-time").value).toISOString(),
         security_code: byId("trade-edit-code").value.trim() || null, security_name: byId("trade-edit-name").value.trim() || null,
         side: byId("trade-edit-side").value, quantity: byId("trade-edit-quantity").value, price_cny: byId("trade-edit-price").value,
         fee_cny: byId("trade-edit-fee").value || "0", account_alias: byId("trade-edit-account").value.trim(),
       })});
       if (!response.ok) throw await apiError(response);
-      const result = await response.json(); byId("trade-edit-dialog").close(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
+      const result = await response.json(); if (owner !== state.ownerId) return;
+      applyTradeMutation(result); byId("trade-edit-dialog").close(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
     } catch (exception) { error.textContent = exception.message; error.hidden = false; }
   }
 
   async function withdrawTrade(item) {
     if (!window.confirm("确认撤销这笔交易？")) return;
-    const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(item.trade_id)}?expected_revision=${item.revision}`, {method: "DELETE", headers: {"X-Owner-ID": state.ownerId}});
-    if (!response.ok) throw await apiError(response); const result = await response.json(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
+    const owner = state.ownerId;
+    const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(item.trade_id)}?expected_revision=${item.revision}`, {method: "DELETE", headers: {"X-Owner-ID": owner}});
+    if (!response.ok) throw await apiError(response); const result = await response.json(); if (owner !== state.ownerId) return;
+    applyTradeMutation(result); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
   }
 
   async function restoreTrade(item) {
-    const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(item.trade_id)}/restore`, {method: "POST", headers: {"Content-Type": "application/json", "X-Owner-ID": state.ownerId}, body: JSON.stringify({schema_version: "trade-revision-request.v1", expected_revision: item.revision})});
-    if (!response.ok) throw await apiError(response); const result = await response.json(); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
+    const owner = state.ownerId;
+    const response = await fetch(`/api/v1/advisor/trading-history/trades/${encodeURIComponent(item.trade_id)}/restore`, {method: "POST", headers: {"Content-Type": "application/json", "X-Owner-ID": owner}, body: JSON.stringify({schema_version: "trade-revision-request.v1", expected_revision: item.revision})});
+    if (!response.ok) throw await apiError(response); const result = await response.json(); if (owner !== state.ownerId) return;
+    applyTradeMutation(result); await refreshTradeDependentProfiles(result.style_profile); await loadTradeRecords(true);
   }
 
   async function loadTradingStyleWorkspace() {
@@ -7055,6 +7108,7 @@
   const RESEARCH_SUBPAGES = Object.freeze({
     "profile-results": "profile", "profile-questionnaire": "profile", "profile-preferences": "profile",
     "holdings-management": "overview", "holdings-report": "overview",
+    "portfolio-risk": "overview", "portfolio-profit": "overview", "portfolio-style": "overview", "portfolio-holdings": "overview",
     "market-quotes": "market", "market-risk": "market", "market-sectors": "market",
     "research-knowledge": "research-workbench", "live-research": "research-workbench", "research-algorithms": "research-workbench",
   });
@@ -7062,17 +7116,27 @@
   let activeNavigationRoute = null;
   let navigationScrollFrame = null;
 
-  function syncPortfolioHoldingsLocation(routeId) {
-    const holdings = byId("portfolio-holdings-details");
-    const management = byId("portfolio-management-view");
-    const drawerSlot = byId("portfolio-holdings-drawer-slot");
-    if (!holdings || !management || !drawerSlot) return;
-    const inManagement = routeId === "holdings-management";
-    const destination = inManagement ? management : drawerSlot;
-    if (holdings.parentElement !== destination) {
-      byId("portfolio-analysis-drawer").close();
-      destination.append(holdings);
-      holdings.open = inManagement;
+  const PORTFOLIO_DETAIL_ROUTES = Object.freeze({
+    "portfolio-risk": "portfolio-risk-details", "portfolio-profit": "portfolio-pnl-details",
+    "portfolio-style": "portfolio-style-details", "portfolio-holdings": "portfolio-holdings-details",
+  });
+  let selectedPortfolioAsset = null;
+
+  function syncPortfolioDetailView(routeId = activeNavigationRoute) {
+    const expanded = Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, routeId);
+    byId("portfolio-analysis-details").hidden = !expanded;
+    byId("portfolio-report-card").hidden = expanded || !displayedPortfolioSummary?.position_count;
+    byId("portfolio-empty").hidden = expanded || !displayedPortfolioSummary || Boolean(displayedPortfolioSummary.position_count);
+    byId("portfolio-source-line").hidden = expanded || !displayedPortfolioReport;
+    byId("portfolio-details-entry").setAttribute("aria-expanded", String(expanded));
+    document.querySelectorAll("[data-portfolio-route]").forEach(tab => {
+      const selected = tab.dataset.portfolioRoute === routeId;
+      tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1;
+      byId(tab.getAttribute("aria-controls")).hidden = !selected;
+    });
+    if (selectedPortfolioAsset && routeId === "portfolio-holdings") {
+      const item = [...byId("portfolio-position-rows").children].find(node => node.dataset.asset === selectedPortfolioAsset);
+      if (item) { item.open = true; item.querySelector("summary").focus({preventScroll: true}); item.scrollIntoView({block: "center"}); selectedPortfolioAsset = null; }
     }
   }
 
@@ -7106,11 +7170,13 @@
       decisions: "recommendation-history",
       system: "evaluation-dashboard",
       "expert-workspace-grid": "stock-research",
+      "trading-style": "portfolio-style", "holdings-management": "portfolio-holdings",
     };
-    const legacySubpages = {profile: state.questionnaireGate === "COMPLETE" ? "profile-results" : "profile-questionnaire", overview: "holdings-report", portfolio: "holdings-management", market: "market-quotes"};
+    const legacySubpages = {profile: state.questionnaireGate === "COMPLETE" ? "profile-results" : "profile-questionnaire", overview: "holdings-report", portfolio: "portfolio-holdings", market: "market-quotes"};
     const routeId = legacySubpages[targetId] || aliases[targetId] || targetId || "copilot";
     let requestedId = RESEARCH_SUBPAGES[routeId] || routeId;
     const routeChanged = activeNavigationRoute !== routeId;
+    const previousRoute = activeNavigationRoute;
     if (routeChanged && activeNavigationRoute) navigationScrollPositions.set(activeNavigationRoute, window.scrollY);
     activeNavigationRoute = routeId;
     if (routeChanged && navigationScrollFrame) cancelAnimationFrame(navigationScrollFrame);
@@ -7131,7 +7197,7 @@
 
     const isOverview = (requestedId === "overview");
     const isMarket = (requestedId === "market");
-    const isTradingStyle = (requestedId === "trading-style");
+    const isTradingStyle = routeId === "portfolio-style";
     const isSkillStore = requestedId === "skill-store";
     const isProfile = requestedId === "profile";
     const isQuestionnaire = isProfile && routeId === "profile-questionnaire";
@@ -7152,11 +7218,11 @@
     byId("profile").setAttribute("aria-labelledby", isQuestionnaire ? "profile-questionnaire-heading" : routeId === "profile-preferences" ? "display-preference-title" : "profile-title");
     if (!isProfile || isQuestionnaire) byId("profile-display-dialog").close();
     if (!isOverview || routeChanged) {
-      ["portfolio-modal", "portfolio-analysis-drawer", "portfolio-diagnosis-drawer"].forEach(id => byId(id).close());
+      ["portfolio-modal", "portfolio-diagnosis-drawer"].forEach(id => byId(id).close());
       syncPortfolioDialogScroll();
     }
-    syncPortfolioHoldingsLocation(routeId);
-    if (!isTradingStyle) byId("trade-import-dialog").close();
+    syncPortfolioDetailView(routeId);
+    if (!isTradingStyle) { byId("trade-import-dialog").close(); byId("trade-edit-dialog").close(); }
     if (!isCopilot) {
       copilotSec?.classList.remove("context-open");
       byId("home-context-trigger")?.setAttribute("aria-expanded", "false");
@@ -7175,7 +7241,7 @@
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
     if (pageTabs) {
       const topLevelRoute = targetId === "overview";
-      pageTabs.hidden = isCopilot || isTradingStyle || isSkillStore || isResearchTool || topLevelRoute || requestedNode?.classList.contains("auxiliary-page");
+      pageTabs.hidden = isCopilot || isOverview || isSkillStore || isResearchTool || topLevelRoute || requestedNode?.classList.contains("auxiliary-page");
     }
     for (const section of [overviewSec, marketSec, byId("profile")]) {
       if (!section) continue;
@@ -7222,9 +7288,10 @@
     }
 
     if (isOverview) {
-      renderOverviewWorkspace();
-    } else if (isTradingStyle) {
-      loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message));
+      if (RESEARCH_SUBPAGES[previousRoute] !== "overview" || !displayedPortfolioSummary) renderOverviewWorkspace();
+      if (isTradingStyle && routeChanged) loadTradingStyleWorkspace().catch(error => setTradeImportError(error.message));
+      if (routeChanged && Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, routeId) && !Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, previousRoute)) byId("portfolio-details-title").focus({preventScroll: true});
+      if (routeChanged && routeId === "holdings-report" && Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, previousRoute)) byId("portfolio-details-entry").focus({preventScroll: true});
     } else if (isProfile && routeChanged) {
       byId(isQuestionnaire ? "profile-questionnaire-heading" : routeId === "profile-preferences" ? "display-preference-title" : "profile-title")?.focus({preventScroll: true});
     }
@@ -8783,10 +8850,11 @@
     const message = byId("portfolio-analysis-status-message");
     const extended = byId("portfolio-extended-analysis");
     if (!panel || !title || !message || !extended) return;
-    const {affected, sectorIncomplete} = portfolioMissingAnalysisData();
+    const {sectorIncomplete} = portfolioMissingAnalysisData();
     if (!state.portfolio) {
       panel.hidden = true;
       extended.hidden = true;
+      byId("portfolio-sector-details").hidden = true;
       return;
     }
     let detail = "";
@@ -8795,27 +8863,15 @@
       detail = errorMessage;
     } else if (!state.profile?.profile) {
       title.textContent = "风险对照需要投资者画像";
-      detail = "完成风险问卷后，可查看持仓与风险承受范围的对照。";
-    } else if (sectorIncomplete) {
-      const unclassifiedCodes = state.portfolio?.position_snapshot?.positions
-        ?.filter(position => !position.sector || String(position.sector).toUpperCase() === "UNCLASSIFIED")
-        .map(position => position.asset_id) || [];
-      const codes = [...new Set([...affected.map(row => row.asset_id), ...unclassifiedCodes].filter(Boolean))];
-      const fields = [...new Set(affected.flatMap(row => row.missing_fields || []))].map(field => ({
-        sector: "行业",
-        holding_sector: "基金底层行业",
-        price_cny: "最新价格",
-        observed_at: "报价时间",
-      }[field] || field));
-      title.textContent = "行业分析需要补充数据";
-      detail = `${codes.length ? `${codes.join("、")}：` : ""}缺少${fields.length ? fields.join("、") : "行业"}数据，行业分布与行业 HHI 暂不可用。`;
-    } else if (!state.portfolioHealthRun && !displayedPortfolioReport?.risk?.sectors?.length) {
+      detail = "完成风险问卷后查看参考范围。";
+    } else if (!sectorIncomplete && !state.portfolioHealthRun && !displayedPortfolioReport?.risk?.sectors?.length) {
       title.textContent = "风险分析尚未生成";
       detail = "可以更新分析，生成行业分布与风险对照。";
     }
     const unavailable = Boolean(detail);
     panel.hidden = !unavailable;
-    extended.hidden = unavailable || !state.portfolioHealthRun;
+    extended.hidden = unavailable || sectorIncomplete || !state.portfolioHealthRun;
+    byId("portfolio-sector-details").hidden = extended.hidden;
     message.textContent = detail;
     byId("portfolio-profile-entry").hidden = Boolean(state.profile?.profile);
     byId("portfolio-analysis-retry").hidden = !state.profile?.profile;
@@ -11697,26 +11753,17 @@
   }
 
   function syncPortfolioDialogScroll() {
-    const open = ["portfolio-modal", "portfolio-analysis-drawer", "portfolio-diagnosis-drawer"]
+    const open = ["portfolio-modal", "portfolio-diagnosis-drawer", "trade-import-dialog", "trade-edit-dialog"]
       .some(id => byId(id).open);
     document.body.classList.toggle("portfolio-dialog-open", open);
   }
 
   function openPortfolioDetails(sectionId = null) {
-    if (sectionId === "portfolio-holdings-details" && activeNavigationRoute === "holdings-management") {
-      byId("portfolio-page-more").open = false;
-      const holdings = byId(sectionId);
-      holdings.open = true;
-      holdings.scrollIntoView({block: "start", behavior: "instant"});
-      holdings.querySelector("summary")?.focus({preventScroll: true});
-      return;
-    }
-    const drawer = byId("portfolio-analysis-drawer");
-    drawer.querySelectorAll("details").forEach(section => { section.open = section.id === sectionId; });
+    const route = Object.entries(PORTFOLIO_DETAIL_ROUTES).find(([, id]) => id === sectionId)?.[0] || "portfolio-risk";
     byId("portfolio-page-more").open = false;
-    drawer.showModal();
-    drawer.scrollTop = 0;
-    syncPortfolioDialogScroll();
+    if (window.location.hash === `#${route}`) syncNavigation(route);
+    else window.location.hash = route;
+    if (sectionId === "portfolio-report-info") byId(sectionId).open = true;
   }
 
   function selectPortfolioImportTab(tabId) {
@@ -12485,10 +12532,10 @@
     : `¥ ${Number(value).toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   const reportPercent = value => value == null ? "—" : `${Number(value).toFixed(2)}%`;
   const reportStatusLabel = status => ({
-    PASS: "通过",
+    PASS: "范围内",
     OVERBOUND: "超过上限",
     UNDERBOUND: "低于下限",
-    REVIEW_REQUIRED: "需要复核",
+    REVIEW_REQUIRED: "数据待补充",
     BLOCKED: "需要处理",
     UNAVAILABLE: "待分析",
   }[status] || "待生成");
@@ -12507,6 +12554,18 @@
     const name = document.createElement("span"); name.textContent = label;
     const number = document.createElement("strong"); number.textContent = value;
     item.append(name, number); parent.append(item);
+  }
+
+  function appendPortfolioFact(parent, label, value, className = "") {
+    const row = document.createElement("div"); row.className = "portfolio-fact";
+    const name = document.createElement("dt"); name.textContent = label;
+    const number = document.createElement("dd"); number.textContent = value; number.className = className;
+    row.append(name, number); parent.append(row);
+  }
+
+  function portfolioTotalWeight(position, report) {
+    return position && Number(report?.total_value_cny) > 0
+      ? Number(position.market_value_cny) / Number(report.total_value_cny) * 100 : null;
   }
 
   const PORTFOLIO_ASSET_COLORS = Object.freeze({
@@ -12593,17 +12652,19 @@
     container.append(wrapper);
   }
 
-  function appendRiskBoundaryRow(body, {label, current, threshold, status}) {
+  function appendRiskBoundaryRow(body, {label, detail, current, threshold, status}) {
     const row = document.createElement("tr");
-    [label, current, threshold].forEach(value => {
+    [label, current, threshold].forEach((value, index) => {
       const cell = document.createElement("td");
-      cell.textContent = value;
+      cell.textContent = value; cell.dataset.label = ["项目", "当前", "参考范围"][index];
+      if (index === 0 && detail) { const note = document.createElement("small"); note.textContent = detail; cell.append(note); }
       row.append(cell);
     });
     const statusCell = document.createElement("td");
+    statusCell.dataset.label = "结果";
     const badge = document.createElement("span");
-    badge.className = `status-chip ${reportStatusClass(status)}`;
-    badge.textContent = reportStatusLabel(status);
+    badge.className = `portfolio-risk-result ${reportStatusClass(status)}`;
+    badge.textContent = label === "未分类资产" && status === "REVIEW_REQUIRED" ? "待补充行业数据" : reportStatusLabel(status);
     statusCell.append(badge);
     row.append(statusCell);
     body.append(row);
@@ -12611,41 +12672,33 @@
 
   function renderPortfolioRiskBoundaries(container, report) {
     clear(container);
+    const reference = byId("portfolio-report-risk-reference"); clear(reference);
+    const disclosure = byId("portfolio-risk-reference"); disclosure.hidden = true;
     if (!report.profile) {
-      const link = document.createElement("a");
-      link.className = "copilot-action-btn secondary";
-      link.href = "#profile";
-      link.textContent = "完成风险问卷";
-      container.append(link);
+      const note = document.createElement("p"); note.textContent = "参考范围尚未设置"; container.append(note);
       return;
     }
-    const tableWrap = document.createElement("div");
-    tableWrap.className = "portfolio-risk-boundary-wrap";
-    const table = document.createElement("table");
-    table.className = "portfolio-report-table portfolio-risk-boundary-table";
-    const head = document.createElement("thead");
-    const headRow = document.createElement("tr");
-    ["项目", "当前占比", "参考范围", "结果"].forEach(label => {
-      const cell = document.createElement("th");
-      cell.textContent = label;
-      headRow.append(cell);
-    });
-    head.append(headRow);
-    const body = document.createElement("tbody");
+    const createTable = (parent, label) => {
+      const table = document.createElement("table"); table.className = "portfolio-risk-boundary-table"; table.setAttribute("aria-label", label);
+      const head = document.createElement("thead"), headRow = document.createElement("tr");
+      ["项目", "当前", "参考范围", "结果"].forEach(label => { const cell = document.createElement("th"); cell.scope = "col"; cell.textContent = label; headRow.append(cell); });
+      head.append(headRow); const body = document.createElement("tbody"); table.append(head, body); parent.append(table); return body;
+    };
+    const body = createTable(container, "需要关注的风险"), other = createTable(reference, "其他风险对照");
+    const appendRow = row => appendRiskBoundaryRow(row.status === "PASS" ? other : body, row);
     const topPosition = (report.positions || []).find(position => position.asset_name === report.concentration?.top_asset_name)
       || (report.positions || [])[0];
-    const topTotalWeight = topPosition && Number(report.total_value_cny) > 0
-      ? Number(topPosition.market_value_cny) / Number(report.total_value_cny) * 100
-      : null;
-    appendRiskBoundaryRow(body, {
+    const topTotalWeight = portfolioTotalWeight(topPosition, report);
+    appendRow({
       label: "最大持仓占比",
+      detail: topPosition?.asset_name,
       current: reportPercent(topTotalWeight),
       threshold: report.concentration?.single_asset_limit_pct == null ? "—" : `≤ ${reportPercent(report.concentration.single_asset_limit_pct)}`,
       status: report.concentration?.single_asset_verdict || "UNAVAILABLE",
     });
     const equityWeight = report.profile?.equity_weight_pct
       ?? (report.asset_structure || []).filter(group => ["stock", "etf"].includes(group.group_key)).reduce((sum, group) => sum + Number(group.weight_pct), 0);
-    appendRiskBoundaryRow(body, {
+    appendRow({
       label: "权益类占比",
       current: reportPercent(equityWeight),
       threshold: `${reportPercent(report.profile.equity_minimum_pct)}–${reportPercent(report.profile.equity_maximum_pct)}`,
@@ -12655,25 +12708,30 @@
     if (industryRows.length) {
       industryRows.forEach(sector => {
         const unclassified = sector.sector_key === "UNCLASSIFIED";
-        appendRiskBoundaryRow(body, {
+        appendRow({
           label: unclassified ? "未分类资产" : sector.name,
+          detail: sector.top_holdings?.join("、"),
           current: reportPercent(sector.weight_pct),
           threshold: `${sector.limit_operator === "MIN" ? "≥" : "≤"} ${reportPercent(sector.limit_pct)}`,
           status: unclassified && Number(sector.weight_pct) > 0 ? "REVIEW_REQUIRED" : sector.verdict,
         });
       });
     }
+    if (!industryRows.length && report.risk?.status !== "PASS") appendRow({label: "行业数据", current: "—", threshold: "—", status: "REVIEW_REQUIRED"});
+    if (report.risk?.sector_hhi != null && report.risk.hhi_limit != null) appendRow({
+      label: "行业集中度指数", current: tradeNumber(report.risk.sector_hhi),
+      threshold: `≤ ${tradeNumber(report.risk.hhi_limit)}`, status: report.risk.hhi_verdict,
+    });
     const cashSector = (report.risk?.sectors || []).find(sector => sector.sector_key === "CASH");
     const cashStructure = (report.asset_structure || []).find(group => group.group_key === "cash");
-    appendRiskBoundaryRow(body, {
+    appendRow({
       label: "现金比例",
       current: reportPercent(report.risk?.cash_weight_pct ?? cashStructure?.weight_pct),
       threshold: report.risk?.cash_minimum_pct == null ? "—" : `≥ ${reportPercent(report.risk.cash_minimum_pct)}`,
       status: cashSector?.verdict === "OVERBOUND" ? "UNDERBOUND" : cashSector?.verdict || "UNAVAILABLE",
     });
-    table.append(head, body);
-    tableWrap.append(table);
-    container.append(tableWrap);
+    disclosure.hidden = other.children.length === 0;
+    if (!body.children.length) { clear(container); const note = document.createElement("p"); note.textContent = "各项指标均在参考范围内"; container.append(note); }
   }
 
   function renderPortfolioReport(report) {
@@ -12683,10 +12741,13 @@
       card.hidden = !displayedPortfolioSummary?.position_count;
       byId("portfolio-report-headline").textContent = "正在读取分析报告…";
       byId("portfolio-attention-entry").hidden = true;
+      byId("portfolio-context-attention").hidden = true;
       byId("portfolio-source-line").hidden = true;
       ["portfolio-report-asset-structure", "portfolio-report-risk-summary", "portfolio-report-concentration-summary",
-        "portfolio-report-pnl-summary", "portfolio-report-protection-summary", "portfolio-report-meta"].forEach(id => clear(byId(id)));
+        "portfolio-report-pnl-summary", "portfolio-report-protection-summary", "portfolio-report-meta", "portfolio-report-risk-reference", "portfolio-position-profits"].forEach(id => clear(byId(id)));
       byId("portfolio-report-status").textContent = "待生成";
+      renderPortfolioTradeRelations();
+      syncPortfolioDetailView();
       return;
     }
     card.hidden = false;
@@ -12714,7 +12775,9 @@
     }
     const attention = byId("portfolio-attention-entry");
     attention.hidden = !issues.length;
-    attention.textContent = `${issues.length} 项需要关注，查看风险详情`;
+    attention.textContent = `${issues.length} 项需要关注`;
+    byId("portfolio-context-attention").hidden = attention.hidden;
+    byId("portfolio-context-attention").textContent = attention.textContent;
     const structure = byId("portfolio-report-asset-structure");
     if (structure) renderPortfolioAssetStructure(structure, report.asset_structure);
     const risk = byId("portfolio-report-risk-summary");
@@ -12724,45 +12787,43 @@
     const concentration = byId("portfolio-report-concentration-summary");
     if (concentration) {
       clear(concentration);
-      const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
-      appendReportMetric(metrics, "最高持仓", report.concentration?.top_asset_name || "未计算");
-      appendReportMetric(metrics, "最高持仓占比", reportPercent(report.concentration?.top_asset_weight_pct));
-      appendReportMetric(metrics, "集中度指数", report.concentration?.asset_hhi == null ? "—" : String(report.concentration.asset_hhi));
-      concentration.append(metrics);
-      if (report.concentration?.issues?.length) {
-        const issues = document.createElement("ul"); issues.className = "portfolio-report-issues";
-        report.concentration.issues.forEach(item => { const li = document.createElement("li"); li.textContent = item; issues.append(li); });
-        concentration.append(issues);
-      }
+      const top = report.positions.find(position => position.asset_name === report.concentration?.top_asset_name);
+      const hero = document.createElement("div"); hero.className = "portfolio-top-holding";
+      const name = document.createElement("strong"); name.className = "portfolio-asset-name"; name.textContent = report.concentration?.top_asset_name || "待计算";
+      const weight = document.createElement("div"), value = document.createElement("strong"), caption = document.createElement("small");
+      value.textContent = reportPercent(portfolioTotalWeight(top, report)); caption.textContent = "占总资产（含现金）"; weight.append(value, caption); hero.append(name, weight); concentration.append(hero);
+      const facts = document.createElement("dl"); facts.className = "portfolio-facts";
+      appendPortfolioFact(facts, "单一标的上限", reportPercent(report.concentration?.single_asset_limit_pct)); concentration.append(facts);
     }
     const pnl = byId("portfolio-report-pnl-summary"); clear(pnl);
-    appendReportMetric(pnl, "浮亏标的数", report.pnl_summary?.loss_position_count == null ? "待计算" : `${report.pnl_summary.loss_position_count} 项`);
-    appendReportMetric(pnl, "浮亏市值占比", reportPercent(report.pnl_summary?.loss_weight_pct));
+    const pnlFacts = document.createElement("dl"); pnlFacts.className = "portfolio-facts";
+    appendPortfolioFact(pnlFacts, "浮亏标的", report.pnl_summary?.loss_position_count == null ? "待计算" : `${report.pnl_summary.loss_position_count} 项`);
+    appendPortfolioFact(pnlFacts, "浮亏持仓占总资产", reportPercent(report.pnl_summary?.loss_weight_pct)); pnl.append(pnlFacts);
+    const positions = byId("portfolio-position-profits"); clear(positions);
+    report.positions.forEach(position => {
+      appendPortfolioFact(positions, position.asset_name, reportAmount(position.pnl_cny), position.pnl_cny == null ? "" : Number(position.pnl_cny) >= 0 ? "market-up" : "market-down");
+      const item = [...byId("portfolio-position-rows").children].find(node => node.dataset.asset === position.asset_id);
+      const returnValue = item?.querySelector(".portfolio-holding-return");
+      if (returnValue) returnValue.textContent = reportPercent(position.pnl_pct);
+    });
     const protection = byId("portfolio-report-protection-summary");
     if (protection) {
       clear(protection);
-      const metrics = document.createElement("div"); metrics.className = "portfolio-report-metrics";
-      appendReportMetric(metrics, "防御性资产", reportAmount(report.base_protection?.defensive_market_value_cny));
-      appendReportMetric(metrics, "防御性资产占比", reportPercent(report.base_protection?.defensive_weight_pct));
+      const metrics = document.createElement("dl"); metrics.className = "portfolio-facts";
+      appendPortfolioFact(metrics, "防御性资产", reportAmount(report.base_protection?.defensive_market_value_cny));
+      appendPortfolioFact(metrics, "防御性资产占比", reportPercent(report.base_protection?.defensive_weight_pct));
       if (report.base_protection?.profile_reference_pct != null) {
-        appendReportMetric(metrics, "参考比例", reportPercent(report.base_protection.profile_reference_pct));
-        appendReportMetric(metrics, "参考结果", report.base_protection.reference_verdict === "BELOW_REFERENCE" ? "低于参考" : report.base_protection.reference_verdict === "PASS" ? "达到参考" : "待分析");
+        appendPortfolioFact(metrics, "参考比例", reportPercent(report.base_protection.profile_reference_pct));
+        appendPortfolioFact(metrics, "参考结果", report.base_protection.reference_verdict === "BELOW_REFERENCE" ? "低于参考" : report.base_protection.reference_verdict === "PASS" ? "达到参考" : "待分析");
       }
       protection.append(metrics);
       const components = document.createElement("p"); components.className = "portfolio-report-risk-line";
       components.textContent = (report.base_protection?.components || []).join("、");
       protection.append(components);
-      const reference = {
-        UNDERBOUND: "权益类持仓低于风险参考范围。",
-        OVERBOUND: "权益类持仓超过风险参考范围。",
-        PASS: "权益类持仓处于风险参考范围内。",
-      }[report.profile?.equity_verdict];
-      if (reference) {
-        const guide = document.createElement("p"); guide.textContent = reference;
-        protection.append(guide);
-      }
     }
     renderPortfolioAnalysisStatus();
+    renderPortfolioTradeRelations();
+    syncPortfolioDetailView();
   }
 
   async function refreshPortfolioReport(expectedOwner = state.ownerId, expectedMode = state.dataMode) {
@@ -12905,30 +12966,45 @@
     byId("portfolio-report-card").hidden = !summary.position_count;
     const amount = value => value == null ? "待补充数据" : `¥ ${Number(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     byId("overview-portfolio-aum").textContent = amount(summary.holdings_value_cny);
+    byId("portfolio-context-value").textContent = amount(summary.holdings_value_cny);
     byId("overview-portfolio-cash").textContent = `现金 ${amount(summary.cash_cny)}`;
     byId("overview-pnl-val").textContent = amount(summary.daily_pnl_cny);
     byId("overview-pnl-val").className = summary.daily_pnl_cny == null ? "mono" : `mono ${Number(summary.daily_pnl_cny) >= 0 ? "market-up" : "market-down"}`;
     byId("overview-pnl-pct").textContent = summary.daily_pnl_cny == null ? "待更新昨收价" : "";
     byId("overview-benchmark-val").textContent = amount(summary.pnl_cny);
     byId("overview-benchmark-val").className = summary.pnl_cny == null ? "mono" : `mono ${Number(summary.pnl_cny) >= 0 ? "market-up" : "market-down"}`;
+    ["portfolio-context-pnl", "portfolio-details-pnl"].forEach(id => { byId(id).textContent = amount(summary.pnl_cny); byId(id).className = byId("overview-benchmark-val").className; });
     byId("overview-benchmark-sub").textContent = summary.pnl_pct == null ? "补充成本后计算" : `${summary.pnl_pct}%`;
     byId("overview-position-count").textContent = `${summary.position_count}`;
-    byId("overview-position-sub").textContent = summary.position_count ? "已确认证券" : "等待持仓";
+    byId("overview-position-sub").textContent = "";
     byId("portfolio-empty").hidden = summary.position_count > 0;
     byId("portfolio-data-label").textContent = !summary.position_count ? "未导入" : mode === "MOCK" ? "演示数据" : "已确认持仓";
     byId("portfolio-summary-note").textContent = `${summary.position_count} 项持仓 · 当前记录价格`;
     const body = byId("portfolio-position-rows"); body.replaceChildren();
     summary.positions.forEach(row => {
-      const tr = document.createElement("tr");
-      [row.name || row.asset_id, row.quantity, row.cost_price ?? "—", row.price, amount(row.market_value_cny), amount(row.pnl_cny), `${row.weight_pct}%`].forEach((value, index) => {
-        const td = document.createElement("td"); td.textContent = String(value);
-        if (index === 0) { const code = document.createElement("small"); code.textContent = row.asset_id; td.append(code); }
-        tr.append(td);
-      });
-      const actions = document.createElement("td");
+      const item = document.createElement("details"); item.className = "portfolio-holding"; item.dataset.asset = row.asset_id;
+      const heading = document.createElement("summary");
+      const identity = document.createElement("span"); identity.className = "portfolio-holding-identity";
+      const name = document.createElement("strong"); name.textContent = row.name || row.asset_id;
+      const code = document.createElement("small"); code.textContent = row.asset_id; identity.append(name, code);
+      const metrics = document.createElement("dl"); metrics.className = "portfolio-holding-metrics";
+      appendPortfolioFact(metrics, "持仓占比", `${row.weight_pct}%`);
+      appendPortfolioFact(metrics, "持仓市值", amount(row.market_value_cny));
+      appendPortfolioFact(metrics, "累计盈亏", amount(row.pnl_cny), row.pnl_cny == null ? "" : Number(row.pnl_cny) >= 0 ? "market-up" : "market-down");
+      heading.append(identity, metrics); item.append(heading);
+      const content = document.createElement("div"); content.className = "portfolio-holding-content";
+      const facts = document.createElement("dl"); facts.className = "portfolio-facts";
+      appendPortfolioFact(facts, "持仓数量", tradeNumber(row.quantity));
+      appendPortfolioFact(facts, "成本价", amount(row.cost_price));
+      appendPortfolioFact(facts, "当前价格", amount(row.price));
+      appendPortfolioFact(facts, "累计收益率", "—", "portfolio-holding-return");
+      content.append(facts);
+      const actions = document.createElement("div"); actions.className = "portfolio-holding-actions";
       const diagnose = document.createElement("button"); diagnose.type = "button"; diagnose.textContent = "查看诊断";
       diagnose.className = "copilot-action-btn secondary";
       diagnose.addEventListener("click", () => openPortfolioDiagnosis(row.asset_id));
+      const history = document.createElement("button"); history.type = "button"; history.textContent = "查看成交记录"; history.className = "copilot-action-btn secondary";
+      history.addEventListener("click", () => openPortfolioTradeHistory(row.asset_id));
       const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "删除";
       remove.className = "copilot-action-btn secondary";
       remove.addEventListener("click", async () => {
@@ -12942,13 +13018,15 @@
           await replacePortfolioRows(draft.positions.filter(p => p.asset_id !== row.asset_id), draft.cash_cny);
         } catch (error) { setError(error.message); remove.disabled = false; }
       });
-      actions.append(diagnose, remove);
+      actions.append(diagnose, history, remove);
       if (row.asset_type === "STOCK") {
         const research = document.createElement("button"); research.type = "button"; research.className = "copilot-action-btn secondary"; research.textContent = "个股研究";
         research.addEventListener("click", () => openLiveResearchSubject(row.asset_id)); actions.append(research);
       }
-      tr.append(actions); body.append(tr);
+      content.append(actions); item.append(content); body.append(item);
     });
+    renderPortfolioTradeRelations();
+    syncPortfolioDetailView();
     try {
       await refreshPortfolioReport(owner, mode);
     } catch (error) {
@@ -13734,11 +13812,14 @@
   });
   byId("close-portfolio-diagnosis")?.addEventListener("click", () => byId("portfolio-diagnosis-drawer")?.close());
   byId("portfolio-details-entry").addEventListener("click", () => openPortfolioDetails());
+  byId("portfolio-style-details").append(byId("trading-style"));
+  byId("portfolio-empty-style-entry").addEventListener("click", () => openPortfolioDetails("portfolio-style-details"));
   byId("portfolio-attention-entry").addEventListener("click", () => openPortfolioDetails("portfolio-risk-details"));
+  byId("portfolio-context-attention").addEventListener("click", () => openPortfolioDetails("portfolio-risk-details"));
   byId("portfolio-manage-entry").addEventListener("click", () => openPortfolioDetails("portfolio-holdings-details"));
   byId("portfolio-report-info-entry").addEventListener("click", () => openPortfolioDetails("portfolio-report-info"));
-  byId("portfolio-details-close").addEventListener("click", () => byId("portfolio-analysis-drawer").close());
-  ["portfolio-modal", "portfolio-analysis-drawer", "portfolio-diagnosis-drawer"].forEach(id => {
+  byId("portfolio-details-close").addEventListener("click", () => { window.location.hash = "overview"; });
+  ["portfolio-modal", "portfolio-diagnosis-drawer", "trade-import-dialog", "trade-edit-dialog"].forEach(id => {
     const dialog = byId(id);
     dialog.addEventListener("close", syncPortfolioDialogScroll);
     dialog.addEventListener("click", event => {
@@ -13747,12 +13828,17 @@
           || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
     });
   });
-  byId("portfolio-analysis-drawer").querySelectorAll(".portfolio-disclosure").forEach(section => {
-    section.addEventListener("toggle", () => {
-      if (!section.open) return;
-      byId("portfolio-analysis-drawer").querySelectorAll(".portfolio-disclosure").forEach(other => {
-        if (other !== section) other.open = false;
-      });
+  const portfolioTabs = [...document.querySelectorAll("[data-portfolio-route]")];
+  portfolioTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => { window.location.hash = tab.dataset.portfolioRoute; });
+    tab.addEventListener("keydown", event => {
+      let next = index;
+      if (event.key === "ArrowRight") next = (index + 1) % portfolioTabs.length;
+      else if (event.key === "ArrowLeft") next = (index + portfolioTabs.length - 1) % portfolioTabs.length;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = portfolioTabs.length - 1;
+      else return;
+      event.preventDefault(); portfolioTabs[next].focus(); window.location.hash = portfolioTabs[next].dataset.portfolioRoute;
     });
   });
   document.addEventListener("click", event => {
