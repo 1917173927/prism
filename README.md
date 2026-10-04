@@ -4,7 +4,7 @@
 
 Prism 是面向同花顺 A18 赛题的个性化证券投顾智能体系统。系统将已确认的投资者画像、持仓资料、金融数据和研究任务组织为可复核的分析过程，由确定性程序完成金额、比例、风险与再平衡计算，并在建议输出前执行独立风险与合规审查。
 
-[技术文档](docs/submission/competition-technical-solution.md) · [技术文档 PDF](docs/submission/Prism-技术文档-图形优化版.pdf) · [技术设计文档](docs/submission/technical-report.md) · [本地部署说明](docs/local-deployment.md)
+[技术文档](docs/submission/competition-technical-solution.md) · [技术文档 PDF](docs/submission/Prism-技术文档-图形优化版.pdf) · [技术设计文档](docs/submission/technical-report.md) · [本地部署教程](docs/local-deployment.md)
 
 ![Prism 整体处理流程](docs/submission/figures/judge-01-processing-flow.png)
 
@@ -254,7 +254,7 @@ uv run uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 | `WENCAI_SKILLHUB_CONTRACT_VERIFIED` | `false` | 问财响应规则人工确认开关 |
 | `PRISM_LLM_API_KEY`、`DEEPSEEK_API_KEY` 等 | 未设置 | 兼容 OpenAI API 的模型配置 |
 
-Windows 的 `start.bat` 会读取仓库根目录中被 Git 忽略的 `.env`。供应商密钥不进入前端、业务数据库、日志或 Git。详细配置与维护命令见[本地部署说明](docs/local-deployment.md)。
+Windows 的 `start.bat` 会读取仓库根目录中被 Git 忽略的 `.env`。供应商密钥不进入前端、业务数据库、日志或 Git。详细配置与维护命令见[本地部署运维参考](docs/local-deployment-operations.md)。
 
 ### 开发检查
 
@@ -317,7 +317,8 @@ git diff --check
 | [竞赛技术文档](docs/submission/competition-technical-solution.md) | 需求、产品功能、核心技术、创新设计与验证案例 |
 | [技术设计文档](docs/submission/technical-report.md) | 模块、接口、数据规则、部署结构、测试方法和系统边界 |
 | [系统总体架构](docs/architecture.md) | 系统分层、运行流程与页面设计 |
-| [本地部署说明](docs/local-deployment.md) | 账户、凭据、数据库、备份恢复和运行维护 |
+| [本地部署教程](docs/local-deployment.md) | 获取项目、启动服务和创建账户 |
+| [本地部署运维参考](docs/local-deployment-operations.md) | 凭据、数据库、备份恢复和运行维护 |
 | [问财数据接入说明](docs/iwencai-live-provider.md) | 问财配置、能力探测和真实查询规则 |
 | [PRD 对接指南](docs/prd-integration-guide.md) | 产品联调所需模块、接口和数据状态 |
 | [研究平台计算及资料契约](docs/research-platform-methods.md) | 三项论文方法、输入、单位、历史时点与检索边界 |
