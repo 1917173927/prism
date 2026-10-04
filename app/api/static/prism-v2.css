@@ -2750,10 +2750,10 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 25px;
   min-width: 0;
   height: 66px;
-  padding: 0 22px;
+  padding: 0 26px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--page);
 }
@@ -2761,13 +2761,13 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation-actions { display: flex; align-items: center; min-width: 0; gap: 12px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation-main { flex: 1; gap: 25px; }
 .prism-ui-v2.sidebar-layout-active #home-primary-navigation { min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex: 0 0 auto; min-height: 0; padding: 0; gap: 9px; }
-.prism-ui-v2.sidebar-layout-active .home-navigation .brand strong { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+.prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex: 0 0 209px; min-height: 0; padding: 0; gap: 9px; border-bottom: 0; }
+.prism-ui-v2.sidebar-layout-active .home-navigation .brand strong { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand > div > span { display: none; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand-mark { width: 28px; height: 28px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary { display: flex; align-items: center; gap: 3px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-item,
-.prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary .nav-item { width: auto; flex: 0 0 auto; gap: 7px; min-height: 36px; padding: 7px 11px; border: 0; border-radius: 8px; font-size: 14px; font-weight: 400; white-space: nowrap; }
+.prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary .nav-item { width: auto; flex: 0 0 auto; gap: 7px; min-height: 36px; padding: 8px 12px; border: 0; border-radius: 8px; font-size: 14px; font-weight: 400; white-space: nowrap; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-item.active { font-weight: 500; background: var(--surface-hover); }
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-item.active::before { display: none; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .nav-item.active .prism-icon { color: inherit; }
@@ -2781,7 +2781,9 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2 .home-navigation .topbar-more-panel .nav-item { width: 100%; min-height: 36px; font-size: 12px; }
 .prism-ui-v2 .home-navigation .topbar-more-panel .nav-item > span:last-child { font-size: 12px; }
 .prism-ui-v2 .home-navigation .topbar-more-panel .nav-shortcut-icon { display: inline; }
+.prism-ui-v2.skill-store-active .sidebar-conversation-actions.home-only,
 .prism-ui-v2.copilot-active .sidebar-conversation-actions.home-only { display: grid; }
+.prism-ui-v2.skill-store-active .sidebar .chat-history-panel.home-only,
 .prism-ui-v2.copilot-active .sidebar .chat-history-panel.home-only { display: grid; }
 .prism-ui-v2.market-active .market-sidebar-panel.market-only { display: grid; }
 .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: 66px minmax(0, 1fr); overflow-x: clip; transition: grid-template-columns 280ms cubic-bezier(.2, .8, .2, 1); }
@@ -2798,7 +2800,14 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.sidebar-layout-active.home-history-collapsed .sidebar { transform: translateX(-100%); opacity: 0; visibility: hidden; transition-delay: 0s, 0s, 280ms; }
 .prism-ui-v2.sidebar-layout-active.home-history-collapsed .home-history-show { display: inline-flex; }
 .prism-ui-v2.market-active.home-history-collapsed #market { padding-top: 58px; }
+.prism-ui-v2.sidebar-layout-active .sidebar-conversation-actions .home-skill-store-entry { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 43px; padding: 10px; border: 0; border-radius: 9px; color: var(--text-secondary); background: transparent; font: 14px/1.5 var(--sans); }
+.prism-ui-v2.sidebar-layout-active .home-skill-store-entry:hover { background: var(--surface-hover); }
+.prism-ui-v2.sidebar-layout-active .home-skill-store-entry.active { color: var(--brand); background: var(--brand-soft); font-weight: 550; }
+.prism-ui-v2.sidebar-layout-active .home-skill-store-entry.active::before { display: none; }
+.prism-ui-v2.skill-store-active .sidebar-conversation-actions,
 .prism-ui-v2.copilot-active .sidebar-conversation-actions { gap: 7px; margin-bottom: 16px; }
+.prism-ui-v2.skill-store-active .sidebar-conversation-actions #new-chat-session,
+.prism-ui-v2.skill-store-active .sidebar-chat-search,
 .prism-ui-v2.copilot-active .sidebar-conversation-actions #new-chat-session,
 .prism-ui-v2.copilot-active .sidebar-chat-search {
   display: flex;
@@ -2812,10 +2821,15 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
   color: var(--text-secondary);
   background: transparent;
 }
+.prism-ui-v2.skill-store-active .sidebar-conversation-actions #new-chat-session,
 .prism-ui-v2.copilot-active .sidebar-conversation-actions #new-chat-session { flex: 1; min-width: 0; width: auto; justify-content: flex-start; cursor: pointer; text-align: left; font-size: 14px; }
+.prism-ui-v2.skill-store-active .sidebar-conversation-actions #new-chat-session:hover,
+.prism-ui-v2.skill-store-active .sidebar-chat-search:focus-within,
 .prism-ui-v2.copilot-active .sidebar-conversation-actions #new-chat-session:hover,
 .prism-ui-v2.copilot-active .sidebar-chat-search:focus-within { color: var(--text-primary); background: var(--surface); }
+.prism-ui-v2.skill-store-active .sidebar-conversation-actions .prism-icon,
 .prism-ui-v2.copilot-active .sidebar-conversation-actions .prism-icon { width: 17px; height: 17px; flex: 0 0 auto; }
+.prism-ui-v2.skill-store-active .sidebar-chat-search input,
 .prism-ui-v2.copilot-active .sidebar-chat-search input {
   width: 100%;
   min-width: 0;
@@ -2826,7 +2840,9 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
   background: transparent;
   font: 14px/1.5 var(--sans);
 }
+.prism-ui-v2.skill-store-active .sidebar-chat-search input::placeholder,
 .prism-ui-v2.copilot-active .sidebar-chat-search input::placeholder { color: var(--text-muted); }
+.prism-ui-v2.skill-store-active .sidebar .chat-history-panel,
 .prism-ui-v2.copilot-active .sidebar .chat-history-panel {
   flex: 1;
   grid-template-rows: auto minmax(0, 1fr);
@@ -2838,13 +2854,21 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
   border-radius: 0;
   background: transparent;
 }
+.prism-ui-v2.skill-store-active .chat-history-head,
 .prism-ui-v2.copilot-active .chat-history-head { min-height: 34px; padding: 5px 9px; border: 0; }
+.prism-ui-v2.skill-store-active .chat-history-head h3,
 .prism-ui-v2.copilot-active .chat-history-head h3 { font-size: 12px; color: var(--text-muted); }
+.prism-ui-v2.skill-store-active .chat-session-list,
 .prism-ui-v2.copilot-active .chat-session-list { min-height: 0; padding: 4px 0; }
+.prism-ui-v2.skill-store-active .chat-session-item,
 .prism-ui-v2.copilot-active .chat-session-item { padding: 9px 7px; }
+.prism-ui-v2.skill-store-active .chat-session-select strong,
 .prism-ui-v2.copilot-active .chat-session-select strong { font-size: 14px; font-weight: 400; }
+.prism-ui-v2.skill-store-active .chat-session-actions,
 .prism-ui-v2.copilot-active .chat-session-actions { align-items: center; gap: 4px; }
+.prism-ui-v2.skill-store-active .chat-session-rename,
 .prism-ui-v2.copilot-active .chat-session-rename { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: auto; min-width: 40px; padding: 0 6px; white-space: nowrap; font-weight: 500; }
+.prism-ui-v2.skill-store-active .chat-session-delete,
 .prism-ui-v2.copilot-active .chat-session-delete { flex: 0 0 24px; }
 .prism-ui-v2.sidebar-layout-active .main { position: relative; grid-column: 2; grid-row: 2; padding: 0 clamp(18px, 4vw, 64px) 32px; }
 .prism-ui-v2.sidebar-layout-active .profile-actions-menu > summary,
@@ -2920,7 +2944,10 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.copilot-active .home-model-trigger:hover { color: var(--text-primary); background: var(--surface-subtle); }
 .prism-ui-v2.copilot-active .home-composer-tool .prism-icon { width: 14px; height: 14px; }
 .prism-ui-v2.copilot-active .home-upload-trigger .prism-icon { width: 20px; height: 20px; }
-.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn { min-width: 68px; min-height: 35px; font-size: 14px; font-weight: 500; }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: #35363a; box-shadow: none; }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:hover { background: #484a50; }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:disabled { opacity: 1; color: #a1a5ae; background: #e7e8eb; cursor: default; }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn .prism-icon { width: 19px; height: 19px; }
 .prism-ui-v2.copilot-active .agent-conversation .clear-chat-btn { display: none; }
 .prism-ui-v2.copilot-active .home-quick-prompts { position: relative; order: 5; height: 0; color: var(--text-secondary); }
 .prism-ui-v2.copilot-active .home-quick-prompts .copilot-quick-tags { position: absolute; top: 18px; left: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; list-style: none; }
@@ -2994,12 +3021,20 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-chat-stream-panel { flex: 1; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-query-box { margin-top: auto; }
 
+@media (max-width: 1220px) {
+  .prism-ui-v2.sidebar-layout-active .home-navigation { gap: 18px; padding-inline: 20px; }
+  .prism-ui-v2.sidebar-layout-active .home-navigation-main { gap: 18px; }
+  .prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex-basis: 196px; }
+  .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 228px minmax(0, 1fr); }
+  .prism-ui-v2.sidebar-layout-active .sidebar { width: 228px; }
+}
+
 @media (max-width: 900px) {
   html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 120px; }
   .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-rows: 104px minmax(0, 1fr); }
-  .prism-ui-v2.sidebar-layout-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
+  .prism-ui-v2.sidebar-layout-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 17px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation-main { display: contents; }
-  .prism-ui-v2.sidebar-layout-active .home-navigation .brand { order: 1; min-height: 52px; }
+  .prism-ui-v2.sidebar-layout-active .home-navigation .brand { order: 1; flex-basis: auto; min-height: 52px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation-actions { order: 2; margin-left: auto; gap: 3px; }
   .prism-ui-v2.sidebar-layout-active #home-primary-navigation { order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; }
   .prism-ui-v2.sidebar-layout-active .home-navigation .nav-section-primary { width: max-content; min-height: 44px; }

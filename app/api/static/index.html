@@ -8,15 +8,15 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20261003-auxiliary-disclosure">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-auxiliary-disclosure">
-    <link rel="stylesheet" href="/static/research-platform.css?v=20261001">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261004-skill-store">
+    <link rel="stylesheet" href="/static/research-platform.css?v=20261004-skill-store">
     <link rel="stylesheet" href="/static/research-workbench.css?v=20261004-readable">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261004-research-workbench" defer></script>
-    <script src="/static/research-platform.js?v=20261001" defer></script>
+    <script src="/static/app.js?v=20261004-skill-store" defer></script>
+    <script src="/static/research-platform.js?v=20261004-skill-store" defer></script>
     <script src="/static/research-tools.js?v=20261004-research-workbench" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
@@ -108,6 +108,13 @@
         <line x1="5" y1="12" x2="19" y2="12"></line>
         <polyline points="12 5 19 12 12 19"></polyline>
       </symbol>
+      <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 19V5m-6 6 6-6 6 6"></path>
+      </symbol>
+      <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+      </symbol>
       <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
         <polyline points="14 2 14 8 20 8"></polyline>
@@ -160,10 +167,6 @@
               <a class="nav-item" href="#profile">
                 <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
                 <span>个人中心</span>
-              </a>
-              <a class="nav-item" href="#skill-store">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-                <span>技能商店</span>
               </a>
               <a class="nav-item" href="#research-workbench">
                 <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
@@ -276,6 +279,7 @@
       </header>
       <aside class="sidebar" id="home-history-sidebar" aria-label="历史对话">
         <div class="sidebar-conversation-actions home-only">
+          <a class="nav-item home-skill-store-entry" id="nav-store" href="#skill-store"><svg class="prism-icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>技能商店</span></a>
           <div class="home-history-toolbar">
             <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
             <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
@@ -412,9 +416,8 @@
                   <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
                   <button id="home-model-trigger" class="home-model-trigger" type="button" aria-label="打开 API 配置" aria-haspopup="dialog" aria-controls="llm-config-modal"><span id="home-model-label">API 配置</span></button>
                   <button id="chat-cancel-query" type="button" hidden>停止</button>
-                  <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
-                    <span>发送</span>
-                    <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
+                  <button id="copilot-submit-query" class="copilot-submit-btn" type="button" aria-label="发送消息" title="发送消息">
+                    <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-up"/></svg>
                   </button>
                 </div>
               </div>
@@ -912,8 +915,8 @@
         </section>
 
         <section class="workspace-page-section" id="skill-store" hidden aria-labelledby="skill-store-title">
-          <div class="page-heading"><div><span class="eyebrow">研究能力</span><h2 id="skill-store-title">同花顺技能商店</h2><p>查看受控数据能力及个人启用状态。</p></div></div>
-          <section class="surface doc-callout doc-callout-info" id="skill-store-content" role="status" aria-live="polite"><strong>目录待加载</strong><p>能力状态以服务端注册和权限验证结果为准。</p></section>
+          <div class="page-heading research-store-heading"><div><h2 id="skill-store-title" tabindex="-1">技能商店</h2><p>为对话选择研究能力。</p></div><a class="research-store-return" href="#copilot">返回对话 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a></div>
+          <section id="skill-store-content" aria-label="技能目录"></section>
         </section>
 
         <section class="workspace-page-section research-tools-page research-workbench" id="research-workbench" hidden aria-labelledby="research-workbench-title">

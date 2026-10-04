@@ -6592,6 +6592,8 @@
     const nextOwnerId = byId("owner-id").value.trim();
     const ownerChanged = nextOwnerId !== state.ownerId;
     state.ownerId = nextOwnerId;
+    document.documentElement.dataset.prismOwner = state.ownerId;
+    document.dispatchEvent(new CustomEvent("prism:owner-ready"));
     const requestOwner = state.ownerId;
     const templateSequence = ++state.templateSequence;
     setError("");
@@ -7076,7 +7078,7 @@
 
   function renderHomeHistoryState() {
     const isMarket = document.body.classList.contains("market-active");
-    const usesSidebar = isMarket || document.body.classList.contains("copilot-active");
+    const usesSidebar = isMarket || document.body.classList.contains("copilot-active") || document.body.classList.contains("skill-store-active");
     const collapsed = usesSidebar && (isMarket ? marketSidebarCollapsed : homeHistoryCollapsed);
     document.body.classList.toggle("home-history-collapsed", collapsed);
     const sidebar = byId("home-history-sidebar");
@@ -7136,11 +7138,12 @@
     const isWorkspacePanel = Boolean(requestedNode?.closest("#expert-workspace-grid"));
     const isCopilot = domain === "copilot" || !requestedNode;
     document.body.classList.toggle("copilot-active", isCopilot);
+    document.body.classList.toggle("skill-store-active", isSkillStore);
     document.body.classList.toggle("market-active", isMarket);
     document.body.classList.toggle("portfolio-active", isOverview);
     document.body.classList.toggle("profile-active", isProfile);
     document.body.classList.toggle("profile-questionnaire-active", isQuestionnaire);
-    document.body.classList.toggle("page-without-sidebar", !isCopilot && !isMarket);
+    document.body.classList.toggle("page-without-sidebar", !isCopilot && !isMarket && !isSkillStore);
     byId("persona-switcher-bar").open = false;
     document.querySelector(".topbar-more-menu").open = false;
     renderHomeHistoryState();
@@ -13873,7 +13876,17 @@
     clearChatBtn.addEventListener("click", clearConversationContext);
   }
   const newChatSessionBtn = byId("new-chat-session");
-  if (newChatSessionBtn) newChatSessionBtn.addEventListener("click", clearConversationContext);
+  if (newChatSessionBtn) newChatSessionBtn.addEventListener("click", () => {
+    clearConversationContext();
+    if (document.body.classList.contains("skill-store-active")) window.location.hash = "copilot";
+  });
+  const clearChatSessionSearch = () => {
+    const search = byId("chat-session-search");
+    if (search) search.value = "";
+    renderChatSessionList();
+  };
+  clearChatSessionSearch();
+  window.addEventListener("pageshow", clearChatSessionSearch);
   byId("chat-session-search")?.addEventListener("input", renderChatSessionList);
   byId("home-history-hide")?.addEventListener("click", () => {
     setHomeHistoryCollapsed(true);
@@ -13899,7 +13912,7 @@
   });
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && homeMobileViewport.matches && !document.body.classList.contains("home-history-collapsed")
-      && !document.body.classList.contains("page-without-sidebar")) {
+      && !document.body.classList.contains("page-without-sidebar") && !document.querySelector("dialog[open]")) {
       setHomeHistoryCollapsed(true);
       byId("home-history-show").focus();
     }
