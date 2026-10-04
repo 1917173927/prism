@@ -6780,6 +6780,7 @@
     advisor: "system",
     profile: "profile",
     "skill-store": "skills",
+    "research-workbench": "research-workbench",
     "research-knowledge": "knowledge",
     "live-research": "live-research",
     "research-algorithms": "algorithms",
@@ -7053,6 +7054,7 @@
     "profile-results": "profile", "profile-questionnaire": "profile", "profile-preferences": "profile",
     "holdings-management": "overview", "holdings-report": "overview",
     "market-quotes": "market", "market-risk": "market", "market-sectors": "market",
+    "research-knowledge": "research-workbench", "live-research": "research-workbench", "research-algorithms": "research-workbench",
   });
   const navigationScrollPositions = new Map();
   let activeNavigationRoute = null;
@@ -7165,10 +7167,8 @@
     if (marketSec) marketSec.hidden = !isMarket;
     if (tradingStyleSec) tradingStyleSec.hidden = !isTradingStyle;
     if (skillStoreSec) skillStoreSec.hidden = !isSkillStore;
-    const isResearchTool = ["research-knowledge", "live-research", "research-algorithms"].includes(requestedId);
-    for (const id of ["research-knowledge", "live-research", "research-algorithms"]) {
-      if (byId(id)) byId(id).hidden = requestedId !== id;
-    }
+    const isResearchTool = requestedId === "research-workbench";
+    byId("research-workbench").hidden = !isResearchTool;
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
     if (pageTabs) {
       const topLevelRoute = targetId === "overview";

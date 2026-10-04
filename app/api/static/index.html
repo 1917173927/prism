@@ -10,13 +10,14 @@
     <link rel="stylesheet" href="/static/styles.css?v=20261003-auxiliary-disclosure">
     <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-auxiliary-disclosure">
     <link rel="stylesheet" href="/static/research-platform.css?v=20261001">
+    <link rel="stylesheet" href="/static/research-workbench.css?v=20261004-readable">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261003-auxiliary-disclosure" defer></script>
+    <script src="/static/app.js?v=20261004-research-workbench" defer></script>
     <script src="/static/research-platform.js?v=20261001" defer></script>
-    <script src="/static/research-tools.js?v=20261001" defer></script>
+    <script src="/static/research-tools.js?v=20261004-research-workbench" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2 sidebar-layout-active">
@@ -164,17 +165,9 @@
                 <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
                 <span>技能商店</span>
               </a>
-              <a class="nav-item" href="#research-knowledge">
+              <a class="nav-item" href="#research-workbench">
                 <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-                <span>研究知识库</span>
-              </a>
-              <a class="nav-item" href="#live-research">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-                <span>LIVE 研究</span>
-              </a>
-              <a class="nav-item" href="#research-algorithms">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-                <span>论文算法</span>
+                <span>研究工作台</span>
               </a>
             </div>
           </nav>
@@ -923,17 +916,33 @@
           <section class="surface doc-callout doc-callout-info" id="skill-store-content" role="status" aria-live="polite"><strong>目录待加载</strong><p>能力状态以服务端注册和权限验证结果为准。</p></section>
         </section>
 
-        <section class="workspace-page-section research-tools-page" id="research-knowledge" hidden aria-labelledby="research-knowledge-title">
-          <div class="page-heading"><div><span class="eyebrow">资料与证据</span><h2 id="research-knowledge-title">研究知识库</h2><p>保留原文、公告时点及版本；检索相关性不代表金融事实已核验。</p></div></div>
-          <div id="knowledge-workspace"></div>
-        </section>
-        <section class="workspace-page-section research-tools-page" id="live-research" hidden aria-labelledby="live-research-title">
-          <div class="page-heading"><div><span class="eyebrow">结构化研究任务</span><h2 id="live-research-title">LIVE 研究</h2><p>编辑节点与依赖，查看实际执行状态和单源观察证据。</p></div></div>
-          <div id="live-research-workspace"></div>
-        </section>
-        <section class="workspace-page-section research-tools-page" id="research-algorithms" hidden aria-labelledby="research-algorithms-title">
-          <div class="page-heading"><div><span class="eyebrow">确定性研究计算</span><h2 id="research-algorithms-title">论文算法</h2><p>输入有来源和时点的数据；计算状态不证明原始数据或全市场覆盖。</p></div></div>
-          <div id="algorithm-workspace"></div>
+        <section class="workspace-page-section research-tools-page research-workbench" id="research-workbench" hidden aria-labelledby="research-workbench-title">
+          <header class="rw-page-heading"><h2 id="research-workbench-title">研究工作台</h2><button id="research-tools-trigger" class="rw-button rw-quiet" type="button" aria-haspopup="dialog" aria-controls="research-tools-dialog" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>工具</button></header>
+          <div class="rw-stage"><div class="rw-card">
+            <div class="rw-task-tabs" role="tablist" aria-label="研究任务">
+              <button id="research-tab-live" class="rw-task-tab" role="tab" type="button" data-research-route="live-research" aria-controls="live-research" aria-selected="true" tabindex="0">开展研究</button>
+              <button id="research-tab-knowledge" class="rw-task-tab" role="tab" type="button" data-research-route="research-knowledge" aria-controls="research-knowledge" aria-selected="false" tabindex="-1">查找资料</button>
+              <button id="research-tab-algorithms" class="rw-task-tab" role="tab" type="button" data-research-route="research-algorithms" aria-controls="research-algorithms" aria-selected="false" tabindex="-1">算法计算</button>
+            </div>
+            <section id="live-research" role="tabpanel" aria-labelledby="research-tab-live">
+              <div class="rw-task-heading"><h3 id="live-research-title">研究一家 A 股公司</h3><p>使用基础模板查询行情与财务，结果附数据来源与时点。</p></div>
+              <div id="live-research-workspace"></div>
+              <dl class="rw-task-summary"><div><dt>基础模板查询</dt><dd>最新价格、营业收入、净利润</dd></div><div><dt>扩展研究</dt><dd>在工具中组合行情、财务、行业等查询</dd></div></dl>
+              <div id="research-results-slot" class="rw-results"></div>
+            </section>
+            <section id="research-knowledge" role="tabpanel" aria-labelledby="research-tab-knowledge" hidden>
+              <div class="rw-task-heading"><h3 id="research-knowledge-title">从已有资料中查找依据</h3><p>检索已收录的公告、财报与研报，查看相关原文。</p></div>
+              <div id="knowledge-workspace"></div>
+              <dl class="rw-task-summary"><div><dt>检索结果</dt><dd>相关原文片段、资料来源与公告时间</dd></div><div><dt>限定范围</dt><dd>按标的、报告期或历史时点筛选</dd></div></dl>
+              <div id="knowledge-results-slot" class="rw-results"></div>
+            </section>
+            <section id="research-algorithms" role="tabpanel" aria-labelledby="research-tab-algorithms" hidden>
+              <div class="rw-task-heading"><h3 id="research-algorithms-title">用历史数据计算研究指标</h3><p id="algorithm-purpose"></p></div>
+              <div id="algorithm-workspace"></div>
+              <dl class="rw-task-summary"><div><dt>所需数据</dt><dd id="algorithm-data-description"></dd></div><div><dt>计算结果</dt><dd id="algorithm-result-description"></dd></div></dl>
+              <div id="algorithm-results-slot" class="rw-results"></div>
+            </section>
+          </div></div>
         </section>
 
         <section class="workspace-page-section trading-style-page" id="trading-style" hidden aria-labelledby="trading-style-title">
@@ -1771,6 +1780,34 @@
         </div>
       </div>
     </div>
+  <dialog id="research-parameter-dialog" class="rw-dialog rw-parameter-dialog" aria-labelledby="research-parameter-title">
+    <header class="rw-dialog-heading"><h2 id="research-parameter-title">研究参数</h2><button class="rw-icon-button" type="button" data-close-research-dialog="research-parameter-dialog" aria-label="关闭研究参数">×</button></header>
+    <form id="research-parameter-form"><div class="rw-dialog-body"><div id="research-parameter-fields"></div><details class="rw-disclosure"><summary>模板信息</summary><p id="research-template-info" class="research-data-meta" aria-live="polite"></p></details></div><footer class="rw-dialog-footer"><button class="rw-button" type="button" data-close-research-dialog="research-parameter-dialog">取消</button><button class="rw-button rw-primary" type="submit">应用参数</button></footer></form>
+  </dialog>
+  <dialog id="research-tools-dialog" class="rw-dialog rw-tools-dialog" aria-labelledby="research-tools-title">
+    <header class="rw-dialog-heading"><div class="rw-tool-heading"><button id="research-tools-back" class="rw-button rw-quiet" type="button" hidden>所有工具</button><h2 id="research-tools-title" tabindex="-1">研究工具</h2></div><button class="rw-icon-button" type="button" data-close-research-dialog="research-tools-dialog" aria-label="关闭研究工具">×</button></header>
+    <div class="rw-dialog-body">
+      <div id="research-tools-menu">
+        <button id="research-tool-custom" class="rw-tool-choice" type="button" data-research-tool="custom" aria-controls="research-tool-pane-custom"><span><strong>自定义研究</strong><small>组合行情、财务等查询，设置执行顺序。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+        <button id="research-tool-materials" class="rw-tool-choice" type="button" data-research-tool="materials" aria-controls="research-tool-pane-materials"><span><strong>资料管理</strong><small>添加公告、财报或研报，供资料检索使用。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+        <details id="research-tools-maintenance" class="rw-disclosure rw-tool-maintenance"><summary>任务与运行</summary><div class="rw-disclosure-content">
+          <button id="research-tool-task" class="rw-tool-choice" type="button" data-research-tool="task" aria-controls="research-tool-pane-task"><span><strong>读取已有任务</strong><small>用任务标识打开对应研究记录。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+          <button id="research-tool-diagnostics" class="rw-tool-choice" type="button" data-research-tool="diagnostics" aria-controls="research-tool-pane-diagnostics"><span><strong>查看运行情况</strong><small>查看执行数量、排队数量与服务活动。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+        </div></details>
+      </div>
+      <section id="research-tool-pane-custom" aria-labelledby="research-tools-title" hidden><p class="rw-tool-description">每个节点代表一次数据查询；需要按顺序执行时设置前置节点。</p><div id="research-custom-slot"></div></section>
+      <section id="research-tool-pane-materials" aria-labelledby="research-tools-title" hidden><p class="rw-tool-description">上传资料文件或填写原文，补充标题、来源与公告时间。</p><div id="research-materials-slot"></div></section>
+      <section id="research-tool-pane-task" aria-labelledby="research-tools-title" hidden><div id="research-task-slot"></div></section>
+      <section id="research-tool-pane-diagnostics" aria-labelledby="research-tools-title" hidden><div id="research-runtime-slot"></div></section>
+    </div>
+  </dialog>
+  <dialog id="research-algorithm-input-dialog" class="rw-dialog rw-algorithm-input-dialog" aria-labelledby="research-algorithm-input-title">
+    <header class="rw-dialog-heading"><h2 id="research-algorithm-input-title">算法输入</h2><button class="rw-icon-button" type="button" data-close-research-dialog="research-algorithm-input-dialog" aria-label="关闭算法输入">×</button></header>
+    <div id="research-algorithm-input-slot" class="rw-dialog-body"></div><footer class="rw-dialog-footer"><button class="rw-button rw-primary" type="button" data-close-research-dialog="research-algorithm-input-dialog">完成输入</button></footer>
+  </dialog>
+  <dialog id="knowledge-original-dialog" class="rw-dialog rw-original-dialog" aria-labelledby="knowledge-original-dialog-title">
+    <header class="rw-dialog-heading"><h2 id="knowledge-original-dialog-title">资料原文</h2><button class="rw-icon-button" type="button" data-close-research-dialog="knowledge-original-dialog" aria-label="关闭资料原文">×</button></header><div id="knowledge-original-slot" class="rw-dialog-body"></div>
+  </dialog>
   <dialog id="portfolio-diagnosis-drawer" class="portfolio-diagnosis-drawer" aria-labelledby="portfolio-diagnosis-title">
     <header class="portfolio-diagnosis-header">
       <div>
