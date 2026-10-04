@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1440" viewBox="0 0 2560 1440">
+  <title>Prism 个性化证券投顾智能体系统技术架构</title>
+  <desc>依据项目详细方案绘制，包含 Web 工作台、FastAPI 模块化单体应用、中央协调器、六类专业节点、证据验证、Decimal 确定性计算、风险与合规双闸门、金融数据 Provider、语言模型和存储审计。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#687f9b"/></marker>
+    <marker id="smallArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#687f9b"/></marker>
+    <style>
+      text { font-family: 'Microsoft YaHei', 'Noto Sans CJK SC', Arial, sans-serif; fill: #20344f; }
+      .title { font-size: 44px; font-weight: 700; }
+      .heading { font-size: 29px; font-weight: 700; }
+      .subheading { font-size: 25px; font-weight: 700; }
+      .body { font-size: 24px; }
+      .small { font-size: 21px; fill: #536a83; }
+      .label { font-size: 19px; fill: #536a83; }
+      .tech { font-size: 24px; font-weight: 600; fill: #3a659b; }
+      .link { fill: none; stroke: #687f9b; stroke-width: 2.8; marker-end: url(#arrow); }
+      .feedback { fill: none; stroke: #8394aa; stroke-width: 2.2; stroke-dasharray: 8 7; marker-end: url(#smallArrow); }
+      .internal { fill: none; stroke: #7f95ad; stroke-width: 2; marker-end: url(#smallArrow); }
+      .panel { stroke-width: 1.5; }
+    </style>
+  </defs>
+  <rect width="2560" height="1440" fill="#f7f9fc"/>
+  <rect x="60" y="45" width="7" height="72" rx="3" fill="#436faa"/>
+  <text x="92" y="81" class="title">Prism 个性化证券投顾智能体系统</text>
+  <text x="95" y="117" class="small">系统技术架构</text>
+  <text x="2500" y="88" text-anchor="end" class="small">用户约束 · 专业研究 · 确定性计算 · 审查输出</text>
+
+  <rect x="620" y="154" width="1320" height="136" rx="22" fill="#e7f0ff" stroke="#b9cfea" class="panel"/>
+  <rect x="651" y="180" width="48" height="38" rx="5" fill="none" stroke="#5178ac" stroke-width="3"/>
+  <path d="M 659 226 H 691 M 675 219 V 226" fill="none" stroke="#5178ac" stroke-width="3"/>
+  <text x="718" y="207" class="heading">Web 工作台</text>
+  <text x="1898" y="205" text-anchor="end" class="tech">HTML · CSS · JavaScript · AntV X6</text>
+  <text x="660" y="255" class="body">对话入口　｜　画像中心　｜　持仓组合　｜　研究 DAG　｜　决策卡　｜　证据审计</text>
+
+  <rect x="600" y="343" width="1360" height="1000" rx="27" fill="#ffffff" stroke="#c2d0e0" stroke-width="2"/>
+  <rect x="1150" y="331" width="260" height="28" rx="10" fill="#f7f9fc"/>
+  <text x="1280" y="352" text-anchor="middle" class="label">模块化单体 · 同源部署</text>
+  <path d="M 1280 290 V 377" class="link"/>
+  <rect x="1350" y="300" width="335" height="31" rx="8" fill="#f7f9fc"/>
+  <text x="1361" y="322" class="label">HTTP 请求 / SSE 事件</text>
+
+  <rect x="630" y="378" width="1300" height="105" rx="17" fill="#edf3fb" stroke="#b9cfea" class="panel"/>
+  <text x="660" y="421" class="heading">服务接口</text>
+  <text x="898" y="421" class="tech">Python 3.11 · FastAPI · Pydantic 2</text>
+  <text x="660" y="459" class="small">类型校验 · 用户归属 · 已确认上下文 · 画像版本与持仓快照</text>
+  <path d="M 1280 483 V 520" class="link"/>
+
+  <rect x="630" y="520" width="1300" height="310" rx="20" fill="#e8f0ff" stroke="#b9cfea" class="panel"/>
+  <text x="660" y="563" class="heading">中央协调器与专业节点</text>
+  <rect x="660" y="583" width="1240" height="75" rx="12" fill="#d6e5fb"/>
+  <text x="685" y="615" class="subheading">中央协调器</text>
+  <text x="914" y="615" class="body">结构化意图 → DAG 计划 → 依赖调度 → 结果汇总</text>
+  <text x="685" y="644" class="small">有界并行 · 超时预算 · 节点状态</text>
+  <path d="M 1280 658 V 680" class="internal"/>
+  <rect x="660" y="685" width="393" height="53" rx="10" fill="#ffffff" stroke="#c7d6ea"/>
+  <rect x="1083" y="685" width="394" height="53" rx="10" fill="#ffffff" stroke="#c7d6ea"/>
+  <rect x="1507" y="685" width="393" height="53" rx="10" fill="#ffffff" stroke="#c7d6ea"/>
+  <rect x="660" y="754" width="393" height="53" rx="10" fill="#ffffff" stroke="#c7d6ea"/>
+  <rect x="1083" y="754" width="394" height="53" rx="10" fill="#ffffff" stroke="#c7d6ea"/>
+  <rect x="1507" y="754" width="393" height="53" rx="10" fill="#ffffff" stroke="#c7d6ea"/>
+  <text x="856" y="720" text-anchor="middle" class="subheading">宏观研究</text>
+  <text x="1280" y="720" text-anchor="middle" class="subheading">行业研究</text>
+  <text x="1703" y="720" text-anchor="middle" class="subheading">个股研究</text>
+  <text x="856" y="789" text-anchor="middle" class="subheading">ETF 与基金</text>
+  <text x="1280" y="789" text-anchor="middle" class="subheading">可转债研究</text>
+  <text x="1703" y="789" text-anchor="middle" class="subheading">组合决策</text>
+
+  <path d="M 950 830 V 868" class="link"/>
+  <path d="M 1600 830 V 868" class="link"/>
+  <rect x="630" y="868" width="605" height="185" rx="20" fill="#eeeafb" stroke="#c9bde5" class="panel"/>
+  <text x="660" y="911" class="heading">证据验证</text>
+  <text x="660" y="956" class="tech" style="fill:#705599">Evidence → Fact → Finding</text>
+  <text x="660" y="999" class="body">来源独立性 · 时效 · 字段校验</text>
+  <text x="660" y="1030" class="small">证据引用与结构化研究发现</text>
+  <rect x="1275" y="868" width="655" height="185" rx="20" fill="#e4f5ee" stroke="#b4d8c9" class="panel"/>
+  <text x="1305" y="911" class="heading">确定性计算</text>
+  <text x="1900" y="910" text-anchor="end" class="tech" style="fill:#327b63">Decimal · 领域规则</text>
+  <text x="1305" y="952" class="body">市值与权重 · 成分穿透 · HHI</text>
+  <text x="1305" y="990" class="body">画像预算 · 情景测算 · 目标结构</text>
+  <text x="1305" y="1028" class="body">整手股数 · 交易费用 · 现金复核</text>
+  <path d="M 1235 967 H 1275" class="internal"/>
+  <path d="M 950 1053 V 1090" class="link"/>
+  <path d="M 1600 1053 V 1090" class="link"/>
+
+  <rect x="630" y="1090" width="1300" height="223" rx="20" fill="#fff0df" stroke="#e5c49c" class="panel"/>
+  <text x="660" y="1134" class="heading">风险与合规双闸门</text>
+  <rect x="660" y="1154" width="590" height="49" rx="10" fill="#ffffff"/>
+  <rect x="1280" y="1154" width="620" height="49" rx="10" fill="#ffffff"/>
+  <text x="681" y="1186" class="body">风险闸门：画像 · 持仓 · 预算 · 证据</text>
+  <text x="1301" y="1186" class="body">合规闸门：事实引用 · 风险揭示 · 禁止表述</text>
+  <path d="M 950 1203 V 1220 H 1280 V 1234 M 1590 1203 V 1220 H 1280" fill="none" stroke="#a48b6c" stroke-width="2"/>
+  <text x="1172" y="1257" text-anchor="end" class="small">双方 PASS</text>
+  <text x="1200" y="1258" class="subheading">Recommendation · DecisionReceipt</text>
+  <text x="660" y="1290" class="small">REVIEW_REQUIRED / BLOCKED → 复核或终止建议</text>
+  <rect x="1655" y="1269" width="245" height="30" rx="8" fill="#f4dec3"/>
+  <text x="1777" y="1291" text-anchor="middle" class="label" style="font-weight:700">ADVISORY_ONLY</text>
+
+  <rect x="60" y="378" width="500" height="273" rx="20" fill="#e4f5ee" stroke="#b4d8c9" class="panel"/>
+  <text x="90" y="426" class="heading">画像与持仓输入</text>
+  <text x="90" y="473" class="body">19 题问卷 · 确定性评分</text>
+  <text x="90" y="516" class="tech" style="fill:#327b63">Pillow · RapidOCR</text>
+  <text x="90" y="559" class="body">文字 / 表格 / 截图持仓</text>
+  <rect x="90" y="582" width="440" height="43" rx="9" fill="#ffffff"/>
+  <text x="310" y="611" text-anchor="middle" class="small">用户确认 → 画像版本与持仓快照</text>
+  <path d="M 560 445 H 630" class="link"/>
+  <text x="571" y="423" class="label">输入</text>
+
+  <rect x="60" y="701" width="500" height="231" rx="20" fill="#eeeafb" stroke="#c9bde5" class="panel"/>
+  <text x="90" y="749" class="heading">语言模型服务</text>
+  <text x="90" y="795" class="tech" style="fill:#705599">OpenAI-compatible API</text>
+  <text x="90" y="838" class="body">意图识别 · 槽位解析</text>
+  <text x="90" y="881" class="body">基于已验证结果解释</text>
+  <path d="M 560 765 H 580 V 620 H 660" class="link"/>
+  <text x="90" y="913" class="label">结构化意图进入协调器</text>
+
+  <rect x="60" y="982" width="500" height="331" rx="20" fill="#edf1f6" stroke="#c5d0de" class="panel"/>
+  <text x="90" y="1031" class="heading">存储与访问审计</text>
+  <text x="90" y="1079" class="tech">SQLite · PostgreSQL 适配</text>
+  <text x="90" y="1126" class="body">账户 · 上下文 · 研究运行</text>
+  <text x="90" y="1170" class="body">DecisionEvent · 历史回执</text>
+  <text x="90" y="1214" class="body">Windows 受保护凭据</text>
+  <text x="90" y="1264" class="small">访问审计 · 用户归属 · 关联标识</text>
+  <path d="M 630 1245 H 560" class="feedback"/>
+  <text x="571" y="1214" class="label" transform="rotate(-90 571 1214)">持久化</text>
+
+  <rect x="2000" y="378" width="500" height="386" rx="20" fill="#e4f5ee" stroke="#b4d8c9" class="panel"/>
+  <text x="2030" y="426" class="heading">金融数据接入</text>
+  <text x="2030" y="475" class="tech" style="fill:#327b63">同花顺问财 SkillHub</text>
+  <text x="2030" y="519" class="body">金融数据 Provider 适配器</text>
+  <rect x="2030" y="544" width="440" height="116" rx="12" fill="#ffffff"/>
+  <text x="2050" y="582" class="body">行情 · 财务 · 行业</text>
+  <text x="2050" y="625" class="body">基金成分 · 可转债</text>
+  <text x="2030" y="704" class="small">统一字段 · 缓存 · 来源记录</text>
+  <text x="2030" y="741" class="label">结构化金融数据进入专业节点</text>
+  <path d="M 2000 707 H 1900" class="link"/>
+
+  <rect x="2000" y="814" width="500" height="316" rx="20" fill="#eeeafb" stroke="#c9bde5" class="panel"/>
+  <text x="2030" y="862" class="heading">数据质量与溯源</text>
+  <text x="2030" y="910" class="body">SUCCESS · PARTIAL</text>
+  <text x="2030" y="950" class="body">EMPTY · FAILED</text>
+  <text x="2030" y="997" class="small">source · lineage</text>
+  <text x="2030" y="1037" class="small">observed_at · retrieved_at</text>
+  <text x="2030" y="1077" class="small">missing_fields · stale</text>
+  <path d="M 2250 764 V 814" class="link"/>
+  <path d="M 2000 942 H 1980 V 850 H 950 V 868" class="feedback"/>
+  <rect x="1500" y="837" width="289" height="27" rx="7" fill="#ffffff"/>
+  <text x="1515" y="857" class="label">来源与质量状态进入验证</text>
+
+  <rect x="2000" y="1180" width="500" height="133" rx="20" fill="#fff0df" stroke="#e5c49c" class="panel"/>
+  <text x="2030" y="1227" class="subheading">可验证决策回执</text>
+  <text x="2030" y="1272" class="small">输入版本 · 证据引用 · 审查结果</text>
+  <path d="M 1930 1247 H 2000" class="link"/>
+
+  <line x1="60" y1="1370" x2="2500" y2="1370" stroke="#d9e2ed" stroke-width="1.5"/>
+  <text x="60" y="1411" class="small">画像版本 + 持仓快照 + 规则版本绑定计算与回执</text>
+  <path d="M 1435 1404 H 1490" class="link"/>
+  <text x="1505" y="1411" class="label">请求与处理</text>
+  <path d="M 1770 1404 H 1825" class="feedback"/>
+  <text x="1840" y="1411" class="label">持久化与来源信息</text>
+  <text x="2500" y="1411" text-anchor="end" class="label">依据项目详细方案第五章</text>
+</svg>
