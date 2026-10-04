@@ -252,5 +252,5 @@ await fs.writeFile(path.join(buildDir, 'slide-manifest.json'), JSON.stringify(sl
 let introductions = '# Prism 配图介绍\n\n';
 for (const asset of dataImages) introductions += `## ${asset.title}\n\n![${asset.title}](figures/${asset.name}.png)\n\n${asset.intro}\n\n来源：${asset.source}；记录时间：${asset.time}。\n\n`;
 for (const entry of slideMetadata) introductions += `## 第 ${entry.index} 页 ${entry.title}\n\n${entry.intro}\n\n对应：${entry.heading}。\n\n`;
-await fs.writeFile(path.join(deliveryDir, '配图介绍.md'), introductions);
+await fs.writeFile(path.join(deliveryDir, '配图介绍.md'), `${introductions.trimEnd()}\n`);
 console.log(JSON.stringify({ candidate: path.join(buildDir, 'candidate.pptx'), slides: slideMetadata.length, dataImages: dataImages.length }));
