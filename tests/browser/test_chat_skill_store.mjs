@@ -110,6 +110,17 @@ try {
   }));
   assert.ok(initialGeometry.storeTop < initialGeometry.newTop);
   assert.equal(initialGeometry.sendWidth, 34); assert.equal(initialGeometry.sendHeight, 34);
+  const buttonColors = await page.evaluate(() => {
+    const probe = document.createElement("span"); document.body.append(probe);
+    const color = token => { probe.style.color = `var(${token})`; return getComputedStyle(probe).color; };
+    const colors = {normal: color("--brand-action"), hover: color("--brand-action-hover")};
+    probe.remove(); return colors;
+  });
+  assert.equal(await page.$eval("#copilot-submit-query", node => getComputedStyle(node).backgroundColor), buttonColors.normal);
+  await page.hover("#copilot-submit-query");
+  await page.waitForFunction(color => getComputedStyle(document.getElementById("copilot-submit-query")).backgroundColor === color, {}, buttonColors.hover);
+  await page.mouse.move(0, 0);
+  await page.waitForFunction(color => getComputedStyle(document.getElementById("copilot-submit-query")).backgroundColor === color, {}, buttonColors.normal);
   assert.equal(await page.$eval("#copilot-submit-query use", node => node.getAttribute("href")), "#icon-arrow-up");
   assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
   await click("#agent-feature-trigger"); await click('[data-feature-id="industry"]');
@@ -227,6 +238,7 @@ try {
           border: getComputedStyle(brand).borderBottomWidth, documentWidth: document.documentElement.scrollWidth, width: innerWidth};
       });
       assert.equal(geometry.fontSize, "20px"); assert.equal(geometry.border, "0px");
+      if (width > 900) assert.ok(geometry.navigation[0] < 200, `${width}px ${hash}`);
       assert.ok(geometry.documentWidth <= width + 1, JSON.stringify({hash, ...geometry}));
       const navigation = {header: geometry.header, brand: geometry.brand, navigation: geometry.navigation};
       if (!reference) reference = navigation;
@@ -234,6 +246,14 @@ try {
       evidence.geometry.push({hash, ...geometry});
     }
     await route("skill-store", "#skill-store"); await waitSkills();
+    const sidebar = await page.evaluate(() => {
+      const store = document.getElementById("nav-store"), create = document.getElementById("new-chat-session"), search = document.querySelector(".sidebar-chat-search");
+      const text = [...create.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+      const range = document.createRange(); range.selectNodeContents(text);
+      return {icons: [store, create, search].map(node => node.querySelector("svg").getBoundingClientRect().left),
+        labels: [store.querySelector("span").getBoundingClientRect().left, range.getBoundingClientRect().left, search.querySelector("input").getBoundingClientRect().left]};
+    });
+    for (const positions of [sidebar.icons, sidebar.labels]) assert.ok(Math.max(...positions) - Math.min(...positions) < 1, JSON.stringify({width, ...sidebar}));
     if (width <= 760) {
       const history = await page.evaluate(() => ({
         titleTop: document.getElementById("skill-store-title").getBoundingClientRect().top,
@@ -276,6 +296,9 @@ try {
 
   await click("#home-model-trigger");
   await page.waitForFunction(() => !document.getElementById("btn-save-llm-config").disabled);
+  assert.equal(await page.$eval("#llm-config-modal-title", node => node.textContent.trim()), "API 配置");
+  assert.equal(await page.$$eval("#llm-config-modal .modal-hint, #llm-config-modal .source-mode-help", nodes => nodes.length), 0);
+  assert.ok(await page.$eval("#llm-config-status", node => node.textContent.length < 40));
   for (const provider of ["qwen", "openai", "deepseek"]) {
     await page.select("#llm-provider-select", provider);
     assert.ok(await page.$eval("#llm-base-url-input", node => node.value.startsWith("https://")));

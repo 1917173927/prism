@@ -2750,10 +2750,10 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 25px;
+  gap: 20px;
   min-width: 0;
   height: 66px;
-  padding: 0 26px;
+  padding: 0 22px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--page);
 }
@@ -2761,7 +2761,7 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation-actions { display: flex; align-items: center; min-width: 0; gap: 12px; }
 .prism-ui-v2.sidebar-layout-active .home-navigation-main { flex: 1; gap: 25px; }
 .prism-ui-v2.sidebar-layout-active #home-primary-navigation { min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex: 0 0 209px; min-height: 0; padding: 0; gap: 9px; border-bottom: 0; }
+.prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex: 0 0 auto; min-height: 0; padding: 0; gap: 9px; border-bottom: 0; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand strong { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand > div > span { display: none; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .brand-mark { width: 28px; height: 28px; }
@@ -2800,7 +2800,7 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.sidebar-layout-active.home-history-collapsed .sidebar { transform: translateX(-100%); opacity: 0; visibility: hidden; transition-delay: 0s, 0s, 280ms; }
 .prism-ui-v2.sidebar-layout-active.home-history-collapsed .home-history-show { display: inline-flex; }
 .prism-ui-v2.market-active.home-history-collapsed #market { padding-top: 58px; }
-.prism-ui-v2.sidebar-layout-active .sidebar-conversation-actions .home-skill-store-entry { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 43px; padding: 10px; border: 0; border-radius: 9px; color: var(--text-secondary); background: transparent; font: 14px/1.5 var(--sans); }
+.prism-ui-v2.sidebar-layout-active .sidebar-conversation-actions .home-skill-store-entry { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; min-height: 39px; padding: 7px 10px; border: 1px solid transparent; border-radius: 9px; color: var(--text-secondary); background: transparent; font: 14px/1.5 var(--sans); }
 .prism-ui-v2.sidebar-layout-active .home-skill-store-entry:hover { background: var(--surface-hover); }
 .prism-ui-v2.sidebar-layout-active .home-skill-store-entry.active { color: var(--brand); background: var(--brand-soft); font-weight: 550; }
 .prism-ui-v2.sidebar-layout-active .home-skill-store-entry.active::before { display: none; }
@@ -2944,8 +2944,8 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.copilot-active .home-model-trigger:hover { color: var(--text-primary); background: var(--surface-subtle); }
 .prism-ui-v2.copilot-active .home-composer-tool .prism-icon { width: 14px; height: 14px; }
 .prism-ui-v2.copilot-active .home-upload-trigger .prism-icon { width: 20px; height: 20px; }
-.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: #35363a; box-shadow: none; }
-.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:hover { background: #484a50; }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: var(--brand-action); box-shadow: none; }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:hover { background: var(--brand-action-hover); }
 .prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:disabled { opacity: 1; color: #a1a5ae; background: #e7e8eb; cursor: default; }
 .prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn .prism-icon { width: 19px; height: 19px; }
 .prism-ui-v2.copilot-active .agent-conversation .clear-chat-btn { display: none; }
@@ -3022,9 +3022,6 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.copilot-active #copilot:has(.chat-msg) .copilot-query-box { margin-top: auto; }
 
 @media (max-width: 1220px) {
-  .prism-ui-v2.sidebar-layout-active .home-navigation { gap: 18px; padding-inline: 20px; }
-  .prism-ui-v2.sidebar-layout-active .home-navigation-main { gap: 18px; }
-  .prism-ui-v2.sidebar-layout-active .home-navigation .brand { flex-basis: 196px; }
   .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-columns: 228px minmax(0, 1fr); }
   .prism-ui-v2.sidebar-layout-active .sidebar { width: 228px; }
 }
@@ -3032,7 +3029,7 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 @media (max-width: 900px) {
   html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 120px; }
   .prism-ui-v2.sidebar-layout-active .app-shell { grid-template-rows: 104px minmax(0, 1fr); }
-  .prism-ui-v2.sidebar-layout-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 17px; }
+  .prism-ui-v2.sidebar-layout-active .home-navigation { flex-wrap: wrap; gap: 0; height: 104px; padding: 0 14px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation-main { display: contents; }
   .prism-ui-v2.sidebar-layout-active .home-navigation .brand { order: 1; flex-basis: auto; min-height: 52px; }
   .prism-ui-v2.sidebar-layout-active .home-navigation-actions { order: 2; margin-left: auto; gap: 3px; }

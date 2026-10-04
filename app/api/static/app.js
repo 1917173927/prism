@@ -11537,7 +11537,7 @@
     const model = byId("llm-model-input");
     if (model) model.value = llmConfig.model;
     const key = byId("llm-api-key-input");
-    if (key) key.placeholder = llmConfig.configured ? "已安全保存；留空保留，填写可替换" : "请输入 API Key";
+    if (key) key.placeholder = llmConfig.configured ? "已保存，留空保留" : "请输入 API Key";
   }
 
   function setLLMFormBusy(busy) {
@@ -11626,11 +11626,9 @@
       : settings.base_url.includes("api.openai.com") ? "openai" : "deepseek";
     updateLLMConfigUI();
     if (!llmFormDirty) syncLLMConfigForm();
-    const persistence = settings.persistence === "OS_PROTECTED" ? "操作系统加密持久化" : "仅当前服务进程有效";
     const status = byId("llm-config-status");
     status.style.display = "block";
-    const accessHint = "密钥不回显，留空保存会保留现有密钥；后续保存会更新全局配置。";
-    status.textContent = settings.is_configured ? `全局共享 · ${settings.model} · ${persistence}。${accessHint}` : `尚未配置全局模型服务 · ${persistence}。${accessHint}`;
+    status.textContent = settings.is_configured ? `全局配置 · ${settings.model}` : "尚未配置";
     setLLMFormBusy(false);
     return settings;
   }
@@ -11657,7 +11655,7 @@
         if (!tested.ok) throw await apiError(tested);
         if (owner !== state.ownerId) return;
         llmConfig.connectionStatus = "CONNECTED";
-        status.textContent = "配置已持久化保存，连接测试通过。";
+        status.textContent = "配置已保存，连接测试通过。";
       } catch (error) {
         if (owner !== state.ownerId) return;
         llmConfig.connectionStatus = "FAILED";
