@@ -7,6 +7,7 @@ import puppeteer from "puppeteer-core";
 
 const baseUrl = process.env.PRISM_TEST_BASE_URL || "http://127.0.0.1:8021";
 const executablePath = process.env.PRISM_TEST_BROWSER || "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge";
+assert.equal(process.env.PRISM_TEST_ISOLATED, "1", "账户注册与保存检查需要独立数据库。");
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const output = path.join(root, "output/personal-center");
 await mkdir(output, {recursive: true});
@@ -14,7 +15,7 @@ const directory = await mkdtemp(path.join(output, "browser-"));
 const temporary = path.join(directory, "temporary");
 await mkdir(temporary);
 const browser = await puppeteer.launch({executablePath, headless: true,
-  userDataDir: path.join(directory, "profile"), env: {...process.env, TMPDIR: temporary}});
+  userDataDir: path.join(directory, "profile"), env: {...process.env, TEMP: temporary, TMP: temporary, TMPDIR: temporary}});
 const evidence = {checks: [], geometries: [], requests: []};
 
 try {
@@ -47,11 +48,16 @@ try {
     if (hash === "profile") await page.waitForSelector("body.profile-active #profile-overview-view:not([hidden])");
     if (hash === "profile-results") await page.waitForSelector("body.profile-active #profile-overview-view", {visible: true});
     if (hash === "profile-questionnaire") await page.waitForSelector("body.profile-questionnaire-active #profile-questionnaire-view:not([hidden])");
-    if (hash === "profile-preferences") await page.waitForSelector("body.profile-active #profile-preferences-view", {visible: true});
+    if (hash === "profile-preferences") await page.waitForSelector("#profile-display-dialog[open]");
   }
   async function section(index) {
     await page.locator(`#questionnaire-section-tabs li:nth-child(${index + 1}) button`).click();
-    await page.waitForFunction(expected => document.querySelector("#questionnaire-section-tabs button[aria-current='step']").textContent.startsWith(`${expected + 1}.`), {}, index);
+    await page.waitForFunction(expected => document.querySelector("#questionnaire-section-tabs button[aria-current='step']").textContent.startsWith(`${expected + 1}.`), {timeout: 10000}, index);
+  }
+  async function reload() {
+    await page.reload({waitUntil: "domcontentloaded"});
+    await page.waitForFunction(() => document.querySelector("#owner-id").value === document.documentElement.dataset.prismOwner);
+    await page.waitForNetworkIdle({idleTime: 500});
   }
   async function checkRadar(summary) {
     const values = await page.$$eval("#profile-summary-content .profile-radar-label", nodes =>
@@ -76,6 +82,13 @@ try {
         labels: [...radar.querySelectorAll(".profile-radar-label")].map(node => ({...rect(node), fontSize: parseFloat(getComputedStyle(node).fontSize), text: node.textContent})),
         sidebarVisible: document.querySelector("#home-history-sidebar").getClientRects().length > 0,
         tabsVisible: document.querySelector("#workspace-page-tabs").getClientRects().length > 0,
+        actions: [...document.querySelectorAll(".profile-center-actions button, #profile-questionnaire-open")].map(node => ({
+          ...rect(node), fontFamily: getComputedStyle(node).fontFamily,
+          fontSize: parseFloat(getComputedStyle(node).fontSize), fontWeight: getComputedStyle(node).fontWeight,
+        })),
+        fontFamily: getComputedStyle(document.body).fontFamily,
+        questionnaireEntries: [...document.querySelectorAll("#profile a[href='#profile-questionnaire']")]
+          .filter(node => node.getClientRects().length > 0).length,
       };
     });
     evidence.geometries.push({state, ...measurement});
@@ -83,7 +96,15 @@ try {
     assert.ok(measurement.radar.top >= measurement.heading.bottom, JSON.stringify(measurement));
     assert.ok(measurement.documentWidth <= width + 1, JSON.stringify(measurement));
     assert.equal(measurement.sidebarVisible, false);
-    assert.equal(measurement.tabsVisible, true);
+    assert.equal(measurement.tabsVisible, false);
+    assert.equal(measurement.questionnaireEntries, 1);
+    assert.equal(measurement.actions.length, 3);
+    for (const action of measurement.actions) {
+      assert.equal(action.fontFamily, measurement.fontFamily);
+      assert.equal(action.fontSize, 14);
+      assert.equal(action.fontWeight, "500");
+      assert.ok(action.left >= 0 && action.right <= width && action.height >= 36, JSON.stringify({width, action}));
+    }
     for (const label of measurement.labels) {
       assert.ok(label.left >= measurement.card.left && label.right <= measurement.card.right, JSON.stringify({width, label, card: measurement.card}));
       assert.ok(label.top >= measurement.card.top && label.bottom <= measurement.card.bottom, JSON.stringify({width, label, card: measurement.card}));
@@ -102,6 +123,8 @@ try {
   await page.type("#confirmation", password);
   await Promise.all([page.waitForNavigation({waitUntil: "domcontentloaded"}), page.click("#submit")]);
   await page.waitForSelector("body:not(.questionnaire-pending)");
+  await page.waitForFunction(() => document.querySelector("#owner-id").value === document.documentElement.dataset.prismOwner);
+  await page.waitForNetworkIdle({idleTime: 500});
   assert.equal((await api("/api/v1/auth/context")).enabled, true);
   await page.waitForSelector("#questionnaire-welcome[open]");
   await page.click("#welcome-start");
@@ -137,11 +160,11 @@ try {
         const labels = id === "Q12" ? ["几乎没有影响", "影响较小", "影响一般", "影响较大", "影响非常大"]
           : ["几乎不参考", "少量参考", "适度参考", "较多参考", "高度参考"];
         assert.deepEqual(rendered.options.map(option => option.label), labels);
-        await page.click(`input[name="${id}"][value="3"]`);
+        await page.locator(`input[name="${id}"][value="3"]`).click();
       } else {
         assert.deepEqual(rendered.options, question.options.map(option => ({value: option.option_id,
           type: question.question_type === "MULTI" ? "checkbox" : "radio", label: option.label})));
-        if (id !== "Q13") await page.click(`input[name="${id}"][value="${question.options[0].option_id}"]`);
+        if (id !== "Q13") await page.locator(`input[name="${id}"][value="${question.options[0].option_id}"]`).click();
       }
       if (id !== "Q13") assert.equal(await page.$eval(`input[name="${id}"]:checked`, node => node === document.activeElement), true);
       seenQuestions.push(id);
@@ -155,21 +178,25 @@ try {
       assert.equal(await page.$$("#profile-summary-content .profile-radar-value").then(nodes => nodes.length), 0);
       assert.equal(await page.$$("#profile-summary-content .profile-radar-ring").then(nodes => nodes.length), 5);
       for (const [width, height] of [[320, 740], [390, 844], [768, 1024], [1440, 900]]) await geometry(width, height, "未确认");
-      await page.reload({waitUntil: "domcontentloaded"});
+      await reload();
       await page.waitForSelector("body.profile-active:not(.questionnaire-pending) #profile-summary-content .profile-radar-visual");
+      assert.equal(await page.$eval("#questionnaire-welcome", node => node.open), false);
       await page.click("#profile-questionnaire-open");
       await page.waitForSelector("#profile-questionnaire-view:not([hidden])");
       for (const id of current.question_ids) assert.equal(await page.$$( `input[name="${id}"]:checked`).then(nodes => nodes.length), 1);
       record("未确认画像使用空坐标、四种宽度的雷达首屏位置与草稿恢复");
     }
-    if (index < template.sections.length - 1) await page.click("#questionnaire-next");
+    if (index < template.sections.length - 1) {
+      await page.locator("#questionnaire-next").click();
+      await page.waitForFunction(expected => document.querySelector("#questionnaire-section-tabs button[aria-current='step']").textContent.startsWith(`${expected + 2}.`), {timeout: 10000}, index);
+    }
   }
   assert.deepEqual(seenQuestions, template.questions.map(question => question.question_id));
   assert.equal(optionCount, 98);
-  await page.click('input[name="Q19"][value="none"]');
+  await page.locator('input[name="Q19"][value="none"]').click();
   assert.deepEqual(await page.$$eval('input[name="Q19"]:checked', nodes => nodes.map(node => node.value)), ["none"]);
   const q19 = template.questions.find(question => question.question_id === "Q19");
-  await page.click(`input[name="Q19"][value="${q19.options.find(option => option.option_id !== "none").option_id}"]`);
+  await page.locator(`input[name="Q19"][value="${q19.options.find(option => option.option_id !== "none").option_id}"]`).click();
   assert.equal(await page.$eval('input[name="Q19"][value="none"]', node => node.checked), false);
   assert.equal(await page.$$(".questionnaire-review dt").then(nodes => nodes.length), 19);
   assert.match(await text("#questionnaire-progress-text"), /18 \/ 18/);
@@ -195,27 +222,32 @@ try {
   assert.equal(firstSummary.presentation.rule_trace.feats.defaulted, true);
   await checkRadar(firstSummary);
   assert.equal(await page.$$("#profile-details-content > details:not([open])").then(nodes => nodes.length), 3);
-  assert.equal(await text("#profile-questionnaire-open"), "修改问卷");
+  assert.equal(await text("#profile-questionnaire-open"), "再次测评");
   assert.match(await text("#questionnaire-confirmation-status"), /第 1 版/);
   assert.equal(await visible("#questionnaire-form"), false);
   const expectedRating = {CONSERVATIVE: "保守型", BALANCED: "平衡型", GROWTH: "成长型"}[firstSummary.effective_profile.risk_level];
   assert.equal(await text(".profile-center-rating-value"), expectedRating);
   record("服务端预览独立展示、确认保存并返回个人中心、雷达显示真实分数");
 
-  for (const [route, view] of [
-    ["profile-preferences", "profile-preferences-view"],
-    ["profile-questionnaire", "profile-questionnaire-view"],
-    ["profile-results", "profile-overview-view"],
-  ]) {
-    await page.click(`#workspace-page-tabs a[href="#${route}"]`);
-    await page.waitForFunction(expected => document.querySelector("#profile").dataset.activeSubpage === expected, {}, route);
-    assert.equal(await visible(`#${view}`), true);
-    assert.equal(await page.$eval(`#workspace-page-tabs a[href="#${route}"]`, node => node.getAttribute("aria-current")), "page");
-    assert.deepEqual(await page.$$eval("#profile [data-subpage]", (nodes, selected) =>
-      nodes.filter(node => node.dataset.subpage !== selected && node.getClientRects().length > 0).map(node => node.dataset.subpage), route), []);
-  }
+  assert.equal(await page.$$("#workspace-page-tabs [data-domain='profile']").then(nodes => nodes.length), 0);
+  await page.click("#profile-display-settings");
+  await page.waitForSelector("#profile-display-dialog[open]");
+  assert.equal(await text("#profile-display-title"), "偏好设置");
+  assert.equal(await visible("#profile-overview-view"), true);
+  assert.equal(await visible("#questionnaire-form"), false);
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => location.hash === "#profile-results");
+  await page.click("#profile-questionnaire-open");
+  await page.waitForSelector("#profile-questionnaire-view:not([hidden])");
+  await page.click("#profile-questionnaire-return");
+  await page.waitForFunction(() => location.hash === "#profile-results");
+  await navigate("profile-preferences");
+  await reload();
+  await page.waitForSelector("body:not(.questionnaire-pending) #profile-display-dialog[open]");
+  await page.click("#profile-display-close");
+  await page.waitForFunction(() => location.hash === "#profile-results");
   assert.equal((await api("/api/v1/advisor/profile/summary")).questionnaire_snapshot.snapshot_id, firstSummary.questionnaire_snapshot.snapshot_id);
-  record("画像结果、问卷与偏好三子页通过可见导航互相可达，切换不修改已确认画像");
+  record("个人中心保留一个测评入口，偏好弹窗、原链接刷新与关闭操作通过");
 
   for (let index = 1; index <= 3; index += 1) await page.click(`#profile-details-content > details:nth-child(${index}) > summary`);
   assert.equal(await page.$$("#profile-details-content .profile-key-fact").then(nodes => nodes.length), firstSummary.presentation.key_profile.length);
@@ -235,6 +267,7 @@ try {
   await page.click("#profile-display-settings");
   await page.waitForSelector("#profile-display-dialog[open]");
   await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector("#profile-display-dialog").open && location.hash === "#profile-results");
   assert.equal(await page.$eval("#profile-display-settings", node => node === document.activeElement), true);
   await page.click("#profile-display-settings");
   await page.click('input[name="profile-display-policy-level"][value="80"]');
@@ -243,21 +276,57 @@ try {
   assert.equal((await policyResponse).status(), 200);
   await page.waitForFunction(() => !document.querySelector("#profile-display-dialog").open);
   assert.equal(await text("#profile-display-level"), "简洁");
+  await navigate("profile-preferences");
+  await reload();
+  await page.waitForSelector("body:not(.questionnaire-pending) #profile-display-dialog[open]");
+  await page.waitForFunction(() => document.querySelector('input[name="profile-display-policy-level"][value="80"]').checked);
+  for (const [width, height] of [[320, 740], [390, 844], [768, 1024], [1440, 900]]) {
+    await page.setViewport({width, height});
+    const measurement = await page.$eval("#profile-display-dialog", dialog => ({
+      width: innerWidth, height: innerHeight, bounds: dialog.getBoundingClientRect().toJSON(),
+      clientWidth: dialog.clientWidth, scrollWidth: dialog.scrollWidth,
+      options: [...dialog.querySelectorAll(".profile-display-options label")].map(node => ({
+        bounds: node.getBoundingClientRect().toJSON(), fontSize: parseFloat(getComputedStyle(node).fontSize),
+      })),
+    }));
+    assert.ok(measurement.bounds.left >= 0 && measurement.bounds.right <= width, JSON.stringify(measurement));
+    assert.ok(measurement.bounds.top >= 0 && measurement.bounds.bottom <= height, JSON.stringify(measurement));
+    assert.ok(measurement.scrollWidth <= measurement.clientWidth + 1, JSON.stringify(measurement));
+    assert.equal(measurement.options.length, 3);
+    for (const option of measurement.options) {
+      assert.ok(option.fontSize >= 14 && option.bounds.width >= 200, JSON.stringify(option));
+    }
+    evidence.geometries.push({state: "偏好弹窗", ...measurement});
+  }
+  const themeResponse = waitResponse("/api/v1/user/preferences", "PUT");
+  await page.click("#profile-theme-toggle");
+  assert.equal((await themeResponse).status(), 200);
+  await page.waitForFunction(() => document.body.classList.contains("prism-theme-dark"));
+  assert.equal((await api("/api/v1/user/preferences")).theme, "DARK");
+  assert.equal(await text("#profile-theme-toggle"), "切换浅色主题");
+  await reload();
+  await page.waitForSelector("body.prism-theme-dark:not(.questionnaire-pending) #profile-display-dialog[open]");
+  const restoreTheme = waitResponse("/api/v1/user/preferences", "PUT");
+  await page.click("#profile-theme-toggle");
+  assert.equal((await restoreTheme).status(), 200);
+  await page.waitForFunction(() => !document.body.classList.contains("prism-theme-dark"));
+  await page.click("#profile-display-close");
+  await page.waitForFunction(() => location.hash === "#profile-results");
   assert.equal((await api("/api/v1/advisor/profile/summary")).questionnaire_snapshot.snapshot_id, firstSummary.questionnaire_snapshot.snapshot_id);
-  record("回答设置窗口通过实际接口保存，Escape 返回按钮焦点，问卷版本保持一致");
+  record("偏好弹窗四种宽度、字体、回答详细度保存、主题保存和刷新恢复通过");
 
   await page.click("#profile-questionnaire-open");
   await page.waitForSelector("#profile-questionnaire-view:not([hidden])");
   await section(0);
   const changedQuestion = template.questions.find(question => question.question_id === "Q4");
   const changedOption = changedQuestion.options.at(-1).option_id;
-  await page.click(`input[name="Q4"][value="${changedOption}"]`);
+  await page.locator(`input[name="Q4"][value="${changedOption}"]`).click();
   assert.equal(await page.$eval("#questionnaire-confirm", node => node.hidden), true);
   await page.click("#profile-questionnaire-return");
   await page.waitForFunction(() => window.location.hash === "#profile-results");
   await page.waitForSelector("#profile-overview-view:not([hidden])");
   await checkRadar(firstSummary);
-  await page.reload({waitUntil: "domcontentloaded"});
+  await reload();
   await page.waitForSelector("body.profile-active:not(.questionnaire-pending) #profile-summary-content .profile-radar-value");
   await checkRadar(firstSummary);
   await page.click("#profile-questionnaire-open");
@@ -277,10 +346,10 @@ try {
   await checkRadar(firstSummary);
   await navigate("profile-questionnaire");
   await section(0);
-  await page.click(`input[name="Q4"][value="${changedQuestion.options[0].option_id}"]`);
+  await page.locator(`input[name="Q4"][value="${changedQuestion.options[0].option_id}"]`).click();
   assert.equal(await page.$eval("#questionnaire-result", node => node.hidden), true);
   assert.equal(await page.$eval("#questionnaire-confirm", node => node.hidden), true);
-  await page.click(`input[name="Q4"][value="${changedOption}"]`);
+  await page.locator(`input[name="Q4"][value="${changedOption}"]`).click();
   await section(5);
   const refreshedPreviewResponse = waitResponse("/api/v1/advisor/profile/questionnaire/preview", "POST");
   await page.click("#questionnaire-preview");
@@ -332,6 +401,7 @@ try {
   assert.equal(await page.$eval(".profile-radar-visual", node => getComputedStyle(node).animationName), "none");
   record("独立问卷在四种宽度下没有横向溢出，减少动态效果设置通过");
   assert.deepEqual(errors, []);
+  evidence.errors = errors;
   assert.ok(evidence.requests.some(request => request.path.endsWith("/preview") && request.status === 200));
   assert.ok(evidence.requests.some(request => request.path.endsWith("/confirm") && request.status === 200));
   await writeFile(path.join(output, "verification.json"), JSON.stringify(evidence, null, 2));

@@ -2498,7 +2498,7 @@
       error.textContent = "";
       error.hidden = true;
       setDisplayPolicyControl(summary?.display_policy);
-      byId("profile-questionnaire-open").textContent = snapshot ? "修改问卷" : "填写问卷";
+      byId("profile-questionnaire-open").textContent = snapshot ? "再次测评" : "填写问卷";
       if (status) {
         status.textContent = snapshot ? `已确认 · 第 ${snapshot.snapshot_version} 版` : "问卷未完成";
         status.className = snapshot ? "status-chip ready" : "status-chip";
@@ -2554,13 +2554,6 @@
       holdings.href = "#overview";
       holdings.textContent = "进入持仓分析";
       rating.append(holdings);
-      if (!snapshot) {
-        const questionnaire = document.createElement("a");
-        questionnaire.className = "profile-empty-questionnaire";
-        questionnaire.href = "#profile-questionnaire";
-        questionnaire.textContent = "填写问卷，查看投资者画像";
-        rating.append(questionnaire);
-      }
     }
     hero.append(radarPanel, rating);
     panel.append(hero);
@@ -2719,6 +2712,7 @@
     renderQuestionnaire();
     renderPortfolioReadiness();
     applyQuestionnaireGate(summary);
+    if (activeNavigationRoute === "profile-preferences") openProfileDisplaySettings();
     return summary;
   }
 
@@ -7090,7 +7084,7 @@
     // endpoints remain individually gated by their existing server-side profile
     // checks, so navigation must not manufacture a C-level profile.
     if (!hasConfirmedQuestionnaire) {
-      if (["#profile", "#profile-questionnaire"].includes(window.location.hash)) return;
+      if (["#profile", "#profile-results", "#profile-questionnaire", "#profile-preferences"].includes(window.location.hash)) return;
       const key = ownerStorageKey("prism_welcome_dismissed");
       if (!workspaceStorage.getItem(key) || new URLSearchParams(window.location.search).get("onboarding") === "1") byId("questionnaire-welcome")?.showModal();
       return;
@@ -7115,6 +7109,16 @@
   const navigationScrollPositions = new Map();
   let activeNavigationRoute = null;
   let navigationScrollFrame = null;
+
+  function openProfileDisplaySettings() {
+    const dialog = byId("profile-display-dialog");
+    if (dialog.open || !state.profileSummary) return;
+    const score = String(displayDetailLevelForPolicy(state.displayPolicy).score);
+    dialog.querySelectorAll('input[name="profile-display-policy-level"]').forEach(input => { input.checked = input.value === score; });
+    byId("profile-display-error").hidden = true;
+    dialog.showModal();
+    document.body.classList.add("profile-settings-open");
+  }
 
   const PORTFOLIO_DETAIL_ROUTES = Object.freeze({
     "portfolio-risk": "portfolio-risk-details", "portfolio-profit": "portfolio-pnl-details",
@@ -7177,7 +7181,7 @@
     let requestedId = RESEARCH_SUBPAGES[routeId] || routeId;
     const routeChanged = activeNavigationRoute !== routeId;
     const previousRoute = activeNavigationRoute;
-    if (routeChanged && activeNavigationRoute) navigationScrollPositions.set(activeNavigationRoute, window.scrollY);
+    if (routeChanged && activeNavigationRoute) navigationScrollPositions.set(activeNavigationRoute === "profile-preferences" ? "profile-results" : activeNavigationRoute, window.scrollY);
     activeNavigationRoute = routeId;
     if (routeChanged && navigationScrollFrame) cancelAnimationFrame(navigationScrollFrame);
     let domain = DOMAIN_MAP[requestedId] || "copilot";
@@ -7215,8 +7219,8 @@
     renderHomeHistoryState();
     byId("profile-overview-view").hidden = isQuestionnaire;
     byId("profile-questionnaire-view").hidden = !isQuestionnaire;
-    byId("profile").setAttribute("aria-labelledby", isQuestionnaire ? "profile-questionnaire-heading" : routeId === "profile-preferences" ? "display-preference-title" : "profile-title");
-    if (!isProfile || isQuestionnaire) byId("profile-display-dialog").close();
+    byId("profile").setAttribute("aria-labelledby", isQuestionnaire ? "profile-questionnaire-heading" : "profile-title");
+    if (!isProfile || routeId !== "profile-preferences") byId("profile-display-dialog").close();
     if (!isOverview || routeChanged) {
       ["portfolio-modal", "portfolio-diagnosis-drawer"].forEach(id => byId(id).close());
       syncPortfolioDialogScroll();
@@ -7241,17 +7245,16 @@
     if (expertSec) expertSec.hidden = !isWorkspacePanel;
     if (pageTabs) {
       const topLevelRoute = targetId === "overview";
-      pageTabs.hidden = isCopilot || isOverview || isSkillStore || isResearchTool || topLevelRoute || requestedNode?.classList.contains("auxiliary-page");
+      pageTabs.hidden = isCopilot || isOverview || isSkillStore || isResearchTool || isProfile || topLevelRoute || requestedNode?.classList.contains("auxiliary-page");
     }
     for (const section of [overviewSec, marketSec, byId("profile")]) {
       if (!section) continue;
       section.dataset.activeSubpage = routeId;
       section.querySelectorAll("[data-subpage]").forEach(node => {
-        node.classList.toggle("research-subpage-hidden", node.dataset.subpage !== routeId);
+        const visibleRoute = section.id === "profile" && routeId === "profile-preferences" ? "profile-results" : routeId;
+        node.classList.toggle("research-subpage-hidden", node.dataset.subpage !== visibleRoute);
       });
     }
-    const preferenceLevel = byId("profile-answer-detail");
-    if (preferenceLevel) preferenceLevel.value = String(byId("ai-trust-score")?.value || 50);
 
     setExpertMode(isWorkspacePanel);
 
@@ -7272,7 +7275,7 @@
         if (selected) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
       });
-      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isProfile ? byId(isQuestionnaire ? "profile-questionnaire-view" : routeId === "profile-preferences" ? "profile-preferences-view" : "profile-overview-view") : isWorkspacePanel ? requestedNode : null;
+      const pageContainer = isOverview ? overviewSec : isMarket ? marketSec : isWorkspacePanel ? requestedNode : null;
       const pageHeading = pageContainer?.querySelector(":scope > .page-heading, :scope > .overview-header-bar, :scope > .panel-head, :scope > .panel-header, :scope > header");
       if (pageHeading) pageHeading.insertAdjacentElement("afterend", pageTabs);
       else if (pageContainer) pageContainer.prepend(pageTabs);
@@ -7293,10 +7296,11 @@
       if (routeChanged && Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, routeId) && !Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, previousRoute)) byId("portfolio-details-title").focus({preventScroll: true});
       if (routeChanged && routeId === "holdings-report" && Object.hasOwn(PORTFOLIO_DETAIL_ROUTES, previousRoute)) byId("portfolio-details-entry").focus({preventScroll: true});
     } else if (isProfile && routeChanged) {
-      byId(isQuestionnaire ? "profile-questionnaire-heading" : routeId === "profile-preferences" ? "display-preference-title" : "profile-title")?.focus({preventScroll: true});
+      if (routeId === "profile-preferences") openProfileDisplaySettings();
+      else byId(isQuestionnaire ? "profile-questionnaire-heading" : "profile-title").focus({preventScroll: true});
     }
     if (routeChanged) navigationScrollFrame = requestAnimationFrame(() => {
-      window.scrollTo({top: navigationScrollPositions.get(routeId) || 0, behavior: "instant"});
+      window.scrollTo({top: navigationScrollPositions.get(routeId === "profile-preferences" ? "profile-results" : routeId) || 0, behavior: "instant"});
       navigationScrollFrame = null;
     });
 
@@ -7351,12 +7355,6 @@
     });
     window.addEventListener("hashchange", () => syncNavigation());
     syncNavigation();
-    byId("profile-save-detail")?.addEventListener("click", async () => {
-      const status = byId("profile-preference-status");
-      byId("ai-trust-score").value = byId("profile-answer-detail").value;
-      try { await saveDisplayPolicy(); status.textContent = "解释偏好已保存"; }
-      catch (error) { status.textContent = error.message || "保存失败，请重试。"; }
-    });
     byId("profile-theme-toggle")?.addEventListener("click", () => saveThemePreference(document.body.classList.contains("prism-theme-dark") ? "LIGHT" : "DARK"));
   }
 
@@ -7378,6 +7376,8 @@
     const label = byId("theme-toggle-label");
     if (button) button.setAttribute("aria-pressed", String(dark));
     if (label) label.textContent = dark ? "切换浅色主题" : "切换深色主题";
+    byId("profile-theme-toggle").setAttribute("aria-pressed", String(dark));
+    byId("profile-theme-toggle").textContent = dark ? "切换浅色主题" : "切换深色主题";
   }
 
   async function saveThemePreference(theme) {
@@ -7385,6 +7385,7 @@
     if (!owner) return;
     const button = byId("theme-toggle");
     if (button) button.disabled = true;
+    byId("profile-theme-toggle").disabled = true;
     try {
       const response = await fetch("/api/v1/user/preferences", {
         method: "PUT", headers: {"Content-Type": "application/json", "X-Owner-ID": owner},
@@ -7396,9 +7397,13 @@
       applyThemePreference(state.userPreferences.theme);
       button?.closest("details")?.removeAttribute("open");
     } catch (error) {
-      setError(error.message || "保存用户偏好失败");
+      if (byId("profile-display-dialog").open) {
+        byId("profile-display-error").textContent = error.message;
+        byId("profile-display-error").hidden = false;
+      } else setError(error.message || "保存用户偏好失败");
     } finally {
       if (button) button.disabled = false;
+      byId("profile-theme-toggle").disabled = false;
     }
   }
 
@@ -13869,12 +13874,22 @@
   const questionnaireForm = byId("questionnaire-form");
   if (questionnaireForm) questionnaireForm.addEventListener("submit", confirmFullQuestionnaire);
   byId("profile-display-settings").addEventListener("click", () => {
-    const score = String(displayDetailLevelForPolicy(state.displayPolicy).score);
-    document.querySelectorAll('input[name="profile-display-policy-level"]').forEach(input => { input.checked = input.value === score; });
-    byId("profile-display-error").hidden = true;
-    byId("profile-display-dialog").showModal();
+    window.location.hash = "profile-preferences";
   });
   byId("profile-display-close").addEventListener("click", () => byId("profile-display-dialog").close());
+  byId("profile-display-dialog").addEventListener("close", () => {
+    document.body.classList.remove("profile-settings-open");
+    if (window.location.hash !== "#profile-preferences") return;
+    window.history.replaceState(null, "", "#profile-results");
+    syncNavigation("profile-results");
+    byId("profile-display-settings").focus({preventScroll: true});
+  });
+  byId("profile-display-dialog").addEventListener("click", event => {
+    const dialog = event.currentTarget;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+  });
   byId("profile-display-form").addEventListener("submit", async event => {
     event.preventDefault();
     const form = event.currentTarget;

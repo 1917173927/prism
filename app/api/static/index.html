@@ -8,14 +8,14 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20261003-auxiliary-disclosure">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261004-orange-navigation">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261004-personal-center">
     <link rel="stylesheet" href="/static/research-platform.css?v=20261004-skill-store">
     <link rel="stylesheet" href="/static/research-workbench.css?v=20261004-readable">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261004-orange-navigation" defer></script>
+    <script src="/static/app.js?v=20261004-personal-center" defer></script>
     <script src="/static/research-platform.js?v=20261004-skill-store" defer></script>
     <script src="/static/research-tools.js?v=20261004-research-workbench" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
@@ -701,9 +701,6 @@
             <a href="#convertible-bond-research" data-domain="research">可转债研究</a>
             <a href="#recommendation-history" data-domain="decisions">历史建议</a>
             <a href="#advanced-explainability" data-domain="decisions">为什么这样判断</a>
-            <a href="#profile-results" data-domain="profile">画像结果</a>
-            <a href="#profile-questionnaire" data-domain="profile">问卷填写</a>
-            <a href="#profile-preferences" data-domain="profile">偏好设置</a>
             <a href="#market-quotes" data-domain="market">行情</a>
             <a href="#market-risk" data-domain="market">风险与活跃度</a>
             <a href="#market-sectors" data-domain="market">板块观察</a>
@@ -1502,7 +1499,10 @@
             <div id="profile-overview-view" data-subpage="profile-results">
               <div class="panel-head profile-center-heading">
                 <h2 id="profile-title" tabindex="-1">个人中心</h2>
-                <button id="refresh-profile-summary" class="quiet-profile-action" type="button" aria-label="刷新投资者画像">刷新画像</button>
+                <div class="profile-center-actions">
+                  <button id="refresh-profile-summary" class="quiet-profile-action" type="button" aria-label="刷新投资者画像">刷新画像</button>
+                  <button id="profile-display-settings" class="quiet-profile-action" type="button" aria-haspopup="dialog" aria-controls="profile-display-dialog">偏好设置</button>
+                </div>
               </div>
               <div id="profile-load-error" class="notice error" role="alert" hidden></div>
               <section class="profile-summary-section" aria-label="投资者画像与评级">
@@ -1521,9 +1521,6 @@
                 <a id="profile-questionnaire-open" href="#profile-questionnaire" class="query-submit secondary">填写问卷</a>
               </section>
               <div id="profile-details-content" class="profile-center-details"></div>
-              <div class="profile-center-footer">
-                <button id="profile-display-settings" class="quiet-profile-action" type="button" aria-haspopup="dialog">回答详细度 · <span id="profile-display-level">标准</span></button>
-              </div>
             </div>
 
             <div id="profile-questionnaire-view" data-subpage="profile-questionnaire" hidden>
@@ -1564,30 +1561,22 @@
               </form>
             </div>
 
-            <section id="profile-preferences-view" class="profile-display-preference" aria-labelledby="display-preference-title" data-subpage="profile-preferences">
-              <div>
-                <strong id="display-preference-title" tabindex="-1">AI 信任度与解释偏好</strong>
-                <p>它只决定结论与依据的展开方式，不改变风险分数、适当性等级或告警结果。</p>
-              </div>
-              <div class="research-preference-actions">
-                <label>回答详细度<select id="profile-answer-detail"><option value="80">简洁</option><option value="50">标准</option><option value="20">详细</option></select></label>
-                <button id="profile-save-detail" type="button" class="query-submit secondary">保存解释偏好</button>
-                <button id="profile-theme-toggle" type="button" class="query-submit secondary">切换深浅主题</button>
-                <span id="profile-preference-status" role="status" aria-live="polite"></span>
-              </div>
-            </section>
             <dialog id="profile-display-dialog" class="prd-dialog" aria-labelledby="profile-display-title">
               <div class="profile-dialog-heading">
-                <h2 id="profile-display-title">回答详细度</h2>
-                <button id="profile-display-close" class="quiet-profile-action" type="button" aria-label="关闭回答设置">关闭</button>
+                <h2 id="profile-display-title">偏好设置</h2>
+                <button id="profile-display-close" class="quiet-profile-action" type="button" aria-label="关闭偏好设置">关闭</button>
               </div>
               <form id="profile-display-form">
                 <fieldset class="profile-display-options">
-                  <legend class="sr-only">选择回答详细度</legend>
+                  <legend>回答详细度 · 当前<span id="profile-display-level">标准</span></legend>
                   <label><input type="radio" name="profile-display-policy-level" value="80"><span>简洁<small>先看结论和关键依据</small></span></label>
                   <label><input type="radio" name="profile-display-policy-level" value="50" checked><span>标准<small>结论与关键依据保持平衡</small></span></label>
                   <label><input type="radio" name="profile-display-policy-level" value="20"><span>详细<small>展开结论、依据和数据说明</small></span></label>
                 </fieldset>
+                <div class="profile-theme-setting">
+                  <span>页面主题</span>
+                  <button id="profile-theme-toggle" class="quiet-profile-action" type="button" aria-pressed="false">切换深色主题</button>
+                </div>
                 <p id="profile-display-error" class="notice error" role="alert" hidden></p>
                 <div class="modal-actions"><button class="copilot-action-btn primary" type="submit">保存设置</button></div>
               </form>
