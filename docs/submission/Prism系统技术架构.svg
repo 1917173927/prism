@@ -23,13 +23,11 @@
   <rect x="60" y="45" width="7" height="72" rx="3" fill="#436faa"/>
   <text x="92" y="81" class="title">Prism 个性化证券投顾智能体系统</text>
   <text x="95" y="117" class="small">系统技术架构</text>
-  <text x="2500" y="88" text-anchor="end" class="small">用户约束 · 专业研究 · 确定性计算 · 审查输出</text>
 
   <rect x="620" y="154" width="1320" height="136" rx="22" fill="#e7f0ff" stroke="#b9cfea" class="panel"/>
   <rect x="651" y="180" width="48" height="38" rx="5" fill="none" stroke="#5178ac" stroke-width="3"/>
   <path d="M 659 226 H 691 M 675 219 V 226" fill="none" stroke="#5178ac" stroke-width="3"/>
   <text x="718" y="207" class="heading">Web 工作台</text>
-  <text x="1898" y="205" text-anchor="end" class="tech">HTML · CSS · JavaScript · AntV X6</text>
   <text x="660" y="255" class="body">对话入口　｜　画像中心　｜　持仓组合　｜　研究 DAG　｜　决策卡　｜　证据审计</text>
 
   <rect x="600" y="343" width="1360" height="1000" rx="27" fill="#ffffff" stroke="#c2d0e0" stroke-width="2"/>
@@ -111,7 +109,6 @@
   <text x="90" y="838" class="body">意图识别 · 槽位解析</text>
   <text x="90" y="881" class="body">基于已验证结果解释</text>
   <path d="M 560 765 H 580 V 620 H 660" class="link"/>
-  <text x="90" y="913" class="label">结构化意图进入协调器</text>
 
   <rect x="60" y="982" width="500" height="331" rx="20" fill="#edf1f6" stroke="#c5d0de" class="panel"/>
   <text x="90" y="1031" class="heading">存储与访问审计</text>
@@ -152,10 +149,8 @@
   <path d="M 1930 1247 H 2000" class="link"/>
 
   <line x1="60" y1="1370" x2="2500" y2="1370" stroke="#d9e2ed" stroke-width="1.5"/>
-  <text x="60" y="1411" class="small">画像版本 + 持仓快照 + 规则版本绑定计算与回执</text>
   <path d="M 1435 1404 H 1490" class="link"/>
   <text x="1505" y="1411" class="label">请求与处理</text>
   <path d="M 1770 1404 H 1825" class="feedback"/>
   <text x="1840" y="1411" class="label">持久化与来源信息</text>
-  <text x="2500" y="1411" text-anchor="end" class="label">依据项目详细方案第五章</text>
 </svg>
