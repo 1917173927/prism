@@ -40,5 +40,5 @@
 - 本地 8000 服务返回的 `index.html`、`app.js`、`research-tools.js` 与 `research-workbench.css` 均与当前文件内容一致。
 - 普通对话已发送到原接口，独立账户返回 HTTP 409；完整模型回答和指定投资组合分析尚未验证。该账户没有模型凭据、已确认风险设置与真实持仓。
 - 模型服务预设切换和配置弹窗可以使用；三种算法的说明、输入编辑与接口输入校验通过。完整算法计算仍需要真实收益与财务数据。
-- `test_ui_localization_navigation.py` 与 `test_copilot_ui_integration.py` 共 26 项通过；另有一项持仓页面结构检查引用 `portfolio-analysis-drawer`，当前持仓页面使用 `portfolio-analysis-details`，该项检查尚待同步。
-- 验收证据保存在已忽略的 `output/research-workbench-integration/browser-evidence.json`。正式项目改动按用户规则提交，独立 demo 保留在本地。
+- 提交内容在独立目录中通过 `test_ui_localization_navigation.py` 与 `test_copilot_ui_integration.py` 共 27 项检查，以及研究工作台的 12 组浏览器检查。
+- 当前页面与提交内容的浏览器证据分别保存在已忽略的 `output/research-workbench-integration/browser-evidence.json` 和 `output/research-workbench-integration/commit-browser-evidence.json`。正式项目改动按用户规则提交，独立 demo 保留在本地。
