@@ -53,6 +53,14 @@ try {
   for (const width of [1440, 768, 390]) {
     process.stdout.write(`检查页面宽度 ${width}px。\n`);
     await page.setViewport({width, height: 900});
+    await moveTo(`${account} > summary`);
+    assert.equal(await isOpen(account), true);
+    await moveTo(`${settings} > summary`);
+    assert.equal(await isOpen(settings), true);
+    assert.equal(await isOpen(account), false);
+    await moveTo(`${account} > summary`);
+    assert.equal(await isOpen(account), true);
+    assert.equal(await isOpen(settings), false);
     await page.click(`${account} > summary`);
     assert.equal(await isOpen(account), true);
     assert.deepEqual(await page.$$eval(`${account} .profile-actions-panel button`, nodes => nodes.map(node => node.id)), ["btn-custom-profile-chip"]);
@@ -61,7 +69,7 @@ try {
     await page.mouse.move(10, 880);
     assert.equal(await isOpen(account), false);
 
-    await page.click(`${settings} > summary`);
+    await moveTo(`${settings} > summary`);
     assert.equal(await isOpen(settings), true);
     for (const id of ["open-profile-modal-btn", "open-portfolio-modal-btn", "home-context-trigger"]) {
       assert.equal(await page.$eval(`#${id}`, node => node.closest("details").classList.contains("topbar-more-menu")), true);
@@ -102,6 +110,23 @@ try {
     assert.equal(await isOpen(settings), false);
     await page.click("#home-context-close");
   }
+  await page.setViewport({width: 390, height: 900, hasTouch: true, isMobile: true});
+  await page.waitForSelector("body.copilot-active:not(.questionnaire-pending):not(.questionnaire-required)");
+  await page.mouse.move(10, 880);
+  async function tapSummary(selector) {
+    const position = await page.$eval(`${selector} > summary`, node => {
+      const rect = node.getBoundingClientRect();
+      return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+    });
+    await page.touchscreen.tap(position.x, position.y);
+  }
+  await tapSummary(account);
+  assert.equal(await isOpen(account), true);
+  await tapSummary(settings);
+  assert.equal(await isOpen(settings), true);
+  assert.equal(await isOpen(account), false);
+  await tapSummary(settings);
+  assert.equal(await isOpen(settings), false);
   assert.deepEqual(errors, []);
   process.stdout.write("账户和设置菜单交互检查通过。\n");
 } finally {

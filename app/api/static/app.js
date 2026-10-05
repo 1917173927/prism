@@ -14032,7 +14032,20 @@
         if (other !== menu) other.open = false;
       }
     };
-    menu.querySelector("summary").addEventListener("click", closeOtherMenus);
+    menu.addEventListener("pointerenter", event => {
+      if (event.pointerType !== "mouse") return;
+      closeOtherMenus();
+      menu.open = true;
+      updateNavigationMenuGap(menu);
+    });
+    menu.querySelector("summary").addEventListener("click", event => {
+      closeOtherMenus();
+      if (event.pointerType === "mouse") {
+        event.preventDefault();
+        menu.open = true;
+        updateNavigationMenuGap(menu);
+      }
+    });
     menu.addEventListener("toggle", () => {
       if (menu.open) {
         closeOtherMenus();
