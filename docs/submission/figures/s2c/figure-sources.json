@@ -2,6 +2,10 @@
   "renderer": "tools/render_s2c_figures.mjs",
   "format": "Mermaid source with SVG and PNG exports",
   "sources": {
+    "frontend-framework": ["app/api/static/index.html", "app/api/static/app.js", "docs/submission/figures/frontend-framework.mmd"],
+    "backend-framework": ["app/api/main.py", "docs/submission/figures/backend-framework.mmd"],
+    "context-dataflow": ["app/service/session_truth.py", "app/llm/agent.py", "docs/submission/figures/context-dataflow.mmd"],
+    "profile-rules": ["docs/submission/test-evidence/figures/profile-rules.mmd"],
     "prompt-composition": ["app/llm/prompts.py", "app/llm/agent.py", "app/api/main.py"],
     "workspace-navigation": ["app/api/static/index.html", "app/api/static/app.js", "app/api/static/research-tools.js"],
     "database-relations": ["app/store/migrations/011_local_accounts.sql", "app/store/migrations/017_copilot_conversations.sql", "app/store/migrations/020_research_facts.sql", "app/store/migrations/021_research_fact_payloads.sql"],

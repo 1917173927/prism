@@ -3,6 +3,7 @@ from copy import deepcopy
 from hashlib import sha256
 from pathlib import Path
 from urllib.parse import unquote
+from uuid import uuid4
 import json
 
 from docx import Document
@@ -159,7 +160,7 @@ def main():
                 with Image.open(asset) as image:
                     pixel_width, pixel_height = image.size
                 crop_top = 0.0
-                if asset.stem in {"frontend-framework", "backend-framework", "context-dataflow"}:
+                if asset.parent.name != "s2c" and asset.stem in {"frontend-framework", "backend-framework", "context-dataflow"}:
                     vector = etree.parse(str(asset.with_suffix(".svg")))
                     crop_top = 32 / float(vector.getroot().get("height"))
                 elif asset.stem in {"judge-04-evidence-validation", "judge-05-rebalancing", "judge-06-decision-gates"}:
@@ -243,7 +244,10 @@ def main():
     doc.core_properties.author = "Prism"
     doc.core_properties.keywords = "Prism,S2C,技术路线,实现方案"
     doc.core_properties.comments = ""
-    doc.save(args.output)
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    generated = REPORT.parent / (str(uuid4()) + ".docx")
+    doc.save(generated)
+    generated.replace(args.output)
     if sha256(args.template.read_bytes()).hexdigest() != REFERENCE_HASH:
         raise ValueError("reference changed during build")
     REPORT.parent.mkdir(parents=True, exist_ok=True)

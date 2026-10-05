@@ -142,6 +142,22 @@ def main():
         if vector.is_file():
             tree = etree.parse(str(vector))
             svg_titles[str(vector.relative_to(ROOT))] = tree.xpath("//*[local-name()='text']//text()")
+    original_architecture = etree.parse(str(ROOT / "docs/submission/Prism系统技术架构.svg"))
+    document_architecture = etree.parse(str(ROOT / "docs/submission/figures/s2c-shared/system-architecture.svg"))
+    if original_architecture.xpath("//*[local-name()='text']//text()") != document_architecture.xpath("//*[local-name()='text']//text()"):
+        raise ValueError("architecture figure text changed")
+    geometry = json.loads((WORK / "diagram-overlap-audit.json").read_text(encoding="utf-8"))
+    diagrams = [figure for figure in report["figures"] if Path(figure["source"]).parent.name != "s2c-ui"]
+    if geometry["status"] != "PASS" or len(geometry["figures"]) != len(diagrams):
+        raise ValueError("diagram geometry checks did not pass")
+    expected_vectors = {Path(figure["source"]).with_suffix(".svg").resolve() for figure in diagrams}
+    checked_vectors = {(ROOT / figure["source"]).resolve() for figure in geometry["figures"]}
+    if expected_vectors != checked_vectors:
+        raise ValueError("geometry checks must cover every document diagram")
+    for figure in geometry["figures"]:
+        vector = ROOT / figure["source"]
+        if sha256(vector.read_bytes()).hexdigest() != figure["svg_sha256"] or sha256(vector.with_suffix(".png").read_bytes()).hexdigest() != figure["png_sha256"]:
+            raise ValueError("diagram changed after geometry checks")
     capture = json.loads((ROOT / "docs/submission/figures/s2c-ui/capture-manifest.json").read_text(encoding="utf-8"))
     if capture["snapshot_adapter"] or capture["browser_errors"]:
         raise ValueError("current interface capture did not pass")
@@ -157,7 +173,7 @@ def main():
               "text_matches_source": True, "source_characters": len(normalized(fulltext)),
               "reference_unchanged": True, "template_geometry": "PASS", "heading_fonts": "PASS",
               "pdf_text_coverage": "PASS", "page_boundaries": "PASS", "page_details": pages,
-              "svg_text": svg_titles, "current_interface_capture": "PASS",
+              "svg_text": svg_titles, "current_interface_capture": "PASS", "diagram_geometry": "PASS",
               "visual_review": "NOT_PERFORMED_USER_RESTRICTION",
               "sha256": sha256(target.read_bytes()).hexdigest()}
     (WORK / "verification.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

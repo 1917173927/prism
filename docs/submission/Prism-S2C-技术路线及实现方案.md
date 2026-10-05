@@ -8,7 +8,7 @@ Prism 面向证券研究与个性化投资决策支持，围绕用户确认的�
 
 系统采用模块化单体架构，各模块在同一应用中通过结构化对象协作。前端使用 HTTP 提交请求和读取结果，使用 SSE 接收对话内容及工具执行事件。外部金融服务和语言模型通过独立适配模块接入，应用内部保留提供方、来源、数据时间、缺失字段和处理状态。
 
-![系统技术架构](Prism系统技术架构.png)
+![系统技术架构](figures/s2c-shared/system-architecture.png)
 
 图 3-1 系统技术架构
 
@@ -51,13 +51,13 @@ Prism 面向证券研究与个性化投资决策支持，围绕用户确认的�
 
 前端由 `index.html` 提供页面结构，`app.js` 组织账户范围内的状态、事件和 Hash 路由，研究页面脚本管理资料查询、任务运行和算法输入。工作流画布基于 AntV X6，文本展示使用 marked 和 DOMPurify，行情图表使用 Lightweight Charts。
 
-![前端框架](figures/frontend-framework.png)
+![前端框架](figures/s2c/frontend-framework.png)
 
 图 3-3 前端交互与状态框架
 
 后端按 `app/api`、`app/service`、领域模块、`app/providers`、`app/llm` 和 `app/store` 组织。接口层完成参数与访问校验，应用服务协调资料与执行过程，领域模块返回结构化计算和审查结果，提供方模块封装外部请求，存储模块处理事务与版本。
 
-![后端框架](figures/backend-framework.png)
+![后端框架](figures/s2c/backend-framework.png)
 
 图 3-4 后端分层服务框架
 
@@ -148,7 +148,7 @@ Prism 面向证券研究与个性化投资决策支持，围绕用户确认的�
 
 预算绑定 `owner_id`、`profile_id` 和 `profile_version`。评估将观察比例与所属预算比较，按 `max(0, observed − limit)` 生成超限幅度，单位为百分点。数据不完整或存在超限项时，评估结果进入 REVIEW_REQUIRED，并保留具体对象、观察值和预算值。
 
-![画像进入计算](test-evidence/figures/profile-rules.png)
+![画像进入计算](figures/s2c/profile-rules.png)
 
 图 3-9 画像与预算参与组合计算
 
@@ -220,7 +220,7 @@ LIVE 研究提供 A 股基础研究模板，包含行情和财务查询节点；
 
 会话前提由服务端读取已确认问卷、有效画像、当前持仓和数据模式，按规范化 JSON 生成 SHA-256 指纹。确认请求使用预期 revision，保存后形成 LOCKED 状态。后续请求核对用户归属、revision 和当前事实指纹，变化时返回 DRIFT_DETECTED，提示用户重新确认。
 
-![上下文与工具流程](figures/context-dataflow.png)
+![上下文与工具流程](figures/s2c/context-dataflow.png)
 
 图 3-16 会话上下文与工具处理
 
