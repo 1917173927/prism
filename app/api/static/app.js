@@ -14017,6 +14017,53 @@
     }
   });
   byId("home-model-trigger")?.addEventListener("click", openLLMConfigModal);
+  const navigationMenus = [...document.querySelectorAll("#home-navigation-actions > details")];
+  function updateNavigationMenuGap(menu) {
+    const summary = menu.querySelector("summary").getBoundingClientRect();
+    const panel = menu.querySelector(":scope > div").getBoundingClientRect();
+    menu.style.setProperty("--navigation-menu-bridge-top", `${summary.bottom}px`);
+    menu.style.setProperty("--navigation-menu-bridge-left", `${panel.left}px`);
+    menu.style.setProperty("--navigation-menu-bridge-width", `${panel.width}px`);
+    menu.style.setProperty("--navigation-menu-gap", `${Math.max(1, panel.top - summary.bottom + 1)}px`);
+  }
+  for (const menu of navigationMenus) {
+    const closeOtherMenus = () => {
+      for (const other of navigationMenus) {
+        if (other !== menu) other.open = false;
+      }
+    };
+    menu.querySelector("summary").addEventListener("click", closeOtherMenus);
+    menu.addEventListener("toggle", () => {
+      if (menu.open) {
+        closeOtherMenus();
+        updateNavigationMenuGap(menu);
+      }
+    });
+    menu.addEventListener("pointerleave", event => {
+      if (event.pointerType === "mouse") menu.open = false;
+    });
+    menu.addEventListener("focusout", event => {
+      if (!menu.contains(event.relatedTarget)) menu.open = false;
+    });
+  }
+  window.addEventListener("resize", () => {
+    for (const menu of navigationMenus) {
+      if (menu.open) updateNavigationMenuGap(menu);
+    }
+  });
+  document.addEventListener("click", event => {
+    for (const menu of navigationMenus) {
+      if (!menu.contains(event.target)) menu.open = false;
+    }
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || document.querySelector("dialog[open]")) return;
+    for (const menu of navigationMenus) {
+      if (!menu.open) continue;
+      menu.open = false;
+      menu.querySelector("summary").focus();
+    }
+  });
   const homeContextTrigger = byId("home-context-trigger");
   function closeHomeContext() {
     byId("copilot")?.classList.remove("context-open");
@@ -14031,12 +14078,12 @@
     const expanded = !copilot.classList.contains("context-open");
     copilot.classList.toggle("context-open", expanded);
     homeContextTrigger.setAttribute("aria-expanded", String(expanded));
-    byId("persona-switcher-bar").open = false;
+    homeContextTrigger.closest("details").open = false;
     if (expanded) refreshSessionTruth().catch(error => setError(error.message));
   });
   byId("home-context-close")?.addEventListener("click", () => {
     closeHomeContext();
-    byId("persona-switcher-bar").querySelector("summary").focus();
+    homeContextTrigger.closest("details").querySelector("summary").focus();
   });
   document.addEventListener("click", event => {
     if (!byId("copilot")?.classList.contains("context-open")) return;
@@ -14046,7 +14093,7 @@
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape" || !byId("copilot")?.classList.contains("context-open")) return;
     closeHomeContext();
-    byId("persona-switcher-bar").querySelector("summary").focus();
+    homeContextTrigger.closest("details").querySelector("summary").focus();
   });
 
   const conversationProfileBtn = byId("start-conversation-profile-update");
@@ -14073,7 +14120,16 @@
 
   // User Profile Modal Events
   const openProfBtn = byId("open-profile-modal-btn");
-  if (openProfBtn) openProfBtn.addEventListener("click", openProfileModal);
+  let profileModalOpenedFromSettings = false;
+  if (openProfBtn) openProfBtn.addEventListener("click", () => {
+    profileModalOpenedFromSettings = true;
+    openProfileModal();
+  });
+  byId("profile-edit-modal").addEventListener("close", () => {
+    if (!profileModalOpenedFromSettings) return;
+    profileModalOpenedFromSettings = false;
+    openProfBtn.closest("details").querySelector("summary").focus();
+  });
   const closeProfBtn = byId("close-profile-modal-btn");
   if (closeProfBtn) closeProfBtn.addEventListener("click", closeProfileModal);
   const saveProfBtn = byId("btn-save-profile");

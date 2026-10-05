@@ -207,6 +207,16 @@ body.prism-ui-v2 {
   box-shadow: var(--shadow-lg);
 }
 .prism-ui-v2 .topbar-more-panel { width: 230px; }
+.prism-ui-v2 .profile-actions-menu[open]::after,
+.prism-ui-v2 .topbar-more-menu[open]::after {
+  content: "";
+  position: fixed;
+  z-index: 40;
+  top: var(--navigation-menu-bridge-top);
+  left: var(--navigation-menu-bridge-left);
+  width: var(--navigation-menu-bridge-width);
+  height: var(--navigation-menu-gap);
+}
 .prism-ui-v2 .profile-actions-panel .active-profile-wrap { display: grid; gap: 2px; }
 .prism-ui-v2 .profile-actions-panel .switcher-label { padding: 6px 9px 3px; color: var(--text-muted); font-size: 9px; }
 .prism-ui-v2 .profile-actions-panel .persona-chip,
@@ -2740,7 +2750,8 @@ body.prism-ui-v2 {
 html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
 .prism-ui-v2.sidebar-layout-active .other-page-only { display: none; }
 .prism-ui-v2.sidebar-layout-active .home-navigation .home-only { display: inline; }
-.prism-ui-v2.sidebar-layout-active .home-navigation .profile-actions-panel .home-only { display: flex; }
+.prism-ui-v2.sidebar-layout-active .home-navigation .profile-actions-panel .home-only,
+.prism-ui-v2.sidebar-layout-active .home-navigation .topbar-more-panel .home-only { display: flex; }
 .prism-ui-v2.sidebar-layout-active .home-navigation {
   grid-column: 1 / -1;
   grid-row: 1;

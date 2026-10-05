@@ -8,14 +8,14 @@
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
     <link rel="stylesheet" href="/static/styles.css?v=20261003-auxiliary-disclosure">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261004-skill-font">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261005-navigation-menus">
     <link rel="stylesheet" href="/static/research-platform.css?v=20261004-skill-store">
     <link rel="stylesheet" href="/static/research-workbench.css?v=20261004-readable">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261004-personal-center" defer></script>
+    <script src="/static/app.js?v=20261005-navigation-menus" defer></script>
     <script src="/static/research-platform.js?v=20261004-skill-store" defer></script>
     <script src="/static/research-tools.js?v=20261004-research-workbench" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
@@ -187,6 +187,14 @@
               <span class="persona-name" id="custom-profile-chip-name">R3 平衡型</span>
               </button>
             </div>
+            </div>
+          </details>
+          <details class="topbar-more-menu">
+            <summary>
+              <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
+              <span class="other-page-only">更多</span><span class="home-only">设置</span>
+            </summary>
+            <div class="topbar-more-panel">
               <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="修改投资目标、风险设置和期限">
               <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-edit"/></svg></span>
               <span class="persona-name">修改投资偏好</span>
@@ -198,31 +206,6 @@
               <button id="home-context-trigger" class="persona-chip home-only" type="button" aria-expanded="false" aria-controls="agent-profile-rail">
                 <svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>查看分析资料</span>
               </button>
-              <details class="persona-library dev-only">
-              <summary>切换示例画像</summary>
-              <div class="persona-library-options">
-                <button class="persona-chip" type="button" data-persona="persona-zhang-r3" title="张先生：35岁白领，R3平衡型，科技重仓">
-                  <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                  <span class="persona-name">张先生 (R3)</span>
-                </button>
-                <button class="persona-chip" type="button" data-persona="persona-li-r2" title="李阿姨：58岁退休，R2稳健型，注重本金安全">
-                  <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                  <span class="persona-name">李阿姨 (R2)</span>
-                </button>
-                <button class="persona-chip" type="button" data-persona="persona-wang-r4" title="王同学：28岁进取，R4高弹性，偏好成长ETF">
-                  <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                  <span class="persona-name">王同学 (R4)</span>
-                </button>
-              </div>
-              </details>
-            </div>
-          </details>
-          <details class="topbar-more-menu">
-            <summary>
-              <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
-              <span class="other-page-only">更多</span><span class="home-only">设置</span>
-            </summary>
-            <div class="topbar-more-panel">
               <button id="data-source-status" class="data-source-status" type="button" aria-label="打开模型与数据来源设置">
                 <span id="visible-ai-mode">AI · 正在确认</span>
                 <span id="visible-data-mode">工具数据 · 正在确认</span>
@@ -237,6 +220,23 @@
               </button>
               <button id="open-password-change" class="topbar-theme-toggle" type="button">修改密码</button>
               <button id="logout-local-session" class="topbar-logout" type="button">退出登录</button>
+              <details class="persona-library dev-only">
+                <summary>切换示例画像</summary>
+                <div class="persona-library-options">
+                  <button class="persona-chip" type="button" data-persona="persona-zhang-r3" title="张先生：35岁白领，R3平衡型，科技重仓">
+                    <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                    <span class="persona-name">张先生 (R3)</span>
+                  </button>
+                  <button class="persona-chip" type="button" data-persona="persona-li-r2" title="李阿姨：58岁退休，R2稳健型，注重本金安全">
+                    <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                    <span class="persona-name">李阿姨 (R2)</span>
+                  </button>
+                  <button class="persona-chip" type="button" data-persona="persona-wang-r4" title="王同学：28岁进取，R4高弹性，偏好成长ETF">
+                    <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                    <span class="persona-name">王同学 (R4)</span>
+                  </button>
+                </div>
+              </details>
               <div class="health" id="health-status" aria-live="polite" hidden></div>
               <div class="nav-section-expert collapsed dev-only" id="nav-expert-section">
                 <button class="nav-expert-header" id="nav-expert-toggle" type="button" aria-expanded="false" aria-controls="nav-expert-items" title="展开底层系统工具与评测">

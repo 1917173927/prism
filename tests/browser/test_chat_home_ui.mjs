@@ -261,7 +261,7 @@ try {
   await page.click("#home-selected-tool-clear");
   assert.equal(await page.$eval("#home-selected-tool", node => node.hidden), true);
 
-  await page.click("#persona-switcher-bar > summary");
+  await page.click(".topbar-more-menu > summary");
   await page.click("#home-context-trigger");
   assert.equal(await page.$eval("#agent-profile-rail", node => getComputedStyle(node).display), "grid");
   await page.click("#home-context-close");

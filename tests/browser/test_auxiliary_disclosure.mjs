@@ -75,7 +75,7 @@ export async function auditProfileDialog(tab) {
   const observations = [];
   for (const page of ["copilot", "overview", "market", "trading-style", "profile"]) {
     await openPage(tab, origin, page);
-    await tab.playwright.locator("#persona-switcher-bar > summary").click();
+    await tab.playwright.locator(".topbar-more-menu > summary").click();
     await tab.getAXState({emit:false});
     await tab.playwright.locator("#open-profile-modal-btn").click();
     await tab.getAXState({emit:false});
@@ -95,11 +95,11 @@ export async function auditProfileDialog(tab) {
     await tab.playwright.locator("#profile-name-input").press("Escape");
     await tab.getAXState({emit:false});
     const closed = await tab.playwright.evaluate(() => ({
-      open:document.getElementById("profile-edit-modal").open, focus:document.activeElement.id,
+      open:document.getElementById("profile-edit-modal").open,
+      focus:document.activeElement.matches(".topbar-more-menu > summary"),
     }));
     assert.equal(closed.open, false);
-    assert.equal(closed.focus, "open-profile-modal-btn");
-    await tab.playwright.locator("#persona-switcher-bar > summary").click();
+    assert.equal(closed.focus, true);
     await tab.getAXState({emit:false});
     observations.push(observation);
   }
@@ -211,7 +211,7 @@ export async function changeContextDuringAnalysis(tab, page) {
   await tab.playwright.locator(`#${action}`).click();
   await tab.getAXState({emit:false});
   assert.equal(await tab.playwright.locator(`#${action}`).isEnabled(), false);
-  await tab.playwright.locator("#persona-switcher-bar > summary").click();
+  await tab.playwright.locator(".topbar-more-menu > summary").click();
   await tab.getAXState({emit:false});
   await tab.playwright.locator("#open-profile-modal-btn").click();
   await tab.getAXState({emit:false});
@@ -219,8 +219,6 @@ export async function changeContextDuringAnalysis(tab, page) {
   await tab.getAXState({emit:false});
   assert.equal(await tab.playwright.locator(`#${statusId}`).innerText(), "待运行");
   await tab.playwright.locator("#profile-edit-modal").waitFor({state:"hidden", timeoutMs:15000});
-  await tab.playwright.locator("#persona-switcher-bar > summary").click();
-  await tab.getAXState({emit:false});
 }
 
 // 恢复真实服务后确认旧请求已经退出，当前页面继续等待新的分析。
