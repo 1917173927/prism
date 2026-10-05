@@ -18,7 +18,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs/submission/Prism-S2C-技术路线及实现方案.md"
-TARGET = SOURCE.with_suffix(".docx")
+TARGET = SOURCE.with_name("Prism-S2C-技术路线及实现方案-图示版.docx")
 REFERENCE_HASH = "0ad3cd9fce58ce2b31562b5bc9412d03d8a6cd5d0ab97c63ccddf8aba8c7f228"
 REPORT = ROOT / "output/s2c-authoring/build-report.json"
 
@@ -71,6 +71,7 @@ def set_table_width(table, widths):
 def main():
     parser = ArgumentParser()
     parser.add_argument("--template", type=Path, required=True)
+    parser.add_argument("--output", type=Path, default=TARGET)
     args = parser.parse_args()
     original = args.template.read_bytes()
     if sha256(original).hexdigest() != REFERENCE_HASH:
@@ -242,15 +243,15 @@ def main():
     doc.core_properties.author = "Prism"
     doc.core_properties.keywords = "Prism,S2C,技术路线,实现方案"
     doc.core_properties.comments = ""
-    doc.save(TARGET)
+    doc.save(args.output)
     if sha256(args.template.read_bytes()).hexdigest() != REFERENCE_HASH:
         raise ValueError("reference changed during build")
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps({"template_sha256": REFERENCE_HASH, "source": str(SOURCE),
-                                 "output": str(TARGET), "headings": headings, "figures": figures,
+                                 "output": str(args.output), "headings": headings, "figures": figures,
                                  "expected_text": expected, "tables": len(doc.tables),
                                  "visual_review": "NOT_PERFORMED_USER_RESTRICTION"}, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"output": str(TARGET), "headings": len(headings), "tables": len(doc.tables),
+    print(json.dumps({"output": str(args.output), "headings": len(headings), "tables": len(doc.tables),
                       "figures": len(figures)}, ensure_ascii=False))
 
 

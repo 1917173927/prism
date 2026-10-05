@@ -1,0 +1,10 @@
+flowchart TB
+    PLAN["DAG 研究计划<br/>检查唯一标识、未知依赖、自依赖、有向环"] --> QUEUE["单进程等待队列<br/>默认容量 400<br/>单用户等待上限 200"]
+    QUEUE --> RUN["ResearchRuntime<br/>默认活动研究任务上限 100<br/>前置条件满足后执行节点"]
+    RUN --> PROVIDER["Provider semaphore<br/>默认调用名额 100"]
+    RUN --> MODEL["模型 semaphore<br/>默认调用名额 8"]
+    TIME["单次研究时间预算<br/>最多 60 秒<br/>总体时间检查与取消"] -.-> RUN
+    PROVIDER --> RESULT["节点状态、结构化观测、输入版本<br/>请求与响应摘要"]
+    MODEL --> RESULT
+    RESULT --> STATUS["等待、执行、部分完成、失败、取消、超时<br/>依赖未完成时下游保留取消原因"]
+    NOTE["以上数值为程序默认限制<br/>外部授权、额度与响应能力分别检查"] -.-> RUN

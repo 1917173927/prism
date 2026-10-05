@@ -1,0 +1,12 @@
+flowchart TB
+    INPUT["数量、报价、资产标识<br/>检查非负金额、币种、输入时间"] --> VALUE["Decimal 市值计算<br/>market_value = quantity × price"]
+    VALUE --> DIRECT["直接资产<br/>按证券与行业归属计入"]
+    VALUE --> FUND["基金与 ETF<br/>读取已披露成分比例与快照"]
+    FUND --> LOOK["穿透贡献 = 基金市值 × 成分比例<br/>保留快照时点、来源与覆盖比例"]
+    FUND --> UNCOVER["未穿透金额<br/>基金市值 − 已覆盖贡献合计"]
+    DIRECT --> CHECK["金额守恒与引用检查<br/>贡献合计 = 原组合金额"]
+    LOOK --> CHECK
+    UNCOVER --> CHECK
+    CHECK --> GROUP["按资产或行业聚合金额<br/>明确证券与含现金总资产分母"]
+    GROUP --> METRIC["组合权重 = 市值 ÷ 总市值 × 100<br/>HHI = 10000 × Σ(value_i ÷ total_value)²<br/>ROUND_HALF_UP 保留两位小数"]
+    METRIC --> RISK["观察比例与画像预算比较<br/>保留观察值、上限和超限幅度"]

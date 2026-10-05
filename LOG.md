@@ -3,11 +3,12 @@
 ## 2026-10-05：S2C 技术路线及实现方案
 
 - 按 `S2-解决方案.docx` 的 S2C 格式完成 3.1—3.5，包含总体设计、界面、数据库、九项关键技术和主要界面说明。
-- 技术内容依据当前模型客户端、画像评分、Provider、研究调度、组合计算、证据验证、双重审查及 SQL migrations，保留模型配置、资料状态、算法输入和历史图片的适用条件。
-- 复用十二幅已归档配图，Word 图片格式统一图号展示；原图片文件及参考 Word 文件保持原状。
-- 文档经 Word 渲染为 22 页，十三个表格与十二幅配图均已检查；正文与 Markdown 完全一致，标题字体、参考页面尺寸、图片关系、逐页文字覆盖、页面边界及图片与正文位置检查通过。
-- 检查采用结构与数值位置读取，视觉检查未执行。生成工具为 `tools/build_s2c_solution.py`，检查工具为 `tools/verify_s2c_solution.py`；记录位于已忽略的 `output/s2c-authoring/verification.json`。
-- 交付文件为 `docs/submission/Prism-S2C-技术路线及实现方案.docx`，可编辑正文为同名 Markdown 文件。
+- 技术内容依据当前模型客户端、画像评分、Provider、研究调度、组合计算、证据验证、双重审查及 SQL migrations，保留模型配置、资料状态和算法输入条件。
+- 文档包含二十四幅配图和三张表格。复用八幅现有技术配图，新增十幅 Mermaid 流程与关系图；模型配置、核心数据字段及风险阈值使用表格展示。图形源文件与代码依据保存在 `docs/submission/figures/s2c/`。
+- 对话、持仓、个人中心、市场、研究工作台与技能商店六幅截图于 2026 年 10 月 5 日从当前服务采集。服务使用现有 SQLite 数据库的独立副本及已确认资料，直接访问当前页面与接口。静态文件一致性、资料接口、页面尺寸和浏览器脚本检查通过，采集记录为 `docs/submission/figures/s2c-ui/capture-manifest.json`。
+- 文档经 Word 渲染为 29 页，正文与 Markdown 完全一致；连续图号、标题字体、参考页面尺寸、图片关系、逐页文字覆盖、页面边界、图文位置及新图形字号检查通过。
+- 文档检查采用结构与数值位置读取，视觉检查未执行。生成工具为 `tools/build_s2c_solution.py`，检查工具为 `tools/verify_s2c_solution.py`；记录位于已忽略的 `output/s2c-authoring/verification.json`。
+- 交付文件为 `docs/submission/Prism-S2C-技术路线及实现方案-图示版.docx`，可编辑正文为 `docs/submission/Prism-S2C-技术路线及实现方案.md`。参考文件及正在 Word 中打开的原文档保持原状。
 
 ## 2026-10-04：研究工作台界面集成
 

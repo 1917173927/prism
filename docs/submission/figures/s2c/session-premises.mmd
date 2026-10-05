@@ -1,0 +1,9 @@
+flowchart TB
+    NONE["NOT_LOCKED"] -->|"用户确认问卷、持仓与预期 revision"| LOCK["LOCKED<br/>保存已确认前提与 SHA-256 指纹"]
+    LOCK -->|"提交绑定前提的请求"| CHECK["检查用户归属、revision、当前事实指纹"]
+    CHECK -->|"条件通过"| STREAM["组织消息、执行工具、输出事件"]
+    STREAM -->|"准备发送下一事件"| CHECK
+    LOCK -->|"画像、持仓或数据模式变化"| DRIFT["DRIFT_DETECTED<br/>要求重新确认"]
+    CHECK -->|"修订或指纹变化"| DRIFT
+    DRIFT -->|"用户确认当前资料与预期版本"| LOCK
+    HIST["历史消息支持理解问题<br/>context_memory 按归属显式恢复<br/>恢复后确认资料并重新计算"] -.-> CHECK

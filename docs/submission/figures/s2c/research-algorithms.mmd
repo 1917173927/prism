@@ -1,0 +1,10 @@
+flowchart TB
+    INPUT["用户提交真实数据、来源与截止时点<br/>Pydantic 检查类型、样本、时间顺序、有限数值"] --> HMM["两状态 Gaussian HMM<br/>有序日收益 · 训练样本至少 252 条"]
+    INPUT --> COV["常相关协方差收缩<br/>多资产历史收益序列"]
+    INPUT --> FF["Fama–French 五因子构造<br/>发布时间、规模、账面权益、盈利、资产、月收益"]
+    HMM --> HPROC["标准化、两状态拟合、前向概率更新<br/>输出状态概率与模型版本<br/>检查收敛条件"]
+    COV --> CPROC["样本协方差、常相关目标、收缩<br/>输出协方差结果<br/>检查样本与零方差"]
+    FF --> FPROC["时点筛选、分组、组合收益计算<br/>输出因子序列<br/>保留样本完整性与缺项"]
+    HPROC --> RESULT["关联 method_version / source / as_of / input_snapshot_id<br/>满足条件：CALCULATED<br/>输入不足、依赖缺少或未收敛：UNAVAILABLE 与原因"]
+    CPROC --> RESULT
+    FPROC --> RESULT

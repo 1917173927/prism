@@ -10,13 +10,13 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 from lxml import etree
+from PIL import Image
 import pdfplumber
 from pypdf import PdfReader
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / "output/s2c-authoring"
-TARGET = ROOT / "docs/submission/Prism-S2C-技术路线及实现方案.docx"
 
 
 def normalized(text):
@@ -28,7 +28,8 @@ def main():
     parser.add_argument("--template", type=Path, required=True)
     args = parser.parse_args()
     report = json.loads((WORK / "build-report.json").read_text(encoding="utf-8"))
-    doc = Document(TARGET)
+    target = Path(report["output"])
+    doc = Document(target)
     reference = Document(args.template)
     actual = []
     for element in doc._element.body:
@@ -49,8 +50,12 @@ def main():
     forbidden = [term for term in ["创新", "3.6", "不是", "而是", "契约", "栈", "落", "死", "拆", "偏"] if term in fulltext]
     if forbidden:
         raise ValueError(f"unexpected document terms: {forbidden}")
-    if len(doc.tables) != 13 or len(doc.inline_shapes) != 12:
+    if len(doc.tables) != report["tables"] or len(doc.inline_shapes) != len(report["figures"]):
         raise ValueError("table or figure count differs from source")
+    captions = [item.text for item in doc.paragraphs if item.text.startswith("图 3-")]
+    numbers = [int(re.match(r"图 3-(\d+)", caption).group(1)) for caption in captions]
+    if numbers != list(range(1, len(report["figures"]) + 1)):
+        raise ValueError("figure numbering must be continuous")
     for key in ["page_width", "page_height", "top_margin", "bottom_margin", "left_margin", "right_margin"]:
         if getattr(doc.sections[0], key) != getattr(reference.sections[-1], key):
             raise ValueError(f"reference geometry mismatch: {key}")
@@ -72,13 +77,18 @@ def main():
         if any(row._tr.get_or_add_trPr().find(qn("w:cantSplit")) is None for row in table.rows):
             raise ValueError("table row may split between pages")
     image_references = doc._element.xpath(".//a:blip/@r:embed")
-    if len(image_references) != 12 or any(key not in doc.part.rels for key in image_references):
+    if len(image_references) != len(report["figures"]) or any(key not in doc.part.rels for key in image_references):
         raise ValueError("figure relationship missing")
     for figure, key in zip(report["figures"], image_references, strict=True):
         relationship = doc.part.rels[key]
         if sha256(relationship.target_part.blob).hexdigest() != figure["sha256"]:
             raise ValueError("figure bytes changed")
-    pdf_path = WORK / "Prism-S2C-技术路线及实现方案.pdf"
+        if Path(figure["source"]).parent.name == "s2c":
+            with Image.open(figure["source"]) as image:
+                printed_font = 40 * figure["width_mm"] / image.width * 72 / 25.4
+            if printed_font < 7.5:
+                raise ValueError("diagram node labels are too small in Word")
+    pdf_path = WORK / (target.stem + ".pdf")
     pdf = PdfReader(pdf_path)
     pages = []
     pdf_text = []
@@ -107,6 +117,8 @@ def main():
             pages.append({"page": index, "characters": len(page.chars), "images": len(page.images),
                           "first_text": text[:100], "page_boundary": "PASS"})
     joined = normalized("\n".join(pdf_text))
+    if sum(page["images"] for page in pages) != len(report["figures"]):
+        raise ValueError("PDF figure count differs from DOCX")
     for heading in report["headings"]:
         if normalized(heading) not in joined:
             raise ValueError(f"heading missing from PDF: {heading}")
@@ -119,17 +131,35 @@ def main():
         raise ValueError("reference changed")
     # SVG 文字通过 XML 库读取，验证复用图形的来源结构。
     svg_titles = {}
-    for name in ["frontend-framework", "backend-framework", "context-dataflow", "judge-03-profile-calculation",
-                 "judge-04-evidence-validation", "judge-05-rebalancing", "judge-06-decision-gates"]:
-        tree = etree.parse(str(ROOT / "docs/submission/figures" / (name + ".svg")))
-        svg_titles[name] = tree.xpath("//*[local-name()='text']//text()")
-    result = {"status": "PASS", "document": str(TARGET), "pages": len(pdf.pages),
+    provenance = json.loads((ROOT / "docs/submission/figures/s2c/figure-sources.json").read_text(encoding="utf-8"))
+    for name, sources in provenance["sources"].items():
+        if any(not (ROOT / source).is_file() for source in sources):
+            raise ValueError("diagram code source is missing")
+        if not (ROOT / "docs/submission/figures/s2c" / (name + ".mmd")).is_file():
+            raise ValueError("Mermaid source is missing")
+    for figure in report["figures"]:
+        vector = Path(figure["source"]).with_suffix(".svg")
+        if vector.is_file():
+            tree = etree.parse(str(vector))
+            svg_titles[str(vector.relative_to(ROOT))] = tree.xpath("//*[local-name()='text']//text()")
+    capture = json.loads((ROOT / "docs/submission/figures/s2c-ui/capture-manifest.json").read_text(encoding="utf-8"))
+    if capture["snapshot_adapter"] or capture["browser_errors"]:
+        raise ValueError("current interface capture did not pass")
+    for screenshot in capture["screenshots"]:
+        asset = ROOT / "docs/submission/figures/s2c-ui" / screenshot["filename"]
+        if sha256(asset.read_bytes()).hexdigest() != screenshot["sha256"]:
+            raise ValueError("interface screenshot differs from capture")
+    for filename, expected_hash in capture["static_sha256"].items():
+        if sha256((ROOT / "app/api/static" / filename).read_bytes()).hexdigest() != expected_hash:
+            raise ValueError("interface code changed after capture")
+    result = {"status": "PASS", "document": str(target), "pages": len(pdf.pages),
               "chapters": chapters, "tables": len(doc.tables), "figures": len(doc.inline_shapes),
               "text_matches_source": True, "source_characters": len(normalized(fulltext)),
               "reference_unchanged": True, "template_geometry": "PASS", "heading_fonts": "PASS",
               "pdf_text_coverage": "PASS", "page_boundaries": "PASS", "page_details": pages,
-              "svg_text": svg_titles, "visual_review": "NOT_PERFORMED_USER_RESTRICTION",
-              "sha256": sha256(TARGET.read_bytes()).hexdigest()}
+              "svg_text": svg_titles, "current_interface_capture": "PASS",
+              "visual_review": "NOT_PERFORMED_USER_RESTRICTION",
+              "sha256": sha256(target.read_bytes()).hexdigest()}
     (WORK / "verification.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: result[key] for key in ["status", "pages", "tables", "figures", "source_characters",
                                                   "reference_unchanged", "pdf_text_coverage", "page_boundaries"]}, ensure_ascii=False))

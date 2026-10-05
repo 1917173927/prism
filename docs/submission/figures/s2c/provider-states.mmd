@@ -1,0 +1,11 @@
+flowchart TB
+    REQ["ProviderRequest<br/>操作、主体、必需字段"] --> CALL["Provider 查询"]
+    CALL --> RESULT["ProviderResult<br/>记录、缺项、错误、来源、数据质量"]
+    RESULT --> OK["SUCCESS<br/>满足当前<br/>请求条件"]
+    RESULT --> PART["PARTIAL<br/>部分资料可用"]
+    RESULT --> EMPTY["EMPTY<br/>未取得对应记录"]
+    RESULT --> FAIL["FAILED<br/>请求或提供方<br/>执行失败"]
+    OK --> VALID["字段与来源检查<br/>展示数据、来源<br/>与时间"]
+    PART --> RANGE["使用可用字段<br/>保留可用范围<br/>与缺失字段"]
+    EMPTY --> CONDITION["保留查询条件<br/>展示空结果说明"]
+    FAIL --> ERROR["保留失败状态<br/>展示错误类别<br/>与处理提示"]

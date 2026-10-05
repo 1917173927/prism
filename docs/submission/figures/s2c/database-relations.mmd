@@ -1,0 +1,13 @@
+flowchart TB
+    subgraph ACCOUNT["账户与对话：数据库外键"]
+      direction TB
+      ACC["local_accounts"] -->|"username · 级联删除"| AUTH["auth_sessions<br/>有效期与账户状态检查"]
+      CONV["copilot_conversations"] -->|"conversation_id · 级联删除"| MSG["copilot_messages<br/>用户归属检查"]
+      AUTH ~~~ CONV
+    end
+    subgraph RESEARCH["研究数据：联合外键"]
+      direction TB
+      SNAP["research_fact_snapshots"] -->|"owner_id + snapshot_id"| FACT["research_facts"]
+      SNAP -->|"owner_id + snapshot_id"| PAYLOAD["research_fact_payloads"]
+    end
+    ACCOUNT ~~~ RESEARCH

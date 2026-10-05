@@ -1,0 +1,16 @@
+{
+  "renderer": "tools/render_s2c_figures.mjs",
+  "format": "Mermaid source with SVG and PNG exports",
+  "sources": {
+    "prompt-composition": ["app/llm/prompts.py", "app/llm/agent.py", "app/api/main.py"],
+    "workspace-navigation": ["app/api/static/index.html", "app/api/static/app.js", "app/api/static/research-tools.js"],
+    "database-relations": ["app/store/migrations/011_local_accounts.sql", "app/store/migrations/017_copilot_conversations.sql", "app/store/migrations/020_research_facts.sql", "app/store/migrations/021_research_fact_payloads.sql"],
+    "database-version-relations": ["app/store/migrations/019_knowledge_library.sql", "app/store/migrations/008_session_truth.sql", "app/service/session_truth.py"],
+    "provider-states": ["app/providers/contracts.py"],
+    "exposure-calculation": ["app/portfolio/exposure.py", "app/risk/concentration.py", "app/risk/budget.py"],
+    "research-runtime": ["app/service/research_runtime.py", "app/service/live_research.py"],
+    "knowledge-retrieval": ["app/service/knowledge.py", "app/service/knowledge_embedding.py"],
+    "session-premises": ["app/service/session_truth.py", "app/api/main.py", "app/llm/agent.py"],
+    "research-algorithms": ["app/service/research_algorithms.py", "app/api/algorithm_routes.py"]
+  }
+}

@@ -1,0 +1,19 @@
+flowchart TB
+    NAV["顶部导航与任务入口"] --> INVEST
+    NAV --> STUDY
+    subgraph INVEST["个人投资分析"]
+      direction TB
+      CHAT["对话工作台<br/>问题、研究能力、持仓图片<br/>回答、工具进度、历史消息"]
+      PORT["持仓分析<br/>导入、确认、刷新<br/>市值、配置、盈亏、集中度"]
+      PROFILE["个人中心<br/>问卷与展示设置<br/>风险等级、评分、画像说明"]
+      CHAT ~~~ PORT ~~~ PROFILE
+    end
+    subgraph STUDY["市场与专业研究"]
+      direction TB
+      MARKET["市场观察<br/>市场、指数、时间周期<br/>行情曲线、指标、数据时间"]
+      RESEARCH["研究工作台<br/>金融查询、资料检索、算法输入<br/>原文引用、节点结果、计算结果"]
+      SKILLS["技能商店<br/>查看与选择研究能力<br/>能力说明、版本、启用条件"]
+      MARKET ~~~ RESEARCH ~~~ SKILLS
+    end
+    INVEST --> STATE["状态、来源与确认要求<br/>PASS / OVERBOUND / CALCULATED<br/>资料缺项、版本和可用条件"]
+    STUDY --> STATE

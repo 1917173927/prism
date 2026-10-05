@@ -1,0 +1,13 @@
+flowchart TB
+    subgraph LIBRARY["知识资料：应用层关联"]
+      direction TB
+      DOC["knowledge_documents"] -.->|"document_id + revision"| VER["knowledge_document_versions<br/>联合主键"]
+      DOC -.->|"document_id + revision"| CHUNK["knowledge_chunks<br/>当前版本与内容完整性检查"]
+    end
+    subgraph CONTEXT["个人前提：应用层关联"]
+      direction TB
+      Q["questionnaire_snapshots<br/>已确认问卷"] -.->|"owner_id · 版本 · 业务标识"| TRUTH["session_truth<br/>前提修订与事实指纹"]
+      P["current_portfolios<br/>当前持仓"] -.-> TRUTH
+      TRUTH -.->|"JSON 引用 · 版本核验"| DEC["decision_events<br/>审查记录与回执"]
+    end
+    LIBRARY ~~~ CONTEXT

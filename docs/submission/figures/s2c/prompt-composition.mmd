@@ -1,0 +1,10 @@
+flowchart TB
+    RULE["系统规则与当前用户问题<br/>金融查询、工具职责、风险揭示"] --> MSG["消息构建"]
+    CTX["已确认画像、持仓、会话前提<br/>绑定归属、版本、指纹<br/>最近六条历史消息支持指代与追问"] --> MSG
+    MSG --> LLM["AsyncLLMClient<br/>理解意图、解析参数、解释结果"]
+    SCHEMA["COPILOT_TOOLS<br/>JSON Schema 定义<br/>类型、范围、必需字段"] --> LLM
+    LLM --> VALID["服务端校验参数及访问范围"]
+    VALID --> TOOL["金融查询与确定性计算<br/>资料检索返回原文、页码、版本、来源"]
+    TOOL --> RESULT["工具结果与来源进入对话<br/>历史事实接受当前校验<br/>资料中的指令不参与执行"]
+    RESULT --> LLM
+    CHECK["持续检查上下文修订与指纹<br/>资料变化时终止生成并要求确认"] -.-> LLM
