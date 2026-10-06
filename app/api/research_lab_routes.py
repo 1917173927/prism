@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from app.service.research_lab_store import LabInvalid, LabNotFound
 from app.service.personal_research import PersonalResearchNotFound, PersonalResearchInvalid
 from app.service.research_method_builder import MethodDraftInput, MethodConfirmInput
+from app.service.investment_hypotheses import HypothesisInput
+from app.service.announcement_impact import AnnouncementInput
 from app.service.skill_registry import SkillUnavailable
 from app.store.sqlite import StoreConflictError
 
@@ -39,6 +41,45 @@ def create_method_router(builder, owner_dependency):
     def confirm(draft_id: str,body: MethodConfirmInput,owner=Depends(owner_dependency)):
         try:
             return builder.confirm(owner,draft_id,body)
+        except Exception as error:
+            lab_error(error)
+
+    return router
+
+
+def create_monitor_router(monitor, impacts, owner_dependency):
+    router=APIRouter(prefix="/api/v1/research-lab")
+
+    @router.get('/hypotheses')
+    def hypotheses(owner=Depends(owner_dependency)):
+        return {'items':monitor.records.list(owner,'hypothesis')}
+
+    @router.put('/hypotheses/{record_id}')
+    async def save(record_id:str,body:HypothesisInput,owner=Depends(owner_dependency)):
+        try:
+            return monitor.save(owner,record_id,body)
+        except Exception as error:
+            lab_error(error)
+
+    @router.post('/hypotheses/{record_id}/evaluate')
+    async def evaluate(record_id:str,owner=Depends(owner_dependency)):
+        try:
+            return await monitor.evaluate(owner,record_id)
+        except Exception as error:
+            lab_error(error)
+
+    @router.get('/hypothesis-events')
+    def events(owner=Depends(owner_dependency)):
+        return {'items':monitor.records.list(owner,'hypothesis-event')}
+
+    @router.get('/announcements')
+    def announcements(owner=Depends(owner_dependency)):
+        return {'items':impacts.list(owner)}
+
+    @router.post('/announcements')
+    def analyze(body:AnnouncementInput,owner=Depends(owner_dependency)):
+        try:
+            return impacts.analyze(owner,body)
         except Exception as error:
             lab_error(error)
 

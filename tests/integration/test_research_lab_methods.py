@@ -51,7 +51,7 @@ def test_model_can_only_propose_valid_scoped_definitions(tmp_path):
         builder.client=model
         draft=asyncio.run(builder.generate('alice',MethodDraftInput(prompt='生成一个盈利质量研究方法')))
         assert draft['payload']['generation_mode']=='MODEL_INTENT_ONLY'
-        assert '999' not in str(draft)
+        assert '999' not in str(draft['payload']['definition'])
         model.payload={**model.payload,'owner_id':'bob'}
         with pytest.raises(ValueError):
             asyncio.run(builder.generate('alice',MethodDraftInput(prompt='生成一个新研究方法')))

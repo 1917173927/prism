@@ -27,7 +27,9 @@ from app.service.skill_registry import SkillRegistry
 from app.service.personal_research import PersonalResearchService
 from app.service.research_lab_store import LabRecords
 from app.service.research_method_builder import MethodBuilder
-from app.api.research_lab_routes import create_method_router
+from app.api.research_lab_routes import create_method_router, create_monitor_router
+from app.service.investment_hypotheses import HypothesisMonitor
+from app.service.announcement_impact import AnnouncementImpact
 from app.api.personal_research_routes import create_personal_research_router
 from app.api.investment_memory_routes import create_investment_memory_router, PersonalRebalancingInput
 from app.service.investment_memory import InvestmentMemoryService, InvestmentPolicyStale
@@ -990,8 +992,10 @@ def create_app(
                 if hasattr(provider, "start_http"):
                     await provider.start_http()
             await knowledge_crawler.start()
+            await hypothesis_monitor.start()
             yield
         finally:
+            await hypothesis_monitor.close()
             await knowledge_crawler.close()
             await personal_research_service.aclose()
             await live_research_service.aclose()
@@ -3229,6 +3233,18 @@ def create_app(
     method_builder = MethodBuilder(lab_records, personal_research_service, global_llm_client)
     api.state.method_builder = method_builder
     api.include_router(create_method_router(method_builder, owner_dependency))
+
+    def lab_portfolio_context(owner):
+        context = personal_rebalancing_input(owner)
+        if not context['quote_ready']:
+            raise HTTPException(409, detail="请先刷新当前真实行情与组合。")
+        return context
+
+    hypothesis_monitor = HypothesisMonitor(lab_records, personal_research_service, knowledge_service)
+    announcement_impacts = AnnouncementImpact(lab_records, knowledge_service, lab_portfolio_context)
+    api.state.hypothesis_monitor = hypothesis_monitor
+    api.state.announcement_impacts = announcement_impacts
+    api.include_router(create_monitor_router(hypothesis_monitor, announcement_impacts, owner_dependency))
 
     @api.post("/api/v1/advisor/profile-extractions")
     async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
