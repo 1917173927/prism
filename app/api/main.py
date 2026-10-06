@@ -25,6 +25,9 @@ from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, Workfl
 from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
 from app.service.personal_research import PersonalResearchService
+from app.service.research_lab_store import LabRecords
+from app.service.research_method_builder import MethodBuilder
+from app.api.research_lab_routes import create_method_router
 from app.api.personal_research_routes import create_personal_research_router
 from app.api.investment_memory_routes import create_investment_memory_router, PersonalRebalancingInput
 from app.service.investment_memory import InvestmentMemoryService, InvestmentPolicyStale
@@ -3221,6 +3224,11 @@ def create_app(
 
     def global_llm_client() -> AsyncLLMClient:
         return AsyncLLMClient(global_llm_config())
+
+    lab_records = LabRecords(active_store, active_clock)
+    method_builder = MethodBuilder(lab_records, personal_research_service, global_llm_client)
+    api.state.method_builder = method_builder
+    api.include_router(create_method_router(method_builder, owner_dependency))
 
     @api.post("/api/v1/advisor/profile-extractions")
     async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
