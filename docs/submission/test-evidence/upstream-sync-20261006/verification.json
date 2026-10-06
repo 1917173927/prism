@@ -1,0 +1,20 @@
+{
+  "full_pytest": {
+    "passed": 1224,
+    "skipped": 1,
+    "warnings": 2,
+    "seconds": 138.58,
+    "postgres": "PostgreSQL 17.11 real local isolated schemas"
+  },
+  "research_workbench_browser": "PASSED",
+  "research_lab_browser": "PASSED",
+  "navigation_menus": {
+    "passed": true,
+    "widths": [
+      1440,
+      768,
+      390
+    ]
+  },
+  "external_financial_acceptance": "NOT_REVALIDATED_CONTROLLED_INPUTS"
+}

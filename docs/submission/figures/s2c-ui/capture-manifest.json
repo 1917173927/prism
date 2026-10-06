@@ -1,0 +1,103 @@
+{
+  "captured_at": "2026-10-05T14:41:55.762Z",
+  "source": "current-local-service",
+  "service": "http://127.0.0.1:8875",
+  "database": "SQLite backup of existing confirmed local data",
+  "snapshot_adapter": false,
+  "browser_errors": [],
+  "api_statuses": {
+    "/api/v1/auth/context": 200,
+    "/api/health": 200,
+    "/api/v1/runtime/data-mode": 200,
+    "/api/v1/advisor/portfolio/summary": 200,
+    "/api/v1/advisor/portfolio/current": 200,
+    "/api/v1/user/preferences": 200,
+    "/api/v1/advisor/portfolio/report": 200,
+    "/api/v1/market/catalog": 200,
+    "/api/v1/decision-events": 200,
+    "/api/v1/advisor/recommendation-history": 200,
+    "/api/v1/advisor/profile/questionnaire-template": 200,
+    "/api/v1/advisor/behavior/profile": 200,
+    "/api/v1/market/quotes/CN": 200,
+    "/api/v1/advisor/profile/summary": 200,
+    "/api/v1/copilot/conversations": 200,
+    "/api/v1/advisor/context-memory": 200,
+    "/api/v1/user/model-settings": 200,
+    "/api/v1/advisor/session-truth": 200,
+    "/api/v1/advisor/portfolio/refresh": 200,
+    "/api/v1/advisor/portfolio-health": 200,
+    "/api/v1/market/analysis/CN/sse-composite": 200,
+    "/api/v1/research/templates": 200,
+    "/api/v1/skills": 200
+  },
+  "static_sha256": {
+    "index.html": "f1bf6a0b83a85eed6edc2ad87bd05b5eee86d72ce89c7425dd0446261298c945",
+    "app.js": "a474ecfff70a2b42c85cac72c6c19fbed9ff25538d39af5b11b4e354d993c118",
+    "styles.css": "96c55738208bd7eb65ef214eaa70836bd0d83b3028b856c5ddecb07279a93269",
+    "prism-v2.css": "1a0d5769bcd2f15e40509fc098494ee3a485c6614d8fd5620592029c5dabf4cd",
+    "research-workbench.css": "8a4509e203edf65afec3376dbb421b492b2abe2275ad5bbc1e241a7bd86dfbc4",
+    "research-tools.js": "5357665d4c4d6dedc5d03193547ca6a1f62e2114d3711abbbfe780abe1242b27"
+  },
+  "screenshots": [
+    {
+      "filename": "copilot-20261005.png",
+      "route": "copilot",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "deviceScaleFactor": 2,
+      "sha256": "1dd8588451dc89db9382ec5f1faa09f3e89245a28d220f265cee89c638fde657"
+    },
+    {
+      "filename": "portfolio-20261005.png",
+      "route": "overview",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "deviceScaleFactor": 2,
+      "sha256": "4792cbb39de7bc8683ff798bf61b50d165a9829d92474964005c7442bae0164a"
+    },
+    {
+      "filename": "profile-20261005.png",
+      "route": "profile",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "deviceScaleFactor": 2,
+      "sha256": "f37ddfce77f747d0fc968c4ecd48fe5922ffec74cb627020694bfb535592a9b2"
+    },
+    {
+      "filename": "market-20261005.png",
+      "route": "market",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "deviceScaleFactor": 2,
+      "sha256": "153d1dea26d249f3494ac0e8b01ba567f891f76b7501d0e07f3792f6ba50239e"
+    },
+    {
+      "filename": "research-workbench-20261005.png",
+      "route": "research-workbench",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "deviceScaleFactor": 2,
+      "sha256": "671d727ec6ba182befa881a6688a56a4c0f74df6357fa10a194641a6cd3e27e5"
+    },
+    {
+      "filename": "skill-store-20261005.png",
+      "route": "skill-store",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "deviceScaleFactor": 2,
+      "sha256": "bcc8b32e2029de696a921b092838b6b214064ada228435c55170cba8c6b85113"
+    }
+  ]
+}

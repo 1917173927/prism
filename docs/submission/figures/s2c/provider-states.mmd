@@ -1,0 +1,34 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 金融请求与结果"]:3
+    A["请求定义<br/>ProviderRequest<br/>操作、主体与必需字段"]
+    B["Provider 查询<br/>依照服务配置执行<br/>保留请求处理状态"]
+    C["结果对象<br/>ProviderResult<br/>记录、来源、缺项与错误"]
+  end
+  space
+  block:process
+    columns 4
+    H2["02 结果状态与后续处理"]:4
+    D["SUCCESS<br/>满足当前条件<br/>检查字段与来源"]
+    E["PARTIAL<br/>使用可用字段<br/>保留范围与缺项"]
+    F["EMPTY<br/>未取得记录<br/>说明查询条件"]
+    G["FAILED<br/>请求执行失败<br/>错误类别与提示"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 数据质量与时间依据"]:3
+    I["时间信息<br/>observed_at<br/>retrieved_at / period"]
+    J["口径与来源<br/>unit / lineage_id<br/>主体、单位与来源依据"]
+    K["展示与使用范围<br/>可用数据及明确缺项<br/>按历史截止时点查询"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,C,F,I,J,K neutral
+  class B,E accent
+  class D success
+  class G failure

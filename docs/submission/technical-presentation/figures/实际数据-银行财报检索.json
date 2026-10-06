@@ -1,0 +1,23 @@
+{
+  "source": "hybrid-execution.json · real-017",
+  "time": "2026-10-02T16:37:36.215951+00:00",
+  "request": {
+    "query": "Net interest income",
+    "subject": "ICBC",
+    "period": "2024",
+    "as_of": "2025-05-01T00:00:00+08:00"
+  },
+  "source_url": "https://v.icbc.com.cn/userfiles/resources/icbcltd/download/2025/25.pdf",
+  "selected_response_fields": {
+    "question_id": "real-017",
+    "status": "SUCCESS",
+    "mode": "HYBRID_RRF",
+    "match": {
+      "text": "2024 2023 2022 2021 2020\nAnnual operating results (in RMB millions)\nNet interest income 637,405 655,013 691,985 690,680 646,765\nOperating income 786,126 806,458 842,352 860,880 800,075",
+      "source": "INDUSTRIAL_AND_COMMERCIAL_BANK_OF_CHINA",
+      "published_at": "2025-03-28T15:59:59+00:00",
+      "period": "2024",
+      "status": "RETRIEVED_UNVERIFIED"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "source": "hybrid-execution.json · real-001",
+  "time": "2026-10-02T16:37:36.215951+00:00",
+  "request": {
+    "query": "国内生产总值",
+    "subject": "CHINA_MACRO",
+    "period": "2023",
+    "as_of": "2024-06-01T00:00:00+08:00"
+  },
+  "source_url": "https://www.stats.gov.cn/sj/xwfbh/fbhwd/202401/t20240117_1946624.html",
+  "selected_response_fields": {
+    "question_id": "real-001",
+    "status": "SUCCESS",
+    "mode": "HYBRID_RRF",
+    "fulltext_backend": "SQLITE_FTS5_BIGRAM",
+    "rrf_constant": 60,
+    "match": {
+      "text": "全年国内生产总值1260582亿元，按不变价格计算，比上年增长5.2%。",
+      "source": "NATIONAL_BUREAU_OF_STATISTICS_CHINA",
+      "published_at": "2024-01-17T02:00:00+00:00",
+      "period": "2023",
+      "status": "RETRIEVED_UNVERIFIED"
+    }
+  }
+}

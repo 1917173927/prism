@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>持仓分析 · 页面内展开预览</title>
+  <style>
+    :root { --page:#f7f7f8; --surface:#fff; --ink:#282b30; --secondary:#62666e; --line:#e6e7eb; --accent:#d96b16; --soft:#fff5eb; --up:#c23832; --down:#16704e; --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    html { scroll-padding-top:154px; }
+    body { margin:0; color:var(--ink); background:var(--page); font:14px/1.6 var(--sans); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    button,input,select,summary { font:inherit; }
+    button,a,summary { -webkit-tap-highlight-color:transparent; }
+    button,summary { cursor:pointer; }
+    a { color:inherit; text-decoration:none; }
+    button { color:inherit; }
+    button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid #e7a36b; outline-offset:3px; }
+    button { border:0; }
+    h1,h2,h3,p,dl { margin:0; }
+    .number { font-variant-numeric:tabular-nums; }
+    .muted { color:var(--secondary); }
+    .up { color:var(--up); }
+    .down { color:var(--down); }
+    .navigation { position:sticky; top:0; z-index:20; min-height:66px; border-bottom:1px solid var(--line); background:var(--surface); }
+    .navigation-inner { display:flex; align-items:center; min-height:66px; max-width:1440px; padding:0 32px; margin:auto; gap:36px; }
+    .brand { display:flex; align-items:center; gap:10px; font-size:17px; font-weight:600; letter-spacing:-.03em; }
+    .brand-mark { width:30px; height:30px; }
+    .primary-navigation { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .nav-link { padding:7px 12px; border-radius:8px; color:var(--secondary); white-space:nowrap; }
+    .nav-link.active { color:var(--ink); background:#f1f1f3; font-weight:500; }
+    .account { margin-left:auto; color:var(--secondary); white-space:nowrap; }
+    main { width:min(1120px,calc(100% - 64px)); margin:32px auto 0; padding-bottom:48px; }
+    .page-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; width:min(960px,100%); margin:0 auto 20px; }
+    .heading-title { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+    h1 { font-size:28px; line-height:1.4; font-weight:600; letter-spacing:-.03em; }
+    .sample-label { padding:2px 8px; border:1px solid var(--line); border-radius:5px; background:var(--surface); color:var(--secondary); font-size:12px; }
+    .quiet-button { display:inline-flex; justify-content:center; align-items:center; padding:9px 13px; min-height:40px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--secondary); }
+    .quiet-button:hover { color:var(--ink); background:#eeeff1; }
+    .primary-button { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:44px; padding:10px 24px; border-radius:9px; background:var(--accent); color:#fff; font-weight:500; }
+    .primary-button:hover { background:#bd5810; }
+    .text-button { padding:0; color:var(--accent); background:transparent; text-decoration:underline; text-underline-offset:4px; }
+    .overview-stage { display:grid; justify-items:center; align-content:center; min-height:calc(100svh - 230px); }
+    .overview-card { width:min(880px,100%); border:1px solid var(--line); border-radius:18px; background:var(--surface); }
+    .conclusion { padding:34px 32px 0; text-align:center; }
+    .conclusion h2 { font-size:25px; line-height:1.5; font-weight:550; letter-spacing:-.02em; }
+    .attention-link { display:inline-block; margin-top:10px; padding:0; color:#a95213; background:transparent; text-decoration:underline; text-underline-offset:4px; }
+    .asset-structure { display:flex; justify-content:center; align-items:center; gap:38px; padding:24px 24px 28px; }
+    .asset-chart { width:186px; height:186px; flex-shrink:0; }
+    .chart-caption { font:12px var(--sans); fill:var(--secondary); text-anchor:middle; }
+    .chart-value { font:500 16px var(--sans); fill:var(--ink); text-anchor:middle; }
+    .asset-legend { display:grid; gap:9px; min-width:142px; list-style:none; margin:0; padding:0; }
+    .asset-legend li { display:grid; grid-template-columns:8px 1fr auto; align-items:center; gap:9px; }
+    .legend-dot { width:8px; height:8px; border-radius:50%; }
+    .overview-figures { display:grid; grid-template-columns:1fr 1fr; width:min(620px,100%); margin:0 auto 28px; }
+    .overview-figures > div { min-width:0; text-align:center; padding:0 24px; }
+    .overview-figures > div + div { border-left:1px solid var(--line); }
+    dt { color:var(--secondary); }
+    .overview-figures dt { font-size:13px; }
+    .overview-figures dd { margin:5px 0 0; font:500 clamp(20px,2.5vw,30px)/1.4 var(--mono); letter-spacing:normal; overflow-wrap:anywhere; }
+    .card-actions { display:flex; align-items:center; justify-content:center; padding:20px; border-top:1px solid var(--line); }
+    .overview-source { margin-top:14px; font-size:12px; color:var(--secondary); text-align:center; }
+    .empty-state { display:grid; justify-items:center; align-content:center; gap:20px; min-height:470px; text-align:center; }
+    .empty-state h2 { font-size:26px; font-weight:550; letter-spacing:-.03em; }
+    .empty-state p { color:var(--secondary); }
+    .load-error { padding:18px 22px; border:1px solid #e6b8b4; border-radius:10px; background:#fff6f5; color:#973b35; }
+    .analysis-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:10px 0 18px; }
+    .analysis-heading h2 { font-size:21px; font-weight:550; }
+    .context-strip { display:flex; flex-wrap:wrap; align-items:center; gap:12px 24px; padding:17px 24px; background:var(--surface); border:1px solid var(--line); border-radius:12px; }
+    .context-item { display:flex; align-items:baseline; flex-wrap:wrap; gap:9px; }
+    .context-item span { color:var(--secondary); font-size:13px; }
+    .context-item strong { font:500 17px/1.6 var(--mono); }
+    .context-attention { margin-left:auto; color:#a95213; background:transparent; padding:0; }
+    .analysis-tabs { position:sticky; top:66px; z-index:10; display:flex; flex-wrap:wrap; gap:8px; min-height:66px; align-items:center; padding:12px 0; background:var(--page); }
+    .analysis-tabs button { padding:10px 18px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--secondary); white-space:nowrap; }
+    .analysis-tabs button[aria-selected="true"] { color:var(--ink); background:var(--surface); border-color:var(--line); font-weight:500; }
+    .analysis-panel { min-width:0; padding:30px 36px 34px; border:1px solid var(--line); border-radius:14px; background:var(--surface); }
+    .content-section + .content-section { margin-top:34px; padding-top:30px; border-top:1px solid var(--line); }
+    .section-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+    h3 { font-size:16px; font-weight:500; }
+    .risk-result { font-size:13px; font-weight:500; color:var(--secondary); }
+    .risk-result.OVERBOUND,.risk-result.UNDERBOUND { color:#a13b2e; }
+    .risk-result.REVIEW_REQUIRED { color:#916020; }
+    .top-asset { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:18px 32px; padding:24px; border-radius:10px; background:#fafafb; }
+    .asset-name { display:block; margin-top:4px; font-size:21px; line-height:1.6; font-weight:500; }
+    .asset-weight { font-size:30px; line-height:1.4; font-weight:500; }
+    .top-asset small { display:block; font-size:13px; color:var(--secondary); }
+    .facts { margin:18px 0 0; }
+    .fact-row { display:flex; align-items:baseline; justify-content:space-between; gap:24px; padding:17px 0; border-bottom:1px solid var(--line); }
+    .fact-row:last-child { border-bottom:0; }
+    .fact-row dd { margin:0; text-align:right; font-weight:500; font-size:17px; }
+    table { width:100%; table-layout:fixed; border-collapse:collapse; }
+    th,td { padding:17px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; overflow-wrap:anywhere; white-space:normal; }
+    th { color:var(--secondary); background:#fafafb; font-size:13px; font-weight:500; }
+    td { font-size:14px; }
+    td small { display:block; margin-top:4px; color:var(--secondary); font-size:12px; }
+    tbody tr:last-child td { border-bottom:0; }
+    .risk-table th:first-child { width:30%; }
+    .risk-table th:nth-child(2) { width:18%; }
+    .risk-table th:nth-child(3) { width:22%; }
+    .risk-table th:nth-child(4) { width:30%; }
+    .disclosure { margin-top:28px; border-top:1px solid var(--line); }
+    .disclosure > summary { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:20px 0; list-style:none; color:var(--secondary); font-size:15px; font-weight:500; }
+    summary::-webkit-details-marker { display:none; }
+    .disclosure > summary::after { content:"＋"; font-size:18px; flex-shrink:0; }
+    .disclosure[open] > summary::after { content:"－"; }
+    .disclosure-content { padding:0 0 8px; }
+    .secondary-disclosure { margin-top:14px; border:0; }
+    .secondary-disclosure > summary { padding:6px 0; font-size:12px; font-weight:400; }
+    .secondary-disclosure > summary::after { font-size:14px; }
+    .secondary-disclosure p { margin-top:8px; color:var(--secondary); font-size:12px; }
+    .method-list { padding:0 0 0 20px; margin:0; color:var(--secondary); line-height:1.9; }
+    .method-list li + li { margin-top:8px; }
+    .profit-facts { margin:0; }
+    .profit-facts .fact-row { min-height:88px; padding:24px 0; }
+    .profit-facts dt { font-size:15px; }
+    .profit-facts dd { font-size:22px; }
+    .style-name { font-size:30px; font-weight:550; line-height:1.3; letter-spacing:-.04em; }
+    .sample-meta { margin-top:10px; color:var(--secondary); font-size:13px; }
+    .style-facts { margin-top:20px; }
+    .style-facts .fact-row { min-height:74px; padding:21px 0; }
+    .style-facts dd { font-size:23px; }
+    .security-table th:first-child { width:34%; }
+    .security-table th:nth-child(2),.security-table th:nth-child(3),.security-table th:nth-child(4) { width:22%; }
+    .search-field { display:block; margin:16px 0 18px; }
+    .search-field input { width:min(360px,100%); min-height:42px; border:1px solid #d6d8de; border-radius:7px; padding:9px 12px; background:var(--surface); color:var(--ink); }
+    .history-table th:first-child { width:25%; }
+    .history-table th:nth-child(2) { width:35%; }
+    .history-table th:nth-child(3) { width:15%; }
+    .history-table th:nth-child(4) { width:25%; }
+    .holding-list { display:grid; gap:12px; }
+    .holding-item { min-width:0; border:1px solid var(--line); border-radius:10px; }
+    .holding-item > summary { display:grid; grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr)) 18px; gap:20px; align-items:center; padding:22px 24px; list-style:none; }
+    .holding-item > summary::after { content:"＋"; color:var(--secondary); text-align:center; }
+    .holding-item[open] > summary::after { content:"－"; }
+    .holding-name { font-size:16px; font-weight:500; }
+    .holding-name small { display:block; margin-top:3px; color:var(--secondary); font-size:12px; font-weight:400; }
+    .holding-number { text-align:right; font-size:16px; font-weight:500; }
+    .holding-number small { display:block; margin-bottom:3px; font-size:12px; color:var(--secondary); font-weight:400; }
+    .holding-detail { margin:0 24px; padding:4px 0 18px; border-top:1px solid var(--line); }
+    .holding-detail .fact-row { padding:13px 0; }
+    .holding-detail dd { font-size:15px; }
+    .holding-detail button { margin-top:16px; }
+    .tools { margin:28px 0 0; }
+    .tools > summary { padding:17px 0; color:var(--secondary); list-style:none; }
+    .tools-list { display:grid; gap:0; padding:6px 24px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+    .tools-list a { display:flex; justify-content:space-between; gap:16px; padding:17px 0; }
+    .tools-list a + a { border-top:1px solid var(--line); }
+    .preview-settings { width:min(960px,100%); margin:28px auto 0; font-size:12px; color:var(--secondary); }
+    .preview-settings > summary { width:fit-content; padding:8px 0; }
+    .preview-settings-content { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:center; margin-top:8px; padding:18px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+    .preview-settings-content label { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .preview-settings select { padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink); }
+    .preview-settings input { max-width:100%; }
+    @media (min-width:1700px) { .overview-stage { min-height:calc(100svh - 260px); } }
+    @media (max-width:900px) {
+      .navigation-inner { gap:20px; padding:0 20px; }
+      .nav-link { padding:7px 9px; }
+      .account { display:none; }
+      main { width:calc(100% - 40px); margin-top:28px; }
+      .analysis-panel { padding:26px; }
+      .holding-item > summary { gap:12px; padding:20px; }
+    }
+    @media (max-width:640px) {
+      .navigation-inner { flex-wrap:wrap; gap:0; padding:10px 14px; }
+      .brand { width:100%; margin-bottom:7px; }
+      .primary-navigation { gap:2px; width:100%; }
+      .nav-link { padding:6px 8px; font-size:12px; }
+      main { width:calc(100% - 28px); margin-top:22px; padding-bottom:30px; }
+      h1 { font-size:24px; }
+      .page-heading { margin-bottom:20px; }
+      .overview-stage { min-height:calc(100svh - 210px); }
+      .conclusion { padding:26px 20px 0; }
+      .conclusion h2 { font-size:21px; }
+      .asset-structure { gap:20px; padding:24px 18px; }
+      .asset-chart { width:150px; height:150px; }
+      .asset-legend { min-width:100px; font-size:12px; }
+      .overview-figures { margin-bottom:24px; }
+      .overview-figures > div { padding:0 12px; }
+      .analysis-heading { align-items:flex-start; }
+      .analysis-heading h2 { font-size:21px; }
+      .context-strip { padding:16px; gap:12px 18px; }
+      .context-attention { margin-left:0; width:100%; text-align:left; }
+      .analysis-tabs { position:static; gap:8px; display:grid; grid-template-columns:1fr 1fr; }
+      .analysis-tabs button { padding:10px 5px; font-size:13px; }
+      .analysis-panel { padding:22px 18px 26px; }
+      .top-asset { padding:20px; }
+      .asset-name { font-size:21px; }
+      .asset-weight { font-size:27px; }
+      .fact-row { gap:16px; }
+      .fact-row dd { font-size:16px; }
+      .profit-facts dd { font-size:22px; }
+      .style-facts dd { font-size:23px; }
+      .style-name { font-size:27px; }
+      .risk-table,.security-table,.history-table,.risk-table tbody,.security-table tbody,.history-table tbody { display:block; width:100%; }
+      .risk-table thead,.security-table thead,.history-table thead { position:absolute; width:1px; height:1px; clip-path:inset(50%); overflow:hidden; }
+      .risk-table tr,.security-table tr,.history-table tr { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding:22px 0; border-bottom:1px solid var(--line); }
+      .risk-table tr:last-child,.security-table tr:last-child,.history-table tr:last-child { border-bottom:0; }
+      .risk-table td,.security-table td,.history-table td { display:block; border:0; padding:0; min-width:0; }
+      .risk-table td:first-child,.security-table td:first-child,.history-table td:nth-child(2) { grid-column:1/-1; font-size:16px; font-weight:500; }
+      .risk-table td:not(:first-child)::before,.security-table td:not(:first-child)::before,.history-table td:not(:nth-child(2))::before { content:attr(data-label); display:block; margin-bottom:6px; color:var(--secondary); font-size:12px; font-weight:400; }
+      .risk-table td:last-child { grid-column:1/-1; }
+      .history-table td:nth-child(2) { grid-row:1; }
+      .history-table td:first-child { grid-column:1/-1; }
+      .holding-item > summary { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; padding:20px; }
+      .holding-item > summary::after { display:none; }
+      .holding-name { grid-column:1/-1; }
+      .holding-number { text-align:left; }
+      .holding-detail { margin:0 20px; }
+      .content-section + .content-section { margin-top:28px; padding-top:26px; }
+    }
+    @media (max-width:400px) {
+      .heading-title { gap:6px; }
+      .asset-structure { flex-direction:column; gap:16px; }
+      .asset-chart { width:154px; height:154px; }
+      .asset-legend { width:160px; }
+      .overview-figures { grid-template-columns:1fr; gap:20px; }
+      .overview-figures > div + div { border-left:0; }
+      .conclusion h2 { font-size:20px; }
+      .analysis-panel { padding:22px 16px; }
+      .top-asset { padding:18px; }
+      .profit-facts .fact-row { flex-wrap:wrap; gap:10px; }
+      .profit-facts dd { width:100%; text-align:left; }
+    }
+  </style>
+</head>
+<body>
+  <header class="navigation">
+    <div class="navigation-inner">
+      <a class="brand" href="/#copilot"><img class="brand-mark" src="/static/wencai-zhitou-logo.svg" alt="">问财智投</a>
+      <nav class="primary-navigation" aria-label="主导航">
+        <a class="nav-link" href="/#copilot">AI 对话</a>
+        <a class="nav-link active" href="#overview" aria-current="page">持仓分析</a>
+        <a class="nav-link" href="/#market">大盘鉴别</a>
+        <a class="nav-link" href="/#profile">个人中心</a>
+      </nav>
+      <a class="account" href="/#profile">账户与设置</a>
+    </div>
+  </header>
+  <main>
+    <div class="page-heading">
+      <div class="heading-title"><h1>持仓分析</h1><span class="sample-label" id="sample-label">本地预览</span></div>
+      <a class="quiet-button" href="/#overview">打开工作台</a>
+    </div>
+    <div id="load-error" class="load-error" role="alert" hidden></div>
+    <section id="loading-state" class="empty-state" role="status"><p>正在读取本地示例…</p></section>
+    <section id="empty-state" class="empty-state" hidden>
+      <h2>导入持仓，查看组合分析</h2>
+      <p>支持截图、文字录入和手动添加</p>
+      <a class="primary-button" href="/#overview">导入持仓</a>
+    </section>
+    <section id="overview-state" class="overview-stage" aria-label="持仓概览" hidden>
+      <article id="overview-card" class="overview-card">
+        <div class="conclusion">
+          <h2 id="overview-headline"></h2>
+          <button id="overview-attention" class="attention-link" type="button"></button>
+        </div>
+        <div class="asset-structure">
+          <svg id="asset-chart" class="asset-chart" viewBox="0 0 160 160" role="img" aria-label="资产分布"></svg>
+          <ul id="asset-legend" class="asset-legend"></ul>
+        </div>
+        <dl class="overview-figures number">
+          <div><dt>持仓市值</dt><dd id="overview-value"></dd></div>
+          <div><dt>累计盈亏</dt><dd id="overview-pnl"></dd></div>
+        </dl>
+        <div class="card-actions"><button id="open-analysis" class="primary-button" type="button" aria-expanded="false" aria-controls="analysis-state">查看分析详情 <span aria-hidden="true">→</span></button></div>
+      </article>
+      <p id="overview-source" class="overview-source"></p>
+    </section>
+    <section id="analysis-state" aria-labelledby="analysis-title" hidden>
+      <div class="analysis-heading"><h2 id="analysis-title" tabindex="-1">分析详情</h2><button id="close-analysis" type="button" class="quiet-button">收起详情 <span aria-hidden="true">↑</span></button></div>
+      <div class="context-strip number">
+        <div class="context-item"><span>持仓市值</span><strong id="context-value"></strong></div>
+        <div class="context-item"><span>累计盈亏</span><strong id="context-pnl"></strong></div>
+        <button id="context-attention" class="context-attention" type="button"></button>
+      </div>
+      <div id="analysis-tabs" class="analysis-tabs" role="tablist" aria-label="分析栏目">
+        <button id="tab-risk" type="button" role="tab" data-tab="risk" aria-controls="panel-risk" aria-selected="true">风险与集中度</button>
+        <button id="tab-profit" type="button" role="tab" data-tab="profit" aria-controls="panel-profit" aria-selected="false" tabindex="-1">收益表现</button>
+        <button id="tab-style" type="button" role="tab" data-tab="style" aria-controls="panel-style" aria-selected="false" tabindex="-1">交易风格</button>
+        <button id="tab-holdings" type="button" role="tab" data-tab="holdings" aria-controls="panel-holdings" aria-selected="false" tabindex="-1">持仓明细</button>
+      </div>
+      <section id="panel-risk" class="analysis-panel" role="tabpanel" aria-labelledby="tab-risk" tabindex="0">
+        <section class="content-section">
+          <div class="section-heading"><h3>最大持仓</h3></div>
+          <div class="top-asset">
+            <div><strong id="top-asset-name" class="asset-name"></strong></div>
+            <div class="number"><strong id="top-asset-weight" class="asset-weight"></strong><small>占总资产（含现金）</small></div>
+          </div>
+          <dl class="facts number"><div class="fact-row"><dt>单一标的上限</dt><dd id="single-asset-limit"></dd></div></dl>
+        </section>
+        <section class="content-section">
+          <div class="section-heading"><h3>需要关注</h3></div>
+          <p id="risk-clear" class="muted" hidden></p>
+          <table id="risk-attention-table" class="risk-table number" aria-label="需要关注的风险"><thead><tr><th scope="col">项目</th><th scope="col">当前占比</th><th scope="col">参考范围</th><th scope="col">结果</th></tr></thead><tbody id="risk-rows"></tbody></table>
+          <details id="risk-reference" class="disclosure"><summary id="risk-reference-title">查看其他风险对照</summary><div class="disclosure-content"><p id="risk-profile" class="sample-meta"></p><table class="risk-table number" aria-label="其他风险对照"><thead><tr><th scope="col">项目</th><th scope="col">当前占比</th><th scope="col">参考范围</th><th scope="col">结果</th></tr></thead><tbody id="risk-reference-rows"></tbody></table></div></details>
+          <details class="disclosure secondary-disclosure"><summary>数据口径</summary><p>占比按包含现金的总资产计算，参考范围来自风险问卷。</p></details>
+        </section>
+      </section>
+      <section id="panel-profit" class="analysis-panel" role="tabpanel" aria-labelledby="tab-profit" tabindex="0" hidden>
+        <section class="content-section"><div class="section-heading"><h3>组合收益</h3></div><dl id="profit-facts" class="profit-facts number"></dl></section>
+        <details id="profit-breakdown" class="disclosure"><summary>查看盈亏分布</summary><div class="disclosure-content"><dl id="loss-facts" class="facts number"></dl><dl id="position-profits" class="facts number"></dl></div></details>
+        <details class="disclosure secondary-disclosure"><summary>收益说明</summary><p>累计盈亏为当前持仓市值与成本之差；当日盈亏按昨收价计算。</p></details>
+      </section>
+      <section id="panel-style" class="analysis-panel" role="tabpanel" aria-labelledby="tab-style" tabindex="0" hidden>
+        <div id="style-empty" class="empty-state" hidden><h2>导入成交记录，查看交易风格</h2><a class="primary-button" href="/#trading-style">导入历史交易</a></div>
+        <div id="style-content">
+          <section class="content-section">
+            <div class="section-heading"><h3>交易风格</h3></div>
+            <p id="style-name" class="style-name"></p>
+            <dl id="style-facts" class="style-facts number"></dl>
+          </section>
+          <details id="style-detail" class="disclosure"><summary>查看交易与当前持仓</summary><div class="disclosure-content">
+            <dl id="style-more-facts" class="facts number"></dl>
+            <table class="security-table number" aria-label="重点股票的历史成交与当前仓位"><thead><tr><th scope="col">标的</th><th scope="col">占总资产</th><th scope="col">股票成交占比</th><th scope="col">最近成交</th></tr></thead><tbody id="security-rows"></tbody></table>
+            <p class="sample-meta">股票成交占比包含买入与卖出金额。</p>
+            <ul id="style-data-gaps" class="method-list" hidden></ul>
+          </div></details>
+          <details id="trade-history" class="disclosure"><summary><span id="history-title">查看交易明细</span></summary><div class="disclosure-content"><p id="style-sample" class="sample-meta"></p><label class="search-field"><input id="trade-search" type="search" placeholder="查找证券名称或代码" aria-label="查找交易证券"></label><table class="history-table number" aria-label="本地示例成交记录"><thead><tr><th scope="col">成交时间</th><th scope="col">证券</th><th scope="col">方向</th><th scope="col">成交金额</th></tr></thead><tbody id="history-rows"></tbody></table><p id="history-empty" class="muted" hidden>没有符合条件的成交记录</p></div></details>
+        </div>
+      </section>
+      <section id="panel-holdings" class="analysis-panel" role="tabpanel" aria-labelledby="tab-holdings" tabindex="0" hidden>
+        <div class="section-heading"><h3 id="holdings-title">持仓明细</h3><span id="holdings-cash" class="muted number"></span></div>
+        <div id="holding-list" class="holding-list"></div>
+        <details class="disclosure secondary-disclosure"><summary>占比说明</summary><p>持仓占比按证券总市值计算。</p></details>
+      </section>
+      <details class="tools"><summary>更多分析</summary><nav class="tools-list" aria-label="更多持仓分析"><a href="/#portfolio-optimization">组合优化 <span aria-hidden="true">→</span></a><a href="/#portfolio-rebalancing">调仓方案 <span aria-hidden="true">→</span></a><a href="/#scenario-simulation">市场变化模拟 <span aria-hidden="true">→</span></a></nav></details>
+    </section>
+    <details class="preview-settings"><summary>预览设置</summary><div class="preview-settings-content"><label>预览状态 <select id="preview-state"><option value="complete">完整示例</option><option value="holdings-only">仅有持仓</option><option value="empty">空持仓</option></select></label><label>读取本地数据 <input id="preview-file" type="file" accept=".json,application/json"></label></div></details>
+  </main>
+  <script type="module">
+    const byId = id => document.getElementById(id);
+    const tabs = [...document.querySelectorAll('[role="tab"]')];
+    const categories = tabs.map(tab => tab.dataset.tab);
+    const moneyFormatter = new Intl.NumberFormat("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2});
+    const percentFormatter = new Intl.NumberFormat("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2});
+    const dateFormatter = new Intl.DateTimeFormat("zh-CN", {timeZone:"Asia/Shanghai", year:"numeric", month:"2-digit", day:"2-digit"});
+    const colors = {stock:"#d96b16",etf:"#e9ad65",bond:"#7294a6",cash:"#c5cbd2",convertible:"#ae99b7",other:"#9aa3a7"};
+    let data;
+    let mode = "complete";
+    let selectedSecurity = "";
+    function money(value, signed=false) { return value == null ? "待补充数据" : `${signed && Number(value)>0 ? "+" : ""}${moneyFormatter.format(Number(value))}`; }
+    function amount(value) { return value == null ? "待补充数据" : `¥ ${money(value)}`; }
+    function percent(value) { return value == null ? "待补充数据" : `${percentFormatter.format(Number(value))}%`; }
+    function numberClass(value) { return Number(value)>0 ? "up" : Number(value)<0 ? "down" : ""; }
+    function node(tag, text, className="") { const result=document.createElement(tag); if(text!=null)result.textContent=text; if(className)result.className=className; return result; }
+    function fact(container,label,value,className="") { const row=node("div",null,"fact-row"); row.append(node("dt",label),node("dd",value,className)); container.append(row); }
+    function cell(row,value,label,detail="") { const result=node("td",value); result.dataset.label=label; if(detail)result.append(node("small",detail)); row.append(result); return result; }
+    function riskResult(status,label) {
+      const labels={PASS:"范围内",OVERBOUND:"超过上限",UNDERBOUND:"低于下限",REVIEW_REQUIRED:label.includes("未分类") ? "待补充行业数据" : "待补充数据"};
+      if(!Object.hasOwn(labels,status))throw new Error("风险结果无法识别");
+      return node("span",labels[status],`risk-result ${status}`);
+    }
+    function setAmount(id,value) { byId(id).textContent=amount(value); byId(id).className=`number ${numberClass(value)}`; }
+    function renderChart(report) {
+      const svg=byId("asset-chart"); svg.replaceChildren(); byId("asset-legend").replaceChildren();
+      const namespace="http://www.w3.org/2000/svg", circumference=2*Math.PI*58;
+      let offset=0;
+      for(const group of report.asset_structure.filter(group=>Number(group.market_value_cny)>0)) {
+        const circle=document.createElementNS(namespace,"circle");
+        for(const [key,value] of Object.entries({cx:80,cy:80,r:58,fill:"none",stroke:colors[group.group_key],"stroke-width":18,"stroke-dasharray":`${Number(group.weight_pct)/100*circumference} ${circumference}`,"stroke-dashoffset":-offset,transform:"rotate(-90 80 80)"}))circle.setAttribute(key,value);
+        svg.append(circle); offset+=Number(group.weight_pct)/100*circumference;
+        const item=node("li"); const dot=node("span",null,"legend-dot"); dot.style.background=colors[group.group_key];
+        item.append(dot,node("span",group.label),node("span",percent(group.weight_pct),"number")); byId("asset-legend").append(item);
+      }
+      for(const [text,y,className] of [["资产分布",77,"chart-value"],[`${report.position_count} 项持仓`,98,"chart-caption"]]) {
+        const label=document.createElementNS(namespace,"text"); label.textContent=text; label.setAttribute("x",80); label.setAttribute("y",y); label.setAttribute("class",className); svg.append(label);
+      }
+      svg.setAttribute("aria-label",report.asset_structure.filter(group=>Number(group.market_value_cny)>0).map(group=>`${group.label} ${percent(group.weight_pct)}`).join("，"));
+    }
+    function renderRisk() {
+      const {report}=data; byId("risk-rows").replaceChildren(); byId("risk-reference-rows").replaceChildren();
+      byId("top-asset-name").textContent=report.concentration.top_asset_name;
+      byId("top-asset-weight").textContent=percent(data.top_total_weight_pct);
+      byId("single-asset-limit").textContent=percent(report.concentration.single_asset_limit_pct);
+      byId("risk-profile").textContent=`风险问卷：${report.profile.archetype}`;
+      for(const item of data.risk_rows) {
+        const row=node("tr"); cell(row,item.label,"项目",item.detail); cell(row,percent(item.current),"当前占比"); cell(row,item.range,"参考范围"); cell(row,"","结果").append(riskResult(item.status,item.label)); byId(item.status==="PASS" ? "risk-reference-rows" : "risk-rows").append(row);
+      }
+      const attentionCount=byId("risk-rows").children.length, referenceCount=byId("risk-reference-rows").children.length;
+      byId("risk-attention-table").hidden=attentionCount===0;
+      byId("risk-clear").hidden=attentionCount>0;
+      byId("risk-clear").textContent=data.risk_rows.length ? "各项指标均在参考范围内" : "暂无风险对照";
+      byId("risk-reference").hidden=referenceCount===0;
+      byId("risk-reference-title").textContent=`查看其他 ${referenceCount} 项对照`;
+    }
+    function renderProfit() {
+      const report=data.report; byId("profit-facts").replaceChildren(); byId("loss-facts").replaceChildren();
+      for(const [label,value,className] of [
+        ["当日盈亏",money(report.daily_pnl_cny,true),numberClass(report.daily_pnl_cny)],
+        ["累计盈亏",money(report.cumulative_pnl_cny,true),numberClass(report.cumulative_pnl_cny)],
+        ["累计收益率",percent(report.cumulative_pnl_pct),numberClass(report.cumulative_pnl_pct)],
+      ])fact(byId("profit-facts"),label,value,className);
+      fact(byId("loss-facts"),"浮亏标的",`${report.pnl_summary.loss_position_count} 项`);
+      fact(byId("loss-facts"),"浮亏持仓占总资产",percent(report.pnl_summary.loss_weight_pct));
+      byId("position-profits").replaceChildren();
+      for(const position of report.positions)fact(byId("position-profits"),position.asset_name,money(position.pnl_cny,true),numberClass(position.pnl_cny));
+    }
+    function renderHistory() {
+      byId("history-rows").replaceChildren();
+      const query=byId("trade-search").value.trim().toLowerCase();
+      const records=data.trades.filter(trade=>`${trade.security_code} ${trade.security_name}`.toLowerCase().includes(query)).slice().reverse();
+      for(const trade of records) {
+        const row=node("tr"); cell(row,dateFormatter.format(new Date(trade.traded_at)),"成交时间"); cell(row,trade.security_name,"证券",trade.security_code); cell(row,trade.side==="BUY" ? "买入" : "卖出","方向"); cell(row,money(trade.gross_amount_cny),"成交金额",`${trade.quantity} × ${money(trade.price_cny)}`); byId("history-rows").append(row);
+      }
+      byId("history-empty").hidden=records.length>0;
+    }
+    function renderStyle() {
+      const {style}=data; byId("style-name").textContent=style.primary_style;
+      const dates=data.trades.map(trade=>new Date(trade.traded_at)).sort((a,b)=>a-b);
+      byId("style-sample").textContent=`${dateFormatter.format(dates[0])} — ${dateFormatter.format(dates.at(-1))} · ${style.metrics.trade_count} 笔成交`;
+      byId("style-facts").replaceChildren(); fact(byId("style-facts"),"每月交易频率",`${style.metrics.trades_per_month} 笔`); fact(byId("style-facts"),"持有期中位数",`${style.metrics.median_holding_days} 天`);
+      byId("style-more-facts").replaceChildren(); fact(byId("style-more-facts"),"90 日换手率",percent(style.metrics.turnover_90d_pct));
+      byId("security-rows").replaceChildren();
+      for(const security of data.securities) {
+        const row=node("tr"); const label=cell(row,"","标的",security.security_code); const link=node("button",security.security_name,"text-button");
+        link.addEventListener("click",()=>{selectedSecurity=security.security_code; location.hash="holdings";});
+        if(data.current_weights[security.security_code]==null)label.prepend(node("span",security.security_name)); else label.prepend(link);
+        cell(row,data.current_weights[security.security_code]==null ? "当前未持有" : percent(data.current_weights[security.security_code]),"占总资产");
+        cell(row,percent(security.gross_amount_share_pct),"股票成交占比"); cell(row,dateFormatter.format(new Date(security.last_traded_at)),"最近成交"); byId("security-rows").append(row);
+      }
+      byId("history-title").textContent=`查看交易明细 · ${data.trades.length} 笔`;
+      byId("style-data-gaps").replaceChildren(); byId("style-data-gaps").hidden=style.data_gaps.length===0;
+      for(const text of style.data_gaps)byId("style-data-gaps").append(node("li",text));
+      renderHistory();
+    }
+    function renderHoldings() {
+      const report=data.report; byId("holdings-title").textContent=`持仓明细 · ${report.position_count} 项`;
+      byId("holdings-cash").textContent=`现金 ${money(report.cash_cny)}`; byId("holding-list").replaceChildren();
+      for(const position of report.positions) {
+        const item=node("details",null,"holding-item"); item.dataset.asset=position.asset_id;
+        const summary=node("summary"); const name=node("span",position.asset_name,"holding-name"); name.append(node("small",position.asset_id)); summary.append(name);
+        for(const [label,value,className] of [["持仓占比",percent(position.weight_pct),""],["市值",money(position.market_value_cny),""],["累计盈亏",money(position.pnl_cny,true),numberClass(position.pnl_cny)]]) {
+          const metric=node("span",null,`holding-number number ${className}`); metric.append(node("small",label),node("span",value)); summary.append(metric);
+        }
+        const details=node("div",null,"holding-detail"); const facts=node("dl",null,"facts number");
+        for(const [label,value] of [["持仓数量",position.quantity],["成本价",money(position.cost_price_cny)],["当前价格",money(position.current_price_cny)],["累计收益率",percent(position.pnl_pct)]])fact(facts,label,value);
+        details.append(facts); const historyLink=node("button","查看该标的成交记录 →","text-button");
+        historyLink.type="button"; historyLink.addEventListener("click",()=>{byId("trade-search").value=position.asset_id; byId("trade-history").open=true; location.hash="style"; renderHistory();});
+        details.append(historyLink); item.append(summary,details); byId("holding-list").append(item);
+      }
+    }
+    function renderData(value) {
+      if(!value.report || !value.style || !Array.isArray(value.trades) || !Array.isArray(value.risk_rows))throw new Error("预览数据缺少报告、交易风格或成交记录");
+      data=value; const {report}=data;
+      byId("sample-label").textContent=data.label; byId("overview-headline").textContent=report.headline;
+      byId("overview-attention").textContent=`${data.attention_count} 项需要关注`;
+      byId("context-attention").textContent=`${data.attention_count} 项需要关注 →`;
+      byId("overview-value").textContent=amount(report.holdings_value_cny); byId("context-value").textContent=amount(report.holdings_value_cny);
+      setAmount("overview-pnl",report.cumulative_pnl_cny); setAmount("context-pnl",report.cumulative_pnl_cny);
+      byId("overview-source").textContent=`数据截至 ${dateFormatter.format(new Date(data.as_of))}`;
+      renderChart(report); renderRisk(); renderProfit(); renderStyle(); renderHoldings();
+      byId("loading-state").hidden=true; byId("load-error").hidden=true; applyState();
+    }
+    function applyState() {
+      if(!data)return;
+      const category=location.hash.slice(1), expanded=categories.includes(category) && mode!=="empty";
+      const wasExpanded=!byId("analysis-state").hidden;
+      byId("empty-state").hidden=mode!=="empty"; byId("overview-state").hidden=expanded || mode==="empty"; byId("analysis-state").hidden=!expanded;
+      byId("style-empty").hidden=mode!=="holdings-only"; byId("style-content").hidden=mode==="holdings-only";
+      byId("open-analysis").setAttribute("aria-expanded",String(expanded));
+      for(const tab of tabs) { const active=tab.dataset.tab===category; tab.setAttribute("aria-selected",String(active)); tab.tabIndex=active ? 0 : -1; byId(`panel-${tab.dataset.tab}`).hidden=!active; }
+      if(expanded && !wasExpanded)byId("analysis-title").focus({preventScroll:true});
+      if(expanded && selectedSecurity && category==="holdings") {
+        const item=[...document.querySelectorAll(".holding-item")].find(item=>item.dataset.asset===selectedSecurity); item.open=true; item.querySelector("summary").focus({preventScroll:true}); item.scrollIntoView({block:"center"}); selectedSecurity="";
+      }
+    }
+    function navigate(category) { location.hash=category; }
+    byId("open-analysis").addEventListener("click",()=>navigate("risk")); byId("overview-attention").addEventListener("click",()=>navigate("risk"));
+    byId("context-attention").addEventListener("click",()=>navigate("risk"));
+    byId("close-analysis").addEventListener("click",()=>{navigate("overview");});
+    tabs.forEach((tab,index)=>{
+      tab.addEventListener("click",()=>navigate(tab.dataset.tab));
+      tab.addEventListener("keydown",event=>{
+        let next=index;
+        if(event.key==="ArrowRight")next=(index+1)%tabs.length;
+        else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;
+        else if(event.key==="Home")next=0;
+        else if(event.key==="End")next=tabs.length-1;
+        else return;
+        event.preventDefault(); tabs[next].focus(); navigate(tabs[next].dataset.tab);
+      });
+    });
+    byId("trade-search").addEventListener("input",renderHistory);
+    byId("preview-state").addEventListener("change",event=>{mode=event.target.value; applyState();});
+    window.addEventListener("hashchange",()=>{applyState(); if(location.hash==="#overview" && mode!=="empty")byId("open-analysis").focus({preventScroll:true});});
+    function showError(error) { byId("loading-state").hidden=true; byId("load-error").hidden=false; byId("load-error").textContent=error.message; throw error; }
+    byId("preview-file").addEventListener("change",async event=>{
+      const file=event.target.files[0]; if(!file)return;
+      try { renderData(JSON.parse(await file.text())); } catch(error) { showError(error); }
+    });
+    try {
+      const response=await fetch("./output/portfolio-style-preview/sample-view.json",{cache:"no-store"});
+      if(!response.ok)throw new Error("无法读取本地示例，请在预览设置中选择数据文件。");
+      renderData(await response.json());
+    } catch(error) { showError(error); }
+  </script>
+</body>
+</html>

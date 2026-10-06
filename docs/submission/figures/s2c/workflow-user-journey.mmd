@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 准备对应业务资料"]:3
+    A["个人分析<br/>确认问卷与导入持仓<br/>刷新行情并核对前提"]
+    B["金融研究<br/>选择已启用查询能力<br/>填写主体与研究参数"]
+    C["资料与算法<br/>上传文档或准备序列<br/>核对来源及截止时点"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 进入相应页面执行"]:3
+    D["持仓与对话<br/>查看体检和风险报告<br/>按条件进行配置测算"]
+    E["市场与研究<br/>切换指数或提交节点<br/>读取进度及查询结果"]
+    F["原文与算法<br/>查找片段并核验引用<br/>提交独立算法输入"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 核查结果并管理资料"]:3
+    G["数值解释<br/>核对金额、比例和口径<br/>读取具体风险与约束"]
+    I["依据检查<br/>读取来源、版本及状态<br/>按需要核查原文"]
+    J["继续操作<br/>补充资料或重新确认<br/>查询历史与重新分析"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

@@ -320,9 +320,34 @@ def test_frontend_keeps_safe_dom_and_renders_sector_result_below_chart():
     assert 'track.setAttribute("role", "img")' in script
     assert 'details.className = "evidence-professional-details"' in script
     assert 'processFlow.className = "evidence-process-flow"' in script
-    profile_modal = page.index('id="profile-edit-modal"')
-    evidence_modal = page.index('id="evidence-lineage-modal"')
-    assert page.rfind("</div>", profile_modal, evidence_modal) > profile_modal
+    # Modal independence must hold regardless of their order in the document.
+    from html.parser import HTMLParser
+
+    class ModalParents(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stack = []
+            self.parents = {}
+
+        def handle_starttag(self, tag, attrs):
+            element_id = dict(attrs).get("id")
+            if element_id in {"profile-edit-modal", "evidence-lineage-modal"}:
+                assert element_id not in self.parents
+                self.parents[element_id] = tuple(item[1] for item in self.stack)
+            if tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}:
+                self.stack.append((tag, element_id))
+
+        def handle_endtag(self, tag):
+            for index in range(len(self.stack) - 1, -1, -1):
+                if self.stack[index][0] == tag:
+                    del self.stack[index:]
+                    break
+
+    parser = ModalParents()
+    parser.feed(page)
+    assert set(parser.parents) == {"profile-edit-modal", "evidence-lineage-modal"}
+    assert "profile-edit-modal" not in parser.parents["evidence-lineage-modal"]
+    assert "evidence-lineage-modal" not in parser.parents["profile-edit-modal"]
 
 
 def test_micro_store_rejects_stale_persona_results_and_invalidates_mode_runs():

@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 根据任务准备输入"]:3
+    A["个人分析<br/>填写问卷与导入持仓<br/>核对并确认资料"]
+    B["市场查询<br/>选择指数、周期和主体<br/>确定查询范围"]
+    C["研究任务<br/>设置查询或提交文档<br/>算法输入使用 JSON"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 提交操作与读取反馈"]:3
+    D["交互提交<br/>按页面字段发起请求<br/>保留当前上下文"]
+    E["执行反馈<br/>流式回答与工具进度<br/>研究任务读取及取消"]
+    F["状态呈现<br/>完成、缺项与异常原因<br/>提示必要确认操作"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 阅读结果并继续任务"]:3
+    G["主要结果<br/>金额、风险与研究内容<br/>优先展示当前任务"]
+    I["详细依据<br/>展开来源、参数及记录<br/>核查口径与数据时间"]
+    J["后续操作<br/>补充资料或刷新行情<br/>更新前提后重新分析"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

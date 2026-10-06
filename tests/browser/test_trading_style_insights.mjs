@@ -15,7 +15,7 @@ const directory = await mkdtemp(path.join(output, "browser-"));
 const temporary = path.join(directory, "temporary");
 await mkdir(temporary);
 const browser = await puppeteer.launch({executablePath, headless: true,
-  userDataDir: path.join(directory, "profile"), env: {...process.env, TMPDIR: temporary}});
+  userDataDir: path.join(directory, "profile"), env: {...process.env, TEMP: temporary, TMP: temporary, TMPDIR: temporary}});
 const evidence = {checks: [], geometries: [], requests: [], importChecked: false, marketRefreshChecked: false};
 
 try {
@@ -30,9 +30,19 @@ try {
     }
   });
   const record = message => { evidence.checks.push(message); console.log(message); };
-  const visible = selector => page.$eval(selector, node => node.getClientRects().length > 0);
+  const visible = selector => page.$eval(selector, node => node.checkVisibility());
   const waitResponse = (pathname, method = "GET") => page.waitForResponse(response =>
     new URL(response.url()).pathname === pathname && response.request().method() === method);
+  async function click(selector) {
+    await page.waitForSelector(selector, {visible: true});
+    await page.$eval(selector, node => node.scrollIntoView({block: "center", behavior: "instant"}));
+    await page.waitForFunction(selector => {
+      const node = document.querySelector(selector), rect = node.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return node === hit || node.contains(hit);
+    }, {}, selector);
+    await page.click(selector);
+  }
   async function api(pathname) {
     return page.evaluate(async pathname => {
       const response = await fetch(pathname, {headers: {"X-Owner-ID": document.documentElement.dataset.prismOwner}});
@@ -87,7 +97,7 @@ try {
   ];
   const workspaceResults = await Promise.all([
     ...workspaceResponses,
-    page.click('.nav-section-primary a[href="#trading-style"]'),
+    page.evaluate(() => { location.hash = "portfolio-style"; }),
   ]);
   await page.waitForSelector("#trading-style:not([hidden])");
   for (const response of workspaceResults.slice(0, 3)) assert.equal(response.status(), 200);
@@ -166,7 +176,7 @@ try {
     assert.equal(await visible("#trade-style-empty"), false);
     assert.equal(await visible("#trading-style-summary"), true);
     assert.equal(await page.$eval(".trading-style-hero strong", node => node.textContent), result.style_profile.primary_style);
-    assert.equal(await page.$$(".trading-style-metrics .trading-style-metric").then(nodes => nodes.length), 3);
+    assert.equal(await page.$$(".trading-style-metrics .trading-style-metric").then(nodes => nodes.length), 2);
     assert.equal(await page.$$(".trade-guidance-list li").then(nodes => nodes.length), 3);
     assert.equal(await page.$eval("#trading-style-more", node => node.open), false);
     assert.equal(await visible(".trade-history-table"), false);
@@ -196,11 +206,14 @@ try {
     assert.equal(await page.$eval("#trade-market-details", node => node.hidden), insights.securities.length === 0);
     if (insights.securities.length) {
       await page.setViewport({width: 1440, height: 1000});
-      await page.click("#trade-market-details > summary");
+      await click("#trade-market-details > summary");
       const insightsResponse = waitResponse("/api/v1/advisor/trading-style/insights");
-      await page.click("#refresh-trade-market");
-      assert.equal((await insightsResponse).status(), 200);
-      await page.waitForFunction(() => !document.querySelector("#refresh-trade-market").disabled);
+      await click("#refresh-trade-market");
+      const refreshed = await insightsResponse;
+      assert.equal(refreshed.status(), 200);
+      const refreshedData = await refreshed.json();
+      await page.waitForFunction(() => document.querySelector("#trade-market-securities").getAttribute("aria-busy") === "false");
+      assert.ok(refreshedData.primary_style, JSON.stringify({style: refreshedData.primary_style, securities: refreshedData.securities.length}));
       assert.equal(await page.$$("#trade-market-securities tr").then(nodes => nodes.length), insights.securities.length);
       await checkWidths("market", true);
       evidence.marketRefreshChecked = true;

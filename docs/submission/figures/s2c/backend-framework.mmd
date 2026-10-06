@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 请求与应用服务"]:3
+    A["请求入口<br/>FastAPI / Uvicorn<br/>用户归属与参数校验"]
+    B["对话与上下文<br/>意图路由、工具调用<br/>画像、持仓与会话前提"]
+    C["研究执行服务<br/>专业任务与 DAG 计划<br/>依赖调度及执行记录"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 领域计算与审查"]:3
+    D["确定性金融计算<br/>暴露、预算与集中度<br/>配置及再平衡测算"]
+    E["证据处理<br/>来源分组与字段校验<br/>事实及引用关系"]
+    F["结构化结果审查<br/>风险与合规检查<br/>按对应流程条件执行"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 外部资源与持久化"]:3
+    G["外部服务适配<br/>LLM 与金融 Provider<br/>查询结果及数据状态"]
+    I["数据库存储<br/>SQLite / PostgreSQL<br/>画像、快照、记忆与决策"]
+    J["资料处理组件<br/>OpenPyXL / RapidOCR<br/>资料导入及图片识别"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

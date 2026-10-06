@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 资料提取与片段保存"]:3
+    A["资料上传<br/>TXT、Markdown、文本 PDF<br/>8 MiB / PDF ≤1000 页"]
+    B["页面文本提取<br/>pypdf 保留页码<br/>标题、来源、主体与期间"]
+    C["片段组织<br/>长自然段最多 1200 字符<br/>page / paragraph / revision"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 候选范围与检索排序"]:3
+    D["可见范围与版本<br/>owner_id / visibility<br/>发布时间 ≤ as_of"]
+    E["关键词检索<br/>SQLite FTS5 / BM25<br/>按相关性组织候选"]
+    F["可选向量检索<br/>满足模型及 revision 条件<br/>启用时使用 cosine 排序"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 引用返回与使用范围"]:3
+    G["结果排序<br/>关键词结果或 RRF 融合<br/>Σ 1/(60 + rank)"]
+    I["原文与引用<br/>页码、版本、原文及来源<br/>RETRIEVED_UNVERIFIED"]
+    J["资料质量检查<br/>候选截断、缺项及版本变化<br/>精确引文单独核对"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,I,J neutral
+  class D,E,F,G accent

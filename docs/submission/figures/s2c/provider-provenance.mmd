@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 定义查询范围"]:3
+    A["查询主体<br/>证券、公司或研究对象<br/>主体标识参与校验"]
+    B["指标条件<br/>操作、期间与必需字段<br/>单位及截止时点"]
+    C["执行能力<br/>账户选择与能力版本<br/>Provider 配置和授权"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 整理金融记录与口径"]:3
+    D["结构化记录<br/>数值与所需字段检查<br/>缺项及错误分别保留"]
+    E["时间口径<br/>observed_at、period<br/>retrieved_at 与发布时间"]
+    F["来源信息<br/>Provider 与 lineage_id<br/>数据质量与处理状态"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 传递结果与使用条件"]:3
+    G["计算输入<br/>按业务所需字段使用<br/>不足时保留对应原因"]
+    I["研究观测<br/>保存来源与输入版本<br/>保留当前验证状态"]
+    J["用户阅读<br/>核对来源、期间和单位<br/>识别待补充的资料"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent
