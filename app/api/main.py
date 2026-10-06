@@ -27,9 +27,12 @@ from app.service.skill_registry import SkillRegistry
 from app.service.personal_research import PersonalResearchService
 from app.service.research_lab_store import LabRecords
 from app.service.research_method_builder import MethodBuilder
-from app.api.research_lab_routes import create_method_router, create_monitor_router
+from app.api.research_lab_routes import create_method_router, create_monitor_router, create_planning_router
 from app.service.investment_hypotheses import HypothesisMonitor
 from app.service.announcement_impact import AnnouncementImpact
+from app.service.shadow_portfolios import ShadowPortfolios
+from app.portfolio import AssetType
+from app.service.funding_goals import FundingGoals
 from app.api.personal_research_routes import create_personal_research_router
 from app.api.investment_memory_routes import create_investment_memory_router, PersonalRebalancingInput
 from app.service.investment_memory import InvestmentMemoryService, InvestmentPolicyStale
@@ -3007,6 +3010,7 @@ def create_app(
                   for position in bundle.position_snapshot.positions
                   if position.quantity > 0 and position.asset_type.value != "CASH"}
         types = {position.asset_id: position.asset_type for position in bundle.position_snapshot.positions}
+        types['CASH-CNY'] = AssetType.CASH
         return prices, types
 
     def personal_rebalancing_request(owner_id, body):
@@ -3245,6 +3249,11 @@ def create_app(
     api.state.hypothesis_monitor = hypothesis_monitor
     api.state.announcement_impacts = announcement_impacts
     api.include_router(create_monitor_router(hypothesis_monitor, announcement_impacts, owner_dependency))
+    shadow_portfolios = ShadowPortfolios(lab_records, personal_research_service, investment_memory_service, lab_portfolio_context, personal_rebalancing_request)
+    funding_goals = FundingGoals(lab_records, investment_memory_service, lab_portfolio_context, personal_rebalancing_request)
+    api.state.shadow_portfolios = shadow_portfolios
+    api.state.funding_goals = funding_goals
+    api.include_router(create_planning_router(shadow_portfolios, funding_goals, owner_dependency))
 
     @api.post("/api/v1/advisor/profile-extractions")
     async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
