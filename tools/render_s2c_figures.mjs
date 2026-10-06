@@ -14,6 +14,14 @@ const modules = path.join(root, 'output/report-review/node_modules');
 const folder = path.join(root, 'docs/submission/figures/s2c');
 const work = path.join(root, 'output/s2c-authoring');
 const descriptions = {
+  'business-dataflow': ['业务资料与分析处理', '输入条件、处理模块与保存对象按业务职责组织'],
+  'model-responsibilities': ['模型与确定性计算职责', '模型理解问题，工具执行查询与计算，结果接受条件检查'],
+  'interface-task-cycle': ['界面任务与操作反馈', '用户准备输入、提交任务并根据结果状态继续操作'],
+  'data-lifecycle': ['资料生命周期与版本检查', '资料确认、当前版本使用与历史查询保留各自条件'],
+  'provider-provenance': ['金融记录与来源信息', '主体、单位、时间和来源随查询结果继续传递'],
+  'optimization-run': ['组合优化与目标配置', '当前组合按已确认画像预算生成确定性目标结构'],
+  'research-fact-trace': ['研究节点事实追溯', '请求、响应与输入版本共同说明一次观测的来源'],
+  'workflow-user-journey': ['个人分析与研究操作', '业务路径按资料条件执行，结果保留来源与处理状态'],
   'prompt-composition': ['提示词组织与工具处理', '当前问题、已确认资料与工具结果共同参与对话'],
   'frontend-framework': ['前端交互与状态框架', '页面输入、状态协调与结果呈现分别组织'],
   'backend-framework': ['后端分层服务框架', '应用服务、领域处理及外部资源具有明确职责'],

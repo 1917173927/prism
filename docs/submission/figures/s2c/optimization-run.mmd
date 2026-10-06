@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 读取已确认组合条件"]:3
+    A["当前持仓<br/>证券金额与现金<br/>基金披露及行业归属"]
+    B["已确认画像<br/>风险等级与画像版本<br/>所属用户及预算上限"]
+    C["运行条件<br/>LIVE 基准组合<br/>行情刷新与最低现金"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 计算观察值与目标结构"]:3
+    D["组合评估<br/>暴露与集中度计算<br/>逐项比较风险预算"]
+    E["上限处理<br/>按现有规则限制比例<br/>保留释放的配置比例"]
+    F["确定性分配<br/>按剩余空间及标识顺序<br/>重新分配目标比例"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 返回配置结果与复核条件"]:3
+    G["目标配置<br/>当前、目标及变化比例<br/>引用画像与计算依据"]
+    I["质量状态<br/>失败输入限制目标生成<br/>保留需要复核的条件"]
+    J["数量测算<br/>独立调仓服务读取目标<br/>结合报价、费用与现金"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

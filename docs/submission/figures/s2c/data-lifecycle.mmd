@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 输入与确认资料"]:3
+    A["个人资料<br/>问卷与持仓确认<br/>归属及数据模式检查"]
+    B["研究资料<br/>文档、来源与发布时间<br/>查询请求及返回资料"]
+    C["用户操作<br/>核对输入与确认版本<br/>显式保存或选择恢复"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 保存对象并检查版本"]:3
+    D["事务写入<br/>按记录范围组织保存<br/>检查预期 revision"]
+    E["内容检查<br/>content_hash 校验对象<br/>指纹检查会话前提"]
+    F["引用关联<br/>文档版本与片段位置<br/>研究节点与事实快照"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 使用当前资料与查询历史"]:3
+    G["当前分析<br/>读取有效画像与持仓<br/>按现有规则重新计算"]
+    I["历史查询<br/>按账户及记录标识读取<br/>保留原输入与来源"]
+    J["变化处理<br/>前提变化要求重新确认<br/>旧引用返回版本状态"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

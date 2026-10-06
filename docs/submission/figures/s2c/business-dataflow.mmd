@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 准备业务资料"]:3
+    A["个人资料<br/>已确认画像与持仓<br/>账户、版本与数据模式"]
+    B["金融查询<br/>证券主体与指标期间<br/>提供方能力与来源"]
+    C["研究资料<br/>文档、原文及发布时间<br/>可见范围与引用位置"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 按任务执行服务"]:3
+    D["个人分析<br/>暴露、集中度与预算<br/>目标配置与数量测算"]
+    E["金融研究<br/>依赖计划与节点查询<br/>质量状态与事实记录"]
+    F["对话与资料研究<br/>工具调用、原文检索<br/>解释结果与核验引用"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 返回结果与保存依据"]:3
+    G["组合结果<br/>金额、比例与风险项<br/>对应输入及计算条件"]
+    I["研究记录<br/>节点状态与事实快照<br/>请求、响应及输入版本"]
+    J["对话与引用<br/>已完成消息及原文位置<br/>保留当前验证状态"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

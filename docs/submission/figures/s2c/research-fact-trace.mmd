@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 保留节点执行条件"]:3
+    A["请求信息<br/>owner_id、run_id、node_id<br/>查询主体及请求参数"]
+    B["输入版本<br/>资料及能力版本信息<br/>对应执行时的条件"]
+    C["Provider 返回<br/>结构化记录与缺项<br/>来源、时间及状态"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 整理观测并保存快照"]:3
+    D["记录整理<br/>检查数值与口径字段<br/>敏感字段按规则处理"]
+    E["生成引用<br/>请求与响应内容摘要<br/>快照及事实标识"]
+    F["事务保存<br/>快照、事实和原始内容<br/>联合引用限定用户归属"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 读取记录并核查来源"]:3
+    G["事实读取<br/>按用户和事实标识查询<br/>返回方法及快照引用"]
+    I["完整性校验<br/>核对摘要及关联对象<br/>保持记录内部一致性"]
+    J["验证状态<br/>SINGLE_SOURCE_UNVERIFIED<br/>来源真实性另行核验"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent
