@@ -353,12 +353,9 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert "function clearChatEmptyState(" in script
     assert 'messages?.querySelector("[data-chat-empty-state]")?.remove()' in script
     assert 'content.className = "agent-empty-state"' in script
-    assert 'progressTrack.className = "chat-progress-track"' in script
-    assert 'progressBar.className = "chat-progress-bar"' in script
-    assert 'progressBar.style.width = "60%"' in script
-    assert 'byId("chat-send-progress").replaceChildren(pipelineBox)' in script
-    assert 'pipelineBox.append(pipeHead, stepsGrid)' in script
-    assert 'aiBubble.append(contentBox)' in script
+    assert 'processLabel.textContent = "正在思考"' in script
+    assert 'processBody.append(agentStatus, pipelineBox, toolsContainer)' in script
+    assert 'aiBubble.append(processDetails, contentBox)' in script
     for stage_label in ("理解问题", "查询真实数据（按需）", "核验事实与约束", "组织回答"):
         assert stage_label in script
     assert 'setPipelineStepState(s2, "skipped")' in script

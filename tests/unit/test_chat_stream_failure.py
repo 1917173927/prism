@@ -95,6 +95,7 @@ def test_frontend_stream_failure_is_visible_and_not_saved_as_completed_answer():
     function += "\n" + "\n".join(re.search(r"  function " + name + r"\([^\n]*\) \{[\s\S]*?\n  \}", source).group()
                                   for name in [
                                       "createLinkedTimeoutController",
+                                      "scrollChatToLatest",
                                       "completedHistoryForScope",
                                       "profileLevelText", "currentProfileTag", "activeProfileTag", "recordTruthTurnAlert",
                                   ])
@@ -121,6 +122,8 @@ class Element {
 }
 let truthTurnCounter=0, activeChatController=null, chatContextRevision=0;
 const clearChatEmptyState=()=>{};
+const clear=node=>node.replaceChildren();
+const getComputedStyle=()=>({overflowY:'auto'});
 let featureToolsOpen=true;
 const setAgentFeatureToolsOpen=open=>{featureToolsOpen=open;};
 const nodes=new Map();

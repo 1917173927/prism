@@ -166,10 +166,8 @@ class ProtectedSecretStore:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             lock_path = self.path.with_suffix(self.path.suffix + ".lock")
             handle = lock_path.open("a+b")
-            handle.seek(0, os.SEEK_END)
-            if handle.tell() == 0:
-                handle.write(b"\0")
-                handle.flush()
+            # Windows can lock beyond EOF; writing a seed byte before locking
+            # races another handle that already owns the empty sidecar region.
             handle.seek(0)
             if os.name == "nt":
                 import msvcrt

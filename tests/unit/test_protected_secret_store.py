@@ -1,5 +1,7 @@
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
 import pytest
 
@@ -63,3 +65,39 @@ def test_two_store_instances_do_not_lose_concurrent_owner_updates(tmp_path) -> N
 
     assert first.get("llm:owner-a") == "a"
     assert second.get("llm:owner-b") == "b"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows byte-range locking regression")
+def test_empty_sidecar_waits_for_existing_native_lock_without_initialization_write(tmp_path, monkeypatch):
+    import msvcrt
+
+    path = tmp_path / "secrets.json"
+    store = ProtectedSecretStore(path, ReversibleTestProtector())
+    lock_path = path.with_suffix(".json.lock")
+    attempted = Event()
+    native_lock = msvcrt.locking
+
+    def observed_lock(fd, mode, size):
+        if mode == msvcrt.LK_LOCK:
+            attempted.set()
+        return native_lock(fd, mode, size)
+
+    with lock_path.open("a+b") as held:
+        native_lock(held.fileno(), msvcrt.LK_NBLCK, 1)
+        monkeypatch.setattr(msvcrt, "locking", observed_lock)
+        pool = ThreadPoolExecutor(max_workers=1)
+        released = False
+        try:
+            future = pool.submit(store.set, "llm:owner-a", "a")
+            assert attempted.wait(2), "initialization must reach the native lock without writing"
+            assert not future.done(), "an existing lock must serialize the update"
+            native_lock(held.fileno(), msvcrt.LK_UNLCK, 1)
+            released = True
+            future.result(timeout=5)
+        finally:
+            if not released:
+                native_lock(held.fileno(), msvcrt.LK_UNLCK, 1)
+            pool.shutdown(wait=True)
+
+    assert lock_path.stat().st_size == 0
+    assert store.get("llm:owner-a") == "a"

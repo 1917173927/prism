@@ -78,7 +78,8 @@ try {
         width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
         inputs: document.getElementById(mount).querySelectorAll("input, select, textarea, button").length,
         title: document.getElementById(mount).querySelector("h3")?.textContent,
-        duplicateIds: [...document.querySelectorAll("[id]")].map(node => node.id).filter((id, index, all) => all.indexOf(id) !== index),
+        // Chart vendor SVGs reuse local clip-path/logo IDs; application controls must remain unique.
+        duplicateIds: [...document.querySelectorAll("[id]")].filter(node => !node.closest("svg")).map(node => node.id).filter((id, index, all) => all.indexOf(id) !== index),
       }), mount);
       assert.ok(geometry.inputs > 0, mount);
       assert.ok(geometry.scrollWidth <= geometry.width, `${route}: ${JSON.stringify(geometry)}`);

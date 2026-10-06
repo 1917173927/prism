@@ -16,5 +16,20 @@
       390
     ]
   },
-  "external_financial_acceptance": "NOT_REVALIDATED_CONTROLLED_INPUTS"
+  "external_financial_acceptance": "NOT_REVALIDATED_CONTROLLED_INPUTS",
+  "latest_full_pytest": {
+    "passed": 1225,
+    "skipped": 1,
+    "warnings": 2,
+    "seconds": 129.22,
+    "postgres": "PostgreSQL 17.11 real local isolated schemas"
+  },
+  "authenticated_chat_home": "PASSED",
+  "latest_research_workbench_browser": "PASSED",
+  "latest_research_lab_browser": "PASSED",
+  "windows_empty_lock_regression": {
+    "old": "REPRODUCIBLE_FAILURE",
+    "fixed": "PASSED",
+    "focused_tests": 8
+  }
 }

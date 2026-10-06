@@ -243,7 +243,7 @@ try {
   evidence.chatStatus = (await chatResponse).status();
   await page.waitForFunction(() => !document.getElementById("copilot-submit-query").disabled, {timeout: 30000});
   evidence.checks.push("原对话入口、模型服务切换与配置弹窗");
-  evidence.limitations.push("独立验收账户没有模型凭据、已确认风险设置与真实持仓；完整模型回答和指定投资组合分析未验证。");
+  evidence.limitations.push("本次使用独立数据库与受控测试资料；真实模型回答、真实金融输入及上游配额未重新验收。");
   assert.deepEqual(errors, []);
   evidence.pageErrors = errors;
   evidence.browser = await browser.version();
