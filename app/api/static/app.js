@@ -174,6 +174,29 @@
     return result;
   }
   let truthReview = null;
+  function canContinueChatAfterTruth(resume) {
+    return resume?.owner === state.ownerId
+      && activeChatSessionId === resume.conversationId
+      && chatContextRevision === resume.contextRevision
+      && chatHistory.length === resume.historyLength
+      && chatHistory.at(-1)?.content === resume.lastAnswer
+      && resume.action.isConnected
+      && !activeChatController;
+  }
+  async function continueChatAfterTruth(resume) {
+    resume.action.disabled = true;
+    resume.action.textContent = "分析资料已更新，正在继续分析";
+    try {
+      await handleStreamingChat(resume.query);
+    } finally {
+      if (resume.action.isConnected) {
+        resume.action.textContent = chatHistory.length > resume.historyLength
+          && chatHistory.at(-1)?.role === "assistant"
+          ? "已按新资料继续分析"
+          : "资料已更新，请重新发送问题";
+      }
+    }
+  }
   function renderTruthFacts(target, facts, revision) {
     const panel = byId(target); panel.replaceChildren();
     if (!facts) {panel.textContent = "请先确认问卷和持仓。"; return;}
@@ -236,19 +259,27 @@
     } catch (error) {output.textContent = error.message || "核验失败";}
     finally {button.disabled = false;}
   }
-  async function confirmSessionTruth() {
+  async function confirmSessionTruth(resume = null) {
+    const owner = state.ownerId;
     try {
       const current = await refreshSessionTruth();
+      if (state.ownerId !== owner) return;
       if (!current?.current_fingerprint) {setError("请先确认画像和持仓"); return;}
-      truthReview = {...current, owner:state.ownerId};
+      truthReview = {...current, owner, resume};
       byId("truth-confirm-error").textContent = "";
+      byId("truth-confirm-description").textContent = resume
+        ? "确认后将继续回答这条问题。"
+        : "确认后会更新本次分析使用的资料。";
       renderTruthFacts("truth-confirm-facts", current.current_facts, current.revision + 1);
       byId("truth-confirm-dialog").showModal();
     } catch (error) {setError(error.message || "无法读取前提");}
   }
   async function commitSessionTruth() {
     const review = truthReview;
-    const button = byId("commit-session-truth"); button.disabled = true;
+    const button = byId("commit-session-truth");
+    button.disabled = true;
+    button.textContent = "正在确认…";
+    let committed = false;
     try {
       if (!review || state.ownerId !== review.owner) throw Error("账户已变化，请重新核对前提");
       const response = await fetch("/api/v1/advisor/session-truth", {
@@ -256,10 +287,28 @@
         body:JSON.stringify({expected_revision:review.revision, expected_fingerprint:review.current_fingerprint}),
       });
       if (!response.ok) throw await apiError(response);
-      byId("truth-confirm-dialog").close(); truthReview = null;
-      if (state.ownerId === review.owner) await refreshSessionTruth();
+      const result = await response.json();
+      if (result.status !== "LOCKED") throw Error("分析资料未确认，请重新核对");
+      committed = true;
+      byId("truth-confirm-dialog").close();
+      truthReview = null;
     } catch (error) {byId("truth-confirm-error").textContent = error.message || "前提确认失败，请重新读取后再确认";}
-    finally {button.disabled = false;}
+    finally {
+      button.disabled = false;
+      button.textContent = "确认使用新资料";
+    }
+    if (!committed) return;
+    try {
+      const current = await refreshSessionTruth();
+      if (!current || current.status !== "LOCKED") throw Error("分析资料已保存，请核对当前资料后继续提问");
+      const resume = review.resume;
+      if (!resume) return;
+      if (!canContinueChatAfterTruth(resume)) {
+        setError("分析资料已更新；当前对话已变化，请重新发送问题");
+        return;
+      }
+      await continueChatAfterTruth(resume);
+    } catch (error) {setError(error.message || "分析资料已保存，请重新发送问题");}
   }
   const transientStorage = new Map();
   const workspaceStorage = {
@@ -10552,6 +10601,7 @@
   const CHAT_LEGACY_STORAGE_KEY = "prism_copilot_chat_history_v2";
   const CHAT_SESSION_LIMIT = 50;
   const CHAT_MESSAGE_LIMIT = 200;
+  const CHAT_TRUTH_REQUIRED_MESSAGE = "请先确认当前真实数据模式下的风险问卷与持仓，并锁定分析前提，再执行持仓体检。";
   let chatSessionCreatePromise = null;
 
   const CONVERSATION_PROFILE_QUESTIONS = Object.freeze([
@@ -10811,7 +10861,45 @@
     if (!chatHistory.length) {
       renderChatWelcome();
     } else {
-      chatHistory.forEach(message => appendChatMessage(message.role, message.content));
+      chatHistory.forEach((message, index) => {
+        const row = appendChatMessage(message.role, message.content);
+        if (index !== chatHistory.length - 1
+            || message.role !== "assistant"
+            || message.content !== CHAT_TRUTH_REQUIRED_MESSAGE
+            || chatHistory[index - 1]?.role !== "user") return;
+        const action = document.createElement("button");
+        action.type = "button";
+        action.className = "copilot-action-btn secondary";
+        action.textContent = "继续分析";
+        row.querySelector(".chat-bubble").append(action);
+        action.addEventListener("click", async () => {
+          const resume = {
+            query: chatHistory[index - 1].content,
+            owner: state.ownerId,
+            conversationId: activeChatSessionId,
+            contextRevision: chatContextRevision,
+            historyLength: chatHistory.length,
+            lastAnswer: message.content,
+            action,
+          };
+          action.disabled = true;
+          action.textContent = "正在核对分析资料…";
+          try {
+            const current = await refreshSessionTruth();
+            if (!canContinueChatAfterTruth(resume)) throw Error("当前对话已变化，请重新发送问题");
+            if (current?.status === "LOCKED") await continueChatAfterTruth(resume);
+            else {
+              action.disabled = false;
+              action.textContent = "继续分析";
+              await confirmSessionTruth(resume);
+            }
+          } catch (error) {
+            action.disabled = false;
+            action.textContent = "继续分析";
+            setError(error.message || "无法继续分析");
+          }
+        });
+      });
     }
     if (chatHistory.length) scrollChatToLatest(messagesContainer, true);
     const panel = byId("copilot-chat-panel");
@@ -11326,6 +11414,7 @@
     const toolsContainer = document.createElement("div");
     toolsContainer.className = "chat-tools-container";
     const activeToolTags = new Map();
+    const truthActionButtons = [];
 
     const contentBox = document.createElement("div");
     contentBox.className = "chat-content-box";
@@ -11502,7 +11591,17 @@
                 action.type = "button"; action.className = "copilot-action-btn secondary";
                 if (event.tool === "run_portfolio_health_check") {
                   action.textContent = "核对并确认分析资料";
-                  action.addEventListener("click", confirmSessionTruth);
+                  action.disabled = true;
+                  truthActionButtons.push(action);
+                  action.addEventListener("click", () => confirmSessionTruth({
+                    query,
+                    owner: chatOwner,
+                    conversationId: activeChatSessionId,
+                    contextRevision: chatContextRevision,
+                    historyLength: chatHistory.length,
+                    lastAnswer: chatHistory.at(-1)?.content,
+                    action,
+                  }));
                 } else {
                   action.textContent = "打开调仓测算";
                   action.addEventListener("click", runCopilotRebalance);
@@ -11577,6 +11676,7 @@
       chatHistory.push({ role: "assistant", content: fullText, context_scope: contextScope });
       saveCopilotChatHistory();
       await refreshPersistedChatSessions();
+      truthActionButtons.forEach(button => { button.disabled = false; });
     } catch (err) {
       cursor.remove();
       if (turnContextRevision !== chatContextRevision) return;
@@ -14473,7 +14573,7 @@
     loadModelSettings().catch(error => setError(error.message));
     initPortfolioModalTabs();
   }
-  byId("confirm-session-truth").addEventListener("click", confirmSessionTruth);
+  byId("confirm-session-truth").addEventListener("click", () => confirmSessionTruth());
   byId("open-session-truth").addEventListener("click", () => openTruthDrawer().catch(error => setError(error.message)));
   byId("close-truth-drawer").addEventListener("click", () => byId("truth-drawer").close());
   byId("cancel-session-truth").addEventListener("click", () => {truthReview = null; byId("truth-confirm-dialog").close();});
