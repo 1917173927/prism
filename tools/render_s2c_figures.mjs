@@ -83,13 +83,55 @@ try {
       element.setAttribute('height', element.viewBox.baseVal.height);
       await document.fonts.ready;
       if (source.startsWith('block')) {
+        const stages = ['input', 'process', 'output'].map(id => {
+          const node = element.querySelector(`#s2cFigure-${id}`);
+          const matrix = node.transform.baseVal.consolidate().matrix;
+          const box = node.querySelector('rect').getBBox();
+          return {center: matrix.f, top: matrix.f + box.y, bottom: matrix.f + box.y + box.height};
+        });
+        const shifts = [0];
+        for (let index = 1; index < stages.length; index++) {
+          const gap = stages[index].top - stages[index - 1].bottom;
+          if (gap < 44) throw Error('Stage spacing must support a 44px connector corridor');
+          shifts.push(shifts[index - 1] + gap - 44);
+        }
+        const tones = [
+          {fill: '#f2f5f8', border: '#ccd7e0', stripe: '#738ca1', title: '#546d82'},
+          {fill: '#fafafa', border: '#dedfe2', stripe: '#717780', title: '#b96725'},
+          {fill: '#f2f6f3', border: '#cedbd2', stripe: '#7b9c88', title: '#587563'},
+        ];
+        const stageFor = y => stages.reduce((best, stage, index) =>
+          Math.abs(y - stage.center) < Math.abs(y - stages[best].center) ? index : best, 0);
+        const connectors = [...element.querySelectorAll('path[marker-end]')];
+        if (source.includes('-->') && connectors.length !== 2) throw Error('Expected two stage connectors');
+        for (const connector of connectors) {
+          const start = connector.getPointAtLength(0);
+          const end = connector.getPointAtLength(connector.getTotalLength());
+          const firstStage = stageFor(start.y), lastStage = stageFor(end.y);
+          connector.setAttribute('d', `M${start.x},${start.y - shifts[firstStage]} L${end.x},${end.y - shifts[lastStage]}`);
+          connector.setAttribute('data-stage-connector', 'true');
+          connector.style.stroke = '#9aabb7';
+          connector.style.strokeWidth = '1.8px';
+          const length = connector.getTotalLength();
+          if (length < 36 || length > 48) throw Error(`Unexpected connector length: ${length}`);
+        }
         for (const node of element.querySelectorAll('.node')) {
+          const matrix = node.transform.baseVal.consolidate().matrix;
+          const stageIndex = stageFor(matrix.f);
+          matrix.f -= shifts[stageIndex];
+          node.transform.baseVal.initialize(element.createSVGTransformFromMatrix(matrix));
+          const tone = tones[stageIndex];
           const rectangle = node.querySelector('rect');
           const text = node.querySelector('text');
           if (!rectangle || !text || node.classList.contains('container')) continue;
           if (node.classList.contains('section')) {
             for (const part of text.querySelectorAll('.text-inner-tspan')) part.setAttribute('font-weight', '700');
+            text.style.setProperty('fill', tone.title, 'important');
             continue;
+          }
+          if (node.classList.contains('neutral')) {
+            rectangle.style.setProperty('fill', tone.fill, 'important');
+            rectangle.style.setProperty('stroke', tone.border, 'important');
           }
           const first = text.querySelector('.text-outer-tspan');
           if (first) {
@@ -103,12 +145,16 @@ try {
           stripe.setAttribute('width', '3');
           stripe.setAttribute('height', Math.max(12, Number(rectangle.getAttribute('height')) - 28));
           stripe.setAttribute('rx', '1.5');
-          const accent = node.classList.contains('accent') ? '#e86f00' : node.classList.contains('success') ? '#35775a' : node.classList.contains('failure') ? '#b65454' : '#717780';
+          const accent = node.classList.contains('accent') ? '#e86f00' : node.classList.contains('success') ? '#35775a' : node.classList.contains('failure') ? '#b65454' : tone.stripe;
           stripe.setAttribute('style', `fill:${accent}!important;stroke:none!important`);
           node.insertBefore(stripe, node.querySelector('.label'));
-          rectangle.setAttribute('rx', '7');
-          rectangle.setAttribute('ry', '7');
+          rectangle.setAttribute('rx', '10');
+          rectangle.setAttribute('ry', '10');
         }
+        const view = element.viewBox.baseVal;
+        const height = view.height - shifts.at(-1);
+        element.setAttribute('viewBox', `${view.x} ${view.y} ${view.width} ${height}`);
+        element.setAttribute('height', height);
       }
       for (const text of element.querySelectorAll('.edgeLabel text')) {
         const box = text.getBBox();
@@ -171,7 +217,8 @@ try {
       element.setAttribute('y', 126);
       canvas.appendChild(element);
       add('line', {x1: 32, y1: height - 34, x2: width - 32, y2: height - 34, stroke: '#dedfe2'});
-      label(32, height - 12, 13, '#717780', 400, '灰色：输入与结果    橙色：核心处理');
+      const legend = source.includes('-->') ? '蓝灰：输入    橙色：处理    浅绿：结果' : '辅助色：资料分组    橙色：关键条件';
+      label(32, height - 12, 13, '#717780', 400, legend);
       const note = source.includes('-->') ? '箭头表示阶段衔接，同行模块按说明协作' : '各行按资料类别组织，关联条件见模块说明';
       label(width - 32, height - 12, 13, '#717780', 400, note).setAttribute('text-anchor', 'end');
       document.querySelector('#figure').replaceChildren(canvas);

@@ -37,6 +37,7 @@ try {
 } finally {
   await browser.close();
 }
-const status = figures.every(figure => figure.collisions.length === 0 && figure.card_overflows.length === 0) ? 'PASS' : 'FAILED';
+const status = figures.every(figure => figure.collisions.length === 0 && figure.card_overflows.length === 0
+  && figure.stage_connector_lengths.every(length => length >= 36 && length <= 48)) ? 'PASS' : 'FAILED';
 await fs.writeFile(path.join(work, 'diagram-overlap-audit.json'), JSON.stringify({status, figures}, null, 2));
 if (process.argv.includes('--check')) assert.equal(status, 'PASS', 'Diagram text must fit cards and remain clear of visible connectors');

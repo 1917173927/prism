@@ -94,6 +94,7 @@ export function inspectDiagramGeometry() {
         || label.y + label.height > card.y + card.height + 0.5) cardOverflows.push({text: text.textContent.trim(), card, label});
   }
   return {text_count: texts.length, line_count: paths.length, collisions, card_overflows: cardOverflows,
+    stage_connector_lengths: [...svg.querySelectorAll('[data-stage-connector]')].map(item => item.getTotalLength()),
     nodes: [...svg.querySelectorAll('.node')].map(node => ({text: node.textContent.trim(), ...bounds(node)})),
     edge_labels: texts.filter(text => text.edgeLabel).map(text => ({text: text.content, opaque_background: Boolean(text.background)}))};
 }
