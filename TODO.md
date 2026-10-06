@@ -380,3 +380,7 @@ The remaining legal, quota and competition-document inputs block production redi
 ## 2026-10-03 Windows独立启动修复
 
 - [x] 修复旧版Python抢先命中及uv版本选择遗漏，交付29文件无需安装Python的Windows包；真实EXE/CMD、原23项回归、追加3项保护及自带程序27页验证通过，`0b9690b`已推送`origin/main`。
+
+## 2026-10-06 S2C创新点补充
+
+- [ ] 在用户图示版DOCX中补充五项有实现与测试依据的创新，保留原文字、样式及24图；64项定向测试、32页渲染与下载副本校验通过，待提交推送后关闭。
