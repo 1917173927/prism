@@ -26,7 +26,7 @@ from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
 from app.service.personal_research import PersonalResearchService
 from app.api.personal_research_routes import create_personal_research_router
-from app.api.investment_memory_routes import create_investment_memory_router
+from app.api.investment_memory_routes import create_investment_memory_router, PersonalRebalancingInput
 from app.service.investment_memory import InvestmentMemoryService, InvestmentPolicyStale
 from app.gates import GateStatus
 from app.api.research_routes import create_research_router
@@ -1149,6 +1149,7 @@ def create_app(
             "PERSONAL_REBALANCING_CONTEXT_CHANGED": "当前持仓已变化，请重新生成基础调仓方案后再对比。",
             "PERSONAL_REBALANCING_PORTFOLIO_REQUIRED": "请先导入并确认当前持仓。",
             "PERSONAL_REBALANCING_PROFILE_REQUIRED": "请先完成并确认投资偏好问卷，再计算个人调仓方案。",
+            "PERSONAL_REBALANCING_INPUT_INCOMPLETE": "持仓需要具备完整的人民币金额、唯一资产及正市值，才能设置目标。",
             "LIVE_PORTFOLIO_REFRESH_REQUIRED": "请先刷新真实行情，再使用当前持仓计算。",
             "INVESTMENT_POLICY_STALE": "长期偏好的依据已变化，请重新读取并确认候选风格。",
             "INVESTMENT_MEMORY_REVISION_CONFLICT": "长期偏好已被更新，请刷新后再次保存。",
@@ -3035,6 +3036,28 @@ def create_app(
 
     api.include_router(create_investment_memory_router(service=investment_memory_service,
         owner_dependency=owner_dependency, rebalance_request_builder=personal_rebalancing_request))
+
+    @api.get("/api/v1/advisor/investment-memory/rebalancing-input", response_model=PersonalRebalancingInput)
+    def personal_rebalancing_input(owner_id: str = Depends(owner_dependency)):
+        mode = get_runtime_mode_controller().mode
+        current = active_store.get_current_portfolio(owner_id, mode.value)
+        if current is None:
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_PORTFOLIO_REQUIRED")
+        bundle = PortfolioImportBundle.model_validate(current["portfolio"])
+        positions = bundle.position_snapshot.positions
+        total = sum((position.market_value for position in positions), Decimal("0"))
+        if total <= 0 or len({position.asset_id for position in positions}) != len(positions) or any(p.currency != "CNY" for p in positions):
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_INPUT_INCOMPLETE")
+        weights = {position.asset_id: (position.market_value / total * 100).quantize(Decimal("0.01")) for position in positions}
+        # Preserve a closed 100% target after rounding display percentages.
+        largest = max(weights, key=weights.get)
+        weights[largest] += 100 - sum(weights.values(), Decimal("0"))
+        return {"bundle": bundle, "target_weights": weights, "data_mode": mode.value,
+            "is_synthetic": mode != DataMode.LIVE,
+            "profile_ready": active_store.get_latest_questionnaire_snapshot(owner_id) is not None,
+            "quote_ready": mode != DataMode.LIVE or is_trusted_live_portfolio(owner_id, bundle),
+            "positions": [{"asset_id": p.asset_id, "asset_name": p.asset_name,
+                           "current_weight_pct": weights[p.asset_id]} for p in positions]}
 
     @api.get(
         "/api/v1/advisor/rebalancing-template",

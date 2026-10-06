@@ -35,6 +35,23 @@ class PersonalRebalancingPreview(ContractModel):
         return self
 
 
+class PersonalRebalancingInputPosition(ContractModel):
+    asset_id: str
+    asset_name: str
+    current_weight_pct: Percent
+
+
+class PersonalRebalancingInput(ContractModel):
+    schema_version: str = "personal-rebalancing-input.v1"
+    bundle: PortfolioImportBundle
+    target_weights: dict[str, Percent]
+    positions: tuple[PersonalRebalancingInputPosition, ...]
+    data_mode: str
+    is_synthetic: bool
+    profile_ready: bool
+    quote_ready: bool
+
+
 def create_investment_memory_router(*, service: InvestmentMemoryService,
                                     owner_dependency, rebalance_request_builder):
     """The builder(owner_id, PersonalRebalancingPreview) binds current facts.

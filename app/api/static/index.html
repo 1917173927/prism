@@ -12,13 +12,15 @@
     <link rel="stylesheet" href="/static/research-platform.css?v=20261001">
     <link rel="stylesheet" href="/static/design-tokens.css?v=20261003-product-unified">
     <link rel="stylesheet" href="/static/product-theme.css?v=20261003-product-unified">
+    <link rel="stylesheet" href="/static/personal-workbench.css?v=20261006-functional">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261003-investor-workbench" defer></script>
+    <script src="/static/app.js?v=20261006-functional" defer></script>
     <script src="/static/research-platform.js?v=20261003-investor-workbench" defer></script>
     <script src="/static/research-tools.js?v=20261003-investor-workbench" defer></script>
+    <script src="/static/personal-workbench.js?v=20261006-functional" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2">
@@ -985,6 +987,7 @@
 
         <section class="workspace-page-section" id="skill-store" hidden aria-labelledby="skill-store-title">
           <div class="page-heading"><div><span class="eyebrow">研究工具</span><h2 id="skill-store-title">研究工具</h2><p>选择研究可使用的数据工具，查看连接和启用状态。</p></div></div>
+          <div id="personal-system-workspace"></div>
           <section class="surface doc-callout doc-callout-info" id="skill-store-content" role="status" aria-live="polite"><strong>目录待加载</strong><p>能力状态以服务端注册和权限验证结果为准。</p></section>
         </section>
 
@@ -1007,6 +1010,7 @@
             <button id="open-trade-import" type="button" class="copilot-action-btn primary" hidden>导入历史交易</button>
           </div>
           <div id="trade-style-error" class="notice error" role="alert" hidden></div>
+          <div id="investment-memory-workspace"></div>
 
           <section id="trade-style-empty" class="surface trade-style-empty" aria-labelledby="trade-style-empty-title">
             <h3 id="trade-style-empty-title">导入成交记录，查看交易风格</h3>
@@ -1378,7 +1382,7 @@
                 <span id="portfolio-context-label" class="status-chip">等待数据</span>
                 <a href="#copilot" class="copilot-action-btn secondary button" id="btn-portfolio-back-copilot">
                   <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回 Agent</span>
+                  <span>返回投资助手</span>
                 </a>
                 <button type="button" class="copilot-action-btn primary button" id="open-portfolio-modal-from-page">
                   <svg class="prism-icon"><use href="#icon-plus"/></svg>
@@ -1450,7 +1454,7 @@
                 <span id="portfolio-optimization-status" class="status-chip">待运行</span>
                 <a href="#copilot" class="copilot-action-btn secondary button">
                   <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回 Agent</span>
+                  <span>返回投资助手</span>
                 </a>
                 <button id="run-portfolio-optimization" class="copilot-action-btn primary button" type="button">
                   <svg class="prism-icon"><use href="#icon-sliders"/></svg>
@@ -1495,7 +1499,7 @@
                 <span id="scenario-simulation-status" class="status-chip">待运行</span>
                 <a href="#copilot" class="copilot-action-btn secondary button">
                   <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回 Agent</span>
+                  <span>返回投资助手</span>
                 </a>
                 <button id="run-scenario-simulation" class="copilot-action-btn primary button" type="button">
                   <svg class="prism-icon"><use href="#icon-activity"/></svg>
@@ -1781,7 +1785,7 @@
                 <span class="status-chip" id="rebalancing-status-chip">未执行</span>
                 <a href="#copilot" class="copilot-action-btn secondary button">
                   <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回 Agent</span>
+                  <span>返回投资助手</span>
                 </a>
                 <button id="run-rebalancing" class="copilot-action-btn primary button" type="button">
                   <svg class="prism-icon"><use href="#icon-refresh"/></svg>
@@ -1790,6 +1794,7 @@
               </div>
             </div>
 
+            <div id="personal-rebalancing-workspace"></div>
             <div class="rebalancing-layout-grid">
               <div class="surface rebalancing-summary-card">
                 <header class="surface-head">

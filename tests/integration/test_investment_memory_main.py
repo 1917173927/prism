@@ -42,6 +42,12 @@ def test_current_profile_and_portfolio_bind_both_comparison_and_original_route(t
         with TestClient(create_app(store=store, clock=lambda: NOW)) as client:
             headers = {"X-Owner-ID": "alice"}
             policy = confirm(client, headers)
+            prepared = client.get(ROOT + "/rebalancing-input", headers=headers)
+            assert prepared.status_code == 200
+            assert prepared.json()["bundle"]["owner_id"] == "alice"
+            assert sum(map(Decimal, prepared.json()["target_weights"].values())) == 100
+            assert prepared.json()["profile_ready"] and prepared.json()["is_synthetic"]
+            assert client.get(ROOT + "/rebalancing-input", headers={"X-Owner-ID": "bob"}).status_code == 409
             body = {"expected_policy_revision": policy["revision"], "bundle": portfolio,
                 "target_weights": {"600001.SH": "10", "000001.SZ": "50", "CASH-CNY": "40"}}
             response = client.post(ROOT + "/rebalancing-preview", headers=headers, json=body)
@@ -83,3 +89,20 @@ def test_personal_calculation_requires_confirmed_profile_and_authentication(tmp_
             assert response.status_code == 409 and response.json()["error_code"] == "PERSONAL_REBALANCING_PROFILE_REQUIRED"
         with TestClient(create_app(store=store, auth_enabled=True)) as client:
             assert client.get(ROOT).status_code == 401
+
+
+def test_readonly_goal_input_closes_rounding_without_changing_position_facts(tmp_path):
+    with closing(SQLiteDecisionEventStore(tmp_path / "rounded-input.sqlite")) as store:
+        data = recalculate_portfolio_values([
+            {"asset_id": "600001.SH", "quantity": 1, "price": 1},
+            {"asset_id": "000001.SZ", "quantity": 1, "price": 1},
+            {"asset_id": "600519.SH", "quantity": 1, "price": 1},
+        ], Decimal("0"), "alice")
+        store.save_current_portfolio("alice", "MOCK", data)
+        before = store.get_current_portfolio("alice", "MOCK")
+        with TestClient(create_app(store=store)) as client:
+            response = client.get(ROOT + "/rebalancing-input", headers={"X-Owner-ID": "alice"})
+            assert response.status_code == 200
+            assert sum(map(Decimal, response.json()["target_weights"].values())) == 100
+            assert response.json()["profile_ready"] is False
+        assert store.get_current_portfolio("alice", "MOCK") == before

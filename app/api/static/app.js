@@ -272,6 +272,7 @@
   }
 
   function invalidateDerivedState(store) {
+    document.dispatchEvent(new CustomEvent("prism:context-invalidated"));
     globalThis.prismStockQuickAbortController?.abort();
     globalThis.prismStockDeepAbortController?.abort();
     store.contextRevision += 1;
@@ -1549,6 +1550,7 @@
   }
 
   function clearDerivedResultsForContextRestore() {
+    document.dispatchEvent(new CustomEvent("prism:context-invalidated"));
     state.selected = null;
     state.selectedDecisionEvent = null;
     state.advancedEvidenceSelectedKey = "";
@@ -5542,6 +5544,7 @@
   }
 
   function clearConfirmedContexts() {
+    document.dispatchEvent(new CustomEvent("prism:context-invalidated"));
     state.portfolio = null;
     state.profile = null;
     byId("portfolio-json").value = "";
@@ -7619,33 +7622,35 @@
       const targetWeights = Object.fromEntries(
         state.portfolioOptimizationRun.targets.map((target) => [target.target_id, target.target_weight_pct])
       );
+      const rebalancingRequest = {
+        schema_version: "portfolio-rebalancing-request.v1",
+        request_id: `reb-${Date.now()}`,
+        owner_id: token.ownerId,
+        generated_at: new Date().toISOString(),
+        bundle: portfolio,
+        confirmed_profile: state.profile?.profile || null,
+        target_weights: targetWeights,
+        deadband_pct: "0.50",
+        max_turnover_pct: "50.00",
+        minimum_cash_pct: state.portfolioHealthRun?.cash_minimum_pct || "0.00",
+      };
       const res = await fetch("/api/v1/advisor/rebalancing-runs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Owner-ID": token.ownerId,
         },
-        body: JSON.stringify({
-          schema_version: "portfolio-rebalancing-request.v1",
-          request_id: `reb-${Date.now()}`,
-          owner_id: token.ownerId,
-          generated_at: new Date().toISOString(),
-          bundle: portfolio,
-          confirmed_profile: state.profile?.profile || null,
-          target_weights: targetWeights,
-          deadband_pct: "0.50",
-          max_turnover_pct: "50.00",
-          minimum_cash_pct: state.portfolioHealthRun?.cash_minimum_pct || "0.00",
-        }),
+        body: JSON.stringify(rebalancingRequest),
       });
       if (!isContextRequestCurrent(token)) return null;
       if (!res.ok) throw await apiError(res);
       const data = await res.json();
       if (!isContextRequestCurrent(token)) return null;
       state.rebalancingRun = data;
+      document.dispatchEvent(new CustomEvent("prism:rebalancing-context", {detail: {request: rebalancingRequest, baseline: data}}));
       const chip = byId("rebalancing-status-chip");
       if (chip) {
-        chip.textContent = data.status === "PASS" ? "已就绪（READY）" : data.status;
+        chip.textContent = {PASS: "测算完成", REVIEW_REQUIRED: "需要复核", BLOCKED: "已拦截"}[data.status] || "待核对";
         chip.className = `status-chip ${data.status.toLowerCase()}`;
       }
       const metricsPanel = byId("rebalancing-metrics-content");
@@ -7663,10 +7668,10 @@
         c.append(t, v);
         mCard.append(c);
       };
-      addScore("总市值 (CNY)", data.metrics.total_portfolio_value_cny);
+      addScore("总市值（元）", data.metrics.total_portfolio_value_cny);
       addScore("换手率 (%)", `${data.metrics.total_turnover_pct}%`);
-      addScore("买入金额 (CNY)", data.metrics.total_buy_cny);
-      addScore("卖出金额 (CNY)", data.metrics.total_sell_cny);
+      addScore("买入金额（元）", data.metrics.total_buy_cny);
+      addScore("卖出金额（元）", data.metrics.total_sell_cny);
       metricsPanel.append(mCard);
 
       const actionsPanel = byId("rebalancing-actions-content");
@@ -7675,7 +7680,7 @@
       table.className = "rebalancing-table";
       const thead = document.createElement("thead");
       const trh = document.createElement("tr");
-      ["资产代码", "资产名称", "当前权重", "目标权重", "实际变动权重", "实际变动金额 (CNY)", "动作", "原因"].forEach((tht) => {
+      ["资产代码", "资产名称", "当前权重", "目标权重", "实际变动权重", "实际变动金额（元）", "动作", "原因"].forEach((tht) => {
         const th = document.createElement("th");
         th.textContent = tht;
         trh.append(th);
@@ -7694,7 +7699,7 @@
         const td7 = document.createElement("td");
         const b = document.createElement("span");
         b.className = `action-badge ${act.action_type}`;
-        b.textContent = act.action_type;
+        b.textContent = {BUY: "买入", SELL: "卖出", REDUCE: "减仓", HOLD: "保持"}[act.action_type] || "待核对";
         td7.append(b);
         const td8 = document.createElement("td"); td8.textContent = act.rationale;
         tr.append(td1, td2, td3, td4, td5, td6, td7, td8);
@@ -7710,7 +7715,7 @@
         const sc = document.createElement("div");
         sc.className = "rebalancing-action-card";
         const h = document.createElement("h4");
-        h.textContent = `步骤 ${step.step_number}: [${step.action_type}] ${step.asset_name} · 金额: ${step.amount_cny} CNY`;
+        h.textContent = `步骤 ${step.step_number}：${{BUY: "买入", SELL: "卖出", REDUCE: "减仓", HOLD: "保持"}[step.action_type] || "待核对"} ${step.asset_name} · 金额：${step.amount_cny} 元`;
         const p = document.createElement("p");
         p.textContent = step.description;
         sc.append(h, p);
