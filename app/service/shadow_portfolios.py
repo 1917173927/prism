@@ -9,7 +9,8 @@ import re
 from pydantic import Field,model_validator
 
 from app.gates import GateStatus
-from app.portfolio import AssetType,PortfolioImportBundle
+from app.portfolio import AssetType,PortfolioImportBundle,calculate_exposure
+from app.risk import calculate_concentration,assess_risk_budget
 from app.portfolio.health import PortfolioHealthRequest,calculate_portfolio_health
 from app.rebalancing.contracts import PortfolioRebalancingRequest
 from app.service.personal_research import _Model,PersonalResearchRun,PersonalResearchDefinition,_period
@@ -66,6 +67,29 @@ class ShadowPortfolios:
     def __init__(self,records,personal,memory,context,request_builder):
         self.records,self.personal,self.memory,self.context,self.request_builder=records,personal,memory,context,request_builder
         self.planner=PortfolioRebalancingService()
+
+    def list(self,owner):
+        rows=self.records.list(owner,'shadow')
+        try:
+            context=self.context(owner)
+        except Exception:
+            context=None
+        for row in rows:
+            payload=row['payload']
+            stale=context is None or context['data_mode']!=payload['data_mode'] or context.get('profile_hash')!=payload['profile_hash']
+            try:
+                if payload['config'].get('policy_revision'):
+                    self.memory.resolve_policy(owner,payload['config']['policy_revision'])
+                for strategy in payload['config']['strategies']:
+                    system=self.personal.get(owner,strategy['system_id'])
+                    if system['revision']!=strategy['system_revision']:
+                        stale=True
+                    self.personal._validate_skills(owner,PersonalResearchDefinition.model_validate(system['definition']),require_callable=True)
+            except Exception:
+                stale=True
+            if stale:
+                payload.update(status='STALE_CONTEXT',notice='当前模式、画像、政策或研究权限已变化；以下为历史模拟，请以新条件创建实验。')
+        return rows
 
     def create(self,owner,body):
         context=self.context(owner)
@@ -163,7 +187,7 @@ class ShadowPortfolios:
                 if Decimal(account['cash_cny'])>0:
                     from app.portfolio.contracts import Position
                     current_positions.append(Position(position_id='virtual-cash',owner_id=owner,asset_id='CASH-CNY',asset_type='CASH',asset_name='虚拟现金',
-                        quantity=Decimal(account['cash_cny']),market_value=Decimal(account['cash_cny']),currency='CNY',as_of=quote_time,source='shadow-ledger'))
+                        quantity=Decimal(account['cash_cny']),market_value=Decimal(account['cash_cny']),currency='CNY',sector='Cash',as_of=quote_time,source='shadow-ledger'))
                 virtual=quoted.model_copy(update={'fund_holdings':tuple(s for s in quoted.fund_holdings if any(p.asset_id==s.parent_asset_id for p in current_positions)),
                     'position_snapshot':quoted.position_snapshot.model_copy(update={'positions':tuple(current_positions)})})
                 request=PortfolioRebalancingRequest(request_id='virtual:'+uuid4().hex,owner_id=owner,generated_at=quote_time,bundle=virtual,target_weights=target,
@@ -181,14 +205,15 @@ class ShadowPortfolios:
                 if cash>0:
                     from app.portfolio.contracts import Position
                     post.append(Position(position_id='virtual-cash',owner_id=owner,asset_id='CASH-CNY',asset_type='CASH',asset_name='虚拟现金',
-                        quantity=cash,market_value=cash,currency='CNY',as_of=quote_time,source='shadow-ledger'))
+                        quantity=cash,market_value=cash,currency='CNY',sector='Cash',as_of=quote_time,source='shadow-ledger'))
                 post_bundle=virtual.model_copy(update={'position_snapshot':virtual.position_snapshot.model_copy(update={'positions':tuple(post)}),
                     'fund_holdings':tuple(s for s in quoted.fund_holdings if any(p.asset_id==s.parent_asset_id for p in post))})
                 health=calculate_portfolio_health(PortfolioHealthRequest(request_id='virtual-health:'+uuid4().hex,owner_id=owner,calculated_at=quote_time,
                     portfolio=post_bundle,profile=bound.confirmed_profile))
-                applied=plan.status==GateStatus.PASS and health.status=='PASS' and cash>=0 and all(q>=0 for q in quantities.values())
-                point.update(status='APPLIED' if applied else 'REVIEW_REQUIRED',run_id=run['run_id'],indicator_value=indicator['value'],
-                             matched=matched,plan=plan.model_dump(mode='json'),health=health.model_dump(mode='json'))
+                budget=assess_risk_budget(bound.confirmed_profile,calculate_concentration(calculate_exposure(post_bundle)))
+                applied=plan.status==GateStatus.PASS and health.status=='PASS' and not budget.breaches and cash>=0 and all(q>=0 for q in quantities.values())
+                point.update(status=('APPLIED' if plan.execution_steps else 'HELD') if applied else 'REVIEW_REQUIRED',run_id=run['run_id'],indicator_value=indicator['value'],
+                             matched=matched,plan=plan.model_dump(mode='json'),health=health.model_dump(mode='json'),risk_budget=budget.model_dump(mode='json'))
                 if applied:
                     account.update(quantities={a:str(q) for a,q in quantities.items()},cash_cny=str(cash),
                         fees_cny=str(Decimal(account['fees_cny'])+plan.metrics.net_turnover_cost),

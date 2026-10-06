@@ -79,6 +79,23 @@ class FundingGoals:
         self.records,self.memory,self.context,self.request_builder=records,memory,context,request_builder
         self.planner=PortfolioRebalancingService()
 
+    def list(self,owner):
+        rows=self.records.list(owner,'goals')
+        try:
+            context=self.context(owner)
+            portfolio_hash=digest(context['bundle'].model_dump(mode='json'))
+            memory=self.memory.state(owner)
+            revision=memory['policy'].revision if memory['policy_status']=='ACTIVE' else None
+        except Exception:
+            context,portfolio_hash,revision=None,None,None
+        for row in rows:
+            latest=row['payload'].get('latest')
+            if latest and (context is None or portfolio_hash!=latest['portfolio_hash'] or
+                           context.get('profile_hash')!=latest.get('profile_hash') or revision!=latest['policy_revision']):
+                row['payload']['latest']={**latest,'stale':True,'adjustment_plan':None,
+                    'plan_unavailable_reason':'组合、行情、画像或长期偏好已变化，以下为历史测算，请重新计算。'}
+        return rows
+
     def save(self,owner,record_id,body):
         if any(g.due_date<self.records.clock().date() for g in body.goals) or any(f.due_date<self.records.clock().date() for f in body.confirmed_cashflows):
             raise LabInvalid('请填写当前或未来的目标和现金流日期。')
@@ -99,6 +116,7 @@ class FundingGoals:
         memory=self.memory.state(owner)
         policy=memory['policy'] if memory['policy_status']=='ACTIVE' else None
         cash_pct=(needed/total*100).quantize(Decimal('.01'),rounding=ROUND_CEILING)
+        cash_pct=max(cash_pct,(cash/total*100).quantize(Decimal('.01'),rounding=ROUND_CEILING))
         if policy:
             cash_pct=max(cash_pct,policy.parameters.minimum_cash_pct)
         weights={p.asset_id:p.market_value/total*100 for p in bundle.position_snapshot.positions if p.asset_type!=AssetType.CASH}
@@ -128,6 +146,7 @@ class FundingGoals:
             plan=self.planner.plan_rebalancing(request).model_dump(mode='json')
         latest={**schedule,'target_weights':{a:str(w) for a,w in target.items()},'adjustment_plan':plan,'plan_unavailable_reason':reason,
                 'policy_revision':policy.revision if policy else None,'portfolio_hash':digest(bundle.model_dump(mode='json')),
+                'profile_hash':context.get('profile_hash'),
                 'is_synthetic':context['is_synthetic'],'calculated_at':self.records.clock().isoformat(),
                 'notice':'按已确认现金流与资金用途测算，不假设资产收益，不提交交易；同一笔资金只分配一次。'}
         return self.records.write(owner,'goals',record_id,row['revision'],{**row['payload'],'latest':latest})

@@ -18,11 +18,12 @@ from app.store.sqlite import SQLiteDecisionEventStore
 NOW=datetime(2026,10,6,8,tzinfo=UTC)
 
 
-def seed(store,owner='alice'):
-    answers=tuple(QuestionnaireAnswer.model_validate({'question_id':q.question_id,**({'score':4} if q.question_type.value=='SCORE' else {'selected_option_ids':[q.options[0].option_id]})}) for q in QUESTIONNAIRE_TEMPLATE.questions)
+def seed(store,owner='alice',conservative=False):
+    choices={} if conservative else {'Q1':'professional','Q2':'gt_10y','Q3':'stock','Q4':'k500_1000','Q6':'capital_growth'}
+    answers=tuple(QuestionnaireAnswer.model_validate({'question_id':q.question_id,**({'score':4} if q.question_type.value=='SCORE' else {'selected_option_ids':[choices.get(q.question_id,q.options[0].option_id)]})}) for q in QUESTIONNAIRE_TEMPLATE.questions)
     store.save_questionnaire_snapshot(build_questionnaire_snapshot(owner,answers,confirmed_at=NOW,snapshot_version=1))
-    rows=[{'asset_id':f'60000{i+1}.SH','quantity':2000 if i==0 else 1000,'price':10,'sector':sector,'asset_name':f'资产{i+1}'} for i,sector in enumerate(['Industrials','Financials','Consumer Staples','Health Care','Materials','Energy'])]
-    data=recalculate_portfolio_values(rows,Decimal(30000),owner)
+    rows=[{'asset_id':f'60000{i+1}.SH','quantity':2000 if i==0 else 1300,'price':10,'sector':sector,'asset_name':f'资产{i+1}'} for i,sector in enumerate(['Industrials','Financials','Consumer Staples','Health Care','Materials','Energy'])]
+    data=recalculate_portfolio_values(rows,Decimal(15000),owner)
     data['portfolio']['created_at']=NOW.isoformat()
     data['portfolio']['position_snapshot']['as_of']=NOW.isoformat()
     for p in data['portfolio']['position_snapshot']['positions']:
@@ -36,7 +37,7 @@ def seed(store,owner='alice'):
 
 
 def strategy(name,threshold,target):
-    base={f'60000{i+1}.SH':str(20 if i==0 else 10) for i in range(6)}|{'CASH-CNY':'30'}
+    base={f'60000{i+1}.SH':str(20 if i==0 else 13) for i in range(6)}|{'CASH-CNY':'15'}
     return {'name':name,'system_id':'profit','system_revision':1,'subject':'600001','period':'2025-Q4','indicator_id':'margin',
             'comparison':'AT_LEAST','threshold':str(threshold),'matched_weights':target,'unmatched_weights':base}
 
@@ -53,7 +54,7 @@ def test_forward_accounts_equal_baseline_fee_conservation_marks_and_owner_isolat
         async def run(owner,system,request):
             return {'run_id':'controlled-run','is_synthetic':True,'indicators':[{'indicator_id':'margin','status':'CALCULATED','value':'20','unit':'%'}]}
         personal.run_and_wait=run
-        target={f'60000{i+1}.SH':'10' for i in range(6)}|{'CASH-CNY':'40'}
+        target={f'60000{i+1}.SH':str(10 if i==0 else 13) for i in range(6)}|{'CASH-CNY':'25'}
         response=client.post('/api/v1/research-lab/experiments',headers={'X-Owner-ID':'alice'},json={'name':'方法比较','strategies':[strategy('盈利观察',15,target),strategy('较高要求',25,target)]})
         assert response.status_code==200,response.text
         created=response.json()
@@ -68,6 +69,7 @@ def test_forward_accounts_equal_baseline_fee_conservation_marks_and_owner_isolat
         assert Decimal(first['fees_cny'])==Decimal('10.10')
         assert Decimal(first['equity_cny'])==100000-Decimal(first['fees_cny'])
         assert Decimal(second['fees_cny'])==0 and Decimal(second['quantities']['600001.SH'])==2000
+        assert second['timeline'][0]['status']=='HELD'
         repeat=client.post(endpoint,headers={'X-Owner-ID':'alice'},json={'expected_revision':2}).json()
         assert repeat['duplicate_quote'] and repeat['revision']==2
         data=store.get_current_portfolio('alice','MOCK')
@@ -119,4 +121,9 @@ def test_goal_api_revision_calculation_and_plan_binding(tmp_path):
         assert result['is_synthetic']
         assert client.post('/api/v1/research-lab/goals/uses/calculate',headers=headers,json={'expected_revision':1}).status_code==409
         assert client.get('/api/v1/research-lab/goals',headers={'X-Owner-ID':'bob'}).json()['items']==[]
+        current=store.get_current_portfolio('alice','MOCK')
+        current['portfolio']['position_snapshot']['positions'][0]['market_value']='19000'
+        store.save_current_portfolio('alice','MOCK',current)
+        stale=client.get('/api/v1/research-lab/goals',headers=headers).json()['items'][0]['payload']['latest']
+        assert stale['stale'] and stale['adjustment_plan'] is None
     store.close()

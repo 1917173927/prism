@@ -25,7 +25,7 @@ from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, Workfl
 from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
 from app.service.personal_research import PersonalResearchService
-from app.service.research_lab_store import LabRecords
+from app.service.research_lab_store import LabRecords, digest as lab_digest
 from app.service.research_method_builder import MethodBuilder
 from app.api.research_lab_routes import create_method_router, create_monitor_router, create_planning_router
 from app.service.investment_hypotheses import HypothesisMonitor
@@ -3242,6 +3242,12 @@ def create_app(
         context = personal_rebalancing_input(owner)
         if not context['quote_ready']:
             raise HTTPException(409, detail="请先刷新当前真实行情与组合。")
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner)
+        behavior = active_store.get_latest_behavior_profile(owner)
+        profile = snapshot.profile if snapshot else None
+        if profile and behavior and behavior.questionnaire_profile_id == profile.profile_id:
+            profile = effective_risk_profile(profile, behavior)
+        context['profile_hash'] = lab_digest(profile.model_dump(mode='json')) if profile else None
         return context
 
     hypothesis_monitor = HypothesisMonitor(lab_records, personal_research_service, knowledge_service)

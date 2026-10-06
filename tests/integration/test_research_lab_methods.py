@@ -56,3 +56,19 @@ def test_model_can_only_propose_valid_scoped_definitions(tmp_path):
         with pytest.raises(ValueError):
             asyncio.run(builder.generate('alice',MethodDraftInput(prompt='生成一个新研究方法')))
         assert app.state.research_runtime.snapshot()['model_active']==0
+
+
+def test_lab_uses_session_owner_and_exposes_all_contracts(tmp_path):
+    app=create_app(database_path=tmp_path/'auth.db',auth_enabled=True,clock=lambda:NOW)
+    with TestClient(app) as client:
+        assert client.get('/api/v1/research-lab/drafts').status_code==401
+        schema=app.openapi()
+        assert all('/api/v1/research-lab/'+route in schema['paths'] for route in ('drafts','hypotheses','announcements','experiments','goals'))
+        assert '/api/v1/research-lab/goals/{record_id}' in schema['paths']
+        result=client.post('/api/v1/auth/register',json={'username':'lab-alice','password':'test-password-123','password_confirmation':'test-password-123'})
+        assert result.status_code==201
+        forged=client.post('/api/v1/research-lab/drafts',json={'prompt':'净利率达到15%'},headers={'X-Owner-ID':'someone-else'})
+        assert forged.status_code==403
+        draft=client.post('/api/v1/research-lab/drafts',json={'prompt':'净利率达到15%'})
+        assert draft.status_code==200,draft.text
+        assert client.get('/api/v1/research-lab/drafts').json()['items'][0]['record_id']==draft.json()['record_id']

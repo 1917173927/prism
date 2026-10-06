@@ -98,7 +98,7 @@ def create_planning_router(shadows,goals,owner_dependency):
 
     @router.get('/experiments')
     def list_experiments(owner=Depends(owner_dependency)):
-        return {'items':shadows.records.list(owner,'shadow')}
+        return {'items':shadows.list(owner)}
 
     @router.post('/experiments')
     def create_experiment(body:ExperimentInput,owner=Depends(owner_dependency)):
@@ -116,7 +116,7 @@ def create_planning_router(shadows,goals,owner_dependency):
 
     @router.get('/goals')
     def list_goals(owner=Depends(owner_dependency)):
-        return {'items':goals.records.list(owner,'goals')}
+        return {'items':goals.list(owner)}
 
     @router.put('/goals/{record_id}')
     def save_goals(record_id:str,body:FundingGoalsInput,owner=Depends(owner_dependency)):

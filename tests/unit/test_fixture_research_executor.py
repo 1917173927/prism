@@ -174,15 +174,27 @@ def test_two_ready_roots_execute_in_parallel_and_complete() -> None:
         "macro-root": _request("macro-root", "MACRO_DATA", "MACRO_A"),
         "industry-root": _request("industry-root", "INDUSTRY_DATA", "INDUSTRY_A"),
     }
-    provider = DelayedSuccessProvider({"MACRO_A": 0.08, "INDUSTRY_A": 0.08})
+    class BarrierProvider(DelayedSuccessProvider):
+        def __init__(self):
+            super().__init__({})
+            self.entered = set()
+            self.both_entered = asyncio.Event()
 
-    started = time.perf_counter()
+        async def execute(self, request):
+            self.entered.add(request.subject)
+            if len(self.entered) == 2:
+                self.both_entered.set()
+            # A sequential executor cannot release the first root. This proves
+            # overlap without treating workstation scheduling as a latency SLA.
+            await asyncio.wait_for(self.both_entered.wait(), timeout=0.8)
+            return await super().execute(request)
+
+    provider = BarrierProvider()
     result = _run(state, provider, requests, started_at=NOW, clock=lambda: NOW)
-    elapsed = time.perf_counter() - started
 
     assert result.state.status == ResearchRunStatus.COMPLETED
     assert all(node.status == ResearchNodeRunStatus.COMPLETE for node in result.state.nodes)
-    assert elapsed < 0.15
+    assert provider.entered == {"INDUSTRY_A", "MACRO_A"}
     assert sorted(provider.calls) == ["INDUSTRY_A", "MACRO_A"]
     assert len(result.evidence) == 2
     assert len(result.observations) == 2

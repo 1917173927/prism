@@ -92,5 +92,5 @@ class MethodBuilder:
             definition = body.definition or PersonalResearchDefinition.model_validate(draft["payload"]["definition"])
             self.personal._validate_skills(owner, definition, require_callable=True)
             saved = self.personal.save(owner, body.system_id, PersonalResearchSave(definition=definition, expected_revision=body.expected_system_revision))
-            self.records.write(owner,"method",draft_id,body.expected_revision,{**draft["payload"],"status":"CONFIRMED","system_id":saved["system_id"],"system_revision":saved["revision"]})
+            self.records.write(owner,"method",draft_id,body.expected_revision,{**draft["payload"],"definition":definition.model_dump(mode='json'),"name":definition.name,"status":"CONFIRMED","system_id":saved["system_id"],"system_revision":saved["revision"]})
             return saved

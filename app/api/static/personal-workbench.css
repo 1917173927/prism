@@ -4,6 +4,7 @@
 .prism-ui-v2 .personal-workbench h3 { margin: 0 0 8px; font-size: var(--font-section); }
 .prism-ui-v2 .personal-workbench h4 { margin: 0 0 10px; font-size: var(--font-card); }
 .prism-ui-v2 .personal-workbench p { overflow-wrap: anywhere; }
+.prism-ui-v2 .personal-workbench .personal-block:empty { display: none; }
 .prism-ui-v2 .personal-heading, .prism-ui-v2 .personal-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .prism-ui-v2 .personal-actions { justify-content: flex-start; margin-top: 14px; }
 .prism-ui-v2 .personal-form-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 14px; margin: 16px 0; }

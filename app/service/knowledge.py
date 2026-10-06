@@ -303,7 +303,7 @@ class KnowledgeService:
         with self.store._lock:
             rows = self.store._connection.execute("SELECT * FROM knowledge_documents WHERE deleted_at IS NULL AND (owner_id=? OR visibility='PUBLIC') ORDER BY published_at DESC,document_id LIMIT ?", (owner_id, limit)).fetchall()
             return [{key: value for key, value in self._load(row).items() if key != "original"} |
-                    {"title": json.loads(row["payload_json"])["original"]["title"], "visibility": row["visibility"], "subject": row["subject"], "period": row["period"], "published_at": row["published_at"]} for row in rows]
+                    {"title": json.loads(row["payload_json"])["original"]["title"], "kind": json.loads(row["payload_json"])["original"]["kind"], "visibility": row["visibility"], "subject": row["subject"], "period": row["period"], "published_at": row["published_at"]} for row in rows]
 
     def get_version(self, owner_id: str, document_id: str, revision: int) -> dict | None:
         """History is readable only while the current document remains accessible."""

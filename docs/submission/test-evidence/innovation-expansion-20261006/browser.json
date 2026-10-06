@@ -1,0 +1,158 @@
+{
+  "environment": "CONTROLLED_REGRESSION",
+  "checks": [
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "用描述创建研究方法",
+        "我的研究系统",
+        "运行与复用"
+      ],
+      "height": 1000,
+      "width": 1440,
+      "route": "skill-store"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "投资假设跟踪"
+      ],
+      "height": 1000,
+      "width": 1440,
+      "route": "live-research"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "公告与我的持仓"
+      ],
+      "height": 1000,
+      "width": 1440,
+      "route": "research-knowledge"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "研究方法模拟比较"
+      ],
+      "height": 1000,
+      "width": 1440,
+      "route": "scenario-simulation"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "调仓偏好对比",
+        "资金用途与期限规划"
+      ],
+      "height": 1000,
+      "width": 1440,
+      "route": "portfolio-rebalancing"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "用描述创建研究方法",
+        "我的研究系统",
+        "运行与复用"
+      ],
+      "height": 768,
+      "width": 1024,
+      "route": "skill-store"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "投资假设跟踪"
+      ],
+      "height": 768,
+      "width": 1024,
+      "route": "live-research"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "公告与我的持仓"
+      ],
+      "height": 768,
+      "width": 1024,
+      "route": "research-knowledge"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "研究方法模拟比较"
+      ],
+      "height": 768,
+      "width": 1024,
+      "route": "scenario-simulation"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "调仓偏好对比",
+        "资金用途与期限规划"
+      ],
+      "height": 768,
+      "width": 1024,
+      "route": "portfolio-rebalancing"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "用描述创建研究方法",
+        "我的研究系统",
+        "运行与复用"
+      ],
+      "height": 844,
+      "width": 390,
+      "route": "skill-store"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "投资假设跟踪"
+      ],
+      "height": 844,
+      "width": 390,
+      "route": "live-research"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "公告与我的持仓"
+      ],
+      "height": 844,
+      "width": 390,
+      "route": "research-knowledge"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "研究方法模拟比较"
+      ],
+      "height": 844,
+      "width": 390,
+      "route": "scenario-simulation"
+    },
+    {
+      "globalOverflow": 0,
+      "headings": [
+        "调仓偏好对比",
+        "资金用途与期限规划"
+      ],
+      "height": 844,
+      "width": 390,
+      "route": "portfolio-rebalancing"
+    }
+  ],
+  "logs": [],
+  "flows": [
+    "draft generation, revision, confirmation",
+    "hypothesis subscribe, evaluate 20%, stop",
+    "announcement server portfolio relation",
+    "equal-baseline experiment, strict risk budget, apply and hold",
+    "goals dated shortfall, edit and recalculate",
+    "historical-context invalidation"
+  ]
+}

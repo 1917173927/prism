@@ -486,6 +486,7 @@
     if (!state.memory) loadMemory().catch(error => { if (error.name !== "AbortError") message("personal-rebalancing-message", error.message, true); });
   });
   document.addEventListener("prism:context-invalidated", clearContext);
+  document.addEventListener("prism:personal-system-saved", () => { state.catalog = null; loadSystems().catch(error => { if (error.name !== "AbortError") message("personal-system-message", error.message, true); }); });
   document.addEventListener("prism:owner-change", () => { resetAccount(); activate(); });
   byId("owner-id")?.addEventListener("input", resetAccount);
   byId("owner-id")?.addEventListener("change", () => { resetAccount(); activate(); });
