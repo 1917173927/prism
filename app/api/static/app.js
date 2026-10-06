@@ -11142,7 +11142,9 @@
     workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
     const input = byId("copilot-natural-input");
     if (input) { input.value = ""; input.focus(); }
-    byId("chat-session-search").value = "";
+    const search = byId("chat-session-search");
+    search.value = "";
+    search.readOnly = true;
     const progress = byId("chat-send-progress");
     if (progress) { progress.hidden = false; progress.textContent = "理解问题 → 查询数据 → 核验依据 → 组织回答"; }
     const output = byId("copilot-decision-output");
@@ -11428,34 +11430,39 @@
             if (event.type === "error") {
               streamError = event.message || "分析被中止";
             } else if (event.type === "analysis_context") {
-              const details = document.createElement("details");
-              details.className = "chat-audit-details";
               const mode = event.display_policy?.mode || "STANDARD";
-              details.open = mode === "AUDIT_EXPANDED";
-              const summary = document.createElement("summary");
-              summary.textContent = "分析依据与风险提示";
-              const auditBody = document.createElement("div");
-              auditBody.className = "chat-audit-body";
-              [
-                ["处理步骤", event.analysis_steps],
-                ["已确认事实", event.facts],
-                ["规则阈值", event.thresholds],
-                ["证据引用", event.evidence],
-                ["风险与缺失", event.warnings],
-              ].forEach(([label, values]) => {
-                if (!Array.isArray(values) || !values.length) return;
-                const strong = document.createElement("strong");
-                strong.textContent = label;
-                const list = document.createElement("ul");
-                values.forEach(value => {
-                  const item = document.createElement("li");
-                  item.textContent = String(value);
-                  list.append(item);
+              const facts = Array.isArray(event.facts) ? event.facts.filter(value => value !== "尚无行为画像快照") : [];
+              const evidence = Array.isArray(event.evidence) ? event.evidence : [];
+              const warnings = Array.isArray(event.warnings) ? event.warnings.filter(value =>
+                !String(value).startsWith("本轮未绑定已锁定的画像与持仓前提")
+                && !String(value).startsWith("行为数据不足；不得据此提高风险等级")) : [];
+              if (warnings.length || (mode === "AUDIT_EXPANDED" && (facts.length || evidence.length))) {
+                const details = document.createElement("details");
+                details.className = "chat-audit-details";
+                details.open = mode === "AUDIT_EXPANDED";
+                const summary = document.createElement("summary");
+                summary.textContent = "分析依据";
+                const auditBody = document.createElement("div");
+                auditBody.className = "chat-audit-body";
+                [
+                  ["已确认事实", facts],
+                  ["证据引用", evidence],
+                  ["风险与缺失", warnings],
+                ].forEach(([label, values]) => {
+                  if (!Array.isArray(values) || !values.length) return;
+                  const strong = document.createElement("strong");
+                  strong.textContent = label;
+                  const list = document.createElement("ul");
+                  values.forEach(value => {
+                    const item = document.createElement("li");
+                    item.textContent = String(value);
+                    list.append(item);
+                  });
+                  auditBody.append(strong, list);
                 });
-                auditBody.append(strong, list);
-              });
-              details.append(summary, auditBody);
-              aiBubble.append(details);
+                details.append(summary, auditBody);
+                aiBubble.append(details);
+              }
               const policyMode = byId("display-policy-mode");
               if (policyMode) policyMode.textContent = mode;
             } else if (event.type === "thinking") {
@@ -14016,12 +14023,25 @@
   });
   const clearChatSessionSearch = () => {
     const search = byId("chat-session-search");
-    if (search) search.value = "";
+    if (search) {
+      search.value = "";
+      search.readOnly = true;
+      if (document.activeElement === search) search.blur();
+    }
     renderChatSessionList();
   };
   clearChatSessionSearch();
   window.addEventListener("pageshow", clearChatSessionSearch);
-  byId("chat-session-search")?.addEventListener("input", renderChatSessionList);
+  const chatSessionSearch = byId("chat-session-search");
+  const activateChatSessionSearch = () => {
+    if (!chatSessionSearch.readOnly) return;
+    chatSessionSearch.value = "";
+    chatSessionSearch.readOnly = false;
+    renderChatSessionList();
+  };
+  chatSessionSearch.addEventListener("pointerdown", activateChatSessionSearch);
+  chatSessionSearch.addEventListener("focus", activateChatSessionSearch);
+  chatSessionSearch.addEventListener("input", renderChatSessionList);
   byId("home-history-hide")?.addEventListener("click", () => {
     setHomeHistoryCollapsed(true);
     byId("home-history-show").focus();

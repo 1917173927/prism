@@ -31,5 +31,14 @@
     "old": "REPRODUCIBLE_FAILURE",
     "fixed": "PASSED",
     "focused_tests": 8
-  }
+  },
+  "final_82bd219_pytest": {
+    "passed": 1225,
+    "skipped": 1,
+    "warnings": 2,
+    "seconds": 128.95
+  },
+  "final_chat_home_browser": "PASSED",
+  "final_research_workbench_browser": "PASSED",
+  "final_research_lab_browser": "PASSED"
 }

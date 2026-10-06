@@ -3631,6 +3631,7 @@ html:has(body.prism-ui-v2.sidebar-layout-active) { scroll-padding-top: 82px; }
   padding: 3px 0;
   color: var(--text-secondary);
   cursor: pointer;
+  font-size: 15px;
   font-weight: 500;
   list-style: none;
 }
