@@ -25,7 +25,7 @@ def test_primary_navigation_is_chinese_and_has_initial_selection() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
 
     expected_links = {
-        "#overview": "总览",
+        "#overview": "持仓分析",
         "#advisor": "投顾查询",
         "#portfolio": "持仓",
         "#context-memory": "上下文记忆",
@@ -35,12 +35,12 @@ def test_primary_navigation_is_chinese_and_has_initial_selection() -> None:
         "#fund-research": "ETF / 基金研究",
         "#convertible-bond-research": "可转债研究",
         "#evidence": "证据链",
-        "#profile": "风险画像",
+        "#profile": "个人中心",
     }
     for href, label in expected_links.items():
         assert f'href="{href}"' in markup
         assert label in markup
-    assert '<nav class="nav-list" aria-label="工作区分区">' in markup
+    assert '<nav id="home-primary-navigation" aria-label="主导航">' in markup
     assert 'href="#copilot" id="nav-copilot" aria-current="location"' in markup
 
     forbidden_core_labels = (
@@ -64,7 +64,7 @@ def test_navigation_renderer_syncs_hash_selection_and_safe_localization() -> Non
         'item.classList.toggle("active", selected)',
         'item.setAttribute("aria-current", "location")',
         'window.addEventListener("hashchange"',
-        'item.addEventListener("click", () => syncNavigation(item.hash.slice(1)))',
+        'if (item.hash === window.location.hash) syncNavigation(item.hash.slice(1));',
         "function displayScenarioLabel(",
         "function displayDescription(",
         "function displayMethodology(",

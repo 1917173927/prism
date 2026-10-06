@@ -152,11 +152,13 @@ def test_preview_confirm_list_edit_withdraw_and_restore() -> None:
         assert other.json()["total"] == 0
 
 
-def test_trade_page_is_a_primary_navigation_workspace() -> None:
+def test_trade_page_is_reachable_from_portfolio_analysis() -> None:
     html = open("app/api/static/index.html", encoding="utf-8").read()
     script = open("app/api/static/app.js", encoding="utf-8").read()
     styles = open("app/api/static/prism-v2.css", encoding="utf-8").read()
-    assert 'href="#trading-style"' in html
+    assert 'href="#overview"' in html
+    assert 'id="portfolio-tab-style"' in html
+    assert 'data-portfolio-route="portfolio-style"' in html
     assert 'id="trading-style"' in html
     assert 'id="trade-import-files"' in html
     assert 'id="trade-sheet-selector"' in html

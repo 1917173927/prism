@@ -1,0 +1,86 @@
+---
+config:
+  theme: base
+  themeVariables:
+    fontFamily: Microsoft YaHei, Arial, sans-serif
+    primaryTextColor: '#20334a'
+    lineColor: '#6d7e92'
+    clusterBkg: '#f7f9fc'
+    clusterBorder: '#d2dce8'
+  flowchart:
+    curve: linear
+    htmlLabels: false
+    nodeSpacing: 28
+    rankSpacing: 40
+---
+flowchart TD
+    web["Web 工作台\nHTML · CSS · JavaScript · AntV X6\n对话入口 · 画像中心 · 持仓组合\n研究 DAG · 决策卡 · 证据审计"]
+    input["画像与持仓输入\n19 题问卷 · 确定性评分\nPillow · RapidOCR\n文字 / 表格 / 截图持仓\n用户确认"]
+    llm["语言模型服务\nOpenAI-compatible API\n意图识别 · 槽位解析\n基于已验证结果解释"]
+    provider["金融数据接入\n同花顺问财 SkillHub\n金融数据 Provider 适配器\n行情 · 财务 · 行业\n基金成分 · 可转债"]
+    quality["数据质量与溯源\nSUCCESS · PARTIAL · EMPTY · FAILED\nsource · lineage\nobserved_at · retrieved_at\nmissing_fields · stale"]
+
+    subgraph application["模块化单体应用 · 同源部署"]
+        api["服务接口\nPython 3.11 · FastAPI · Pydantic 2\nHTTP · SSE\n类型校验 · 用户归属 · 上下文版本"]
+        context["已确认上下文\n画像版本 · 持仓快照 · 规则版本"]
+        coordinator["中央协调器\n结构化意图 → DAG 计划 → 依赖调度 → 结果汇总\n有界并行 · 超时预算 · 节点状态"]
+        subgraph specialists["六类专业节点"]
+            direction LR
+            macro["宏观研究"]
+            sector["行业研究"]
+            stock["个股研究"]
+            fund["ETF 与基金"]
+            bond["可转债研究"]
+            portfolio["组合决策"]
+        end
+        evidence["证据验证\nEvidence → Fact → Finding\n来源独立性 · 时效 · 字段与引用校验"]
+        calc["确定性计算\nDecimal · 领域规则\n市值与权重 · 成分穿透 · HHI\n画像预算 · 情景测算 · 目标结构\n整手股数 · 交易费用 · 现金复核"]
+        candidate["结构化候选结果\n研究发现 · 计算结果 · 证据引用"]
+        risk["风险闸门\n画像 · 持仓 · 预算 · 证据"]
+        compliance["合规闸门\n事实引用 · 风险揭示 · 禁止表述"]
+        both{"风险与合规均为 PASS"}
+        result["建议与决策回执\nRecommendation · DecisionReceipt\nADVISORY_ONLY"]
+        review["REVIEW_REQUIRED / BLOCKED\n复核或终止建议"]
+        explain["审查后的结果解释\n引用已验证事实与已计算结果"]
+    end
+
+    storage["存储与访问审计\nSQLite · PostgreSQL 适配\n账户 · 上下文 · 研究运行\nDecisionEvent · 历史回执\nWindows 受保护凭据"]
+
+    web -->|HTTP 请求 / SSE 事件| api
+    web --> input
+    input --> context
+    context --> coordinator
+    context --> calc
+    context --> risk
+    api --> coordinator
+    llm -->|结构化意图| coordinator
+    coordinator --> macro & sector & stock & fund & bond & portfolio
+    provider --> quality
+    quality -->|结构化金融数据与质量状态| specialists
+    quality -->|来源与质量状态| evidence
+    specialists --> evidence
+    specialists -->|计算任务与已验证输入| calc
+    evidence -->|已验证事实| calc
+    evidence --> candidate
+    calc --> candidate
+    candidate --> risk & compliance
+    risk --> both
+    compliance --> both
+    both -->|通过| result
+    both -->|复核或阻断| review
+    result --> explain
+    llm -.->|语言服务| explain
+    explain -.->|结果返回| web
+    review -.->|状态返回| web
+    context & coordinator & result & review -.->|持久化与审计| storage
+
+    classDef blue fill:#e7f0ff,stroke:#8baedf,color:#20334a;
+    classDef violet fill:#eeeafa,stroke:#ad9bcc,color:#20334a;
+    classDef mint fill:#e4f5ef,stroke:#80baa6,color:#20334a;
+    classDef orange fill:#fff0de,stroke:#d8ab70,color:#20334a;
+    classDef neutral fill:#f1f4f8,stroke:#a8b7c8,color:#20334a;
+    class web,api,coordinator,macro,sector,stock,fund,bond,portfolio blue;
+    class llm,evidence,explain violet;
+    class input,context,calc,provider,quality mint;
+    class risk,compliance,both,result,review orange;
+    class storage,candidate neutral;

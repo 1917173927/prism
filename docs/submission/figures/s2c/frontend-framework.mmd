@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 用户交互 · index.html 与 Hash 路由"]:3
+    A["对话工作台<br/>输入问题与追问<br/>查看消息和工具进度"]
+    B["画像与持仓<br/>问卷、资料导入<br/>确认当前分析输入"]
+    C["分析报告<br/>风险、配置与行情<br/>查看结果及详细资料"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 状态协调与服务通信"]:3
+    D["app.js 状态协调<br/>用户归属与上下文版本<br/>组织事件与当前选择"]
+    E["会话消息管理<br/>账户隔离与最近消息<br/>历史读取及当前对话"]
+    F["接口与流式请求<br/>fetch / HTTP / SSE<br/>连接 FastAPI 服务"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 结果呈现"]:3
+    G["结构化响应<br/>状态、引用与结果<br/>本地状态更新"]
+    I["文字与行情图表<br/>marked / DOMPurify<br/>Lightweight Charts"]
+    J["工作流视图<br/>AntV X6 高级画布<br/>独立辅助研究入口"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

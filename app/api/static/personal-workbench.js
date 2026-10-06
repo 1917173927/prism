@@ -474,7 +474,7 @@
     try {
       if (location.hash === "#skill-store" && byId("personal-system-workspace")) { if (!state.catalog) await loadSystems(); schedulePolling(); }
       else stopPolling();
-      if (["#trading-style", "#portfolio-rebalancing"].includes(location.hash) && byId("investment-memory-workspace")) await loadMemory();
+      if (["#trading-style", "#portfolio-style", "#portfolio-rebalancing"].includes(location.hash) && byId("investment-memory-workspace")) await loadMemory();
     } catch (error) { if (error.name !== "AbortError") message(location.hash === "#skill-store" ? "personal-system-message" : "investment-memory-message", error.message, true); }
   }
   initializeSystems(); initializeMemory(); initializePreview();

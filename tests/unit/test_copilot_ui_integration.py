@@ -161,7 +161,6 @@ def test_copilot_styles_and_responsive_rules() -> None:
         ".copilot-natural-input",
         ".copilot-submit-btn",
         ".copilot-quick-tags",
-        ".copilot-tasks-grid",
         ".copilot-task-card",
         ".copilot-decision-card",
         ".decision-banner",
@@ -187,14 +186,14 @@ def test_copilot_styles_and_responsive_rules() -> None:
     ):
         assert selector in styles
 
-    assert ".copilot-stats-grid, .copilot-tasks-grid, .decision-metrics-row" in styles
+    assert ".decision-metrics-row { grid-template-columns: 1fr; }" in styles
 
 
 def test_prism_ui_v2_design_tokens_are_semantic_and_legacy_compatible() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     styles = (STATIC / "styles.css").read_text(encoding="utf-8")
 
-    assert 'class="questionnaire-pending prism-ui-v2"' in markup
+    assert 'class="questionnaire-pending prism-ui-v2 sidebar-layout-active"' in markup
     for token in (
         "--text-primary: #202124",
         "--page: #f7f7f8",
@@ -252,8 +251,14 @@ def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     assert 'class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar"' in markup
-    assert 'class="topbar-actions topbar-more-menu"' in markup
+    assert 'class="topbar-more-menu"' in markup
     assert 'id="profile-menu-current-label"' in markup
+    assert markup.index('id="home-navigation"') < markup.index('id="home-primary-navigation"') < markup.index('id="home-history-sidebar"')
+    assert markup.index('id="home-navigation-actions"') < markup.index('id="persona-switcher-bar"') < markup.index('id="home-history-sidebar"')
+    assert 'class="topbar"' not in markup
+    assert 'class="nav-list"' not in markup
+    assert "topbar-actions" not in markup
+    assert "function syncHomeNavigation(" not in script
     for node_id in (
         "btn-custom-profile-chip",
         "open-profile-modal-btn",
@@ -269,7 +274,7 @@ def test_prism_ui_v2_reorganizes_shell_without_replacing_business_nodes() -> Non
     ):
         assert markup.count(f'id="{node_id}"') == 1
 
-    assert "/* Prism UI v2 integration: shell, topbar, and Agent home */" in styles
+    assert "/* Prism UI v2：共用组件与 Agent 首页 */" in styles
     for selector in (
         ".prism-ui-v2 .app-shell",
         ".prism-ui-v2 .profile-actions-menu",
@@ -312,7 +317,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     v2_styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
 
-    assert '<link rel="stylesheet" href="/static/styles.css?v=20260916-' in markup
+    assert '<link rel="stylesheet" href="/static/styles.css?v=' in markup
     assert '<link rel="stylesheet" href="/static/prism-v2.css?v=' in markup
     assert '<script src="/static/app.js?v=' in markup
     assert '<script src="/static/lightweight-charts.js?v=5.2.1" defer></script>' in markup
@@ -348,12 +353,9 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert "function clearChatEmptyState(" in script
     assert 'messages?.querySelector("[data-chat-empty-state]")?.remove()' in script
     assert 'content.className = "agent-empty-state"' in script
-    assert 'progressTrack.className = "chat-progress-track"' in script
-    assert 'progressBar.className = "chat-progress-bar"' in script
-    assert 'progressBar.style.width = "60%"' in script
-    assert 'byId("chat-send-progress").replaceChildren(pipelineBox)' in script
-    assert 'pipelineBox.append(pipeHead, stepsGrid)' in script
-    assert 'aiBubble.append(contentBox)' in script
+    assert 'processLabel.textContent = "正在思考"' in script
+    assert 'processBody.append(agentStatus, pipelineBox, toolsContainer)' in script
+    assert 'aiBubble.append(processDetails, contentBox)' in script
     for stage_label in ("理解问题", "查询真实数据（按需）", "核验事实与约束", "组织回答"):
         assert stage_label in script
     assert 'setPipelineStepState(s2, "skipped")' in script
@@ -380,7 +382,7 @@ def test_agent_home_uses_demo_composition_without_changing_dom_identity() -> Non
     assert 'window.location.hash = "market";' not in market_block
 
 
-    assert "Agent home is defined here as a complete composition" in v2_styles
+    assert ".prism-ui-v2.sidebar-layout-active .home-navigation {" in v2_styles
     for selector in (
         ".prism-ui-v2 .agent-home-grid",
         ".prism-ui-v2 .agent-conversation",
@@ -427,7 +429,7 @@ def test_visible_multi_session_history_and_scoped_follow_up_context() -> None:
     for node_id in ("chat-history-title", "new-chat-session", "chat-session-list", "active-chat-title"):
         assert f'id="{node_id}"' in markup
     assert "暂无历史对话" in markup
-    assert markup.index('id="new-chat-session"') < markup.index('class="nav-list"') < markup.index('id="chat-session-list"')
+    assert markup.index('id="new-chat-session"') < markup.index('id="chat-history-title"') < markup.index('id="chat-session-list"')
     for token in (
         'const CHAT_SESSIONS_STORAGE_KEY = "prism_copilot_chat_sessions_v1"',
         "function renderChatSessionList()",
@@ -487,7 +489,7 @@ def test_portfolio_panel_declares_demo_data_and_hides_snapshot_identifiers() -> 
     script = (STATIC / "app.js").read_text(encoding="utf-8")
 
     assert 'id="portfolio-source-note"' in markup
-    assert "导入持仓后即可查看持仓明细与基金底层股票。" in markup
+    assert 'id="portfolio-title">持仓明细</h2>' in markup
     assert "function setPortfolioSourcePresentation(" in script
     assert "示例持仓明细" in script
     assert "parentPosition" in script
@@ -655,7 +657,7 @@ def test_market_choices_and_visible_source_controls_are_distinct() -> None:
     assert 'class="portfolio-holdings-layout"' not in markup
 
 
-def test_portfolio_report_navigation_status_and_boundaries_are_restructured() -> None:
+def test_portfolio_report_exposes_inline_panels_and_disclosed_risk_references() -> None:
     markup = (STATIC / "index.html").read_text(encoding="utf-8")
     script = (STATIC / "app.js").read_text(encoding="utf-8")
     styles = (STATIC / "prism-v2.css").read_text(encoding="utf-8")
@@ -663,21 +665,32 @@ def test_portfolio_report_navigation_status_and_boundaries_are_restructured() ->
     heading = markup.index('class="overview-header-bar page-heading overview-heading"')
     tabs = markup.index('id="workspace-page-tabs"')
     card = markup.index('id="portfolio-report-card"', heading)
-    drawer = markup.index('id="portfolio-analysis-drawer"', card)
-    assert heading < tabs < card < drawer
+    details = markup.index('id="portfolio-analysis-details"', card)
+    assert heading < tabs < card < details
     assert 'insertAdjacentElement("afterend", pageTabs)' in script
+    assert '<section id="portfolio-analysis-details"' in markup
+    for route, panel, tab in (
+        ("portfolio-risk", "portfolio-risk-details", "portfolio-tab-risk"),
+        ("portfolio-profit", "portfolio-pnl-details", "portfolio-tab-profit"),
+        ("portfolio-style", "portfolio-style-details", "portfolio-tab-style"),
+        ("portfolio-holdings", "portfolio-holdings-details", "portfolio-tab-holdings"),
+    ):
+        assert f'data-portfolio-route="{route}" aria-controls="{panel}"' in markup
+        assert f'role="tabpanel" aria-labelledby="{tab}"' in markup
     assert 'id="portfolio-analysis-status"' in markup
     assert 'id="portfolio-analysis-retry"' in markup
     assert 'id="portfolio-extended-analysis"' in markup
-    assert markup.index('id="portfolio-report-asset-structure"') < drawer
-    assert markup.index('id="portfolio-report-risk-summary"') > drawer
+    assert markup.index('id="portfolio-report-asset-structure"') < details
+    assert markup.index('id="portfolio-report-risk-summary"') > details
+    assert 'id="portfolio-risk-reference"' in markup
+    assert 'id="portfolio-profile-entry" href="#profile"' in markup
     assert '.prism-ui-v2 .portfolio-disclosure > summary' in styles
     risk_renderer = script.split('function renderPortfolioRiskBoundaries', 1)[1].split('function renderPortfolioReport', 1)[0]
-    for label in ("最大持仓占比", "权益类占比", "现金比例", "当前占比", "参考范围", "结果"):
+    for label in ("最大持仓占比", "权益类占比", "现金比例", "当前", "参考范围", "结果"):
         assert label in risk_renderer
     assert '"REVIEW_REQUIRED"' in risk_renderer
     assert 'if (!report.profile)' in risk_renderer
-    assert 'link.href = "#profile"' in risk_renderer
+    assert 'row.status === "PASS" ? other : body' in risk_renderer
     assert 'renderPortfolioAnalysisStatus(error.message' in script
     assert 'setError(`持仓已保存' not in script
 
@@ -731,3 +744,20 @@ def test_live_provider_results_use_compact_emphasized_card_layout() -> None:
     assert 'max-height: 520px;' in styles
     assert 'scrollbar-gutter: stable;' in styles
     assert '.agent-conversation .copilot-output-container { display: block; max-height: 520px;' in styles
+
+
+def test_auxiliary_results_use_chinese_labels_and_guard_rebalancing_context() -> None:
+    script = (STATIC / "app.js").read_text(encoding="utf-8")
+    optimization = script.split("function renderPortfolioOptimization", 1)[1].split(
+        "function clearPortfolioOptimizationRun", 1
+    )[0]
+    rebalancing = script.split("async function runPortfolioRebalancing", 1)[1].split(
+        "// 分析依据", 1
+    )[0]
+
+    for label in ("当前占比", "目标占比", "变化", "单项上限", "风险等级"):
+        assert f'"{label}"' in optimization
+    assert "目标由确定性规则和风险画像共同决定；不是交易指令" not in script
+    assert "不执行交易" not in optimization
+    assert "const contextRevision = state.contextRevision;" in rebalancing
+    assert rebalancing.count("contextRevision !== state.contextRevision") >= 2

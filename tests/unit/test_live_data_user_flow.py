@@ -292,7 +292,7 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
              "runCopilotHealthCheck", "runCopilotRebalance", "runCopilotScenarioShock",
              "getSectorVerdict", "renderHeroDonutChart", "runPortfolioRebalancing",
              "loadSavedPortfolio", "openPortfolioModal", "closePortfolioModal", "selectPortfolioImportTab",
-             "syncPortfolioDialogScroll", "buildRebalancingNotice",
+             "syncPortfolioDialogScroll", "buildRebalancingNotice", "setAuxiliaryError",
              "profileLevelText", "currentProfileTag", "activeProfileTag"]
     functions = []
     for name in names:
@@ -367,12 +367,14 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     assert.match(byId("donut-cause-callout").textContent, /各行业占比仍在设置范围内/);
     state.portfolioHealthRun = null;
     state.portfolio = {position_snapshot:{positions:[{asset_id:"510300.SH"}]}};
+    state.profile = {profile:{risk_level:"C3"}};
     state.portfolioRefreshRun = {status:"COMPLETE"};
     state.portfolioOptimizationRun = {targets:[{target_id:"SECTOR:TECHNOLOGY",target_weight_pct:100}]};
     assert.equal(await runPortfolioRebalancing(), null);
-    assert.match(errors.at(-1), /不能直接作为账户持仓下单/);
+    assert.match(byId("portfolio-rebalancing-error").textContent, /不能直接作为账户持仓下单/);
     assert.equal(calls.length, 0);
     state.portfolio = null;
+    state.profile = null;
     for (const value of [null, undefined, "", " ", false, true, NaN, Infinity]) assert.equal(hasFinancialNumber(value), false);
     for (const value of [0, "0", -1, "20.5"]) assert.equal(hasFinancialNumber(value), true);
 
@@ -417,7 +419,7 @@ def test_frontend_live_data_flow_handles_missing_context_and_stale_results():
     byId("copilot-stock-input").value = "600519.SH";
     await runCopilotStockResearch();
     assert.match(output.textContent, /部分数据可用/);
-    assert.match(output.textContent, /下方深度章节会继续补齐/);
+    assert.match(output.textContent, /深度章节提供/);
     assert.match(output.textContent, /PE（TTM）/);
     assert.match(output.textContent, /0.00%/);
     assert.doesNotMatch(output.textContent, /NaN/);

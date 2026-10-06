@@ -7,9 +7,10 @@
     <meta name="description" content="问财智投可解释证券研究与决策支持工作台">
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
-    <link rel="stylesheet" href="/static/styles.css?v=20260916-portfolio-analysis-refactor">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261003-research-upstream-merge">
-    <link rel="stylesheet" href="/static/research-platform.css?v=20261001">
+    <link rel="stylesheet" href="/static/styles.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/research-platform.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/research-workbench.css?v=20261006-upstream-sync-82bd219">
     <link rel="stylesheet" href="/static/design-tokens.css?v=20261003-product-unified">
     <link rel="stylesheet" href="/static/product-theme.css?v=20261003-product-unified">
     <link rel="stylesheet" href="/static/personal-workbench.css?v=20261006-functional">
@@ -17,14 +18,14 @@
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
-    <script src="/static/app.js?v=20261006-functional" defer></script>
-    <script src="/static/research-platform.js?v=20261003-investor-workbench" defer></script>
-    <script src="/static/research-tools.js?v=20261003-investor-workbench" defer></script>
+    <script src="/static/app.js?v=20261006-upstream-sync-82bd219" defer></script>
+    <script src="/static/research-platform.js?v=20261006-upstream-sync-82bd219" defer></script>
+    <script src="/static/research-tools.js?v=20261006-upstream-sync-82bd219" defer></script>
     <script src="/static/personal-workbench.js?v=20261006-functional" defer></script>
-    <script src="/static/research-lab.js?v=20261006-expansion" defer></script>
+    <script src="/static/research-lab.js?v=20261006-upstream-sync-82bd219" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
-  <body class="questionnaire-pending prism-ui-v2">
+  <body class="questionnaire-pending prism-ui-v2 sidebar-layout-active">
     <div id="questionnaire-entry-loading" class="questionnaire-entry-loading" role="status" aria-live="polite">
       <span class="questionnaire-entry-mark" aria-hidden="true">P</span>
       <strong>正在加载风险设置</strong>
@@ -112,6 +113,13 @@
         <line x1="5" y1="12" x2="19" y2="12"></line>
         <polyline points="12 5 19 12 12 19"></polyline>
       </symbol>
+      <symbol id="icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 19V5m-6 6 6-6 6 6"></path>
+      </symbol>
+      <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+      </symbol>
       <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
         <polyline points="14 2 14 8 20 8"></polyline>
@@ -131,100 +139,157 @@
     </svg>
 
     <div class="app-shell">
-      <header class="home-navigation sidebar-layout-only" id="home-navigation">
+      <header class="home-navigation" id="home-navigation">
         <div class="home-navigation-main" id="home-navigation-main">
-          <nav id="home-primary-navigation" aria-label="主导航"></nav>
-        </div>
-        <div class="home-navigation-actions" id="home-navigation-actions"></div>
-      </header>
-      <aside class="sidebar" id="home-history-sidebar" aria-label="导航与历史对话">
-        <div class="brand" aria-label="问财智投">
-          <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
-          <div>
-            <strong>问财智投</strong>
-            <span>个性化证券投顾</span>
+          <div class="brand" aria-label="问财智投">
+            <span class="brand-mark" aria-hidden="true"><img src="/static/wencai-zhitou-logo.svg" alt=""></span>
+            <div>
+              <strong>问财智投</strong>
+              <span>个性化证券投顾</span>
+            </div>
           </div>
+          <nav id="home-primary-navigation" aria-label="主导航">
+            <div class="nav-section-primary">
+              <a class="nav-item nav-item-copilot active" href="#copilot" id="nav-copilot" aria-current="location">
+                <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
+                <div class="nav-copilot-label">
+                  <strong>AI 对话</strong>
+                  <span>个性化投顾入口</span>
+                </div>
+              </a>
+              <a class="nav-item" href="#overview">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
+                <span>持仓分析</span>
+              </a>
+              <a class="nav-item" href="#market">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
+                <span>大盘鉴别</span>
+              </a>
+              <a class="nav-item" href="#profile">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                <span>个人中心</span>
+              </a>
+              <a class="nav-item" href="#research-workbench">
+                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                <span>研究工作台</span>
+              </a>
+            </div>
+          </nav>
         </div>
-
+        <div class="home-navigation-actions" id="home-navigation-actions">
+          <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
+            <summary aria-label="打开风险与偏好菜单">
+              <span class="profile-menu-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+              <span class="home-only home-account-label">账户</span>
+              <span class="profile-menu-copy"><small>风险与偏好</small><strong id="profile-menu-current-label">查看当前设置</strong></span>
+              <span class="profile-menu-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="profile-actions-panel" aria-label="投资者画像管理">
+              <div class="active-profile-wrap">
+              <span class="switcher-label">风险与偏好</span>
+              <button class="persona-chip active" id="btn-custom-profile-chip" type="button" data-persona="custom-user" title="查看当前投资画像">
+              <span class="persona-avatar" id="custom-profile-chip-avatar"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+              <span class="persona-name" id="custom-profile-chip-name">R3 平衡型</span>
+              </button>
+            </div>
+            </div>
+          </details>
+          <details class="topbar-more-menu">
+            <summary>
+              <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
+              <span class="other-page-only">更多</span><span class="home-only">设置</span>
+            </summary>
+            <div class="topbar-more-panel">
+              <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="修改投资目标、风险设置和期限">
+              <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-edit"/></svg></span>
+              <span class="persona-name">修改投资偏好</span>
+            </button>
+              <button class="persona-chip custom-portfolio-chip" id="open-portfolio-modal-btn" type="button" title="导入或描述你的持仓，用于个性化分析">
+              <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-plus"/></svg></span>
+              <span class="persona-name">添加持仓</span>
+            </button>
+              <button id="home-context-trigger" class="persona-chip home-only" type="button" aria-expanded="false" aria-controls="agent-profile-rail">
+                <svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>查看分析资料</span>
+              </button>
+              <button id="data-source-status" class="data-source-status" type="button" aria-label="打开模型与数据来源设置">
+                <span id="visible-ai-mode">AI · 正在确认</span>
+                <span id="visible-data-mode">工具数据 · 正在确认</span>
+              </button>
+              <button id="theme-toggle" class="topbar-theme-toggle" type="button" aria-pressed="false">
+                <svg class="prism-icon" aria-hidden="true"><use href="#icon-eye"/></svg>
+                <span id="theme-toggle-label">切换深色主题</span>
+              </button>
+              <button id="view-mode-toggle" class="mode-toggle-btn" type="button" aria-expanded="false" aria-controls="expert-workspace-grid" title="展开更多详细工具">
+                <span id="mode-toggle-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
+                <span id="mode-toggle-text">更多工具</span>
+              </button>
+              <button id="open-password-change" class="topbar-theme-toggle" type="button">修改密码</button>
+              <button id="logout-local-session" class="topbar-logout" type="button">退出登录</button>
+              <details class="persona-library dev-only">
+                <summary>切换示例画像</summary>
+                <div class="persona-library-options">
+                  <button class="persona-chip" type="button" data-persona="persona-zhang-r3" title="张先生：35岁白领，R3平衡型，科技重仓">
+                    <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                    <span class="persona-name">张先生 (R3)</span>
+                  </button>
+                  <button class="persona-chip" type="button" data-persona="persona-li-r2" title="李阿姨：58岁退休，R2稳健型，注重本金安全">
+                    <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                    <span class="persona-name">李阿姨 (R2)</span>
+                  </button>
+                  <button class="persona-chip" type="button" data-persona="persona-wang-r4" title="王同学：28岁进取，R4高弹性，偏好成长ETF">
+                    <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
+                    <span class="persona-name">王同学 (R4)</span>
+                  </button>
+                </div>
+              </details>
+              <div class="health" id="health-status" aria-live="polite" hidden></div>
+              <div class="nav-section-expert collapsed dev-only" id="nav-expert-section">
+                <button class="nav-expert-header" id="nav-expert-toggle" type="button" aria-expanded="false" aria-controls="nav-expert-items" title="展开底层系统工具与评测">
+                  <span>
+                    <span class="nav-group-title">系统治理</span>
+                    <small>评测看板与状态审计</small>
+                  </span>
+                  <span class="expert-toggle-indicator" id="expert-toggle-indicator" aria-hidden="true"><svg class="prism-icon"><use href="#icon-chevron-down"/></svg></span>
+                </button>
+                <div class="nav-expert-items" id="nav-expert-items">
+                  <a class="nav-item" href="#evaluation-dashboard">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
+                    <span>评测看板</span>
+                  </a>
+                  <a class="nav-item" href="#context-memory">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                    <span>上下文记忆</span>
+                  </a>
+                  <a class="nav-item" href="#research-tracks">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
+                    <span>研究轨道</span>
+                  </a>
+                  <a class="nav-item" href="#advisor">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
+                    <span>投顾查询</span>
+                  </a>
+                  <a class="nav-item" href="#dev-assist">
+                    <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
+                    <span>研发辅助</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </header>
+      <aside class="sidebar" id="home-history-sidebar" aria-label="历史对话">
         <div class="sidebar-conversation-actions home-only">
+          <a class="nav-item home-skill-store-entry" id="nav-store" href="#skill-store"><svg class="prism-icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>研究工具</span></a>
           <div class="home-history-toolbar">
             <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
             <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
           </div>
           <label class="sidebar-chat-search">
             <svg class="prism-icon" aria-hidden="true"><use href="#icon-search"/></svg>
-            <input id="chat-session-search" type="search" placeholder="搜索对话" aria-label="搜索对话" autocomplete="off">
+            <input id="chat-session-search" type="search" placeholder="搜索对话" aria-label="搜索对话" autocomplete="off" autocapitalize="off" spellcheck="false" readonly>
           </label>
         </div>
-
-        <nav class="nav-list" aria-label="工作区分区">
-          <!-- 普通用户固定为 PRD 的四个主页面；深度工具保留在开发者区域。 -->
-          <div class="nav-section-primary">
-            <a class="nav-item nav-item-copilot active" href="#copilot" id="nav-copilot" aria-current="location">
-              <span class="nav-copilot-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-compass"/></svg></span>
-              <div class="nav-copilot-label">
-                <strong>AI 对话</strong>
-                <span>个性化投顾入口</span>
-              </div>
-            </a>
-            <a class="nav-item" href="#overview" title="组合总览">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-              <span>持仓分析</span>
-            </a>
-            <a class="nav-item" href="#market">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-search"/></svg></span>
-              <span>市场观察</span>
-            </a>
-            <a class="nav-item" href="#trading-style">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-              <span>交易复盘</span>
-            </a>
-            <a class="nav-item" href="#profile">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                <span>个人中心</span>
-            </a>
-            <a class="nav-item" href="#skill-store">
-              <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-              <span>研究工具</span>
-            </a>
-            <a class="nav-item" href="#research-knowledge"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span><span>研究资料</span></a>
-            <a class="nav-item" href="#live-research"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span><span>研究任务</span></a>
-            <a class="nav-item" href="#research-algorithms"><span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span><span>风险分析</span></a>
-          </div>
-
-          <!-- 系统治理仅对开发者模式开放。 -->
-          <div class="nav-section-expert collapsed dev-only" id="nav-expert-section">
-            <button class="nav-expert-header" id="nav-expert-toggle" type="button" aria-expanded="false" aria-controls="nav-expert-items" title="展开底层系统工具与评测">
-              <span>
-                <span class="nav-group-title">系统治理</span>
-                <small>评测看板与状态审计</small>
-              </span>
-              <span class="expert-toggle-indicator" id="expert-toggle-indicator" aria-hidden="true"><svg class="prism-icon"><use href="#icon-chevron-down"/></svg></span>
-            </button>
-            <div class="nav-expert-items" id="nav-expert-items">
-              <a class="nav-item" href="#evaluation-dashboard">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-activity"/></svg></span>
-                <span>评测看板</span>
-              </a>
-              <a class="nav-item" href="#context-memory">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-                <span>上下文记忆</span>
-              </a>
-              <a class="nav-item" href="#research-tracks">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-layers"/></svg></span>
-                <span>研究轨道</span>
-              </a>
-              <a class="nav-item" href="#advisor">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
-                <span>投顾查询</span>
-              </a>
-              <a class="nav-item" href="#dev-assist">
-                <span class="nav-shortcut-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></span>
-                <span>研发辅助</span>
-              </a>
-            </div>
-          </div>
-        </nav>
 
         <aside class="chat-history-panel home-only" aria-labelledby="chat-history-title">
           <header class="chat-history-head"><h3 id="chat-history-title">历史对话</h3></header>
@@ -246,91 +311,11 @@
           <input id="market-index-input" type="hidden" value="sse-composite">
           <div id="market-index-options" class="market-index-options" role="group" aria-label="选择大盘指数"></div>
         </section>
-
-        <div class="sidebar-note">
-          <span class="eyebrow">使用提示</span>
-          <p>添加风险设置与持仓即可分析。结果包含结论、依据和可采取的下一步。</p>
-        </div>
       </aside>
-      <button class="home-history-backdrop sidebar-layout-only" id="home-history-backdrop" type="button" aria-label="关闭历史对话"></button>
+      <button class="home-history-backdrop" id="home-history-backdrop" type="button" aria-label="关闭历史对话"></button>
 
       <main class="main">
-        <button class="home-history-show sidebar-layout-only" id="home-history-show" type="button" aria-label="展开历史对话" aria-controls="home-history-sidebar" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg><span>历史对话</span></button>
-        <header class="topbar">
-          <div class="topbar-title-area">
-            <span class="eyebrow">个人投资工作台</span>
-            <h1><span class="home-only">对话</span><span class="other-page-only">问财智投</span></h1>
-            <p class="topbar-subtitle">结合你的持仓、投资偏好与市场信息进行分析。</p>
-          </div>
-          <details class="persona-switcher-bar profile-actions-menu" id="persona-switcher-bar">
-            <summary aria-label="打开风险与偏好菜单">
-              <span class="profile-menu-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-              <span class="home-only home-account-label">账户</span>
-              <span class="profile-menu-copy"><small>风险与偏好</small><strong id="profile-menu-current-label">查看当前设置</strong></span>
-              <span class="profile-menu-chevron" aria-hidden="true">⌄</span>
-            </summary>
-            <div class="profile-actions-panel" aria-label="投资者画像管理">
-              <div class="active-profile-wrap">
-              <span class="switcher-label">风险与偏好</span>
-              <button class="persona-chip active" id="btn-custom-profile-chip" type="button" data-persona="custom-user" title="查看当前投资画像">
-              <span class="persona-avatar" id="custom-profile-chip-avatar"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-              <span class="persona-name" id="custom-profile-chip-name">R3 平衡型</span>
-              </button>
-            </div>
-              <button class="persona-chip edit-profile-chip" id="open-profile-modal-btn" type="button" title="修改投资目标、风险设置和期限">
-              <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-edit"/></svg></span>
-              <span class="persona-name">修改投资偏好</span>
-            </button>
-              <button class="persona-chip custom-portfolio-chip" id="open-portfolio-modal-btn" type="button" title="导入或描述你的持仓，用于个性化分析">
-              <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-plus"/></svg></span>
-              <span class="persona-name">添加持仓</span>
-            </button>
-              <button id="home-context-trigger" class="persona-chip home-only" type="button" aria-expanded="false" aria-controls="agent-profile-rail">
-                <svg class="prism-icon" aria-hidden="true"><use href="#icon-file-text"/></svg><span>查看分析资料</span>
-              </button>
-              <details class="persona-library dev-only">
-              <summary>切换示例画像</summary>
-              <div class="persona-library-options">
-                <button class="persona-chip" type="button" data-persona="persona-zhang-r3" title="张先生：35岁白领，R3平衡型，科技重仓">
-                  <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                  <span class="persona-name">张先生 (R3)</span>
-                </button>
-                <button class="persona-chip" type="button" data-persona="persona-li-r2" title="李阿姨：58岁退休，R2稳健型，注重本金安全">
-                  <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                  <span class="persona-name">李阿姨 (R2)</span>
-                </button>
-                <button class="persona-chip" type="button" data-persona="persona-wang-r4" title="王同学：28岁进取，R4高弹性，偏好成长ETF">
-                  <span class="persona-avatar" aria-hidden="true"><svg class="prism-icon"><use href="#icon-user"/></svg></span>
-                  <span class="persona-name">王同学 (R4)</span>
-                </button>
-              </div>
-              </details>
-            </div>
-          </details>
-          <details class="topbar-actions topbar-more-menu">
-            <summary>
-              <svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>
-              <span class="other-page-only">更多</span><span class="home-only">设置</span>
-            </summary>
-            <div class="topbar-more-panel">
-              <button id="data-source-status" class="data-source-status" type="button" aria-label="打开模型与数据来源设置">
-                <span id="visible-ai-mode">AI · 正在确认</span>
-                <span id="visible-data-mode">工具数据 · 正在确认</span>
-              </button>
-              <button id="theme-toggle" class="topbar-theme-toggle" type="button" aria-pressed="false">
-                <svg class="prism-icon" aria-hidden="true"><use href="#icon-eye"/></svg>
-                <span id="theme-toggle-label">切换深色主题</span>
-              </button>
-              <button id="view-mode-toggle" class="mode-toggle-btn" type="button" aria-expanded="false" aria-controls="expert-workspace-grid" title="展开更多详细工具">
-                <span id="mode-toggle-icon" aria-hidden="true"><svg class="prism-icon"><use href="#icon-sliders"/></svg></span>
-                <span id="mode-toggle-text">更多工具</span>
-              </button>
-              <button id="open-password-change" class="topbar-theme-toggle" type="button">修改密码</button>
-              <button id="logout-local-session" class="topbar-logout" type="button">退出登录</button>
-              <div class="health" id="health-status" aria-live="polite" hidden></div>
-            </div>
-          </details>
-        </header>
+        <button class="home-history-show" id="home-history-show" type="button" aria-label="展开历史对话" aria-controls="home-history-sidebar" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg><span>历史对话</span></button>
 
         <!-- Agent 对话是默认首页；专业任务使用现有导航进入各自页面。 -->
         <section class="copilot-section" id="copilot" aria-labelledby="copilot-hero-title">
@@ -432,9 +417,8 @@
                   <div id="chat-send-progress" role="status" aria-live="polite">理解问题 → 查询数据 → 核验依据 → 组织回答</div>
                   <button id="home-model-trigger" class="home-model-trigger" type="button" aria-label="打开 API 配置" aria-haspopup="dialog" aria-controls="llm-config-modal"><span id="home-model-label">API 配置</span></button>
                   <button id="chat-cancel-query" type="button" hidden>停止</button>
-                  <button id="copilot-submit-query" class="copilot-submit-btn" type="button">
-                    <span>发送</span>
-                    <span class="btn-arrow"><svg class="prism-icon"><use href="#icon-arrow-right"/></svg></span>
+                  <button id="copilot-submit-query" class="copilot-submit-btn" type="button" aria-label="发送消息" title="发送消息">
+                    <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-up"/></svg>
                   </button>
                 </div>
               </div>
@@ -618,7 +602,7 @@
           <div id="llm-config-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="llm-config-modal-title">
             <div class="copilot-modal-content">
               <div class="copilot-modal-header">
-                <h3 id="llm-config-modal-title"><svg class="prism-icon"><use href="#icon-sliders"/></svg> 配置大模型 API Key</h3>
+                <h3 id="llm-config-modal-title"><svg class="prism-icon"><use href="#icon-sliders"/></svg> API 配置</h3>
                 <button id="close-llm-config-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
               </div>
               <div class="copilot-modal-body">
@@ -627,7 +611,7 @@
                 <span class="mode-status-indicator" aria-hidden="true"></span>
                 <span class="mode-label-text" id="global-data-mode-label">MOCK · 合成数据</span>
               </button>
-            </div><p class="source-mode-help">模型服务采用安装级全局配置；已登录账户保存后所有账户共享使用。</p><p class="modal-hint">支持 DeepSeek、通义千问与 OpenAI 官方接口。已登录账户均可填写、修改和清除配置；密钥不会在浏览器中回显。</p>
+            </div>
 
                 <div style="margin-bottom:12px;">
                   <label for="llm-provider-select" style="font-size:12.5px; font-weight:600; display:block; margin-bottom:4px;">服务商预设：</label>
@@ -661,67 +645,11 @@
                     <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存配置</span>
                   </button>
                 </div>
-                <p class="modal-hint">密钥由操作系统加密保存，重启后仍有效。浏览器不回显密钥；留空保存会保留现有密钥。当前配置为全局共享，后续保存会更新全局配置。</p>
                 <div id="llm-config-status" class="parsed-portfolio-status" style="display:none;"></div>
               </div>
             </div>
           </div>
 
-          <!-- 用户专属画像配置与编辑弹窗 -->
-          <div id="profile-edit-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
-            <div class="copilot-modal-content">
-              <div class="copilot-modal-header">
-                <h3 id="profile-modal-title"><svg class="prism-icon"><use href="#icon-user"/></svg> 我的约束偏好</h3>
-                <button id="close-profile-modal-btn" class="modal-close-btn" type="button" aria-label="关闭">×</button>
-              </div>
-              <div class="copilot-modal-body">
-                <p class="modal-hint">这里只能收紧仓位、回撤和行业上限。适当性等级由已确认问卷与历史行为共同计算，不能手动修改。</p>
-
-                <div style="margin-bottom: 12px;">
-                  <div>
-                    <label for="profile-name-input" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">投资者昵称：</label>
-                    <input type="text" id="profile-name-input" class="portfolio-textarea" style="height:36px; padding:6px 10px;" value="我的专属账户" autocomplete="off">
-                  </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                  <div>
-                    <label for="profile-drawdown-input" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">最大回撤容忍阈值 (%)：</label>
-                    <input type="number" id="profile-drawdown-input" class="portfolio-textarea" style="height:36px; padding:6px 10px;" value="15" min="3" max="50">
-                  </div>
-                  <div>
-                    <label for="profile-budget-input" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">单一行业预算上限 (%)：</label>
-                    <input type="number" id="profile-budget-input" class="portfolio-textarea" style="height:36px; padding:6px 10px;" value="30" min="10" max="80">
-                  </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                  <div>
-                    <label for="profile-horizon-select" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">投资规划期限：</label>
-                    <select id="profile-horizon-select" class="portfolio-textarea" style="height:36px; padding:6px 10px;">
-                      <option value="SHORT">短期 (3-6 个月)</option>
-                      <option value="MEDIUM" selected>中期 (1-3 年)</option>
-                      <option value="LONG">长期 (3 年以上)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label for="profile-aum-input" style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">资产总额估值 (元)：</label>
-                    <input type="text" id="profile-aum-input" class="portfolio-textarea" style="height:36px; padding:6px 10px;" value="500,000" autocomplete="off">
-                  </div>
-                </div>
-
-                <div class="modal-actions" style="gap:8px;">
-                  <button id="btn-reset-profile" class="copilot-action-btn secondary" type="button">
-                    <span>重置默认</span>
-                  </button>
-                  <button id="btn-save-profile" class="copilot-action-btn primary" type="button">
-                    <span><svg class="prism-icon"><use href="#icon-check"/></svg> 保存约束偏好</span>
-                  </button>
-                </div>
-                <div id="profile-save-status" class="parsed-portfolio-status" style="display:none;"></div>
-              </div>
-            </div>
-          </div>
           <!-- 面向投资者的分析依据弹窗；专业底稿采用渐进式展开 -->
           <div id="evidence-lineage-modal" class="copilot-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="evidence-lineage-title">
             <div class="copilot-modal-content evidence-explainer-modal">
@@ -778,9 +706,6 @@
             <a href="#convertible-bond-research" data-domain="research">可转债研究</a>
             <a href="#recommendation-history" data-domain="decisions">历史建议</a>
             <a href="#advanced-explainability" data-domain="decisions">为什么这样判断</a>
-            <a href="#profile-results" data-domain="profile">画像结果</a>
-            <a href="#profile-questionnaire" data-domain="profile">问卷填写</a>
-            <a href="#profile-preferences" data-domain="profile">偏好设置</a>
             <a href="#market-quotes" data-domain="market">行情</a>
             <a href="#market-risk" data-domain="market">风险与活跃度</a>
             <a href="#market-sectors" data-domain="market">板块观察</a>
@@ -791,24 +716,15 @@
             <a href="#dev-assist" data-domain="system" class="dev-only">研发辅助</a>
           </nav>
 
-          <section id="portfolio-analysis-status" class="portfolio-analysis-warning doc-callout doc-callout-warning" role="status" aria-live="polite" hidden>
-            <div class="callout-icon"><svg class="prism-icon"><use href="#icon-alert"/></svg></div>
-            <div class="callout-content">
-              <div id="portfolio-analysis-status-title" class="callout-title">分析状态</div>
-              <p id="portfolio-analysis-status-message"></p>
-              <button id="portfolio-analysis-retry" type="button" class="copilot-action-btn secondary">重新分析</button>
-              <a id="portfolio-profile-entry" href="#profile" class="copilot-action-btn secondary" hidden>完成风险问卷</a>
-            </div>
-          </section>
-
           <section id="portfolio-empty" class="portfolio-empty" hidden>
             <div class="portfolio-empty-symbol" aria-hidden="true"><svg class="prism-icon"><use href="#icon-file-text"/></svg></div>
             <h3>导入持仓，查看组合分析</h3><p>支持截图、文字录入和手动添加</p>
             <button type="button" class="copilot-action-btn primary" data-open-portfolio>导入持仓 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button>
+            <button id="portfolio-empty-style-entry" type="button" class="copilot-action-btn secondary">查看交易风格</button>
           </section>
           <section id="portfolio-report-card" class="surface portfolio-report-card" hidden aria-labelledby="portfolio-report-title" data-subpage="holdings-report">
             <div class="portfolio-conclusion">
-              <span id="portfolio-report-title" class="portfolio-section-label">分析结果</span>
+              <span id="portfolio-report-title" class="sr-only">持仓分析结果</span>
               <h3 id="portfolio-report-headline" aria-live="polite">正在读取分析报告…</h3>
               <button id="portfolio-attention-entry" type="button" class="portfolio-attention-entry" hidden></button>
             </div>
@@ -817,21 +733,29 @@
               <div><dt>持仓市值</dt><dd id="overview-portfolio-aum">—</dd></div>
               <div><dt id="overview-benchmark-label">累计盈亏</dt><dd id="overview-benchmark-val">—</dd></div>
             </dl>
-            <div class="portfolio-card-action"><button id="portfolio-details-entry" type="button" class="copilot-action-btn primary">查看分析详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button></div>
+            <div class="portfolio-card-action"><button id="portfolio-details-entry" type="button" class="copilot-action-btn primary" aria-expanded="false" aria-controls="portfolio-analysis-details">查看分析详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></button></div>
           </section>
-          <section id="portfolio-management-view" class="surface portfolio-detail-card" data-subpage="holdings-management" aria-label="持仓管理"></section>
           <p id="portfolio-source-line" class="portfolio-source-line" hidden></p>
           <p id="portfolio-overview-loading" class="portfolio-source-line" role="status">正在读取持仓…</p>
 
-          <dialog id="portfolio-analysis-drawer" class="portfolio-analysis-drawer" aria-labelledby="portfolio-details-title">
-            <header class="portfolio-drawer-heading"><h2 id="portfolio-details-title">分析详情</h2><button id="portfolio-details-close" type="button" class="copilot-action-btn secondary" autofocus>关闭</button></header>
-            <div class="portfolio-drawer-body">
-              <details id="portfolio-risk-details" class="portfolio-disclosure">
-                <summary>风险与集中度 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
-                <div class="portfolio-disclosure-content">
-                  <h3>集中度</h3><div id="portfolio-report-concentration-summary"></div>
-                  <h3>风险对照</h3><div id="portfolio-report-risk-summary"></div>
-                  <details class="portfolio-secondary-disclosure"><summary>行业分布与基金穿透</summary>
+          <section id="portfolio-analysis-details" class="portfolio-analysis-details" aria-labelledby="portfolio-details-title" hidden>
+            <header class="portfolio-details-heading"><h2 id="portfolio-details-title" tabindex="-1">分析详情</h2><button id="portfolio-details-close" type="button" class="copilot-action-btn secondary">收起详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></button></header>
+            <div class="portfolio-details-context"><span>持仓市值 <strong id="portfolio-context-value"></strong></span><span>累计盈亏 <strong id="portfolio-context-pnl"></strong></span><button id="portfolio-context-attention" type="button" class="portfolio-attention-entry" hidden></button></div>
+            <div class="portfolio-analysis-tabs" role="tablist" aria-label="分析栏目">
+              <button id="portfolio-tab-risk" type="button" role="tab" data-portfolio-route="portfolio-risk" aria-controls="portfolio-risk-details" aria-selected="false" tabindex="-1">风险与集中度</button>
+              <button id="portfolio-tab-profit" type="button" role="tab" data-portfolio-route="portfolio-profit" aria-controls="portfolio-pnl-details" aria-selected="false" tabindex="-1">收益表现</button>
+              <button id="portfolio-tab-style" type="button" role="tab" data-portfolio-route="portfolio-style" aria-controls="portfolio-style-details" aria-selected="false" tabindex="-1">交易风格</button>
+              <button id="portfolio-tab-holdings" type="button" role="tab" data-portfolio-route="portfolio-holdings" aria-controls="portfolio-holdings-details" aria-selected="false" tabindex="-1">持仓明细</button>
+            </div>
+              <section id="portfolio-risk-details" class="portfolio-analysis-panel" role="tabpanel" aria-labelledby="portfolio-tab-risk" tabindex="0" hidden>
+                <section id="portfolio-analysis-status" class="portfolio-analysis-warning" role="status" aria-live="polite" hidden>
+                  <h3 id="portfolio-analysis-status-title">分析状态</h3><p id="portfolio-analysis-status-message"></p>
+                  <button id="portfolio-analysis-retry" type="button" class="copilot-action-btn secondary">重新分析</button><a id="portfolio-profile-entry" href="#profile" class="copilot-action-btn secondary" hidden>完成风险问卷</a>
+                </section>
+                  <h3>最大持仓</h3><div id="portfolio-report-concentration-summary"></div>
+                  <h3>需要关注</h3><div id="portfolio-report-risk-summary"></div>
+                  <details id="portfolio-risk-reference" class="portfolio-disclosure"><summary>查看其他风险对照 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary><div id="portfolio-report-risk-reference" class="portfolio-disclosure-content"></div></details>
+                  <details id="portfolio-sector-details" class="portfolio-secondary-disclosure" hidden><summary>行业分布与基金穿透</summary>
           <div id="portfolio-extended-analysis" class="overview-grid">
             <section class="surface holdings-card overview-card">
               <header class="surface-head overview-card-header">
@@ -851,7 +775,7 @@
             <section class="surface exposure-card cf-status-widget copilot-donut-widget overview-sector-widget" aria-label="持仓行业分布">
               <header class="surface-head cf-widget-header">
                 <div class="cf-widget-title">
-                  <span class="cf-rank-pill r3" id="cf-profile-rank-pill">未测评</span>
+                  <span class="cf-rank-pill r3" id="cf-profile-rank-pill" hidden>未测评</span>
                   <span class="cf-widget-user">行业分布</span>
                 </div>
                 <span class="cf-verdict cf-verdict-pass" id="cf-hero-verdict-badge">
@@ -891,32 +815,29 @@
 
 
                   </details>
-                </div>
-              </details>
-              <details id="portfolio-pnl-details" class="portfolio-disclosure">
-                <summary>收益详情 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
-                <div class="portfolio-disclosure-content">
+                  <details class="portfolio-secondary-disclosure"><summary>数据口径</summary><p>占比按包含现金的总资产计算，参考范围来自风险问卷。</p></details>
+              </section>
+              <section id="portfolio-pnl-details" class="portfolio-analysis-panel" role="tabpanel" aria-labelledby="portfolio-tab-profit" tabindex="0" hidden>
+                  <h3>组合收益</h3>
                   <dl class="portfolio-detail-figures">
                     <div><dt id="overview-pnl-label">当日盈亏</dt><dd id="overview-pnl-val">—</dd><small id="overview-pnl-pct"></small></div>
+                    <div><dt>累计盈亏</dt><dd id="portfolio-details-pnl">—</dd></div>
                     <div><dt>累计收益率</dt><dd id="overview-benchmark-sub">—</dd></div>
                   </dl>
-                  <div id="portfolio-report-pnl-summary"></div>
-                </div>
-              </details>
-              <div id="portfolio-holdings-drawer-slot">
-              <details id="portfolio-holdings-details" class="portfolio-disclosure">
-                <summary>持仓明细 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
-                <div class="portfolio-disclosure-content">
+                  <details id="portfolio-profit-breakdown" class="portfolio-disclosure"><summary>查看盈亏分布 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary><div class="portfolio-disclosure-content"><div id="portfolio-report-pnl-summary"></div><dl id="portfolio-position-profits" class="portfolio-facts"></dl></div></details>
+                  <details class="portfolio-secondary-disclosure"><summary>收益说明</summary><p>累计盈亏为当前持仓市值与成本之差；当日盈亏按昨收价计算。</p></details>
+              </section>
+              <section id="portfolio-style-details" class="portfolio-analysis-panel" role="tabpanel" aria-labelledby="portfolio-tab-style" tabindex="0" hidden></section>
+              <section id="portfolio-holdings-details" class="portfolio-analysis-panel" role="tabpanel" aria-labelledby="portfolio-tab-holdings" tabindex="0" hidden>
                   <div class="portfolio-holdings-toolbar"><span><strong id="overview-position-count">—</strong> 项持仓 <small id="overview-position-sub"></small></span><button id="portfolio-add-entry" type="button" class="copilot-action-btn secondary">添加持仓</button></div>
                   <p id="overview-portfolio-cash"></p>
                   <section class="portfolio-detail-card">
                     <h3>持仓明细 <span id="portfolio-data-label" class="status-chip"></span></h3>
-                    <p id="portfolio-summary-note" role="status"></p>
-                    <div class="table-wrap"><table><thead><tr><th>标的 / 代码</th><th>数量</th><th>成本价</th><th>现价</th><th>市值</th><th>累计盈亏</th><th>持仓占比</th><th>操作</th></tr></thead><tbody id="portfolio-position-rows"></tbody></table></div>
+                    <p id="portfolio-summary-note" class="sr-only" role="status"></p>
+                    <div id="portfolio-position-rows" class="portfolio-holding-list"></div>
                   </section>
-                </div>
-              </details>
-              </div>
+                  <details class="portfolio-secondary-disclosure"><summary>占比说明</summary><p>持仓占比按证券总市值计算。</p></details>
+              </section>
               <details id="portfolio-more-details" class="portfolio-disclosure">
                 <summary>更多分析 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
                 <div class="portfolio-disclosure-content">
@@ -928,8 +849,7 @@
                 <summary>报告信息</summary><p id="portfolio-report-meta" class="portfolio-report-meta"></p><span id="portfolio-report-status" class="status-chip"></span>
                 <button id="portfolio-report-refresh" type="button" class="copilot-action-btn secondary">重新读取报告</button>
               </details>
-            </div>
-          </dialog>
+          </section>
 
           <details class="owner-form technical-owner-settings dev-only dev-outline">
             <summary>高级：切换本地数据空间</summary>
@@ -987,30 +907,46 @@
         </section>
 
         <section class="workspace-page-section" id="skill-store" hidden aria-labelledby="skill-store-title">
-          <div class="page-heading"><div><span class="eyebrow">研究工具</span><h2 id="skill-store-title">研究工具</h2><p>选择研究可使用的数据工具，查看连接和启用状态。</p></div></div>
+          <div class="page-heading research-store-heading"><div><h2 id="skill-store-title" tabindex="-1">研究工具</h2><p>创建自己的研究方法，为对话选择数据与研究能力。</p></div><a class="research-store-return" href="#copilot">返回对话 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a></div>
           <div id="method-builder-workspace"></div>
           <div id="personal-system-workspace"></div>
-          <section class="surface doc-callout doc-callout-info" id="skill-store-content" role="status" aria-live="polite"><strong>目录待加载</strong><p>能力状态以服务端注册和权限验证结果为准。</p></section>
+          <section id="skill-store-content" aria-label="技能目录"></section>
         </section>
 
-        <section class="workspace-page-section research-tools-page" id="research-knowledge" hidden aria-labelledby="research-knowledge-title">
-          <div class="page-heading"><div><span class="eyebrow">资料与依据</span><h2 id="research-knowledge-title">研究资料</h2><p>搜索公告、报告及方法说明，核对结论的原文依据。</p></div></div>
-          <div id="knowledge-workspace"></div>
-          <div id="announcement-impact-workspace"></div>
-        </section>
-        <section class="workspace-page-section research-tools-page" id="live-research" hidden aria-labelledby="live-research-title">
-          <div class="page-heading"><div><span class="eyebrow">研究进度与结果</span><h2 id="live-research-title">研究任务</h2><p>启动真实数据研究，查看进度、结果及仍需核对的资料。</p></div></div>
-          <div id="hypothesis-workspace"></div>
-          <div id="live-research-workspace"></div>
-        </section>
-        <section class="workspace-page-section research-tools-page" id="research-algorithms" hidden aria-labelledby="research-algorithms-title">
-          <div class="page-heading"><div><span class="eyebrow">风险与分散</span><h2 id="research-algorithms-title">风险分析</h2><p>根据导入资料分析波动环境、资产联动与市场风格；资料不足时保留待补充状态。</p></div></div>
-          <div id="algorithm-workspace"></div>
+        <section class="workspace-page-section research-tools-page research-workbench" id="research-workbench" hidden aria-labelledby="research-workbench-title">
+          <header class="rw-page-heading"><h2 id="research-workbench-title">研究工作台</h2><button id="research-tools-trigger" class="rw-button rw-quiet" type="button" aria-haspopup="dialog" aria-controls="research-tools-dialog" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>工具</button></header>
+          <div class="rw-stage"><div class="rw-card">
+            <div class="rw-task-tabs" role="tablist" aria-label="研究任务">
+              <button id="research-tab-live" class="rw-task-tab" role="tab" type="button" data-research-route="live-research" aria-controls="live-research" aria-selected="true" tabindex="0">开展研究</button>
+              <button id="research-tab-knowledge" class="rw-task-tab" role="tab" type="button" data-research-route="research-knowledge" aria-controls="research-knowledge" aria-selected="false" tabindex="-1">查找资料</button>
+              <button id="research-tab-algorithms" class="rw-task-tab" role="tab" type="button" data-research-route="research-algorithms" aria-controls="research-algorithms" aria-selected="false" tabindex="-1">风险与风格</button>
+            </div>
+            <section id="live-research" role="tabpanel" aria-labelledby="research-tab-live">
+              <div class="rw-task-heading"><h3 id="live-research-title">研究一家 A 股公司</h3><p>使用基础模板查询行情与财务，结果附数据来源与时点。</p></div>
+              <div id="live-research-workspace"></div>
+              <dl class="rw-task-summary"><div><dt>基础模板查询</dt><dd>最新价格、营业收入、净利润</dd></div><div><dt>扩展研究</dt><dd>在工具中组合行情、财务、行业等查询</dd></div></dl>
+              <div id="research-results-slot" class="rw-results"></div>
+              <div id="hypothesis-workspace"></div>
+            </section>
+            <section id="research-knowledge" role="tabpanel" aria-labelledby="research-tab-knowledge" hidden>
+              <div class="rw-task-heading"><h3 id="research-knowledge-title">从已有资料中查找依据</h3><p>检索已收录的公告、财报与研报，查看相关原文。</p></div>
+              <div id="knowledge-workspace"></div>
+              <dl class="rw-task-summary"><div><dt>检索结果</dt><dd>相关原文片段、资料来源与公告时间</dd></div><div><dt>限定范围</dt><dd>按标的、报告期或历史时点筛选</dd></div></dl>
+              <div id="knowledge-results-slot" class="rw-results"></div>
+              <div id="announcement-impact-workspace"></div>
+            </section>
+            <section id="research-algorithms" role="tabpanel" aria-labelledby="research-tab-algorithms" hidden>
+              <div class="rw-task-heading"><h3 id="research-algorithms-title">用历史数据计算研究指标</h3><p id="algorithm-purpose"></p></div>
+              <div id="algorithm-workspace"></div>
+              <dl class="rw-task-summary"><div><dt>所需数据</dt><dd id="algorithm-data-description"></dd></div><div><dt>计算结果</dt><dd id="algorithm-result-description"></dd></div></dl>
+              <div id="algorithm-results-slot" class="rw-results"></div>
+            </section>
+          </div></div>
         </section>
 
         <section class="workspace-page-section trading-style-page" id="trading-style" hidden aria-labelledby="trading-style-title">
           <div class="page-heading">
-            <h2 id="trading-style-title">交易复盘</h2>
+            <h3 id="trading-style-title">交易风格</h3>
             <button id="open-trade-import" type="button" class="copilot-action-btn primary" hidden>导入历史交易</button>
           </div>
           <div id="trade-style-error" class="notice error" role="alert" hidden></div>
@@ -1026,16 +962,17 @@
             <div id="trading-style-summary-content" class="trading-style-overview" aria-live="polite"></div>
           </section>
 
-          <section id="trade-style-insights" class="trade-style-insights" aria-labelledby="trade-guidance-title" hidden>
-            <h3 id="trade-guidance-title">行为建议</h3>
+          <details id="trade-style-insights" class="trade-style-insights portfolio-disclosure" hidden>
+            <summary id="trade-guidance-title">查看交易习惯建议 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
             <ol id="trade-guidance-list" class="trade-guidance-list"></ol>
-          </section>
+          </details>
 
           <details id="trading-style-more" class="trading-style-more" hidden>
-            <summary>更多数据</summary>
+            <summary>查看交易与当前持仓</summary>
             <div class="trade-more-body">
-              <div id="trading-style-sample-meta" class="trading-style-sample-meta"></div>
               <div id="trading-style-secondary" class="trading-style-secondary"></div>
+              <table class="portfolio-trade-relation-table"><thead><tr><th scope="col">标的</th><th scope="col">占总资产</th><th scope="col">股票成交占比</th><th scope="col">最近成交</th></tr></thead><tbody id="portfolio-trade-relations"></tbody></table>
+              <p class="portfolio-data-note">总资产包含现金；股票成交占比包含买入与卖出金额。</p>
 
               <details id="trade-market-details" class="trade-data-details" hidden>
                 <summary>重点标的</summary>
@@ -1043,9 +980,11 @@
                 <div id="trade-market-message" class="notice" role="status" hidden></div>
                 <div class="table-wrap"><table class="trade-market-table"><thead><tr><th scope="col">证券</th><th scope="col">历史成交占比</th><th scope="col">现价</th><th scope="col">涨跌幅</th><th scope="col">更新时间</th></tr></thead><tbody id="trade-market-securities" aria-live="polite"></tbody></table></div>
               </details>
-
-              <details id="trade-history-details" class="trade-data-details">
+            </div>
+          </details>
+              <details id="trade-history-details" class="trade-data-details" hidden>
                 <summary><span>交易明细</span><span id="trade-history-count" class="count-pill">0 笔</span></summary>
+                <div id="trading-style-sample-meta" class="trading-style-sample-meta"></div>
                 <div class="trade-history-filter-bar">
                   <input id="trade-filter-security" type="search" placeholder="证券代码或名称" aria-label="查找交易证券">
                   <button id="apply-trade-filters" type="button" class="copilot-action-btn secondary">筛选</button>
@@ -1062,8 +1001,6 @@
                 <div class="table-wrap"><table class="trade-history-table"><thead><tr><th scope="col">时间</th><th scope="col">证券</th><th scope="col">方向</th><th scope="col">数量</th><th scope="col">成交价</th><th scope="col">成交金额</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody id="trade-history-rows"><tr><td colspan="8" class="empty-state">暂无记录</td></tr></tbody></table></div>
                 <button id="load-more-trades" type="button" class="copilot-action-btn secondary" hidden>加载更多</button>
               </details>
-            </div>
-          </details>
 
           <dialog id="trade-import-dialog" class="trade-import-dialog" aria-labelledby="trade-import-title" aria-describedby="trade-upload-description">
             <div class="trade-import-heading">
@@ -1289,18 +1226,13 @@
             </details>
           </section>
 
-          <section class="panel stock-research-panel" id="stock-research" aria-labelledby="stock-research-title">
-            <div class="panel-head">
-              <div>
-                 <span class="eyebrow clay">研究工具</span>
-                 <h2 id="stock-research-title">股票研究</h2>
-              </div>
-              <span id="stock-research-status" class="status-chip">待运行</span>
-            </div>
-            <div class="research-actions">
-              <div id="stock-research-template-meta" class="query-meta">
-                 输入或复核一只股票的关键事实、风险和来源。
-              </div>
+          <section class="panel stock-research-panel auxiliary-page" id="stock-research" aria-labelledby="stock-research-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="stock-research-title">股票研究</h2></div>
+            <div class="auxiliary-primary-card">
+              <h3>了解一只股票</h3>
+              <p>查看财务表现与主要风险。</p>
+              <div id="stock-research-template-meta" class="query-meta dev-only"></div>
               <label class="research-scenario-picker dev-only" for="stock-research-scenario">
                 <span>回放场景</span>
                 <select id="stock-research-scenario" disabled>
@@ -1308,25 +1240,22 @@
                 </select>
                 <small>合成离线回放</small>
               </label>
-              <button id="run-stock-research" class="query-submit" type="button">运行个股研究</button>
+              <div class="auxiliary-action-row">
+                <button id="run-stock-research" class="copilot-action-btn primary" type="button">开始研究</button>
+                <span id="stock-research-status" class="status-chip">待运行</span>
+              </div>
+              <p id="stock-research-error" class="notice error" role="alert" hidden></p>
             </div>
-            <div id="stock-research-content" class="stock-research-content" aria-live="polite">
-              <div class="empty-state">运行研究后查看财务指标、异常项与信息来源。</div>
-            </div>
+            <div id="stock-research-content" class="stock-research-content auxiliary-results" aria-live="polite"></div>
           </section>
 
-          <section class="panel fund-research-panel" id="fund-research" aria-labelledby="fund-research-title">
-            <div class="panel-head">
-              <div>
-                 <span class="eyebrow clay">研究工具</span>
-                 <h2 id="fund-research-title">ETF / 基金研究</h2>
-              </div>
-              <span id="fund-research-status" class="status-chip">待运行</span>
-            </div>
-            <div class="research-actions">
-              <div id="fund-research-template-meta" class="query-meta">
-                 了解 ETF / 基金的持仓集中度、费用和风险。
-              </div>
+          <section class="panel fund-research-panel auxiliary-page" id="fund-research" aria-labelledby="fund-research-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="fund-research-title">基金研究</h2></div>
+            <div class="auxiliary-primary-card">
+              <h3>了解一只基金</h3>
+              <p>查看基金持仓、费用与主要风险。</p>
+              <div id="fund-research-template-meta" class="query-meta dev-only"></div>
               <label class="research-scenario-picker dev-only" for="fund-research-scenario">
                 <span>回放场景</span>
                 <select id="fund-research-scenario" disabled>
@@ -1334,25 +1263,22 @@
                 </select>
                 <small>合成离线回放</small>
               </label>
-              <button id="run-fund-research" class="query-submit" type="button">运行 ETF / 基金研究</button>
+              <div class="auxiliary-action-row">
+                <button id="run-fund-research" class="copilot-action-btn primary" type="button">开始研究</button>
+                <span id="fund-research-status" class="status-chip">待运行</span>
+              </div>
+              <p id="fund-research-error" class="notice error" role="alert" hidden></p>
             </div>
-            <div id="fund-research-content" class="fund-research-content" aria-live="polite">
-              <div class="empty-state">运行研究后查看基金概况、集中度、费用风险与信息来源。</div>
-            </div>
+            <div id="fund-research-content" class="fund-research-content auxiliary-results" aria-live="polite"></div>
           </section>
 
-          <section class="panel convertible-bond-research-panel" id="convertible-bond-research" aria-labelledby="convertible-bond-research-title">
-            <div class="panel-head">
-              <div>
-                 <span class="eyebrow clay">研究工具</span>
-                 <h2 id="convertible-bond-research-title">可转债研究</h2>
-              </div>
-              <span id="convertible-bond-research-status" class="status-chip">待运行</span>
-            </div>
-            <div class="research-actions">
-              <div id="convertible-bond-research-template-meta" class="query-meta">
-                 查看正股、转股价值、信用和流动性等关键指标。
-              </div>
+          <section class="panel convertible-bond-research-panel auxiliary-page" id="convertible-bond-research" aria-labelledby="convertible-bond-research-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="convertible-bond-research-title">可转债研究</h2></div>
+            <div class="auxiliary-primary-card">
+              <h3>了解一只可转债</h3>
+              <p>查看转股价值、信用与流动性。</p>
+              <div id="convertible-bond-research-template-meta" class="query-meta dev-only"></div>
               <label class="research-scenario-picker dev-only" for="convertible-bond-research-scenario">
                 <span>回放场景</span>
                 <select id="convertible-bond-research-scenario" disabled>
@@ -1360,42 +1286,26 @@
                 </select>
                 <small>合成离线回放</small>
               </label>
-              <button id="run-convertible-bond-research" class="query-submit" type="button">运行可转债研究</button>
+              <div class="auxiliary-action-row">
+                <button id="run-convertible-bond-research" class="copilot-action-btn primary" type="button">开始研究</button>
+                <span id="convertible-bond-research-status" class="status-chip">待运行</span>
+              </div>
+              <p id="convertible-bond-research-error" class="notice error" role="alert" hidden></p>
             </div>
-            <div id="convertible-bond-research-content" class="convertible-bond-research-content" aria-live="polite">
-              <div class="empty-state">运行研究后查看正股、转股价值、信用与流动性指标，附数据来源。</div>
-            </div>
+            <div id="convertible-bond-research-content" class="convertible-bond-research-content auxiliary-results" aria-live="polite"></div>
           </section>
 
-          <section class="panel portfolio-panel workspace-page-section" id="portfolio" aria-labelledby="portfolio-title">
-            <nav class="breadcrumb" aria-label="面包屑导航">
-              <span class="crumb-item"><svg class="prism-icon"><use href="#icon-compass"/></svg> 个人投资工作台</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item">常用任务</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item active">持仓明细</span>
-            </nav>
-
+          <section class="panel portfolio-panel workspace-page-section auxiliary-page" id="portfolio" aria-labelledby="portfolio-title">
+            <a href="#overview" class="auxiliary-back-link" id="btn-portfolio-back-copilot"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
             <div class="page-heading portfolio-heading">
-              <div>
-                <span class="eyebrow">持仓管理</span>
-                <h2 id="portfolio-title">持仓明细</h2>
-                <p class="portfolio-subtitle">查看当前持仓、个股资产与穿透详情。</p>
-              </div>
+              <h2 id="portfolio-title">持仓明细</h2>
               <div class="heading-actions">
-                <span id="portfolio-context-label" class="status-chip">等待数据</span>
-                <a href="#copilot" class="copilot-action-btn secondary button" id="btn-portfolio-back-copilot">
-                  <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回投资助手</span>
-                </a>
-                <button type="button" class="copilot-action-btn primary button" id="open-portfolio-modal-from-page">
-                  <svg class="prism-icon"><use href="#icon-plus"/></svg>
-                  <span>导入持仓</span>
-                </button>
+                <span id="portfolio-context-label" class="status-chip dev-only">等待数据</span>
+                <button type="button" class="copilot-action-btn secondary" id="open-portfolio-modal-from-page">更新持仓</button>
               </div>
             </div>
 
-            <p id="portfolio-source-note" class="portfolio-source-note">导入持仓后即可查看持仓明细与基金底层股票。</p>
+            <p id="portfolio-source-note" class="portfolio-source-note dev-only"></p>
             <div class="context-import dev-only">
               <label for="portfolio-json">粘贴已脱敏的持仓 JSON</label>
               <textarea id="portfolio-json" rows="7" autocomplete="off" spellcheck="false" placeholder="粘贴 portfolio-import-bundle.v1 格式的持仓数据"></textarea>
@@ -1405,9 +1315,7 @@
               </div>
               <small>在本地执行数据校验与结构化解析。</small>
             </div>
-            <div id="portfolio-content" class="portfolio-content" aria-live="polite">
-              <div class="empty-state">加载后查看持仓明细与基金底层股票。</div>
-            </div>
+            <div id="portfolio-content" class="portfolio-content auxiliary-results" aria-live="polite"></div>
           </section>
 
           <section class="panel context-memory-panel" id="context-memory" aria-labelledby="context-memory-title">
@@ -1439,34 +1347,18 @@
             </div>
           </section>
 
-          <section class="panel portfolio-optimization-panel workspace-page-section" id="portfolio-optimization" aria-labelledby="portfolio-optimization-title">
-            <nav class="breadcrumb" aria-label="面包屑导航">
-              <span class="crumb-item"><svg class="prism-icon"><use href="#icon-compass"/></svg> 个人投资工作台</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item">常用任务</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item active">组合优化</span>
-            </nav>
-
-            <div class="page-heading portfolio-optimization-heading">
-              <div>
-                <span class="eyebrow">组合工具</span>
-                <h2 id="portfolio-optimization-title">组合目标结构</h2>
-                <p class="portfolio-subtitle">结合投资偏好与当前持仓，在行业与个股上限内计算目标权重建议。</p>
-              </div>
-              <div class="heading-actions">
+          <section class="panel portfolio-optimization-panel workspace-page-section auxiliary-page" id="portfolio-optimization" aria-labelledby="portfolio-optimization-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="portfolio-optimization-title">组合优化</h2></div>
+            <div class="auxiliary-primary-card">
+              <h3>查看组合可以怎样调整</h3>
+              <p>根据当前持仓与投资约束，计算配置建议。</p>
+              <div class="auxiliary-action-row">
+                <button id="run-portfolio-optimization" class="copilot-action-btn primary" type="button">生成配置建议</button>
                 <span id="portfolio-optimization-status" class="status-chip">待运行</span>
-                <a href="#copilot" class="copilot-action-btn secondary button">
-                  <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回投资助手</span>
-                </a>
-                <button id="run-portfolio-optimization" class="copilot-action-btn primary button" type="button">
-                  <svg class="prism-icon"><use href="#icon-sliders"/></svg>
-                  <span>生成目标结构</span>
-                </button>
               </div>
+              <p id="portfolio-optimization-error" class="notice error" role="alert" hidden></p>
             </div>
-
             <div class="research-actions dev-only">
               <div id="portfolio-optimization-template-meta" class="query-meta">
                  结合偏好与持仓，计算目标权重。
@@ -1479,42 +1371,52 @@
                 <small>选择需要测算的市场情景</small>
               </label>
             </div>
-            <div id="portfolio-optimization-content" class="portfolio-optimization-content" aria-live="polite">
-              <div class="empty-state">生成后对比当前与目标权重，查看调整依据和适用条件。</div>
-            </div>
+            <div id="portfolio-optimization-content" class="portfolio-optimization-content auxiliary-results" aria-live="polite"></div>
           </section>
 
-          <section class="panel scenario-simulation-panel workspace-page-section" id="scenario-simulation" aria-labelledby="scenario-simulation-title">
-            <nav class="breadcrumb" aria-label="面包屑导航">
-              <span class="crumb-item"><svg class="prism-icon"><use href="#icon-compass"/></svg> 个人投资工作台</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item">常用任务</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item active">情景模拟</span>
-            </nav>
-
-            <div class="page-heading scenario-simulation-heading">
-              <div>
-                <span class="eyebrow">压力分析</span>
-                <h2 id="scenario-simulation-title">情景模拟与压力分析</h2>
-                <p class="scenario-subtitle">模拟市场或行业波动，评估对组合净值、回撤与单日估算风险的影响。</p>
-              </div>
-              <div class="heading-actions">
-                <span id="scenario-simulation-status" class="status-chip">待运行</span>
-                <a href="#copilot" class="copilot-action-btn secondary button">
-                  <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回投资助手</span>
-                </a>
-                <button id="run-scenario-simulation" class="copilot-action-btn primary button" type="button">
-                  <svg class="prism-icon"><use href="#icon-activity"/></svg>
-                  <span>运行情景模拟</span>
-                </button>
-              </div>
-            </div>
-
+          <section class="panel scenario-simulation-panel workspace-page-section auxiliary-page" id="scenario-simulation" aria-labelledby="scenario-simulation-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="scenario-simulation-title">市场变化模拟</h2></div>
             <div id="shadow-experiment-workspace"></div>
-
-            <div class="research-actions dev-only">
+            <div class="auxiliary-primary-card custom-stress-controls">
+              <h3>如果市场变化，持仓会怎样？</h3>
+              <p>设置行业涨跌幅，查看对组合的影响。</p>
+              <div class="simulation-single-fields" id="stress-single-fields">
+                <label for="stress-sector-select">选择行业
+                  <select id="stress-sector-select">
+                    <option value="TECHNOLOGY">科技半导体</option>
+                    <option value="INDUSTRIALS">先进制造</option>
+                    <option value="CONSUMER_HEALTHCARE">消费医药</option>
+                    <option value="FINANCE_CYCLICAL">金融周期</option>
+                    <option value="CASH">可用现金</option>
+                  </select>
+                </label>
+                <label for="stress-single-change"><span class="simulation-range-label">变化幅度 <output id="stress-single-value">-20.0%</output></span>
+                  <input id="stress-single-change" type="range" min="-30" max="30" step="0.5" value="-20">
+                  <span class="simulation-range-scale"><span>-30%</span><span>0%</span><span>+30%</span></span>
+                </label>
+              </div>
+              <details class="auxiliary-disclosure simulation-sector-options" id="stress-multiple-sectors">
+                <summary>同时设置多个行业 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div class="auxiliary-disclosure-body custom-stress-sliders">
+                  <label for="stress-technology"><span class="simulation-range-label">科技半导体 <output id="stress-technology-value">-20.0%</output></span><input id="stress-technology" data-sector="TECHNOLOGY" type="range" min="-30" max="30" step="0.5" value="-20"></label>
+                  <label for="stress-industrials"><span class="simulation-range-label">先进制造 <output id="stress-industrials-value">0.0%</output></span><input id="stress-industrials" data-sector="INDUSTRIALS" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                  <label for="stress-consumer"><span class="simulation-range-label">消费医药 <output id="stress-consumer-value">0.0%</output></span><input id="stress-consumer" data-sector="CONSUMER_HEALTHCARE" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                  <label for="stress-finance"><span class="simulation-range-label">金融周期 <output id="stress-finance-value">0.0%</output></span><input id="stress-finance" data-sector="FINANCE_CYCLICAL" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                  <label for="stress-cash"><span class="simulation-range-label">可用现金 <output id="stress-cash-value">0.0%</output></span><input id="stress-cash" data-sector="CASH" type="range" min="-30" max="30" step="0.5" value="0"></label>
+                </div>
+              </details>
+              <p id="stress-active-shocks" class="auxiliary-pending" aria-live="polite" hidden></p>
+              <div class="auxiliary-action-row">
+                <button id="run-custom-stress" class="copilot-action-btn primary" type="button">查看组合影响</button>
+                <span id="custom-stress-status" class="status-chip">待计算</span>
+              </div>
+              <p id="scenario-simulation-error" class="notice error" role="alert" hidden></p>
+            </div>
+            <div id="custom-stress-result" class="custom-stress-result auxiliary-results" aria-live="polite"></div>
+            <details class="auxiliary-disclosure dev-only">
+              <summary>预设情景 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+              <div class="auxiliary-disclosure-body">
               <div id="scenario-simulation-template-meta" class="query-meta">
                  模拟市场或持仓变化，评估风险与目标权重。
               </div>
@@ -1525,30 +1427,13 @@
                 </select>
                 <small>选择情景，评估组合变化。</small>
               </label>
-            </div>
-
-            <div class="surface custom-stress-controls" aria-labelledby="custom-stress-title">
-              <header class="surface-head custom-stress-heading">
-                <div>
-                  <strong id="custom-stress-title">自定义五行业冲击</strong>
-                  <p>范围 -30.0% 至 +30.0%；拖动滑块即时测算对组合净值与风险指标的影响。</p>
-                </div>
-                <span id="custom-stress-status" class="status-chip">待输入</span>
-              </header>
-              <div class="custom-stress-sliders">
-                <label>科技半导体 <output id="stress-technology-value" class="mono">-20.0%</output><input id="stress-technology" data-sector="TECHNOLOGY" type="range" min="-30" max="30" step="0.5" value="-20"></label>
-                <label>先进制造 <output id="stress-industrials-value" class="mono">0.0%</output><input id="stress-industrials" data-sector="INDUSTRIALS" type="range" min="-30" max="30" step="0.5" value="0"></label>
-                <label>消费医药 <output id="stress-consumer-value" class="mono">0.0%</output><input id="stress-consumer" data-sector="CONSUMER_HEALTHCARE" type="range" min="-30" max="30" step="0.5" value="0"></label>
-                <label>金融周期 <output id="stress-finance-value" class="mono">0.0%</output><input id="stress-finance" data-sector="FINANCE_CYCLICAL" type="range" min="-30" max="30" step="0.5" value="0"></label>
-                <label>可用现金 <output id="stress-cash-value" class="mono">0.0%</output><input id="stress-cash" data-sector="CASH" type="range" min="-30" max="30" step="0.5" value="0"></label>
+              <div class="auxiliary-action-row">
+                <button id="run-scenario-simulation" class="copilot-action-btn secondary" type="button">运行预设情景</button>
+                <span id="scenario-simulation-status" class="status-chip">待运行</span>
               </div>
-              <div id="custom-stress-result" class="custom-stress-result" aria-live="polite">
-                <div class="empty-state">调整任一滑块后显示组合冲击、年化波动率和 95% 单日 VaR。</div>
+              <div id="scenario-simulation-content" class="scenario-simulation-content" aria-live="polite"></div>
               </div>
-            </div>
-            <div id="scenario-simulation-content" class="scenario-simulation-content" aria-live="polite">
-              <div class="empty-state">运行后对比模拟前后的风险指标与仓位。</div>
-            </div>
+            </details>
           </section>
 
           <section class="panel detail-panel dev-only" aria-labelledby="detail-title">
@@ -1625,7 +1510,10 @@
             <div id="profile-overview-view" data-subpage="profile-results">
               <div class="panel-head profile-center-heading">
                 <h2 id="profile-title" tabindex="-1">个人中心</h2>
-                <button id="refresh-profile-summary" class="quiet-profile-action" type="button" aria-label="刷新投资者画像">刷新画像</button>
+                <div class="profile-center-actions">
+                  <button id="refresh-profile-summary" class="quiet-profile-action" type="button" aria-label="刷新投资者画像">刷新画像</button>
+                  <button id="profile-display-settings" class="quiet-profile-action" type="button" aria-haspopup="dialog" aria-controls="profile-display-dialog">偏好设置</button>
+                </div>
               </div>
               <div id="profile-load-error" class="notice error" role="alert" hidden></div>
               <section class="profile-summary-section" aria-label="投资者画像与评级">
@@ -1644,9 +1532,6 @@
                 <a id="profile-questionnaire-open" href="#profile-questionnaire" class="query-submit secondary">填写问卷</a>
               </section>
               <div id="profile-details-content" class="profile-center-details"></div>
-              <div class="profile-center-footer">
-                <button id="profile-display-settings" class="quiet-profile-action" type="button" aria-haspopup="dialog">回答详细度 · <span id="profile-display-level">标准</span></button>
-              </div>
             </div>
 
             <div id="profile-questionnaire-view" data-subpage="profile-questionnaire" hidden>
@@ -1687,30 +1572,22 @@
               </form>
             </div>
 
-            <section id="profile-preferences-view" class="profile-display-preference" aria-labelledby="display-preference-title" data-subpage="profile-preferences">
-              <div>
-                <strong id="display-preference-title" tabindex="-1">AI 信任度与解释偏好</strong>
-                <p>它只决定结论与依据的展开方式，不改变风险分数、适当性等级或告警结果。</p>
-              </div>
-              <div class="research-preference-actions">
-                <label>回答详细度<select id="profile-answer-detail"><option value="80">简洁</option><option value="50">标准</option><option value="20">详细</option></select></label>
-                <button id="profile-save-detail" type="button" class="query-submit secondary">保存解释偏好</button>
-                <button id="profile-theme-toggle" type="button" class="query-submit secondary">切换深浅主题</button>
-                <span id="profile-preference-status" role="status" aria-live="polite"></span>
-              </div>
-            </section>
             <dialog id="profile-display-dialog" class="prd-dialog" aria-labelledby="profile-display-title">
               <div class="profile-dialog-heading">
-                <h2 id="profile-display-title">回答详细度</h2>
-                <button id="profile-display-close" class="quiet-profile-action" type="button" aria-label="关闭回答设置">关闭</button>
+                <h2 id="profile-display-title">偏好设置</h2>
+                <button id="profile-display-close" class="quiet-profile-action" type="button" aria-label="关闭偏好设置">关闭</button>
               </div>
               <form id="profile-display-form">
                 <fieldset class="profile-display-options">
-                  <legend class="sr-only">选择回答详细度</legend>
+                  <legend>回答详细度 · 当前<span id="profile-display-level">标准</span></legend>
                   <label><input type="radio" name="profile-display-policy-level" value="80"><span>简洁<small>先看结论和关键依据</small></span></label>
                   <label><input type="radio" name="profile-display-policy-level" value="50" checked><span>标准<small>结论与关键依据保持平衡</small></span></label>
                   <label><input type="radio" name="profile-display-policy-level" value="20"><span>详细<small>展开结论、依据和数据说明</small></span></label>
                 </fieldset>
+                <div class="profile-theme-setting">
+                  <span>页面主题</span>
+                  <button id="profile-theme-toggle" class="quiet-profile-action" type="button" aria-pressed="false">切换深色主题</button>
+                </div>
                 <p id="profile-display-error" class="notice error" role="alert" hidden></p>
                 <div class="modal-actions"><button class="copilot-action-btn primary" type="submit">保存设置</button></div>
               </form>
@@ -1739,28 +1616,25 @@
             </div>
           </section>
 
-          <section class="panel history-panel" id="recommendation-history" aria-labelledby="history-title">
-            <div class="panel-head">
-              <div>
-                 <span class="eyebrow clay">查看过去</span>
-                <h2 id="history-title">历史建议</h2>
-              </div>
+          <section class="panel history-panel auxiliary-page" id="recommendation-history" aria-labelledby="history-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading">
+              <h2 id="history-title">历史建议</h2>
               <span class="count-pill" id="history-count">0 条建议</span>
             </div>
-            <div class="context-confirm-actions">
-              <div>
-                <strong>历史回顾</strong>
-                <small>对比不同画像或时间点的建议，查看变化原因。</small>
+            <div class="auxiliary-primary-card">
+              <div class="auxiliary-list-heading">
+                <h3>最近的分析记录</h3>
+                <button id="refresh-history" class="copilot-action-btn secondary" type="button">刷新记录</button>
               </div>
-              <div class="context-import-actions">
-                <button id="refresh-history" class="query-submit" type="button">刷新历史</button>
+              <p id="recommendation-history-error" class="notice error" role="alert" hidden></p>
+              <div id="history-list-content" class="history-list-content" aria-live="polite">
+                <div class="empty-state">暂无分析记录。</div>
               </div>
             </div>
-            <div id="history-list-content" class="history-list-content" aria-live="polite">
-              <div class="empty-state">分析记录按时间排列，可查看建议与依据。</div>
-            </div>
-            <div class="history-compare-box dev-only">
-               <h3>比较两次结果</h3>
+            <details class="auxiliary-disclosure history-compare-box dev-only">
+              <summary>比较两次结果 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+              <div class="auxiliary-disclosure-body">
               <div class="compare-inputs">
                 <input id="compare-receipt-a" placeholder="基准回执 ID (receipt_a)" autocomplete="off">
                 <input id="compare-receipt-b" placeholder="对比回执 ID (receipt_b)" autocomplete="off">
@@ -1769,103 +1643,74 @@
               <div id="compare-result-content" class="compare-result-content" aria-live="polite">
                 <div class="empty-state">输入两个回执 ID 并点击执行比对以查看画像与建议演变。</div>
               </div>
-            </div>
+              </div>
+            </details>
           </section>
 
-          <section class="panel rebalancing-panel workspace-page-section" id="portfolio-rebalancing" aria-labelledby="rebalancing-title">
-            <nav class="breadcrumb" aria-label="面包屑导航">
-              <span class="crumb-item"><svg class="prism-icon"><use href="#icon-compass"/></svg> 个人投资工作台</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item">常用任务</span>
-              <span class="crumb-sep">/</span>
-              <span class="crumb-item active">调仓方案</span>
-            </nav>
-
-            <div class="page-heading rebalancing-heading">
-              <div>
-                <span class="eyebrow">调仓建议</span>
-                <h2 id="rebalancing-title">调仓方案</h2>
-                <p class="portfolio-subtitle">按当前持仓与目标权重测算调整步骤、换手率与资金变动。</p>
-              </div>
-              <div class="heading-actions">
-                <span class="status-chip" id="rebalancing-status-chip">未执行</span>
-                <a href="#copilot" class="copilot-action-btn secondary button">
-                  <svg class="prism-icon"><use href="#icon-arrow-left"/></svg>
-                  <span>返回投资助手</span>
-                </a>
-                <button id="run-rebalancing" class="copilot-action-btn primary button" type="button">
-                  <svg class="prism-icon"><use href="#icon-refresh"/></svg>
-                  <span>生成调仓计划</span>
-                </button>
-              </div>
-            </div>
-
+          <section class="panel rebalancing-panel workspace-page-section auxiliary-page" id="portfolio-rebalancing" aria-labelledby="rebalancing-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="rebalancing-title">调仓方案</h2></div>
             <div id="personal-rebalancing-workspace"></div>
             <div id="funding-goal-workspace"></div>
-            <div class="rebalancing-layout-grid">
-              <div class="surface rebalancing-summary-card">
-                <header class="surface-head">
-                  <div>
-                    <strong>调仓资金与换手测算</strong>
-                    <p>展示调仓涉及的组合总市值、双向换手率与预计买卖资金流向。</p>
-                  </div>
-                </header>
-                <div id="rebalancing-metrics-content" class="rebalancing-metrics-content" aria-live="polite">
-                  <div class="empty-state">点击「生成调仓计划」查看调整清单与换手率。</div>
-                </div>
+            <div class="auxiliary-primary-card">
+              <h3>查看需要调整哪些持仓</h3>
+              <p>按配置建议测算买卖清单与资金变化。</p>
+              <div class="auxiliary-action-row">
+                <button id="run-rebalancing" class="copilot-action-btn primary" type="button">生成调仓方案</button>
+                <span class="status-chip" id="rebalancing-status-chip">待生成</span>
+                <a href="#portfolio-optimization" class="auxiliary-quiet-link">查看配置建议</a>
               </div>
-
-              <div class="surface rebalancing-actions-card">
-                <header class="surface-head">
-                  <div>
-                    <strong>标的调整清单</strong>
-                    <p>各标的的当前权重、目标权重对比、权重变动与买卖判定。</p>
-                  </div>
-                </header>
-                <div id="rebalancing-actions-content" class="rebalancing-actions-content" aria-live="polite">
-                  <div class="empty-state">生成后查看各标的的买卖、减仓或保持建议。</div>
+              <p id="portfolio-rebalancing-error" class="notice error" role="alert" hidden></p>
+              <div id="rebalancing-summary-content" aria-live="polite"></div>
+            </div>
+            <div class="auxiliary-results">
+              <details class="auxiliary-disclosure">
+                <summary>买卖清单 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div id="rebalancing-actions-content" class="auxiliary-disclosure-body" aria-live="polite">
+                  <p class="auxiliary-pending">生成方案后查看。</p>
                 </div>
-              </div>
-
-              <div class="surface rebalancing-steps-card">
-                <header class="surface-head">
-                  <div>
-                    <strong>执行步骤与顺序建议</strong>
-                    <p>建议按先卖后买顺序执行，以便回笼资金用于后续买入。</p>
-                  </div>
-                </header>
-                <div id="rebalancing-steps-content" class="rebalancing-steps-content" aria-live="polite">
-                  <div class="empty-state">生成后查看调仓步骤与执行顺序。</div>
+              </details>
+              <details class="auxiliary-disclosure">
+                <summary>资金与换手 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div id="rebalancing-metrics-content" class="auxiliary-disclosure-body" aria-live="polite">
+                  <p class="auxiliary-pending">生成方案后查看。</p>
                 </div>
-              </div>
+              </details>
+              <details class="auxiliary-disclosure">
+                <summary>执行顺序 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div id="rebalancing-steps-content" class="auxiliary-disclosure-body" aria-live="polite">
+                  <p class="auxiliary-pending">生成方案后查看。</p>
+                </div>
+              </details>
             </div>
           </section>
 
-          <section class="panel explainability-panel" id="advanced-explainability" aria-labelledby="explainability-title">
-            <div class="panel-head">
-              <div>
-                 <span class="eyebrow clay">了解原因</span>
-                 <h2 id="explainability-title">分析依据</h2>
+          <section class="panel explainability-panel auxiliary-page" id="advanced-explainability" aria-labelledby="explainability-title">
+            <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
+            <div class="page-heading"><h2 id="explainability-title">分析依据</h2></div>
+            <div class="auxiliary-primary-card">
+              <h3>哪些因素影响了分析？</h3>
+              <p>查看持仓与行业边界的计算结果。</p>
+              <div class="auxiliary-action-row">
+                <button id="run-explainability" class="copilot-action-btn primary" type="button">查看分析依据</button>
+                <span class="status-chip" id="explainability-status-chip">待分析</span>
               </div>
-              <span class="status-chip" id="explainability-status-chip">未分析</span>
+              <p id="advanced-explainability-error" class="notice error" role="alert" hidden></p>
+              <div id="explainability-summary-content" aria-live="polite"></div>
             </div>
-            <div class="context-confirm-actions">
-              <div>
-                <strong>关键因素</strong>
-                <small>查看本次分析的计算依据、影响因素与适用条件。</small>
-              </div>
-              <div class="context-import-actions">
-                <button id="run-explainability" class="query-submit" type="button">分析决策原因</button>
-              </div>
-            </div>
-            <div id="explainability-drivers-content" class="explainability-drivers-content" aria-live="polite">
-              <div class="empty-state">运行分析后查看关键因素及其影响程度。</div>
-            </div>
-            <div id="explainability-counterfactual-content" class="explainability-counterfactual-content" aria-live="polite">
-              <div class="empty-state">查看风险偏好或持仓变化对建议的影响。</div>
-            </div>
-            <div id="explainability-triggers-content" class="explainability-triggers-content" aria-live="polite">
-              <div class="empty-state">查看复查条件，如财报更新、股价异动。</div>
+            <div class="auxiliary-results">
+              <details class="auxiliary-disclosure">
+                <summary>计算过程 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div id="explainability-drivers-content" class="auxiliary-disclosure-body" aria-live="polite"><p class="auxiliary-pending">运行分析后查看。</p></div>
+              </details>
+              <details class="auxiliary-disclosure">
+                <summary>行业边界 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div id="explainability-counterfactual-content" class="auxiliary-disclosure-body" aria-live="polite"><p class="auxiliary-pending">运行分析后查看。</p></div>
+              </details>
+              <details class="auxiliary-disclosure">
+                <summary>复查条件 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+                <div id="explainability-triggers-content" class="auxiliary-disclosure-body" aria-live="polite"><p class="auxiliary-pending">运行分析后查看。</p></div>
+              </details>
             </div>
           </section>
 
@@ -1931,6 +1776,34 @@
         </div>
       </div>
     </div>
+  <dialog id="research-parameter-dialog" class="rw-dialog rw-parameter-dialog" aria-labelledby="research-parameter-title">
+    <header class="rw-dialog-heading"><h2 id="research-parameter-title">研究参数</h2><button class="rw-icon-button" type="button" data-close-research-dialog="research-parameter-dialog" aria-label="关闭研究参数">×</button></header>
+    <form id="research-parameter-form"><div class="rw-dialog-body"><div id="research-parameter-fields"></div><details class="rw-disclosure"><summary>模板信息</summary><p id="research-template-info" class="research-data-meta" aria-live="polite"></p></details></div><footer class="rw-dialog-footer"><button class="rw-button" type="button" data-close-research-dialog="research-parameter-dialog">取消</button><button class="rw-button rw-primary" type="submit">应用参数</button></footer></form>
+  </dialog>
+  <dialog id="research-tools-dialog" class="rw-dialog rw-tools-dialog" aria-labelledby="research-tools-title">
+    <header class="rw-dialog-heading"><div class="rw-tool-heading"><button id="research-tools-back" class="rw-button rw-quiet" type="button" hidden>所有工具</button><h2 id="research-tools-title" tabindex="-1">研究工具</h2></div><button class="rw-icon-button" type="button" data-close-research-dialog="research-tools-dialog" aria-label="关闭研究工具">×</button></header>
+    <div class="rw-dialog-body">
+      <div id="research-tools-menu">
+        <button id="research-tool-custom" class="rw-tool-choice" type="button" data-research-tool="custom" aria-controls="research-tool-pane-custom"><span><strong>自定义研究</strong><small>组合行情、财务等查询，设置执行顺序。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+        <button id="research-tool-materials" class="rw-tool-choice" type="button" data-research-tool="materials" aria-controls="research-tool-pane-materials"><span><strong>资料管理</strong><small>添加公告、财报或研报，供资料检索使用。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+        <details id="research-tools-maintenance" class="rw-disclosure rw-tool-maintenance"><summary>任务与运行</summary><div class="rw-disclosure-content">
+          <button id="research-tool-task" class="rw-tool-choice" type="button" data-research-tool="task" aria-controls="research-tool-pane-task"><span><strong>读取已有任务</strong><small>用任务标识打开对应研究记录。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+          <button id="research-tool-diagnostics" class="rw-tool-choice" type="button" data-research-tool="diagnostics" aria-controls="research-tool-pane-diagnostics"><span><strong>查看运行情况</strong><small>查看执行数量、排队数量与服务活动。</small></span><svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-right"/></svg></button>
+        </div></details>
+      </div>
+      <section id="research-tool-pane-custom" aria-labelledby="research-tools-title" hidden><p class="rw-tool-description">每个节点代表一次数据查询；需要按顺序执行时设置前置节点。</p><div id="research-custom-slot"></div></section>
+      <section id="research-tool-pane-materials" aria-labelledby="research-tools-title" hidden><p class="rw-tool-description">上传资料文件或填写原文，补充标题、来源与公告时间。</p><div id="research-materials-slot"></div></section>
+      <section id="research-tool-pane-task" aria-labelledby="research-tools-title" hidden><div id="research-task-slot"></div></section>
+      <section id="research-tool-pane-diagnostics" aria-labelledby="research-tools-title" hidden><div id="research-runtime-slot"></div></section>
+    </div>
+  </dialog>
+  <dialog id="research-algorithm-input-dialog" class="rw-dialog rw-algorithm-input-dialog" aria-labelledby="research-algorithm-input-title">
+    <header class="rw-dialog-heading"><h2 id="research-algorithm-input-title">算法输入</h2><button class="rw-icon-button" type="button" data-close-research-dialog="research-algorithm-input-dialog" aria-label="关闭算法输入">×</button></header>
+    <div id="research-algorithm-input-slot" class="rw-dialog-body"></div><footer class="rw-dialog-footer"><button class="rw-button rw-primary" type="button" data-close-research-dialog="research-algorithm-input-dialog">完成输入</button></footer>
+  </dialog>
+  <dialog id="knowledge-original-dialog" class="rw-dialog rw-original-dialog" aria-labelledby="knowledge-original-dialog-title">
+    <header class="rw-dialog-heading"><h2 id="knowledge-original-dialog-title">资料原文</h2><button class="rw-icon-button" type="button" data-close-research-dialog="knowledge-original-dialog" aria-label="关闭资料原文">×</button></header><div id="knowledge-original-slot" class="rw-dialog-body"></div>
+  </dialog>
   <dialog id="portfolio-diagnosis-drawer" class="portfolio-diagnosis-drawer" aria-labelledby="portfolio-diagnosis-title">
     <header class="portfolio-diagnosis-header">
       <div>
@@ -1995,6 +1868,48 @@
 <dialog id="questionnaire-welcome" class="prd-dialog" aria-labelledby="welcome-title">
   <h2 id="welcome-title">欢迎使用问财智投</h2><p>完成 19 题投资能力问卷，生成 8 维风险画像。也可以先浏览，再到个人中心完成测评。</p>
   <div class="modal-actions"><button id="welcome-later" type="button" class="copilot-action-btn secondary">稍后再说</button><button id="welcome-start" type="button" class="copilot-action-btn primary">开始填写问卷</button></div>
+</dialog>
+<dialog id="profile-edit-modal" class="profile-settings-dialog" aria-labelledby="profile-modal-title">
+  <header class="copilot-modal-header">
+    <h2 id="profile-modal-title">账户设置</h2>
+    <button id="close-profile-modal-btn" class="modal-close-btn" type="button" aria-label="关闭账户设置">×</button>
+  </header>
+  <div class="copilot-modal-body">
+    <div class="profile-settings-fields">
+      <label for="profile-name-input">账户昵称
+        <input type="text" id="profile-name-input" value="我的专属账户" autocomplete="off">
+      </label>
+      <label for="profile-aum-input">资产总额估值（元）
+        <input type="text" id="profile-aum-input" value="500,000" autocomplete="off">
+      </label>
+    </div>
+    <details class="auxiliary-disclosure">
+      <summary>投资约束 <svg class="prism-icon" aria-hidden="true"><use href="#icon-chevron-down"/></svg></summary>
+      <div class="auxiliary-disclosure-body">
+        <p class="modal-hint">回撤和行业上限支持收紧，风险等级由已确认问卷计算。</p>
+        <div class="profile-settings-fields">
+          <label for="profile-drawdown-input">最大回撤（%）
+            <input type="number" id="profile-drawdown-input" value="15" min="3" max="50">
+          </label>
+          <label for="profile-budget-input">单一行业上限（%）
+            <input type="number" id="profile-budget-input" value="30" min="10" max="80">
+          </label>
+          <label for="profile-horizon-select">投资期限
+            <select id="profile-horizon-select">
+              <option value="SHORT">短期（3–6 个月）</option>
+              <option value="MEDIUM" selected>中期（1–3 年）</option>
+              <option value="LONG">长期（3 年以上）</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </details>
+    <div class="modal-actions">
+      <button id="btn-reset-profile" class="copilot-action-btn secondary" type="button">重置默认</button>
+      <button id="btn-save-profile" class="copilot-action-btn primary" type="button">保存设置</button>
+    </div>
+    <div id="profile-save-status" class="parsed-portfolio-status" style="display:none;" aria-live="polite"></div>
+  </div>
 </dialog>
 </body>
 </html>

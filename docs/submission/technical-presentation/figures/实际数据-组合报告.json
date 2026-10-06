@@ -1,0 +1,19 @@
+{
+  "source": "pages-snapshot.json · portfolio/report",
+  "time": "2026-09-15T07:42:36.803891Z",
+  "selected_response_fields": {
+    "generated_at": "2026-09-15T07:42:36.803891Z",
+    "data_mode": "LIVE",
+    "holdings_value_cny": "1417545.00",
+    "cash_cny": "28000.00",
+    "total_value_cny": "1445545.00",
+    "position_count": 5,
+    "concentration": {
+      "status": "REVIEW_REQUIRED",
+      "top_asset_name": "贵州茅台",
+      "top_asset_weight_pct": "53.87",
+      "asset_hhi": "3692.96",
+      "single_asset_limit_pct": "50"
+    }
+  }
+}

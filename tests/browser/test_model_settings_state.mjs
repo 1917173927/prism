@@ -49,8 +49,8 @@ assert.equal(sent.model, "typed-model");
 assert.equal(tested, 1, "saving automatically tests the persisted configuration");
 assert.match(byId("llm-config-status").textContent, /连接测试通过/);
 assert.equal(byId("llm-api-key-input").value, "", "clear only after successful save");
-assert.match(byId("llm-api-key-input").placeholder, /已安全保存/);
-assert.match(byId("llm-config-status").textContent, /持久化/);
+assert.match(byId("llm-api-key-input").placeholder, /已保存/);
+assert.match(byId("llm-config-status").textContent, /配置已保存/);
 
 byId("llm-api-key-input").value = "keep-on-error";
 context.fetch = async () => ({ok: false});

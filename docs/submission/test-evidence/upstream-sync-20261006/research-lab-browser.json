@@ -1,0 +1,191 @@
+{
+  "checks": [
+    "研究工作台默认路由加载订阅并显示输入错误",
+    "自然语言草稿经用户确认后实际保存为个人研究方法",
+    "五项创新功能在三种视口可达，长期记忆入口保留"
+  ],
+  "geometry": [
+    {
+      "route": "skill-store",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "scrollWidth": 1440,
+      "inputs": 5,
+      "title": "用描述创建研究方法",
+      "duplicateIds": []
+    },
+    {
+      "route": "live-research",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "scrollWidth": 1440,
+      "inputs": 14,
+      "title": "投资假设跟踪",
+      "duplicateIds": []
+    },
+    {
+      "route": "research-knowledge",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "scrollWidth": 1440,
+      "inputs": 3,
+      "title": "公告与我的持仓",
+      "duplicateIds": []
+    },
+    {
+      "route": "scenario-simulation",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "scrollWidth": 1440,
+      "inputs": 14,
+      "title": "研究方法模拟比较",
+      "duplicateIds": []
+    },
+    {
+      "route": "portfolio-rebalancing",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "scrollWidth": 1440,
+      "inputs": 12,
+      "title": "资金用途与期限规划",
+      "duplicateIds": []
+    },
+    {
+      "route": "skill-store",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "width": 1024,
+      "scrollWidth": 1024,
+      "inputs": 5,
+      "title": "用描述创建研究方法",
+      "duplicateIds": []
+    },
+    {
+      "route": "live-research",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "width": 1024,
+      "scrollWidth": 1024,
+      "inputs": 14,
+      "title": "投资假设跟踪",
+      "duplicateIds": []
+    },
+    {
+      "route": "research-knowledge",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "width": 1024,
+      "scrollWidth": 1024,
+      "inputs": 3,
+      "title": "公告与我的持仓",
+      "duplicateIds": []
+    },
+    {
+      "route": "scenario-simulation",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "width": 1024,
+      "scrollWidth": 1024,
+      "inputs": 14,
+      "title": "研究方法模拟比较",
+      "duplicateIds": []
+    },
+    {
+      "route": "portfolio-rebalancing",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "width": 1024,
+      "scrollWidth": 1024,
+      "inputs": 12,
+      "title": "资金用途与期限规划",
+      "duplicateIds": []
+    },
+    {
+      "route": "skill-store",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "scrollWidth": 390,
+      "inputs": 5,
+      "title": "用描述创建研究方法",
+      "duplicateIds": []
+    },
+    {
+      "route": "live-research",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "scrollWidth": 390,
+      "inputs": 14,
+      "title": "投资假设跟踪",
+      "duplicateIds": []
+    },
+    {
+      "route": "research-knowledge",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "scrollWidth": 390,
+      "inputs": 3,
+      "title": "公告与我的持仓",
+      "duplicateIds": []
+    },
+    {
+      "route": "scenario-simulation",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "scrollWidth": 390,
+      "inputs": 14,
+      "title": "研究方法模拟比较",
+      "duplicateIds": []
+    },
+    {
+      "route": "portfolio-rebalancing",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "scrollWidth": 390,
+      "inputs": 12,
+      "title": "资金用途与期限规划",
+      "duplicateIds": []
+    }
+  ],
+  "pageErrors": [],
+  "passed": true
+}

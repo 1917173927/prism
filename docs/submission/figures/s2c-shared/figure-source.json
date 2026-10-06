@@ -1,0 +1,6 @@
+{
+  "source": "docs/submission/Prism系统技术架构.svg",
+  "exporter": "tools/export_s2c_svg.mjs",
+  "content": "Original diagram text and relationships",
+  "layout": "Label spacing and connector endpoints"
+}

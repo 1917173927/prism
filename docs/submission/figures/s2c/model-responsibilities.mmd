@@ -1,0 +1,31 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 理解问题与准备条件"]:3
+    A["用户问题<br/>证券、期间与分析目的<br/>历史消息辅助理解"]
+    B["系统规则<br/>工具职责与事实查询<br/>来源引用及风险揭示"]
+    C["已确认前提<br/>画像、持仓与数据模式<br/>用户归属和版本"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 模型与工具各自处理"]:3
+    D["模型理解<br/>识别意图与选择工具<br/>生成结构化参数"]
+    E["服务端检查<br/>参数及访问范围校验<br/>持续核对会话前提"]
+    F["工具执行<br/>查询资料与确定性计算<br/>返回数值、来源和状态"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 解释与记录处理结果"]:3
+    G["模型解释<br/>根据工具结果组织回答<br/>保留来源与缺项"]
+    I["用户核查<br/>读取数值与输入条件<br/>继续追问或补充资料"]
+    J["完成状态<br/>正常完成后保存消息<br/>前提变化时终止生成"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

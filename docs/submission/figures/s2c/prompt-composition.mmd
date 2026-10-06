@@ -1,0 +1,37 @@
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 组织输入"]:3
+    A["系统规则<br/>金融查询与工具职责<br/>风险揭示要求"]
+    B["已确认上下文<br/>画像、持仓、会话前提<br/>用户归属、版本、指纹"]
+    C["问题与历史消息<br/>当前用户问题<br/>最近六条消息与追问"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 模型与工具协作"]:3
+    D["模型理解<br/>AsyncLLMClient<br/>识别意图、解析参数"]
+    E["工具请求校验<br/>COPILOT_TOOLS<br/>JSON Schema 与访问范围"]
+    F["金融与资料工具<br/>确定性计算与数据查询<br/>检索原文、页码及来源"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 返回与持续核对"]:3
+    G["组织结果解释<br/>工具结果与来源信息<br/>返回对话继续解释"]
+    I["事实与资料约束<br/>历史事实接受当前校验<br/>资料中的指令不参与执行"]
+    J["上下文变化检查<br/>持续核对修订与指纹<br/>变化时终止并要求确认"]
+  end
+  input --> process
+  process --> output
+  classDef section fill:#ffffff,stroke:none,color:#202124,font-weight:bold;
+  classDef neutral fill:#fafafa,stroke:#dedfe2,color:#202124;
+  classDef accent fill:#fff4e8,stroke:#f1c89e,color:#202124;
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I neutral
+  class D,E,F,J accent
+  style input fill:#ffffff,stroke:none
+  style process fill:#ffffff,stroke:none
+  style output fill:#ffffff,stroke:none

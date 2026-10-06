@@ -78,6 +78,17 @@ try {
   assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 0);
   assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
   assert.equal(await page.$eval("#chat-session-search", node => node.getAttribute("placeholder")), "搜索对话");
+  assert.equal(await page.$eval("#chat-session-search", node => node.getAttribute("aria-label")), "搜索对话");
+  assert.equal(await page.$eval("#chat-session-search", node => node.readOnly), true);
+  await page.type("#chat-session-search", "搜索词");
+  assert.equal(await page.$eval("#chat-session-search", node => node.value), "搜索词");
+  assert.equal(await page.$eval("#chat-session-search", node => node.readOnly), false);
+  historyStartup = page.waitForResponse(isModelSettingsRead);
+  await page.reload({waitUntil: "domcontentloaded"});
+  await page.waitForSelector("body.copilot-active #copilot:not([hidden])");
+  assert.equal((await historyStartup).status(), 200);
+  assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
+  assert.equal(await page.$eval("#chat-session-search", node => node.readOnly), true);
   assert.equal(await page.$eval("#chat-session-search", node => node.matches(":placeholder-shown")), true);
   const home = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).getBoundingClientRect();
@@ -261,7 +272,7 @@ try {
   await page.click("#home-selected-tool-clear");
   assert.equal(await page.$eval("#home-selected-tool", node => node.hidden), true);
 
-  await page.click("#persona-switcher-bar > summary");
+  await page.click(".topbar-more-menu > summary");
   await page.click("#home-context-trigger");
   assert.equal(await page.$eval("#agent-profile-rail", node => getComputedStyle(node).display), "grid");
   await page.click("#home-context-close");
@@ -337,6 +348,32 @@ try {
   const created = await createdResponse.json();
   assert.equal(created.title, question);
   await checkChatResponse(firstChatResponse, created.conversation_id);
+  const readingLayout = await page.evaluate(() => {
+    const messages = document.querySelector("#copilot-chat-messages");
+    const assistant = messages.querySelector(".chat-msg.assistant .chat-bubble");
+    const avatar = messages.querySelector(".chat-msg.assistant .chat-avatar");
+    const process = messages.querySelector(".chat-process-details");
+    return {
+      messageOverflow: getComputedStyle(messages).overflowY,
+      messageMaxHeight: getComputedStyle(messages).maxHeight,
+      answerBorder: getComputedStyle(assistant).borderTopWidth,
+      answerBackground: getComputedStyle(assistant).backgroundColor,
+      avatarDisplay: getComputedStyle(avatar).display,
+      processLabel: process.querySelector(".chat-process-label").textContent,
+      processOpen: process.open,
+    };
+  });
+  assert.equal(readingLayout.messageOverflow, "visible", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.messageMaxHeight, "none", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.answerBorder, "0px", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.answerBackground, "rgba(0, 0, 0, 0)", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.avatarDisplay, "none", JSON.stringify(readingLayout));
+  assert.ok(["已思考", "处理未完成"].includes(readingLayout.processLabel), JSON.stringify(readingLayout));
+  assert.equal(readingLayout.processOpen, false);
+  assert.equal(await page.$eval(".chat-msg.assistant .chat-process-details > summary", node => getComputedStyle(node).fontSize), "15px");
+  assert.equal(await page.$$(".chat-msg.assistant .chat-audit-details").then(nodes => nodes.length), 0);
+  await page.click(".chat-msg.assistant .chat-process-details > summary");
+  assert.ok(await page.$eval(".chat-msg.assistant .chat-process-details", node => node.open && node.textContent.includes("协调 Agent")));
   assert.equal(conversationCreateCount(), 1);
   await page.type("#copilot-natural-input", question);
   const [secondChatResponse] = await Promise.all([
@@ -380,7 +417,7 @@ try {
   await page.waitForFunction(value => document.querySelector("#chat-session-list")?.textContent.includes(value), {}, title);
   await checkHistoryEditLayout();
   await page.type("#chat-session-search", title);
-  assert.equal(await page.$eval("#chat-session-search", node => node.matches(":placeholder-shown")), false);
+  assert.equal(await page.$eval("#chat-session-search", node => node.value), title);
   assert.equal(await page.$$("#chat-session-list .chat-session-item").then(nodes => nodes.length), 1);
   await page.waitForFunction(value => document.querySelector("#active-chat-title")?.textContent === value, {}, title);
   const loadedStatus = await page.evaluate(async (id, ownerId) => {
@@ -473,8 +510,10 @@ try {
     composerRight: document.querySelector(".copilot-query-box").getBoundingClientRect().right,
     sendRight: document.querySelector("#copilot-submit-query").getBoundingClientRect().right,
     viewportWidth: innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
   }));
   assert.ok(chatOverflow.composerRight <= chatOverflow.viewportWidth && chatOverflow.sendRight <= chatOverflow.viewportWidth, JSON.stringify(chatOverflow));
+  assert.ok(chatOverflow.documentWidth <= chatOverflow.viewportWidth + 1, JSON.stringify(chatOverflow));
   await page.click("#home-history-show");
   await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
   await checkHistoryEditLayout();

@@ -1,0 +1,44 @@
+{
+  "full_pytest": {
+    "passed": 1224,
+    "skipped": 1,
+    "warnings": 2,
+    "seconds": 138.58,
+    "postgres": "PostgreSQL 17.11 real local isolated schemas"
+  },
+  "research_workbench_browser": "PASSED",
+  "research_lab_browser": "PASSED",
+  "navigation_menus": {
+    "passed": true,
+    "widths": [
+      1440,
+      768,
+      390
+    ]
+  },
+  "external_financial_acceptance": "NOT_REVALIDATED_CONTROLLED_INPUTS",
+  "latest_full_pytest": {
+    "passed": 1225,
+    "skipped": 1,
+    "warnings": 2,
+    "seconds": 129.22,
+    "postgres": "PostgreSQL 17.11 real local isolated schemas"
+  },
+  "authenticated_chat_home": "PASSED",
+  "latest_research_workbench_browser": "PASSED",
+  "latest_research_lab_browser": "PASSED",
+  "windows_empty_lock_regression": {
+    "old": "REPRODUCIBLE_FAILURE",
+    "fixed": "PASSED",
+    "focused_tests": 8
+  },
+  "final_82bd219_pytest": {
+    "passed": 1225,
+    "skipped": 1,
+    "warnings": 2,
+    "seconds": 128.95
+  },
+  "final_chat_home_browser": "PASSED",
+  "final_research_workbench_browser": "PASSED",
+  "final_research_lab_browser": "PASSED"
+}

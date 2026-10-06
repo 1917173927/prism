@@ -1,0 +1,121 @@
+.prism-ui-v2 #research-workbench {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  padding: 0 0 36px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) { --text: var(--text-primary); font-family: var(--sans); font-size: 15px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) :is(h2, h3, h4, p, dl, dt, dd, blockquote) { font-family: var(--sans); }
+.prism-ui-v2.prism-theme-dark :is(.research-workbench, .rw-dialog) { --surface-muted: var(--surface-subtle); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) [hidden] { display: none !important; }
+.prism-ui-v2 .rw-page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: min(1120px, 100%); margin: 0 auto 24px; }
+.prism-ui-v2 .rw-page-heading > h2 { margin: 0; font-size: 30px; line-height: 1.4; font-weight: 600; }
+.prism-ui-v2 .rw-stage { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: center; min-height: calc(100svh - 230px); }
+.prism-ui-v2 .research-workbench.rw-has-results .rw-stage { min-height: 0; padding-top: 20px; }
+.prism-ui-v2 .rw-card { width: min(1120px, 100%); min-width: 0; padding: 40px 44px 34px; border: 1px solid var(--border-subtle, #e6e7eb); border-radius: 18px; background: var(--surface, #fff); }
+.prism-ui-v2 .rw-task-tabs { display: flex; gap: 8px; margin-bottom: 32px; }
+.prism-ui-v2 .rw-task-tab { min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; color: var(--text-secondary, #62666e); background: transparent; font: inherit; font-size: 15px; font-weight: 400; }
+.prism-ui-v2 .rw-task-tab[aria-selected="true"] { color: var(--text, #282b30); background: var(--surface-muted, #f1f1f3); font-weight: 500; }
+.prism-ui-v2 .rw-task-heading { margin-bottom: 24px; }
+.prism-ui-v2 .rw-task-heading > h3 { margin: 0; font-size: 23px; line-height: 1.5; font-weight: 600; }
+.prism-ui-v2 .rw-task-heading > p { margin: 8px 0 0; color: var(--text-secondary, #62666e); font-size: 15px; line-height: 1.75; }
+.prism-ui-v2 .rw-task-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; margin: 18px 0 0; padding-top: 20px; border-top: 1px solid var(--border-subtle, #e6e7eb); }
+.prism-ui-v2 .rw-task-summary dt { margin-bottom: 7px; color: var(--text-secondary, #62666e); font-size: 14px; font-weight: 500; }
+.prism-ui-v2 .rw-task-summary dd { margin: 0; color: var(--text, #282b30); font-size: 15px; font-weight: 500; line-height: 1.75; overflow-wrap: anywhere; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-form-field { display: grid; gap: 10px; min-width: 0; color: var(--text-secondary, #62666e); font-size: 14px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-form-field > :is(input, select, textarea) { width: 100%; min-width: 0; padding: 13px 15px; border: 1px solid var(--border-subtle, #d9dde3); border-radius: 8px; background: var(--surface, #fff); color: var(--text, #282b30); font: inherit; font-size: 16px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-form-field > textarea { font-family: var(--mono); font-size: 13px; line-height: 1.8; resize: vertical; }
+.prism-ui-v2 .rw-dialog #knowledge-text { font-family: var(--sans); font-size: 15px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 11px 18px; border: 1px solid var(--border-subtle, #d9dde3); border-radius: 8px; color: var(--text, #282b30); background: var(--surface, #fff); font: inherit; font-size: 15px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-button:hover:not(:disabled) { background: var(--surface-muted, #f5f5f6); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-primary { padding: 10px 24px; border-color: #d96b16; border-radius: 9px; color: #fff; background: #d96b16; font-weight: 500; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-primary:hover:not(:disabled) { border-color: #bd5810; background: #bd5810; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-quiet { min-height: 38px; padding: 6px 10px; border-color: transparent; color: var(--text-secondary, #62666e); background: transparent; font-size: 14px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-quiet:hover:not(:disabled) { color: var(--text, #282b30); background: var(--surface-muted, #efeff1); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) button:disabled { opacity: .5; cursor: default; }
+.prism-ui-v2 .rw-page-heading > .rw-button { min-height: 40px; padding: 9px 13px; font-size: 14px; }
+.prism-ui-v2 .rw-input-row { display: flex; align-items: end; gap: 12px; }
+.prism-ui-v2 .rw-input-row .research-form-field { flex: 1; }
+.prism-ui-v2 .rw-input-row :is(input, .rw-button) { min-height: 54px; }
+.prism-ui-v2 .rw-input-row .rw-button { min-width: 130px; }
+.prism-ui-v2 .rw-input-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 16px; min-height: 38px; margin-top: 14px; color: var(--text-secondary, #62666e); font-size: 14px; }
+.prism-ui-v2 .rw-parameter-summary { display: inline-flex; flex-wrap: wrap; gap: 8px 16px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.prism-ui-v2 .rw-filters { margin-top: 21px; padding-top: 21px; border-top: 1px solid var(--border-subtle, #e6e7eb); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-wide { grid-column: 1 / -1; }
+.prism-ui-v2 .rw-filter-summary { color: var(--text-secondary, #62666e); overflow-wrap: anywhere; }
+.prism-ui-v2 .rw-algorithm-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 12px; }
+.prism-ui-v2 .rw-algorithm-row :is(select, .rw-button) { min-height: 54px; }
+.prism-ui-v2 .rw-file-label { max-width: 360px; overflow-wrap: anywhere; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) details { margin-top: 18px; padding: 0; border: 0; border-top: 1px solid var(--border-subtle, #e6e7eb); border-radius: 0; background: transparent; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) details > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 54px; padding: 14px 0; color: var(--text, #282b30); font-size: 15px; font-weight: 500; list-style: none; cursor: pointer; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) details > summary::-webkit-details-marker { display: none; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) details > summary::after { content: "⌄"; color: var(--text-muted, #777d86); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) details[open] > summary::after { transform: rotate(180deg); }
+.prism-ui-v2 .rw-disclosure-content { padding: 3px 0 18px; color: var(--text-secondary, #62666e); font-size: 14px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-data-meta { color: var(--text-secondary, #62666e); font-size: 14px; line-height: 1.75; }
+.prism-ui-v2 .rw-results:empty { display: none; }
+.prism-ui-v2 .rw-results > :not([hidden]) { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border-subtle, #e6e7eb); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-result-card { padding: 18px; margin-top: 16px; }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-original-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.8; }
+.prism-ui-v2 .research-workbench .notice { margin: 14px 0 0; }
+.prism-ui-v2 .rw-run-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.prism-ui-v2 .rw-dialog { max-width: calc(100% - 32px); max-height: calc(100dvh - 48px); padding: 0; border: 1px solid var(--border-subtle, #e6e7eb); border-radius: 13px; color: var(--text, #282b30); background: var(--surface, #fff); box-shadow: 0 28px 80px #20232a24; }
+.prism-ui-v2 .rw-dialog::backdrop { background: #1e232a40; }
+.prism-ui-v2 .rw-dialog-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 26px; border-bottom: 1px solid var(--border-subtle, #e6e7eb); background: var(--surface, #fff); }
+.prism-ui-v2 .rw-dialog-heading h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.prism-ui-v2 .rw-icon-button { width: 36px; height: 36px; border: 0; border-radius: 7px; color: inherit; background: transparent; font-size: 24px; cursor: pointer; }
+.prism-ui-v2 .rw-icon-button:hover { background: var(--surface-muted, #f0f1f3); }
+.prism-ui-v2 .rw-dialog-body { padding: 25px 26px; }
+.prism-ui-v2 .rw-dialog-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; padding: 18px 26px; border-top: 1px solid var(--border-subtle, #e6e7eb); }
+.prism-ui-v2 .rw-parameter-dialog { width: 500px; }
+.prism-ui-v2 #research-parameter-fields > label + label { margin-top: 20px; }
+.prism-ui-v2 .rw-tools-dialog { position: fixed; inset: 0 0 0 auto; width: 560px; height: 100dvh; max-height: 100dvh; margin: 0; border-width: 0 0 0 1px; border-radius: 0; }
+.prism-ui-v2 .rw-tool-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
+.prism-ui-v2 .rw-tool-choice { display: flex; align-items: center; justify-content: space-between; gap: 18px; width: 100%; margin-bottom: 12px; padding: 18px; border: 1px solid var(--border-subtle, #e6e7eb); border-radius: 10px; color: var(--text, #282b30); background: var(--surface, #fff); font: inherit; text-align: left; cursor: pointer; }
+.prism-ui-v2 .rw-tool-choice:hover { background: var(--surface-muted, #f7f7f8); }
+.prism-ui-v2 .rw-tool-choice strong { display: block; font-size: 15px; font-weight: 500; }
+.prism-ui-v2 .rw-tool-choice small { display: block; margin-top: 7px; color: var(--text-secondary, #62666e); font-size: 14px; line-height: 1.75; }
+.prism-ui-v2 .rw-tool-maintenance { margin-top: 26px; }
+.prism-ui-v2 .rw-tool-description { margin: 0 0 22px; color: var(--text-secondary, #62666e); font-size: 15px; line-height: 1.75; }
+.prism-ui-v2 .rw-node-card { margin: 16px 0; padding: 18px; border: 1px solid var(--border-subtle, #e6e7eb); border-radius: 9px; }
+.prism-ui-v2 .rw-node-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.prism-ui-v2 .rw-node-heading h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.prism-ui-v2 .rw-tool-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin: 18px 0 24px; }
+.prism-ui-v2 .rw-tool-actions > span { color: var(--text-secondary, #62666e); font-size: 14px; }
+.prism-ui-v2 .rw-runtime-list { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px 20px; margin: 0; font-size: 15px; }
+.prism-ui-v2 .rw-runtime-list dt { color: var(--text-secondary, #62666e); }
+.prism-ui-v2 .rw-runtime-list dd { margin: 0; overflow-wrap: anywhere; }
+.prism-ui-v2 .rw-algorithm-input-dialog { width: 620px; }
+.prism-ui-v2 .rw-algorithm-input-dialog textarea { min-height: 210px; margin-bottom: 14px; }
+.prism-ui-v2 .rw-original-dialog { width: 820px; }
+.prism-ui-v2 .rw-original-dialog #knowledge-original { margin: 0; padding: 0; border: 0; background: transparent; }
+.prism-ui-v2 .rw-original-dialog #knowledge-original > .research-original-text { font-family: var(--sans); font-size: 15px; }
+.prism-ui-v2 .rw-dialog .table-wrap { max-width: 100%; overflow-x: auto; }
+body.research-dialog-open { overflow: hidden; }
+@media (max-width: 700px) {
+  .prism-ui-v2 .rw-page-heading { gap: 14px; }
+  .prism-ui-v2 .rw-page-heading > h2 { font-size: 26px; }
+  .prism-ui-v2 .rw-stage { min-height: calc(100svh - 260px); }
+  .prism-ui-v2 .rw-card { padding: 24px 20px 20px; }
+  .prism-ui-v2 .rw-task-tabs { gap: 3px; margin-bottom: 24px; }
+  .prism-ui-v2 .rw-task-tab { flex: 1; padding: 8px 7px; font-size: 14px; }
+  .prism-ui-v2 .rw-task-heading { margin-bottom: 20px; }
+  .prism-ui-v2 .rw-task-heading > h3 { font-size: 21px; }
+  .prism-ui-v2 .rw-task-summary { grid-template-columns: minmax(0, 1fr); gap: 14px; padding-top: 18px; }
+  .prism-ui-v2 .rw-input-row { flex-wrap: wrap; }
+  .prism-ui-v2 .rw-input-row .research-form-field { flex-basis: 100%; }
+  .prism-ui-v2 .rw-input-row .rw-button { width: 100%; min-width: 0; min-height: 45px; }
+  .prism-ui-v2 :is(.research-workbench, .rw-dialog) .rw-form-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .prism-ui-v2 .rw-algorithm-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .prism-ui-v2 .rw-algorithm-row .research-form-field { grid-column: 1 / -1; }
+  .prism-ui-v2 .rw-dialog-heading { padding: 18px 20px; }
+  .prism-ui-v2 .rw-dialog-body { padding: 22px 20px; }
+  .prism-ui-v2 .rw-dialog-footer { padding: 16px 20px; }
+  .prism-ui-v2 .rw-node-card { padding: 15px; }
+  .prism-ui-v2 .rw-tool-actions > .rw-primary { width: 100%; }
+  .prism-ui-v2 .rw-runtime-list { grid-template-columns: 90px minmax(0, 1fr); gap: 10px 14px; }
+}

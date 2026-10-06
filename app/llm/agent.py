@@ -1176,7 +1176,7 @@ class CopilotAgent:
                 lines.append("\n".join("> " + line for line in match["text"].splitlines()))
             if len(lines) == 1:
                 lines.append("未取得当前仍有效的可见原文；本轮不形成有依据结论。")
-            lines.append("\n摘录仅通过原文与版本定位核验；不构成对金融数值或推论的独立确认。")
+            lines.append("\n原文定位与金融事实分别核验；摘录不代表数值或推论已独立核验。")
             return "\n".join(lines)
 
         # Find tool results
@@ -1215,7 +1215,7 @@ class CopilotAgent:
             if available:
                 lines.append("；".join(f"{label}：{field(stock, key, unit)}" for label, key, unit in available) + "。")
             if stock.get("financial_report_period"):
-                lines.append(f"财务报告期：{stock['financial_report_period']}。当前工具结果是快速阶段；历史分位与跨期趋势必须以深度章节或后续结构化查询为准。")
+                lines.append(f"财务报告期：{stock['financial_report_period']}。")
             elif stock.get("financial_issues"):
                 lines.extend(item["message"] for item in stock["financial_issues"])
             return "\n".join(lines)
@@ -1229,7 +1229,7 @@ class CopilotAgent:
                 lines.append(f"查询：{fund_result.get('query', user_message)}；状态：{fund_result.get('status')}。")
                 rows = fund_result.get("items") or []
                 if not rows:
-                    lines.append("未取得匹配基金，不以模型常识补造标的。")
+                    lines.append("未取得匹配基金。")
                 for index, row in enumerate(rows, 1):
                     lines.append(f"\n记录 {index}：")
                     for key, value in row.items():
@@ -1242,7 +1242,6 @@ class CopilotAgent:
             lines.append(f"本次数据模式：{mode_label}。基金持仓为定期披露，不代表实时持仓；披露期：{field(fund, 'holding_disclosure_as_of')}。")
             for h in fund["top_holdings"]:
                 lines.append(f"- **{field(h, 'name')}** ({field(h, 'asset_id')})：权重 **{field(h, 'weight_pct', '%')}** · 行业：{field(h, 'sector')}")
-            lines.append("\n聊天层只转述底稿字段；基金穿透占比、组合重叠和集中度必须由后端确定性服务计算。")
 
         elif check_tool:
             chk = check_tool["result"]
@@ -1265,7 +1264,6 @@ class CopilotAgent:
                 lines.append(f"\n核查时间：{health['calculated_at']}；底稿状态：{health['source_exposure_status']}。")
                 if health.get("issues"):
                     lines.append("数据限制：" + "、".join(health["issues"]))
-                lines.append("以上为后端确定性计算结果，不生成买卖指令。")
                 return "\n".join(lines)
             is_over = chk.get("is_over_budget", True)
             lines.append(f"### 持仓健康度核查报告")
@@ -1277,6 +1275,7 @@ class CopilotAgent:
                 lines.append(f"- 建议操作：适度减仓高集中度标的 (REDUCE)，增配宽基指数 ETF 以平抑组合波动。")
             else:
                 lines.append(f"组合核验：当前行业配置均衡，科技敞口为 {chk['tech_exposure_pct']}%，处于预算限额之内，维持现有配置 (HOLD)。")
+            lines.append("证券市场有风险，投资需谨慎。")
 
         elif rebalance_tool:
             reb = rebalance_tool["result"]
@@ -1287,6 +1286,7 @@ class CopilotAgent:
             for s in reb["steps"]:
                 action_text = "卖出 (SELL)" if s["action"] == "SELL" else "买入 (BUY)"
                 lines.append(f"{s['step']}. **{action_text}** {s['asset']}：调整比例 `{s['weight_delta']}`")
+            lines.append("证券市场有风险，投资需谨慎。")
 
         elif financial_tool:
             result = financial_tool["result"]
@@ -1296,13 +1296,13 @@ class CopilotAgent:
             lines.append(f"查询：{result['query']}；状态：{result['status']}。")
             rows = result.get("items") or []
             if not rows:
-                lines.append("未取得匹配数据，不以模型常识补值。")
+                lines.append("未取得匹配数据。")
             else:
                 lines.append(f"返回 {len(rows)} 条记录；时间序列字段已汇总为最新值、区间和最近三期。")
                 lines.extend(self._compact_financial_rows(rows))
             if result.get("missing_fields"):
                 lines.append("缺失字段：" + "、".join(result["missing_fields"]))
-            lines.append(f"来源：问财 SkillHub；检索时间：{result['retrieved_at']}。保留上游字段及报告期，未生成独立审计或估值结论。")
+            lines.append(f"来源：问财 SkillHub；检索时间：{result['retrieved_at']}。")
 
         elif wencai_tool:
             result = wencai_tool["result"]
@@ -1322,14 +1322,9 @@ class CopilotAgent:
                 if summary and summary not in {"无返回结果", f"问财查询完成：{result.get('query', '')}"}:
                     lines.append(summary)
                 else:
-                    lines.append(
-                        f"未检索到与“{result.get('query', '当前问题')}”匹配的{channel_label}，"
-                        "不以模型常识补充结果。"
-                    )
+                    lines.append(f"未检索到与“{result.get('query', '当前问题')}”匹配的{channel_label}。")
             else:
-                lines.append(
-                    f"已从问财真实接口取得 {len(items)} 条{channel_label}，按可用发布日期倒序列示："
-                )
+                lines.append(f"找到 {len(items)} 条{channel_label}，按发布日期倒序排列：")
                 for index, item in enumerate(items, 1):
                     title = re.sub(r"[\r\n]+", " ", str(item.get("title") or "未命名记录")).strip()
                     date = item.get("publish_date") or item.get("publish_time") or "日期未提供"
@@ -1345,12 +1340,9 @@ class CopilotAgent:
                 )
 
         else:
-            lines.append("### 请求处理边界")
-            lines.append(f"已识别咨询事项「{user_message}」和画像标签 {tag}，但当前没有可引用的确定性计算结果，因此不生成行情、敞口、适当性或调仓结论。")
+            lines.append("当前没有可引用的查询结果。")
 
-        lines.append(f"\n> 数据边界：[{mode_label}] · 聊天层仅转述工具字段；金融计算由结构化确定性服务执行")
-        lines.append("\n---\n*风险揭示：证券市场存在风险，投资需谨慎。本报告基于量化模型推导，不作为收益承诺。*")
-
+        lines.append(f"\n数据模式：{mode_label}。")
         return "\n".join(lines)
 
     def _tokenize_stream(self, text: str, chunk_size: int = 4) -> list[str]:
