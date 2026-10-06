@@ -11137,7 +11137,9 @@
     workspaceStorage.removeItem(ownerStorageKey(CHAT_LEGACY_STORAGE_KEY));
     const input = byId("copilot-natural-input");
     if (input) { input.value = ""; input.focus(); }
-    byId("chat-session-search").value = "";
+    const search = byId("chat-session-search");
+    search.value = "";
+    search.readOnly = true;
     const progress = byId("chat-send-progress");
     if (progress) { progress.hidden = false; progress.textContent = "理解问题 → 查询数据 → 核验依据 → 组织回答"; }
     const output = byId("copilot-decision-output");
@@ -14014,12 +14016,25 @@
   });
   const clearChatSessionSearch = () => {
     const search = byId("chat-session-search");
-    if (search) search.value = "";
+    if (search) {
+      search.value = "";
+      search.readOnly = true;
+      if (document.activeElement === search) search.blur();
+    }
     renderChatSessionList();
   };
   clearChatSessionSearch();
   window.addEventListener("pageshow", clearChatSessionSearch);
-  byId("chat-session-search")?.addEventListener("input", renderChatSessionList);
+  const chatSessionSearch = byId("chat-session-search");
+  const activateChatSessionSearch = () => {
+    if (!chatSessionSearch.readOnly) return;
+    chatSessionSearch.value = "";
+    chatSessionSearch.readOnly = false;
+    renderChatSessionList();
+  };
+  chatSessionSearch.addEventListener("pointerdown", activateChatSessionSearch);
+  chatSessionSearch.addEventListener("focus", activateChatSessionSearch);
+  chatSessionSearch.addEventListener("input", renderChatSessionList);
   byId("home-history-hide")?.addEventListener("click", () => {
     setHomeHistoryCollapsed(true);
     byId("home-history-show").focus();
