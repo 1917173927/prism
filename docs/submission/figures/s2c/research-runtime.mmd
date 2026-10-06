@@ -1,10 +1,31 @@
-flowchart TB
-    PLAN["DAG 研究计划<br/>检查唯一标识、未知依赖、自依赖、有向环"] --> QUEUE["单进程等待队列<br/>默认容量 400<br/>单用户等待上限 200"]
-    QUEUE --> RUN["ResearchRuntime<br/>默认活动研究任务上限 100<br/>前置条件满足后执行节点"]
-    RUN --> PROVIDER["Provider semaphore<br/>默认调用名额 100"]
-    RUN --> MODEL["模型 semaphore<br/>默认调用名额 8"]
-    TIME["单次研究时间预算<br/>最多 60 秒<br/>总体时间检查与取消"] -.-> RUN
-    PROVIDER --> RESULT["节点状态、结构化观测、输入版本<br/>请求与响应摘要"]
-    MODEL --> RESULT
-    RESULT --> STATUS["等待、执行、部分完成、失败、取消、超时<br/>依赖未完成时下游保留取消原因"]
-    NOTE["以上数值为程序默认限制<br/>外部授权、额度与响应能力分别检查"] -.-> RUN
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 校验计划与等待条件"]:3
+    A["DAG 计划校验<br/>标识唯一、依赖有效<br/>拒绝自依赖与有向环"]
+    B["有界等待队列<br/>单进程默认容量 400<br/>单用户等待上限 200"]
+    C["研究时间预算<br/>单次最多 60 秒<br/>总体时间检查与取消"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 按依赖与调用名额执行"]:3
+    D["ResearchRuntime<br/>活动研究任务上限 100<br/>前置条件满足后执行"]
+    E["Provider 调用<br/>独立 semaphore<br/>默认调用名额 100"]
+    F["模型调用<br/>独立 semaphore<br/>默认调用名额 8"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 运行状态与查询依据"]:3
+    G["执行状态<br/>等待、执行、部分完成<br/>失败、取消与超时"]
+    I["依赖未完成<br/>下游保留取消状态<br/>记录明确处理原因"]
+    J["结果与输入记录<br/>结构化观测与输入版本<br/>请求及响应摘要"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

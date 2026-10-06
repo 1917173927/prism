@@ -1,31 +1,31 @@
-flowchart TD
-  access(["FastAPI / Uvicorn<br/>HTTP 与 SSE · 用户归属 · Pydantic 校验"]) --> services
-  subgraph services[01  应用服务]
-    direction LR
-    dialogue["对话协调<br/>意图路由 · 工具调用"]
-    context["用户上下文<br/>画像 · 持仓 · 会话前提"]
-    research["研究执行<br/>专业任务 · DAG 调度"]
-    dialogue ~~~ context ~~~ research
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 请求与应用服务"]:3
+    A["请求入口<br/>FastAPI / Uvicorn<br/>用户归属与参数校验"]
+    B["对话与上下文<br/>意图路由、工具调用<br/>画像、持仓与会话前提"]
+    C["研究执行服务<br/>专业任务与 DAG 计划<br/>依赖调度及执行记录"]
   end
-  services --> domain
-  subgraph domain[02  领域计算与审查]
-    direction LR
-    calc["确定性金融计算<br/>暴露 · 预算 · 再平衡"]
-    evidence["证据处理<br/>来源分组 · 事实与引用"]
-    gates["结果审查<br/>风险闸门 · 合规闸门"]
-    calc ~~~ evidence ~~~ gates
+  space
+  block:process
+    columns 3
+    H2["02 领域计算与审查"]:3
+    D["确定性金融计算<br/>暴露、预算与集中度<br/>配置及再平衡测算"]
+    E["证据处理<br/>来源分组与字段校验<br/>事实及引用关系"]
+    F["结构化结果审查<br/>风险与合规检查<br/>按对应流程条件执行"]
   end
-  domain --> infrastructure
-  subgraph infrastructure[03  资源与持久化]
-    direction LR
-    providers["外部服务适配<br/>LLM · 金融查询"]
-    storage[("SQLite<br/>可选 PostgreSQL<br/>画像 · 快照 · 记忆 · 决策")]
-    imports["资料处理<br/>OpenPyXL · RapidOCR"]
-    providers ~~~ storage ~~~ imports
+  space
+  block:output
+    columns 3
+    H3["03 外部资源与持久化"]:3
+    G["外部服务适配<br/>LLM 与金融 Provider<br/>查询结果及数据状态"]
+    I["数据库存储<br/>SQLite / PostgreSQL<br/>画像、快照、记忆与决策"]
+    J["资料处理组件<br/>OpenPyXL / RapidOCR<br/>资料导入及图片识别"]
   end
-  classDef accent fill:#fff1e3,stroke:#e86f00,color:#202124,stroke-width:1.6px
-  classDef base fill:#ffffff,stroke:#cbd0d6,color:#30343b
-  classDef dark fill:#292d34,stroke:#292d34,color:#ffffff
-  class access dark
-  class calc,evidence,gates accent
-  class dialogue,context,research,providers,storage,imports base
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent

@@ -84,7 +84,16 @@ export function inspectDiagramGeometry() {
       }
     }
   }
-  return {text_count: texts.length, line_count: paths.length, collisions,
+  const cardOverflows = [];
+  for (const node of svg.querySelectorAll('.node.neutral, .node.accent, .node.success, .node.failure')) {
+    const rectangle = node.querySelector('rect.label-container');
+    const text = node.querySelector('.label text');
+    if (!rectangle || !text) throw Error('Diagram card must have a rectangle and text');
+    const card = bounds(rectangle), label = bounds(text);
+    if (label.x < card.x - 0.5 || label.y < card.y - 0.5 || label.x + label.width > card.x + card.width + 0.5
+        || label.y + label.height > card.y + card.height + 0.5) cardOverflows.push({text: text.textContent.trim(), card, label});
+  }
+  return {text_count: texts.length, line_count: paths.length, collisions, card_overflows: cardOverflows,
     nodes: [...svg.querySelectorAll('.node')].map(node => ({text: node.textContent.trim(), ...bounds(node)})),
     edge_labels: texts.filter(text => text.edgeLabel).map(text => ({text: text.content, opaque_background: Boolean(text.background)}))};
 }

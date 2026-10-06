@@ -1,13 +1,29 @@
-flowchart TB
-    subgraph ACCOUNT["账户与对话：数据库外键"]
-      direction TB
-      ACC["local_accounts"] -->|"username · 级联删除"| AUTH["auth_sessions<br/>有效期与账户状态检查"]
-      CONV["copilot_conversations"] -->|"conversation_id · 级联删除"| MSG["copilot_messages<br/>用户归属检查"]
-      AUTH ~~~ CONV
-    end
-    subgraph RESEARCH["研究数据：联合外键"]
-      direction TB
-      SNAP["research_fact_snapshots"] -->|"owner_id + snapshot_id"| FACT["research_facts"]
-      SNAP -->|"owner_id + snapshot_id"| PAYLOAD["research_fact_payloads"]
-    end
-    ACCOUNT ~~~ RESEARCH
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 账户与认证会话"]:3
+    A["账户记录<br/>local_accounts<br/>username"]
+    B["认证会话<br/>auth_sessions<br/>username 外键关联"]
+    C["关联与认证检查<br/>账户删除时级联删除<br/>有效期及账户状态"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 对话与消息"]:3
+    D["对话记录<br/>copilot_conversations<br/>conversation_id"]
+    E["会话消息<br/>copilot_messages<br/>conversation_id 外键"]
+    F["关联与归属检查<br/>对话删除时级联删除<br/>存储操作检查用户归属"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 研究快照与联合外键"]:3
+    G["研究快照<br/>research_fact_snapshots<br/>owner_id + snapshot_id"]
+    I["结构化事实<br/>research_facts<br/>用户与快照联合外键"]
+    J["请求与响应<br/>research_fact_payloads<br/>用户与快照联合外键"]
+  end
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,D,E,G neutral
+  class C,F,I,J accent

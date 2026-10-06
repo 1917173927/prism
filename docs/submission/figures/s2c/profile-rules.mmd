@@ -1,7 +1,31 @@
-flowchart LR
-    A[十九题答卷] --> B[完整性检查]
-    B --> C[评分与规则映射]
-    C --> D[八维展示]
-    C --> E[风险等级与约束]
-    classDef focus fill:#fff1e3,stroke:#d97706,color:#202124;
-    class C,E focus;
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 用户测评与确认"]:3
+    A["十九题答卷<br/>正式问卷与合法选项<br/>完整性及互斥检查"]
+    B["评分依据<br/>评分题与选择题贡献<br/>对应模板权重"]
+    C["确认与版本<br/>保存问卷及规则版本<br/>绑定当前用户归属"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 确定性评分与规则映射"]:3
+    D["八个维度评分<br/>归一化至 0—100 分<br/>保留两位小数"]
+    E["风险等级映射<br/>保守型、均衡型、成长型<br/>适当性等级独立生成"]
+    F["组合风险预算<br/>资产、行业、科技上限<br/>未分类比例约束"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 展示与组合应用"]:3
+    G["个人中心<br/>八维画像与评分说明<br/>测评结果及当前评级"]
+    I["持仓风险比较<br/>观察比例与适用上限<br/>超限幅度按百分点计算"]
+    J["计算条件追踪<br/>owner_id / profile_id<br/>profile_version"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,J neutral
+  class D,E,F,I accent

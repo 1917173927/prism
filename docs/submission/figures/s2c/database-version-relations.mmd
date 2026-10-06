@@ -1,13 +1,29 @@
-flowchart TB
-    subgraph LIBRARY["知识资料：应用层关联"]
-      direction TB
-      DOC["knowledge_documents"] -.->|"document_id + revision"| VER["knowledge_document_versions<br/>联合主键"]
-      DOC -.->|"document_id + revision"| CHUNK["knowledge_chunks<br/>当前版本与内容完整性检查"]
-    end
-    subgraph CONTEXT["个人前提：应用层关联"]
-      direction TB
-      Q["questionnaire_snapshots<br/>已确认问卷"] -.->|"owner_id · 版本 · 业务标识"| TRUTH["session_truth<br/>前提修订与事实指纹"]
-      P["current_portfolios<br/>当前持仓"] -.-> TRUTH
-      TRUTH -.->|"JSON 引用 · 版本核验"| DEC["decision_events<br/>审查记录与回执"]
-    end
-    LIBRARY ~~~ CONTEXT
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 知识资料与版本"]:3
+    A["文档元数据<br/>knowledge_documents<br/>document_id / revision"]
+    B["文档历史版本<br/>document_id + revision<br/>历史记录联合主键"]
+    C["可检索片段<br/>knowledge_chunks<br/>当前版本及完整性检查"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 已确认个人资料"]:3
+    D["问卷快照<br/>questionnaire_snapshots<br/>已确认画像与规则版本"]
+    E["当前持仓<br/>current_portfolios<br/>用户归属与内容摘要"]
+    F["应用层关联依据<br/>owner_id 与业务标识<br/>版本及 JSON 对象引用"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 会话前提与决策记录"]:3
+    G["会话前提<br/>session_truth<br/>修订与事实指纹"]
+    I["引用关系检查<br/>当前版本与指纹核验<br/>资料变化要求重新确认"]
+    J["决策及回执记录<br/>decision_events<br/>审查记录与资料引用"]
+  end
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,D,E,G,J neutral
+  class F,I accent

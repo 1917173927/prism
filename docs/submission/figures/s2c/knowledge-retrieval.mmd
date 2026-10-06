@@ -1,10 +1,31 @@
-flowchart TB
-    FILE["TXT / Markdown / 可提取文本 PDF<br/>上传上限 8 MiB<br/>PDF 页数不超过 1000"] --> TEXT["pypdf 提取页面文本<br/>保留标题、来源、发布时间、主体、期间"]
-    TEXT --> CHUNK["按自然段与长度组织片段<br/>长自然段每个片段最多 1200 字符<br/>保存 page、paragraph、text 与 revision"]
-    CHUNK --> SCOPE["候选资料范围检查<br/>owner_id / visibility<br/>published_at 不晚于 as_of<br/>片段与当前文档 revision 一致"]
-    SCOPE --> KEY["关键词检索<br/>SQLite FTS5 / BM25"]
-    SCOPE --> EMB["满足模型与 revision 条件<br/>混合检索启用时<br/>使用 cosine 向量排序"]
-    KEY --> RANK["关键词结果或 RRF 融合结果<br/>RRF = Σ 1/(60 + rank)"]
-    EMB --> RANK
-    RANK --> CITE["返回原文、页码、版本与来源<br/>原始片段 RETRIEVED_UNVERIFIED<br/>分别核对相关性与精确引文"]
-    NOTE["混合检索默认关闭<br/>保留候选截断、缺项和版本变化状态<br/>金融声明继续接受来源验证"] -.-> CITE
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 资料提取与片段保存"]:3
+    A["资料上传<br/>TXT、Markdown、文本 PDF<br/>8 MiB / PDF ≤1000 页"]
+    B["页面文本提取<br/>pypdf 保留页码<br/>标题、来源、主体与期间"]
+    C["片段组织<br/>长自然段最多 1200 字符<br/>page / paragraph / revision"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 候选范围与检索排序"]:3
+    D["可见范围与版本<br/>owner_id / visibility<br/>发布时间 ≤ as_of"]
+    E["关键词检索<br/>SQLite FTS5 / BM25<br/>按相关性组织候选"]
+    F["可选向量检索<br/>满足模型及 revision 条件<br/>启用时使用 cosine 排序"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 引用返回与使用范围"]:3
+    G["结果排序<br/>关键词结果或 RRF 融合<br/>Σ 1/(60 + rank)"]
+    I["原文与引用<br/>页码、版本、原文及来源<br/>RETRIEVED_UNVERIFIED"]
+    J["资料质量检查<br/>候选截断、缺项及版本变化<br/>精确引文单独核对"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,I,J neutral
+  class D,E,F,G accent

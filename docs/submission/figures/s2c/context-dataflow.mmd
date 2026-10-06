@@ -1,34 +1,31 @@
-flowchart TD
-  subgraph inputs[01  用户输入与资料]
-    direction LR
-    user["当前问题<br/>用户输入与追问"]
-    saved[("历史记录<br/>显式保存与检索")]
-    profile["当前画像与持仓<br/>用户选择<br/>更新与确认"]
-    user ~~~ saved
-    saved --> profile
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 用户输入与资料"]:3
+    A["当前问题<br/>用户输入与连续追问<br/>最近六条历史消息"]
+    B["历史资料<br/>显式保存与检索<br/>用户选择恢复资料"]
+    C["当前个人条件<br/>有效画像与持仓<br/>用户更新及确认"]
   end
-  inputs --> entry["请求入口 · 前提处理<br/>有绑定：核验版本与事实<br/>无绑定：清除个性化资料"]
-  entry -->|核验失败| confirm(["提示重新确认"])
-  entry -->|核验通过或未绑定| route["消息构建与工具<br/>需求判定<br/>历史消息最多 6 条"]
-  subgraph processing[02  按需求处理]
-    direction LR
-    general["一般交流<br/>概念解释与<br/>一般回答"]
-    market["金融资料查询<br/>允许无个人前提<br/>查询"]
-    personal["个人组合问题<br/>持仓体检或<br/>调仓工具"]
+  space
+  block:process
+    columns 3
+    H2["02 前提核验与需求判定"]:3
+    D["请求入口核验<br/>已绑定：核对版本与事实<br/>失败时提示重新确认"]
+    E["通用问题路径<br/>一般交流与金融查询<br/>无绑定时清除个人资料"]
+    F["个人组合路径<br/>持仓体检或调仓问题<br/>要求有效个人前提"]
   end
-  route --> general
-  route --> market
-  route --> personal
-  personal -->|体检| health["确定性体检<br/>有效前提下计算<br/>缺少前提时<br/>提示确认"]
-  personal -->|调仓| guide["提示进入<br/>调仓计划"]
-  guide -.->|用户操作| plan["计划入口<br/>确认条件<br/>持仓 · 目标权重<br/>换手约束<br/>执行确定性测算"]
-  market --> grounded(["依据工具结果组织回答"])
-  health --> grounded
-  classDef accent fill:#fff1e3,stroke:#e86f00,color:#202124,stroke-width:1.6px
-  classDef base fill:#ffffff,stroke:#cbd0d6,color:#30343b
-  classDef dark fill:#292d34,stroke:#292d34,color:#ffffff
-  classDef notice fill:#fff8ef,stroke:#d7a467,color:#78501b,stroke-dasharray:4 3
-  class entry dark
-  class route,personal,plan accent
-  class confirm notice
-  class user,general,profile,saved,market,health,guide,grounded base
+  space
+  block:output
+    columns 3
+    H3["03 工具处理与结果返回"]:3
+    G["一般回答与查询<br/>概念解释、金融资料<br/>依据工具结果组织回答"]
+    I["确定性持仓体检<br/>使用已确认资料计算<br/>缺少前提时要求确认"]
+    J["独立调仓计划<br/>提示进入计划入口<br/>确认持仓、目标与约束"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G neutral
+  class D,E,F,I,J accent

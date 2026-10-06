@@ -1,6 +1,6 @@
 {
   "renderer": "tools/render_s2c_figures.mjs",
-  "format": "Mermaid source with SVG and PNG exports",
+  "format": "采用 Mermaid Block 绘图，按阶段排列卡片，共用参考图样式，导出 SVG 与 PNG",
   "sources": {
     "frontend-framework": ["app/api/static/index.html", "app/api/static/app.js", "docs/submission/figures/frontend-framework.mmd"],
     "backend-framework": ["app/api/main.py", "docs/submission/figures/backend-framework.mmd"],

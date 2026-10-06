@@ -1,12 +1,31 @@
-flowchart TB
-    INPUT["数量、报价、资产标识<br/>检查非负金额、币种、输入时间"] --> VALUE["Decimal 市值计算<br/>market_value = quantity × price"]
-    VALUE --> DIRECT["直接资产<br/>按证券与行业归属计入"]
-    VALUE --> FUND["基金与 ETF<br/>读取已披露成分比例与快照"]
-    FUND --> LOOK["穿透贡献 = 基金市值 × 成分比例<br/>保留快照时点、来源与覆盖比例"]
-    FUND --> UNCOVER["未穿透金额<br/>基金市值 − 已覆盖贡献合计"]
-    DIRECT --> CHECK["金额守恒与引用检查<br/>贡献合计 = 原组合金额"]
-    LOOK --> CHECK
-    UNCOVER --> CHECK
-    CHECK --> GROUP["按资产或行业聚合金额<br/>明确证券与含现金总资产分母"]
-    GROUP --> METRIC["组合权重 = 市值 ÷ 总市值 × 100<br/>HHI = 10000 × Σ(value_i ÷ total_value)²<br/>ROUND_HALF_UP 保留两位小数"]
-    METRIC --> RISK["观察比例与画像预算比较<br/>保留观察值、上限和超限幅度"]
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 确认金额与披露资料"]:3
+    A["直接资产<br/>数量、报价与资产标识<br/>非负金额、币种及时间"]
+    B["基金与 ETF<br/>市值、披露成分比例<br/>来源、快照及覆盖范围"]
+    C["计算基础<br/>Decimal 管理金额<br/>市值 = 数量 × 报价"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 穿透与金额核验"]:3
+    D["穿透贡献<br/>基金市值 × 成分比例<br/>保留资产及行业贡献"]
+    E["未穿透金额<br/>基金市值减已覆盖贡献<br/>保留金额与占比"]
+    F["金额守恒检查<br/>贡献合计等于原组合<br/>校验分类及引用关系"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 汇总指标与风险比较"]:3
+    G["权重与集中度<br/>按资产或行业聚合<br/>组合占比与 HHI"]
+    I["展示口径<br/>明确证券与含现金分母<br/>两位小数及 ROUND_HALF_UP"]
+    J["画像预算比较<br/>观察比例与适用上限<br/>记录超限幅度及原因"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,G,I neutral
+  class C,D,E,F,J accent

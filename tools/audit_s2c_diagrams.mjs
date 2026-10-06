@@ -32,11 +32,11 @@ try {
       svg_sha256: createHash('sha256').update(source).digest('hex'),
       png_sha256: createHash('sha256').update(await fs.readFile(figure.source)).digest('hex'), ...result});
     console.log(JSON.stringify({name: path.basename(filename), texts: result.text_count, lines: result.line_count,
-      collisions: result.collisions}));
+      collisions: result.collisions, card_overflows: result.card_overflows}));
   }
 } finally {
   await browser.close();
 }
-const status = figures.every(figure => figure.collisions.length === 0) ? 'PASS' : 'FAILED';
+const status = figures.every(figure => figure.collisions.length === 0 && figure.card_overflows.length === 0) ? 'PASS' : 'FAILED';
 await fs.writeFile(path.join(work, 'diagram-overlap-audit.json'), JSON.stringify({status, figures}, null, 2));
-if (process.argv.includes('--check')) assert.ok(figures.every(figure => figure.collisions.length === 0), 'Diagram text overlaps visible connectors');
+if (process.argv.includes('--check')) assert.equal(status, 'PASS', 'Diagram text must fit cards and remain clear of visible connectors');

@@ -1,10 +1,31 @@
-flowchart TB
-    INPUT["用户提交真实数据、来源与截止时点<br/>Pydantic 检查类型、样本、时间顺序、有限数值"] --> HMM["两状态 Gaussian HMM<br/>有序日收益 · 训练样本至少 252 条"]
-    INPUT --> COV["常相关协方差收缩<br/>多资产历史收益序列"]
-    INPUT --> FF["Fama–French 五因子构造<br/>发布时间、规模、账面权益、盈利、资产、月收益"]
-    HMM --> HPROC["标准化、两状态拟合、前向概率更新<br/>输出状态概率与模型版本<br/>检查收敛条件"]
-    COV --> CPROC["样本协方差、常相关目标、收缩<br/>输出协方差结果<br/>检查样本与零方差"]
-    FF --> FPROC["时点筛选、分组、组合收益计算<br/>输出因子序列<br/>保留样本完整性与缺项"]
-    HPROC --> RESULT["关联 method_version / source / as_of / input_snapshot_id<br/>满足条件：CALCULATED<br/>输入不足、依赖缺少或未收敛：UNAVAILABLE 与原因"]
-    CPROC --> RESULT
-    FPROC --> RESULT
+block-beta
+  columns 1
+  block:input
+    columns 3
+    H1["01 用户数据与计算条件"]:3
+    A["两状态 Gaussian HMM<br/>按日期排列的日收益<br/>训练样本至少 252 条"]
+    B["常相关协方差收缩<br/>多资产历史收益<br/>共同日期与非零方差"]
+    C["Fama–French 五因子<br/>规模、权益、盈利与资产<br/>财务发布时间及月收益"]
+  end
+  space
+  block:process
+    columns 3
+    H2["02 确定性研究算法计算"]:3
+    D["状态概率计算<br/>标准化与两状态拟合<br/>前向概率更新及收敛检查"]
+    E["协方差估计<br/>样本协方差与常相关目标<br/>收缩及零方差检查"]
+    F["因子序列构造<br/>时点筛选与分组<br/>组合收益及完整性检查"]
+  end
+  space
+  block:output
+    columns 3
+    H3["03 计算结果与来源记录"]:3
+    G["输出结果<br/>状态概率、矩阵或因子<br/>满足条件为 CALCULATED"]
+    I["未满足计算条件<br/>不足、依赖缺少或未收敛<br/>UNAVAILABLE 与明确原因"]
+    J["方法与资料依据<br/>method_version / source<br/>as_of / input_snapshot_id"]
+  end
+  input --> process
+  process --> output
+  class H1,H2,H3 section
+  class input,process,output container
+  class A,B,C,G,I,J neutral
+  class D,E,F accent
