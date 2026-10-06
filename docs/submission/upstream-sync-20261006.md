@@ -46,4 +46,6 @@
 
 ## 第4章 Git归档
 
-首次集成提交 `1f6c9c0`、对话布局及侧锁修复提交 `fce0665` 均已推送。[PR #4](https://github.com/1917173927/prism/pull/4) 已创建；`82bd219` 追加集成与最终证据通过验证后提交、推送，再合入本仓库 `main`。合并时间及最终提交编号在远端确认后追加。
+首次集成提交 `1f6c9c0`、对话布局及侧锁修复提交 `fce0665`、最终集成提交 `57f759d` 均已推送。[PR #4](https://github.com/1917173927/prism/pull/4) 于2026-10-06 19:30:04（Asia/Shanghai）成功合入本仓库 `main`，合并提交 `60f5f4eca615747d29b80790f5a9913e5eecc423`。GitHub确认merged=true且状态closed，本地main已快进到origin/main；本次上游验收基准82bd219为落后0个提交。原本地与上游历史均在合并提交祖先中。
+
+远端没有配置Check Runs或Commit Status，本次通过依据为实际本地与浏览器验证。API确认保存在 `pr-merged.json`；最后文档归档提交随后推送，提交编号以Git历史为准。
