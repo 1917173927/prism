@@ -7,7 +7,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from enum import StrEnum
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, JsonValue, model_validator
 
 from app.contracts.evidence import ContractModel, NonEmptyStr
 from app.gates import GateStatus
@@ -101,6 +101,7 @@ class PortfolioRebalancingRequest(ContractModel):
     round_to_lot: bool = True
     prices_cny: dict[str, Decimal] = Field(default_factory=dict)
     asset_types: dict[str, AssetType] = Field(default_factory=dict)
+    personal_policy_revision: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def validate_request(self) -> Self:
@@ -133,4 +134,5 @@ class PortfolioRebalancingResponse(ContractModel):
     issues: tuple[str, ...] = ()
     post_trade_health: PortfolioHealthResponse | None = None
     invalidation_conditions: tuple[str, ...] = ()
+    policy_application: dict[str, JsonValue] | None = None
     disclaimer: str = "调仓方案仅供决策参考（ADVISORY_ONLY），不构成自动交易或委托指令。"

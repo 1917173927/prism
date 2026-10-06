@@ -54,6 +54,7 @@ _REASONS = {
     "FUTURE_OBSERVATION": "输入晚于本次研究截止时间。", "STALE_SOURCE": "输入来自过期缓存。",
     "FUTURE_REPORTING_PERIOD": "输入报告期晚于本次研究截止时间。",
     "NON_MONETARY_UNIT": "营业收入与净利润必须使用明确的货币单位。",
+    "UNSUPPORTED_UNIT": "输入单位不符合该字段的已支持口径，暂不能计算。",
     "INVALID_PERIOD": "输入报告期格式无效，需明确有效的财务报告期。",
     "ZERO_DENOMINATOR": "分母为零，无法计算比率。", "NUMERIC_RANGE": "数值超出可计算范围。",
     "AMBIGUOUS_INPUT": "同一指标存在不一致的输入，需先核实来源。", "SKILL_UNAVAILABLE": "指定版本的数据工具已停用或不可用。",
@@ -190,13 +191,25 @@ def _period(value):
     raise PersonalResearchInvalid("unsupported reporting period")
 
 
-def _unit(unit):
-    currencies = {"CNY": 1, "元": 1, "人民币元": 1, "万元": 10000, "亿元": 100000000}
-    if unit in currencies:
-        return "CNY", Decimal(currencies[unit])
-    if unit in {"%", "百分比"}:
-        return "%", Decimal(1)
-    return unit, Decimal(1)
+def _unit(field, unit):
+    """A field's meaning and explicit unit jointly determine its dimension.
+
+    Raw units are never passed through. Monetary totals, security prices,
+    per-unit fund NAVs and valuation multiples remain distinct dimensions.
+    """
+    if not isinstance(unit, str):
+        return None
+    unit = unit.strip()
+    if field in {"revenue", "net_profit"}:
+        currencies = {"CNY": 1, "元": 1, "人民币元": 1, "万元": 10000, "亿元": 100000000}
+        return ("CNY", Decimal(currencies[unit])) if unit in currencies else None
+    if field == "price" and unit in {"CNY", "元", "人民币元", "元/股", "元每股", "CNY/share"}:
+        return "元/股", Decimal(1)
+    if field == "nav" and unit in {"CNY", "元", "人民币元", "元/份", "元每份", "人民币元/份", "CNY/unit"}:
+        return "元/份", Decimal(1)
+    if field == "pe" and unit in {"倍", "倍数", "ratio"}:
+        return "倍", Decimal(1)
+    return None
 
 
 def _unavailable(indicator, reason, **extra):
@@ -250,11 +263,11 @@ def calculate_personal_indicators(definition, data_agents, *, subject, period=No
                     reason = "MISSING_PERIOD"
                 elif item.get("period") is not None and _period(item["period"]) > as_of.date().isoformat():
                     reason = "FUTURE_REPORTING_PERIOD"
-                elif field in {"revenue", "net_profit"} and _unit(item["unit"])[0] != "CNY":
-                    reason = "NON_MONETARY_UNIT"
+                elif _unit(field, item["unit"]) is None:
+                    reason = "NON_MONETARY_UNIT" if field in {"revenue", "net_profit"} else "UNSUPPORTED_UNIT"
                 if reason:
                     break
-                unit, multiplier = _unit(item["unit"])
+                unit, multiplier = _unit(field, item["unit"])
                 canonical.append({"value": Decimal(item["value"]) * multiplier, "unit": unit,
                                   "subject": subject, "period": _period(item.get("period")),
                                   "observed_at": item["observed_at"], "evidence_refs": [item.get("fact_id") or item["evidence_id"]],
@@ -512,29 +525,61 @@ class PersonalResearchService:
         run["status"] = "COMPLETED" if all(i["status"] == "CALCULATED" for i in run["indicators"]) else "PARTIAL"
         run["verification_status"] = "DERIVED_FROM_SINGLE_SOURCE_UNVERIFIED"
 
-    def from_facts(self, owner_id, system_id, request: PersonalResearchFactRun):
+    async def from_facts(self, owner_id, system_id, request: PersonalResearchFactRun):
         if self.facts is None:
             raise PersonalResearchInvalid("stored research facts are unavailable")
         record, definition = self._prepare(owner_id, system_id, request)
         self._validate_skills(owner_id, definition, require_callable=True)
         if set(request.fact_ids) != {agent.agent_id for agent in definition.data_agents}:
             raise PersonalResearchInvalid("stored facts must bind every defined data agent")
-        run = self._new_run(owner_id, record, request, "STORED_FACTS")
+        if len(self._tasks) >= self.max_runs:
+            raise ResearchCapacityError("personal research run retention is exhausted")
         began = time.perf_counter()
-        try:
+        run = self._new_run(owner_id, record, request, "STORED_FACTS")
+        self._tasks[run["run_id"]] = asyncio.current_task()
+
+        def checkpoint():
+            # asyncio.timeout cannot interrupt bounded synchronous database
+            # reads or arithmetic until the loop yields. Enforce their elapsed
+            # budget explicitly, including any earlier queue wait.
+            if time.perf_counter() - began >= request.budget_seconds:
+                raise TimeoutError("stored-fact research deadline expired")
+
+        async def operation():
+            checkpoint()
+            self._validate_skills(owner_id, definition, require_callable=True)
+            run["status"] = "RUNNING"
+            self._persist(owner_id, run)
             for agent in definition.data_agents:
+                checkpoint()
                 skill = self.registry.get(agent.skill_id, agent.version)
-                facts = [self.facts.get(owner_id, fact_id) for fact_id in request.fact_ids[agent.agent_id]]
+                facts = []
+                for fact_id in request.fact_ids[agent.agent_id]:
+                    facts.append(self.facts.get(owner_id, fact_id))
+                    checkpoint()
+                    await asyncio.sleep(0)
                 if any(fact.get("input_versions", {}).get("skill_id") != agent.skill_id or fact.get("input_versions", {}).get("skill_version") != agent.version for fact in facts):
                     raise PersonalResearchInvalid("stored facts must come from the bound capability version")
                 run["data_agents"].append({"agent_id": agent.agent_id, "name": agent.name, "operation": skill["operation"], "status": "SUCCESS", "observations": facts, "fact_refs": list(request.fact_ids[agent.agent_id]), "input_mode": "STORED_FACTS"})
+            checkpoint()
             self._calculate(run, definition)
-        except BaseException:
+            checkpoint()
+            return run
+
+        try:
+            await self.runtime.run(owner_id, operation, budget_seconds=request.budget_seconds)
+        except asyncio.CancelledError:
+            run["status"] = "CANCELLED"
+            raise
+        except TimeoutError:
+            run["status"] = "TIMED_OUT"
+        except Exception:
             run["status"] = "FAILED"
             raise
         finally:
             run.update(finished_at=self.clock().isoformat(), elapsed_ms=round((time.perf_counter() - began) * 1000, 3))
             self._persist(owner_id, run)
+            self._tasks.pop(run["run_id"], None)
         return run
 
     def get_run(self, owner_id, run_id):

@@ -14,19 +14,23 @@ from app.store.sqlite import StoreConflictError
 def create_personal_research_router(*, service, owner_dependency):
     router = APIRouter(prefix="/api/v1/personal-research")
 
+    def failure(error):
+        for kind, status, detail in (
+            ((PersonalResearchNotFound, ResearchFactNotFound), 404, "PERSONAL_RESEARCH_NOT_FOUND"),
+            (StoreConflictError, 409, "PERSONAL_RESEARCH_REVISION_CONFLICT"),
+            (SkillUnavailable, 409, "PERSONAL_RESEARCH_SKILL_UNAVAILABLE"),
+            (PersonalResearchInvalid, 422, "PERSONAL_RESEARCH_INVALID"),
+            (ResearchCapacityError, 429, "RESEARCH_CAPACITY"),
+        ):
+            if isinstance(error, kind):
+                raise HTTPException(status, detail=detail) from None
+        raise error
+
     def call(operation):
         try:
             return operation()
-        except (PersonalResearchNotFound, ResearchFactNotFound):
-            raise HTTPException(404, detail="PERSONAL_RESEARCH_NOT_FOUND") from None
-        except StoreConflictError:
-            raise HTTPException(409, detail="PERSONAL_RESEARCH_REVISION_CONFLICT") from None
-        except SkillUnavailable:
-            raise HTTPException(409, detail="PERSONAL_RESEARCH_SKILL_UNAVAILABLE") from None
-        except PersonalResearchInvalid:
-            raise HTTPException(422, detail="PERSONAL_RESEARCH_INVALID") from None
-        except ResearchCapacityError:
-            raise HTTPException(429, detail="RESEARCH_CAPACITY") from None
+        except Exception as error:
+            failure(error)
 
     @router.get("/catalog")
     def catalog(owner_id=Depends(owner_dependency)):
@@ -49,8 +53,11 @@ def create_personal_research_router(*, service, owner_dependency):
         return call(lambda: service.submit(owner_id, system_id, body))
 
     @router.post("/systems/{system_id}/fact-runs")
-    def run_stored_facts(system_id: str, body: PersonalResearchFactRun, owner_id=Depends(owner_dependency)):
-        return call(lambda: service.from_facts(owner_id, system_id, body))
+    async def run_stored_facts(system_id: str, body: PersonalResearchFactRun, owner_id=Depends(owner_dependency)):
+        try:
+            return await service.from_facts(owner_id, system_id, body)
+        except Exception as error:
+            failure(error)
 
     @router.get("/runs/{run_id}")
     def get_run(run_id: str, owner_id=Depends(owner_dependency)):

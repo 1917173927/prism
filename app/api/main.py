@@ -15,6 +15,7 @@ from time import monotonic
 
 from fastapi import Body, Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.access import LocalAccessMiddleware, LocalAccount, load_accounts, password_digest
@@ -25,6 +26,9 @@ from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
 from app.service.personal_research import PersonalResearchService
 from app.api.personal_research_routes import create_personal_research_router
+from app.api.investment_memory_routes import create_investment_memory_router
+from app.service.investment_memory import InvestmentMemoryService, InvestmentPolicyStale
+from app.gates import GateStatus
 from app.api.research_routes import create_research_router
 from app.api.algorithm_routes import create_algorithm_router
 from app.service.research_runtime import ResearchRuntime
@@ -1141,6 +1145,19 @@ def create_app(
 
     @api.exception_handler(HTTPException)
     async def http_error_handler(_: Request, exc: HTTPException) -> JSONResponse:
+        personal_errors = {
+            "PERSONAL_REBALANCING_CONTEXT_CHANGED": "当前持仓已变化，请重新生成基础调仓方案后再对比。",
+            "PERSONAL_REBALANCING_PORTFOLIO_REQUIRED": "请先导入并确认当前持仓。",
+            "PERSONAL_REBALANCING_PROFILE_REQUIRED": "请先完成并确认投资偏好问卷，再计算个人调仓方案。",
+            "LIVE_PORTFOLIO_REFRESH_REQUIRED": "请先刷新真实行情，再使用当前持仓计算。",
+            "INVESTMENT_POLICY_STALE": "长期偏好的依据已变化，请重新读取并确认候选风格。",
+            "INVESTMENT_MEMORY_REVISION_CONFLICT": "长期偏好已被更新，请刷新后再次保存。",
+            "PERSONAL_RESEARCH_REVISION_CONFLICT": "研究系统已更新，请读取最新版本后运行。",
+            "PERSONAL_RESEARCH_SKILL_UNAVAILABLE": "系统引用的数据工具版本已停用，请调整工具配置后保存。",
+            "PERSONAL_RESEARCH_INVALID": "研究配置或输入期间无效，请检查指标依赖与日期。",
+        }
+        if isinstance(exc.detail, str) and exc.detail in personal_errors:
+            return _error_response(exc.status_code, exc.detail, personal_errors[exc.detail])
         if exc.status_code == 404:
             return _error_response(404, "NOT_FOUND", "decision event was not found")
         return _error_response(exc.status_code, "HTTP_ERROR", "request was refused")
@@ -1176,6 +1193,9 @@ def create_app(
         registry=skill_registry, runtime=research_runtime, clock=active_clock, facts=research_facts)
     api.state.personal_research_service = personal_research_service
     api.include_router(create_personal_research_router(service=personal_research_service, owner_dependency=owner_dependency))
+    investment_memory_service = InvestmentMemoryService(active_store, clock=active_clock,
+                                                       planner=active_portfolio_rebalancing)
+    api.state.investment_memory_service = investment_memory_service
     knowledge_service = KnowledgeService(active_store, clock=active_clock)
     knowledge_crawler = KnowledgeCrawler(knowledge_service)
     api.state.knowledge_service = knowledge_service
@@ -2974,6 +2994,48 @@ def create_app(
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
 
+    def bound_trade_inputs(bundle):
+        prices = {position.asset_id: position.market_value / position.quantity
+                  for position in bundle.position_snapshot.positions
+                  if position.quantity > 0 and position.asset_type.value != "CASH"}
+        types = {position.asset_id: position.asset_type for position in bundle.position_snapshot.positions}
+        return prices, types
+
+    def personal_rebalancing_request(owner_id, body):
+        mode = get_runtime_mode_controller().mode
+        current = active_store.get_current_portfolio(owner_id, mode.value)
+        supplied = body.bundle
+        if supplied is not None and supplied.owner_id != owner_id:
+            raise StoreOwnerError("personal rebalancing portfolio owner mismatch")
+        if current is not None:
+            bundle = PortfolioImportBundle.model_validate(current["portfolio"])
+            if supplied is not None and fingerprint(supplied.model_dump(mode="json")) != fingerprint(bundle.model_dump(mode="json")):
+                raise HTTPException(409, detail="PERSONAL_REBALANCING_CONTEXT_CHANGED")
+        elif supplied is not None and mode != DataMode.LIVE:
+            bundle = supplied
+        else:
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_PORTFOLIO_REQUIRED")
+        if mode == DataMode.LIVE and not is_trusted_live_portfolio(owner_id, bundle):
+            raise HTTPException(409, detail="LIVE_PORTFOLIO_REFRESH_REQUIRED")
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+        if snapshot is None:
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_PROFILE_REQUIRED")
+        profile = snapshot.profile
+        behavior = active_store.get_latest_behavior_profile(owner_id)
+        if behavior and behavior.questionnaire_profile_id == profile.profile_id:
+            profile = effective_risk_profile(profile, behavior)
+        # Price and asset identity are financial facts, not adjustable scenario
+        # parameters. Derive them from the same server-bound position snapshot.
+        bound_prices, bound_types = bound_trade_inputs(bundle)
+        return PortfolioRebalancingRequest(request_id="personal-rebalance:" + uuid4().hex,
+            owner_id=owner_id, generated_at=active_clock(), bundle=bundle, confirmed_profile=profile,
+            target_weights=body.target_weights, deadband_pct=body.deadband_pct,
+            max_turnover_pct=body.max_turnover_pct, minimum_cash_pct=body.minimum_cash_pct,
+            prices_cny=bound_prices, asset_types=bound_types, round_to_lot=True)
+
+    api.include_router(create_investment_memory_router(service=investment_memory_service,
+        owner_dependency=owner_dependency, rebalance_request_builder=personal_rebalancing_request))
+
     @api.get(
         "/api/v1/advisor/rebalancing-template",
     )
@@ -3017,6 +3079,20 @@ def create_app(
                 "LIVE_PORTFOLIO_REFRESH_REQUIRED",
                 "调仓输入未绑定本服务进程生成的真实行情刷新结果",
             )
+        if get_runtime_mode_controller().mode == DataMode.LIVE:
+            prices, types = bound_trade_inputs(request.bundle)
+            request = request.model_copy(update={"prices_cny": prices, "asset_types": types, "round_to_lot": True})
+        if request.personal_policy_revision is not None:
+            try:
+                policy = investment_memory_service.resolve_policy(owner_id, request.personal_policy_revision)
+                bound = personal_rebalancing_request(owner_id, request).model_copy(update={"request_id": request.request_id})
+                adjusted, details = investment_memory_service.apply_policy(bound, policy)
+                result = active_portfolio_rebalancing.plan_rebalancing(adjusted)
+                issues = tuple(dict.fromkeys((*result.issues, *details["application_issues"])))
+                return result.model_copy(update={"policy_application": jsonable_encoder(details, custom_encoder={Decimal: str}),
+                    "issues": issues, "status": GateStatus.REVIEW_REQUIRED if issues else result.status})
+            except InvestmentPolicyStale:
+                raise HTTPException(409, detail="INVESTMENT_POLICY_STALE") from None
         return active_portfolio_rebalancing.plan_rebalancing(request)
 
     @api.get(

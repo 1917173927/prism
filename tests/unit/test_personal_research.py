@@ -1,6 +1,7 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+import time
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -9,7 +10,7 @@ import pytest
 from app.api.personal_research_routes import create_personal_research_router
 from app.providers.contracts import ProviderRecord, ProviderResult
 from app.providers.fingerprint import compute_request_fingerprint
-from app.service.personal_research import (PersonalIndicator, PersonalResearchDefinition,
+from app.service.personal_research import (DataAgent, PersonalIndicator, PersonalResearchDefinition,
     PersonalResearchFactRun, PersonalResearchInvalid, PersonalResearchNotFound, PersonalResearchRun,
     PersonalResearchSave, PersonalResearchService, calculate_personal_indicators, profitability_template)
 from app.service.research_facts import ResearchFactRepository
@@ -168,11 +169,12 @@ def test_saved_system_runs_exact_skill_version_and_persists_live_facts(store):
         with pytest.raises(PersonalResearchNotFound):
             research.get_run("bob", run["run_id"])
         facts_for_run = facts.list_run("alice", run["run_id"])
-        replay = research.from_facts("alice", "profitability", PersonalResearchFactRun(expected_revision=1, subject="600519", period="2025-Q4", fact_ids={"finance": tuple(item["fact_id"] for item in facts_for_run)}))
+        replay = await research.from_facts("alice", "profitability", PersonalResearchFactRun(expected_revision=1, subject="600519", period="2025-Q4", fact_ids={"finance": tuple(item["fact_id"] for item in facts_for_run)}))
         assert replay["status"] == "COMPLETED" and replay["data_mode"] == "STORED_FACTS"
         assert provider.calls == 1
         assert replay["indicators"][0]["value"] == run["indicators"][0]["value"]
         assert replay["indicators"][0]["evidence_refs"] == sorted(item["fact_id"] for item in facts_for_run)
+        assert research.runtime.snapshot()["completed"] == 2
         await research.aclose()
         await research.runtime.aclose()
     asyncio.run(scenario())
@@ -349,7 +351,7 @@ def test_replayed_facts_still_obey_current_capability_and_recorded_version(store
         body = PersonalResearchFactRun(expected_revision=1, subject="600519", fact_ids={"finance": ids})
         research.registry.select("alice", "hithink-finance-query", enabled=False, expected_revision=0)
         with pytest.raises(SkillUnavailable):
-            research.from_facts("alice", "profitability", body)
+            await research.from_facts("alice", "profitability", body)
         research.registry.select("alice", "hithink-finance-query", enabled=True, expected_revision=1)
 
         class WrongVersionRepository:
@@ -359,7 +361,7 @@ def test_replayed_facts_still_obey_current_capability_and_recorded_version(store
 
         research.facts = WrongVersionRepository()
         with pytest.raises(PersonalResearchInvalid):
-            research.from_facts("alice", "profitability", body)
+            await research.from_facts("alice", "profitability", body)
         await research.aclose()
         await research.runtime.aclose()
     asyncio.run(scenario())
@@ -393,3 +395,176 @@ def test_bad_provider_reporting_period_is_unavailable_with_clear_reason(period):
     result, _ = calculate(inputs(observation("revenue", 100, period=period), observation("net_profit", 20)), period=None)
     assert result[0]["status"] == "UNAVAILABLE" and result[0]["reason"] == "INVALID_PERIOD"
     assert "报告期" in result[0]["reason_message"]
+
+
+def field_definition(field, *, second=None):
+    fields = (field, second) if second else (field,)
+    return PersonalResearchDefinition(name="单位口径研究", data_agents=(DataAgent(agent_id="data", name="资料助手",
+        skill_id="hithink-market-query", version="1.0.0", fields=fields),),
+        indicators=(PersonalIndicator(indicator_id="ratio", name="自定义比率", operator="ratio_pct",
+                                      inputs=("data." + field, "data." + (second or field))),))
+
+
+@pytest.mark.parametrize("field,unit", [
+    ("price", "unknown-unit"), ("price", "亿元"), ("price", "万元"), ("price", "%"), ("price", "倍"),
+    ("pe", "unknown-unit"), ("pe", "元"), ("pe", "%"),
+    ("nav", "unknown-unit"), ("nav", "亿元"), ("nav", "元/股"), ("nav", "倍"),
+    ("revenue", "unknown-unit"), ("net_profit", "unknown-unit"),
+])
+def test_field_unit_whitelists_reject_unknown_or_wrong_dimensions(field, unit):
+    result, _ = calculate_personal_indicators(field_definition(field),
+        [{"agent_id": "data", "operation": "MARKET_DATA", "observations": [observation(field, 100, unit=unit, period=None)]}],
+        subject="600519", as_of=NOW)
+    assert result[0]["status"] == "UNAVAILABLE" and result[0]["value"] is None
+    assert result[0]["reason"] in {"UNSUPPORTED_UNIT", "NON_MONETARY_UNIT"}
+    assert "单位" in result[0]["reason_message"]
+
+
+@pytest.mark.parametrize("field,unit", [
+    ("price", "CNY"), ("price", "元"), ("price", "元/股"),
+    ("pe", "倍"), ("pe", "倍数"), ("pe", "ratio"),
+    ("nav", "CNY"), ("nav", "元"), ("nav", "元/份"), ("nav", "元每份"),
+    ("revenue", "CNY"), ("revenue", "万元"), ("net_profit", "亿元"),
+])
+def test_recognized_field_unit_aliases_are_explicitly_normalized(field, unit):
+    result, _ = calculate_personal_indicators(field_definition(field),
+        [{"agent_id": "data", "operation": "MARKET_DATA", "observations": [observation(field, 100, unit=unit, period=None)]}],
+        subject="600519", as_of=NOW)
+    assert result[0]["status"] == "CALCULATED" and Decimal(result[0]["value"]) == 100
+    expected_unit = {"price": "元/股", "pe": "倍", "nav": "元/份", "revenue": "CNY", "net_profit": "CNY"}[field]
+    assert result[0]["input_values"][0]["unit"] == expected_unit
+
+
+def test_price_pe_ratio_and_price_nav_mix_cannot_share_the_same_dimension():
+    for second, unit in (("pe", "倍"), ("nav", "元/份")):
+        result, _ = calculate_personal_indicators(field_definition("price", second=second),
+            [{"agent_id": "data", "operation": "MARKET_DATA", "observations": [observation("price", 200, unit="CNY", period=None), observation(second, 20, unit=unit, period=None)]}],
+            subject="600519", as_of=NOW)
+        assert result[0]["status"] == "UNAVAILABLE" and result[0]["reason"] == "UNIT_MISMATCH"
+
+
+class RecordedFacts:
+    calls = 0
+
+    def get(self, owner_id, fact_id):
+        self.calls += 1
+        metric = "revenue" if fact_id == "revenue" else "net_profit"
+        return observation(metric, 100 if metric == "revenue" else 20, fact_id=metric,
+            input_versions={"skill_id": "hithink-finance-query", "skill_version": "1.0.0"})
+
+
+def replay_request(*, budget=60):
+    return PersonalResearchFactRun(expected_revision=1, subject="600519", budget_seconds=budget,
+                                  fact_ids={"finance": ("revenue", "net_profit")})
+
+
+def test_stored_fact_research_rejects_expired_budget_without_bypassing_runtime(store):
+    async def scenario():
+        facts = RecordedFacts()
+        research = service(store, facts=facts)
+        research.save("alice", "profitability", PersonalResearchSave(definition=profitability_template(), expected_revision=0))
+        result = await research.from_facts("alice", "profitability", replay_request(budget=0.000001))
+        assert result["status"] == "TIMED_OUT" and facts.calls == 0
+        metrics = research.runtime.snapshot()
+        assert metrics["timed_out"] == 1 and metrics["completed"] == metrics["active"] == metrics["waiting"] == 0
+        assert not research._tasks
+        await research.aclose()
+        await research.runtime.aclose()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("slow_stage", ["database", "calculation"])
+def test_stored_fact_budget_checks_blocking_reads_and_arithmetic(store, slow_stage):
+    async def scenario():
+        facts = RecordedFacts()
+        research = service(store, facts=facts)
+        research.save("alice", "profitability", PersonalResearchSave(definition=profitability_template(), expected_revision=0))
+        if slow_stage == "database":
+            original = facts.get
+
+            def delayed_get(owner_id, fact_id):
+                time.sleep(0.15)
+                return original(owner_id, fact_id)
+
+            facts.get = delayed_get
+        else:
+            original = research._calculate
+
+            def delayed_calculate(run, definition):
+                time.sleep(0.15)
+                return original(run, definition)
+
+            research._calculate = delayed_calculate
+        result = await research.from_facts("alice", "profitability", replay_request(budget=0.1))
+        assert result["status"] == "TIMED_OUT" and result["elapsed_ms"] >= 100
+        assert research.runtime.snapshot()["timed_out"] == 1
+        assert research.runtime.snapshot()["active"] == research.runtime.snapshot()["waiting"] == 0
+        await research.aclose()
+        await research.runtime.aclose()
+    asyncio.run(scenario())
+
+
+def test_fact_replay_queue_cancellation_obeys_global_capacity_and_shutdown(store):
+    async def scenario():
+        facts = RecordedFacts()
+        research = service(store, facts=facts)
+        research.runtime = ResearchRuntime(global_limit=1)
+        research.save("alice", "profitability", PersonalResearchSave(definition=profitability_template(), expected_revision=0))
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def hold_slot():
+            entered.set()
+            await release.wait()
+            return {"status": "COMPLETED"}
+
+        held = asyncio.create_task(research.runtime.run("other", hold_slot))
+        await entered.wait()
+        replay = asyncio.create_task(research.from_facts("alice", "profitability", replay_request()))
+        await asyncio.sleep(0)
+        assert research.runtime.snapshot()["waiting"] == 1 and facts.calls == 0
+        run_id = next(iter(research._tasks))
+        cancelled = await research.cancel("alice", run_id)
+        assert cancelled["status"] == "CANCELLED" and replay.cancelled()
+        assert research.runtime.snapshot()["waiting"] == 0 and facts.calls == 0
+        assert research.runtime.snapshot()["cancelled"] == 1
+        second = asyncio.create_task(research.from_facts("alice", "profitability", replay_request()))
+        await asyncio.sleep(0)
+        second_id = next(iter(research._tasks))
+        await research.aclose()
+        assert second.cancelled() and research.get_run("alice", second_id)["status"] == "CANCELLED"
+        assert research.runtime.snapshot()["waiting"] == 0 and facts.calls == 0
+        release.set()
+        await held
+        assert research.runtime.snapshot()["active"] == 0
+        await research.runtime.aclose()
+    asyncio.run(scenario())
+
+
+def test_stored_fact_budget_contains_queue_time_and_rechecks_disabled_skill(store):
+    async def scenario():
+        facts = RecordedFacts()
+        research = service(store, facts=facts)
+        research.runtime = ResearchRuntime(global_limit=1)
+        research.save("alice", "profitability", PersonalResearchSave(definition=profitability_template(), expected_revision=0))
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def hold_slot():
+            entered.set()
+            await release.wait()
+            return {"status": "COMPLETED"}
+
+        held = asyncio.create_task(research.runtime.run("other", hold_slot))
+        await entered.wait()
+        result = await research.from_facts("alice", "profitability", replay_request(budget=0.01))
+        assert result["status"] == "TIMED_OUT" and facts.calls == 0
+        queued = asyncio.create_task(research.from_facts("alice", "profitability", replay_request()))
+        await asyncio.sleep(0)
+        research.registry.select("alice", "hithink-finance-query", enabled=False, expected_revision=0)
+        release.set()
+        await held
+        with pytest.raises(SkillUnavailable):
+            await queued
+        assert facts.calls == 0 and research.runtime.snapshot()["active"] == research.runtime.snapshot()["waiting"] == 0
+        await research.aclose()
+        await research.runtime.aclose()
+    asyncio.run(scenario())
