@@ -43,6 +43,8 @@ from app.providers.fuyao import (
     FuyaoProviderError,
 )
 from app.runtime.mode import DataMode, get_runtime_mode_controller
+from app.store.sqlite import StoreConflictError
+from app.service.research_runtime import ResearchCapacityError
 
 
 class CopilotMessage(BaseModel):
@@ -79,11 +81,12 @@ class CopilotAgent:
         self.security_directory_provider = security_directory_provider
         self.on_wencai_failure = on_wencai_failure
 
-    def with_owner(self, owner_id: str, *, registry=None, knowledge_service=None):
+    def with_owner(self, owner_id: str, *, registry=None, knowledge_service=None, personal_research_service=None):
         """Clone request bindings without mutating the shared agent or providers."""
         scoped = copy(self)
         scoped.authorized_owner = owner_id
         scoped.knowledge_service = knowledge_service
+        scoped.personal_research_service = personal_research_service
         if registry is not None:
             scoped.skillhub_provider = registry.scoped_provider(self.skillhub_provider, owner_id)
             scoped.wencai_provider = scoped.skillhub_provider
@@ -155,7 +158,7 @@ class CopilotAgent:
         if isinstance(active_client, AsyncLLMClient) and active_client.is_configured:
             try:
                 requires_tools = await active_client.requires_financial_tools(messages)
-                requires_tools = requires_tools or any(word in user_message for word in ("知识库", "已上传", "文献", "论文依据"))
+                requires_tools = requires_tools or any(word in user_message for word in ("知识库", "已上传", "文献", "论文依据", "我的研究", "个人技能", "自定义指标"))
             except ValueError as exc:
                 yield {"type": "error", "message": str(exc)}
                 yield {"type": "done", "timestamp": datetime.now(UTC).isoformat()}
@@ -281,6 +284,8 @@ class CopilotAgent:
     @staticmethod
     def _validate_tool_call(name: Any, args: Any) -> tuple[dict[str, Any], str | None]:
         contracts: dict[str, tuple[set[str], set[str]]] = {
+            "list_personal_research_systems": (set(), set()),
+            "run_personal_research_system": ({"system_id", "expected_revision", "subject", "period", "as_of"}, {"system_id", "expected_revision", "subject"}),
             "query_stock_quote": ({"symbol"}, {"symbol"}),
             "query_fund_lookthrough": ({"fund_code"}, {"fund_code"}),
             "query_wencai_semantic": ({"query", "channel"}, {"query"}),
@@ -295,6 +300,11 @@ class CopilotAgent:
         if set(args) - allowed or required - set(args):
             return {}, "模型工具参数未通过契约校验。"
         sanitized = dict(args)
+        if name == "run_personal_research_system":
+            if (not isinstance(sanitized["system_id"], str)
+                or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", sanitized["system_id"])
+                or type(sanitized["expected_revision"]) is not int or sanitized["expected_revision"] < 1):
+                return {}, "模型工具参数未通过契约校验。"
         if name == "query_financial_data" and sanitized["category"] not in (
             "market", "company", "industry", "macro", "fund", "convertible_bond"
         ):
@@ -579,6 +589,22 @@ class CopilotAgent:
                     "is_synthetic": not is_live,
                 },
             }
+
+        if name in {"list_personal_research_systems", "run_personal_research_system"}:
+            service = getattr(self, "personal_research_service", None)
+            owner = getattr(self, "authorized_owner", None)
+            if service is None or not owner:
+                return {"status": "UNAVAILABLE", "message": "个人研究系统未绑定当前认证账户。"}
+            try:
+                if name == "list_personal_research_systems":
+                    return {"status": "SUCCESS", "items": [
+                        {key: item[key] for key in ("system_id", "revision", "name", "personal_skill_id")}
+                        for item in service.list(owner)]}
+                from app.service.personal_research import PersonalResearchRun
+                request = PersonalResearchRun(**{key: value for key, value in args.items() if key != "system_id"}, budget_seconds=30)
+                return await service.run_and_wait(owner, args["system_id"], request)
+            except (ValueError, StoreConflictError, ResearchCapacityError):
+                return {"status": "UNAVAILABLE", "message": "个人研究版本、技能或输入条件已变化，请在研究工具页核对后重新运行。"}
 
         if name == "search_research_knowledge":
             service = getattr(self, "knowledge_service", None)
@@ -1113,6 +1139,27 @@ class CopilotAgent:
         tag = persona.get("tag", "R3 平衡型")
 
         lines: list[str] = []
+
+        personal_tools = [tool for tool in executed_tools if tool["tool"] in {"list_personal_research_systems", "run_personal_research_system"}]
+        if personal_tools:
+            for tool in personal_tools:
+                result = tool["result"]
+                if tool["tool"] == "list_personal_research_systems":
+                    lines.append("当前可复用的个人研究系统：")
+                    lines.extend(f"- {item['name']}（版本 {item['revision']}）" for item in result.get("items", []))
+                    if not result.get("items"):
+                        lines.append(result.get("message", "尚未保存个人研究系统，请先在研究工具页创建。"))
+                else:
+                    lines.append(f"个人研究结果：{result.get('name', '研究系统')}。")
+                    for indicator in result.get("indicators", []):
+                        value = f"{indicator['value']} {indicator['unit']}" if indicator["status"] == "CALCULATED" else indicator.get("reason", "输入不足")
+                        lines.append(f"- {indicator['name']}：{value}")
+                    lines.extend(f"- {observer['name']}：{observer['message']}" for observer in result.get("observers", []))
+                    if not result.get("indicators"):
+                        lines.append(result.get("message", "本次未取得可计算输入，请在研究工具页查看运行记录。"))
+                    lines.append("计算采用保存的指标定义与数据工具；单一来源仍需核对，观察条件不构成买卖指令。")
+            if len(personal_tools) == len(executed_tools):
+                return "\n".join(lines)
 
         knowledge_tool = next((t for t in executed_tools if t["tool"] == "search_research_knowledge"), None)
         if knowledge_tool and len(executed_tools) == 1:

@@ -23,6 +23,8 @@ from app.service.session_truth import TruthConfirmation, TruthInputRequired, cur
 from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
 from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
+from app.service.personal_research import PersonalResearchService
+from app.api.personal_research_routes import create_personal_research_router
 from app.api.research_routes import create_research_router
 from app.api.algorithm_routes import create_algorithm_router
 from app.service.research_runtime import ResearchRuntime
@@ -984,6 +986,7 @@ def create_app(
             yield
         finally:
             await knowledge_crawler.close()
+            await personal_research_service.aclose()
             await live_research_service.aclose()
             await research_runtime.aclose()
             for provider in (active_wencai_provider, active_live_finance):
@@ -1169,6 +1172,10 @@ def create_app(
     api.include_router(create_research_router(store=active_store, provider=active_wencai_provider,
         owner_dependency=owner_dependency, auth_enabled=access_enabled, clock=active_clock, registry=skill_registry,
         runtime=research_runtime, live_service=live_research_service))
+    personal_research_service = PersonalResearchService(store=active_store, provider=active_wencai_provider,
+        registry=skill_registry, runtime=research_runtime, clock=active_clock, facts=research_facts)
+    api.state.personal_research_service = personal_research_service
+    api.include_router(create_personal_research_router(service=personal_research_service, owner_dependency=owner_dependency))
     knowledge_service = KnowledgeService(active_store, clock=active_clock)
     knowledge_crawler = KnowledgeCrawler(knowledge_service)
     api.state.knowledge_service = knowledge_service
@@ -3422,7 +3429,8 @@ def create_app(
             history_objs = [CopilotMessage(role=message.role, content=message.content) for message in history_source]
             assistant_parts: list[str] = []
             stream_failed = False
-            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry, knowledge_service=knowledge_service).stream_chat(
+            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry, knowledge_service=knowledge_service,
+                                                       personal_research_service=personal_research_service).stream_chat(
                 user_message=req.message,
                 history=history_objs,
                 persona_info=req.persona_info,
