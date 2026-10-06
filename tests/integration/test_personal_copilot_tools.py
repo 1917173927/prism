@@ -55,6 +55,21 @@ def test_saved_personal_skill_is_executed_by_owner_scoped_copilot(tmp_path):
             assert provider.calls == 1
             assert CopilotAgent._validate_tool_call("run_personal_research_system", {**args, "owner_id": "alice"})[1]
             assert CopilotAgent._validate_tool_call("run_personal_research_system", {**args, "expected_revision": True})[1]
+
+            class IntentOnlyClient:
+                async def stream_chat(self, messages, **kwargs):
+                    yield {"type": "tool_call", "name": "run_personal_research_system", "arguments": args}
+                    # Model text cannot replace the deterministic financial result.
+                    yield {"type": "content", "delta": "指标为999%"}
+
+            streamed_agent = CopilotAgent(llm_client=IntentOnlyClient()).with_owner("alice", personal_research_service=service)
+            events = [event async for event in streamed_agent.stream_chat(
+                "使用我的研究系统", tool_data_mode=DataMode.MOCK)]
+            finished = next(event for event in events if event["type"] == "tool_done")
+            assert finished["result"]["indicators"][0]["value"] == "20.0000000000"
+            answer = "".join(event.get("delta", "") for event in events if event["type"] == "token")
+            assert "20.0000000000" in answer and "999" not in answer
+            assert provider.calls == 2
             await service.aclose()
             await runtime.aclose()
 

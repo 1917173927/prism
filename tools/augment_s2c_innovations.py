@@ -95,12 +95,12 @@ def paragraph(template, text, *, keep_lines=False):
     return node
 
 
-def summary_table(template):
+def summary_table(template, rows=ROWS):
     table = deepcopy(template)
     source_rows = template.findall("w:tr", NS)
     for row in table.findall("w:tr", NS):
         table.remove(row)
-    for index, values in enumerate(ROWS):
+    for index, values in enumerate(rows):
         row = deepcopy(source_rows[0 if index == 0 else 1])
         for cell, text in zip(row.findall("w:tc", NS), values, strict=True):
             source_paragraph = cell.find("w:p", NS)
@@ -112,7 +112,8 @@ def summary_table(template):
     return table
 
 
-def augment(source: Path, destination: Path, proof_path: Path):
+def augment(source: Path, destination: Path, proof_path: Path, *, intro=INTRO, rows=ROWS,
+            points=POINTS, ending=ENDING, caption="表 3-4 项目创新点与验证依据"):
     source_bytes = source.read_bytes()
     with ZipFile(source) as original:
         root = etree.fromstring(original.read("word/document.xml"))
@@ -124,12 +125,12 @@ def augment(source: Path, destination: Path, proof_path: Path):
         chapter = headings["3.1 项目总体设计"]
         subheading = headings["3.4.2 投资者画像与风险预算映射"]
         prose = body[3]
-        additions = [paragraph(chapter, "3.6 项目创新点"), paragraph(prose, INTRO, keep_lines=True),
-                     summary_table(body[13]), paragraph(body[61], "表 3-4 项目创新点与验证依据")]
-        for heading, first, second in POINTS:
+        additions = [paragraph(chapter, "3.6 项目创新点"), paragraph(prose, intro, keep_lines=True),
+                     summary_table(body[13], rows), paragraph(body[61], caption)]
+        for heading, first, second in points:
             additions.extend([paragraph(subheading, heading), paragraph(prose, first, keep_lines=True),
                               paragraph(prose, second, keep_lines=True)])
-        additions.append(paragraph(prose, ENDING, keep_lines=True))
+        additions.append(paragraph(prose, ending, keep_lines=True))
         section = body.find("w:sectPr", NS)
         if section is not body[-1]:
             raise ValueError("Unexpected document section layout")
@@ -152,12 +153,12 @@ def augment(source: Path, destination: Path, proof_path: Path):
     proof = {"source": str(source), "source_sha256": hashlib.sha256(source_bytes).hexdigest(),
              "output_sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
              "changed_parts": changed, "preserved_original_body_elements": len(originals),
-             "added_body_elements": len(additions), "added_summary_rows": len(ROWS),
+             "added_body_elements": len(additions), "added_summary_rows": len(rows), "added_points": len(points),
              "preserved_styles_headers_footers_media_relationships": True,
              "source_unchanged": True, "zip_crc": "PASS"}
     proof_path.parent.mkdir(parents=True, exist_ok=True)
     proof_path.write_text(json.dumps(proof, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Added five innovations; only document.xml changed: {destination}")
+    print(f"Added {len(points)} innovations; only document.xml changed: {destination}")
 
 
 if __name__ == "__main__":
