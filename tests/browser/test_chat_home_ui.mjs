@@ -337,6 +337,30 @@ try {
   const created = await createdResponse.json();
   assert.equal(created.title, question);
   await checkChatResponse(firstChatResponse, created.conversation_id);
+  const readingLayout = await page.evaluate(() => {
+    const messages = document.querySelector("#copilot-chat-messages");
+    const assistant = messages.querySelector(".chat-msg.assistant .chat-bubble");
+    const avatar = messages.querySelector(".chat-msg.assistant .chat-avatar");
+    const process = messages.querySelector(".chat-process-details");
+    return {
+      messageOverflow: getComputedStyle(messages).overflowY,
+      messageMaxHeight: getComputedStyle(messages).maxHeight,
+      answerBorder: getComputedStyle(assistant).borderTopWidth,
+      answerBackground: getComputedStyle(assistant).backgroundColor,
+      avatarDisplay: getComputedStyle(avatar).display,
+      processLabel: process.querySelector(".chat-process-label").textContent,
+      processOpen: process.open,
+    };
+  });
+  assert.equal(readingLayout.messageOverflow, "visible", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.messageMaxHeight, "none", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.answerBorder, "0px", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.answerBackground, "rgba(0, 0, 0, 0)", JSON.stringify(readingLayout));
+  assert.equal(readingLayout.avatarDisplay, "none", JSON.stringify(readingLayout));
+  assert.ok(["已思考", "处理未完成"].includes(readingLayout.processLabel), JSON.stringify(readingLayout));
+  assert.equal(readingLayout.processOpen, false);
+  await page.click(".chat-msg.assistant .chat-process-details > summary");
+  assert.ok(await page.$eval(".chat-msg.assistant .chat-process-details", node => node.open && node.textContent.includes("协调 Agent")));
   assert.equal(conversationCreateCount(), 1);
   await page.type("#copilot-natural-input", question);
   const [secondChatResponse] = await Promise.all([
@@ -473,8 +497,10 @@ try {
     composerRight: document.querySelector(".copilot-query-box").getBoundingClientRect().right,
     sendRight: document.querySelector("#copilot-submit-query").getBoundingClientRect().right,
     viewportWidth: innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
   }));
   assert.ok(chatOverflow.composerRight <= chatOverflow.viewportWidth && chatOverflow.sendRight <= chatOverflow.viewportWidth, JSON.stringify(chatOverflow));
+  assert.ok(chatOverflow.documentWidth <= chatOverflow.viewportWidth + 1, JSON.stringify(chatOverflow));
   await page.click("#home-history-show");
   await page.waitForFunction(() => document.querySelector(".sidebar").getBoundingClientRect().left === 0);
   await checkHistoryEditLayout();

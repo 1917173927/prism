@@ -10580,6 +10580,15 @@
     messages?.querySelector("[data-chat-empty-state]")?.remove();
   }
 
+  function scrollChatToLatest(messages, force = false) {
+    if (getComputedStyle(messages).overflowY !== "visible") {
+      messages.scrollTop = messages.scrollHeight;
+      return;
+    }
+    const distance = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+    if (force || distance < 220) window.scrollTo({top: document.documentElement.scrollHeight, behavior: "auto"});
+  }
+
   function appendChatMessage(role, content) {
     const messages = byId("copilot-chat-messages");
     if (!messages) return null;
@@ -10595,7 +10604,7 @@
     else bubble.append(content);
     row.append(avatar, bubble);
     messages.append(row);
-    messages.scrollTop = messages.scrollHeight;
+    scrollChatToLatest(messages);
     return row;
   }
 
@@ -10799,7 +10808,7 @@
     } else {
       chatHistory.forEach(message => appendChatMessage(message.role, message.content));
     }
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (chatHistory.length) scrollChatToLatest(messagesContainer, true);
     const panel = byId("copilot-chat-panel");
     if (panel) panel.style.display = "block";
     const title = byId("active-chat-title");
@@ -10941,6 +10950,8 @@
     else chatSessions.unshift(session);
     activeChatSessionId = sessionId;
     chatHistory.splice(0, chatHistory.length, ...session.messages);
+    const output = byId("copilot-decision-output");
+    if (output) clear(output);
     renderActiveChatMessages();
     renderChatSessionList();
     persistChatSessions();
@@ -11151,6 +11162,16 @@
     return step;
   }
 
+  const CHAT_TOOL_LABELS = Object.freeze({
+    query_stock_quote: "查询个股行情",
+    query_fund_lookthrough: "查询基金持仓",
+    query_wencai_semantic: "查询问财资料",
+    query_financial_data: "查询金融数据",
+    search_research_knowledge: "检索研究资料",
+    run_portfolio_health_check: "检查持仓风险",
+    generate_portfolio_rebalance: "测算持仓调整",
+  });
+
   function setPipelineStepState(stepEl, status) {
     if (!stepEl) return;
     stepEl.classList.remove("pending", "active", "completed", "skipped", "failed");
@@ -11241,9 +11262,11 @@
     const messagesContainer = byId("copilot-chat-messages");
     if (chatPanel) chatPanel.style.display = "block";
     if (!messagesContainer) return;
+    const output = byId("copilot-decision-output");
+    if (output) clear(output);
 
     clearChatEmptyState(messagesContainer);
-    // User Message Bubble
+    // 用户消息
     const userMsgRow = document.createElement("div");
     userMsgRow.className = "chat-msg user";
     const userAvatar = document.createElement("div");
@@ -11255,7 +11278,7 @@
     userMsgRow.append(userAvatar, userBubble);
     messagesContainer.append(userMsgRow);
 
-    // Assistant Message Bubble with Progress Pipeline
+    // 回答与本轮处理过程保持在同一条消息中。
     const aiMsgRow = document.createElement("div");
     aiMsgRow.className = "chat-msg assistant";
     const aiAvatar = document.createElement("div");
@@ -11263,6 +11286,19 @@
     aiAvatar.textContent = "P";
     const aiBubble = document.createElement("div");
     aiBubble.className = "chat-bubble";
+
+    const processDetails = document.createElement("details");
+    processDetails.className = "chat-process-details";
+    const processSummary = document.createElement("summary");
+    const processLabel = document.createElement("span");
+    processLabel.className = "chat-process-label";
+    processLabel.textContent = "正在思考";
+    processSummary.append(processLabel);
+    const processBody = document.createElement("div");
+    processBody.className = "chat-process-body";
+    const agentStatus = document.createElement("div");
+    agentStatus.className = "chat-process-agent";
+    agentStatus.textContent = "协调 Agent · 处理中";
 
     const pipelineBox = document.createElement("div");
     pipelineBox.className = "chat-pipeline-box";
@@ -11278,23 +11314,9 @@
     stepsGrid.append(s1, s2, s3, s4);
     pipelineBox.append(pipeHead, stepsGrid);
 
-    const progressLabel = document.createElement("span");
-    progressLabel.className = "chat-progress-label";
-    progressLabel.textContent = "正在理解问题…";
-    const progressTrack = document.createElement("span");
-    progressTrack.className = "chat-progress-track";
-    const progressBar = document.createElement("span");
-    progressBar.className = "chat-progress-bar";
-    progressBar.style.width = "10%";
-    progressTrack.append(progressBar);
-
-    const thinkingBox = document.createElement("div");
-    thinkingBox.className = "chat-thinking-tag";
-    thinkingBox.style.display = "none";
-    thinkingBox.textContent = "正在核对结构化事实、阈值与证据来源…";
-
     const toolsContainer = document.createElement("div");
     toolsContainer.className = "chat-tools-container";
+    const activeToolTags = new Map();
 
     const contentBox = document.createElement("div");
     contentBox.className = "chat-content-box";
@@ -11303,13 +11325,12 @@
     cursor.className = "typing-cursor";
     contentBox.append(cursor);
 
-    // The compact bar reports overall activity next to Send. The four-stage
-    // card stays mounted in the answer so each real stream transition remains visible.
-    byId("chat-send-progress").replaceChildren(pipelineBox);
-    aiBubble.append(contentBox);
+    processBody.append(agentStatus, pipelineBox, toolsContainer);
+    processDetails.append(processSummary, processBody);
+    aiBubble.append(processDetails, contentBox);
     aiMsgRow.append(aiAvatar, aiBubble);
     messagesContainer.append(aiMsgRow);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    scrollChatToLatest(messagesContainer, true);
 
     const contextScope = chatTruth?.revision ? `truth:workbench:${chatTruth.revision}` : "general";
     chatHistory.push({ role: "user", content: query, context_scope: contextScope });
@@ -11383,8 +11404,11 @@
             receivedDone = true;
             if (!streamError) {
               pipeHead.textContent = "分析已完成";
-              progressLabel.textContent = "分析已完成";
-              progressBar.style.width = "100%";
+              processLabel.textContent = "已思考";
+              processDetails.classList.add("is-complete");
+              processDetails.open = false;
+              agentStatus.textContent = "协调 Agent · 已完成";
+              byId("chat-send-progress").textContent = "分析已完成";
               if (s1.classList.contains("active")) setPipelineStepState(s1, "completed");
               if (s2.classList.contains("active")) setPipelineStepState(s2, "completed");
               if (s3.classList.contains("active")) setPipelineStepState(s3, "completed");
@@ -11429,9 +11453,7 @@
               if (policyMode) policyMode.textContent = mode;
             } else if (event.type === "thinking") {
               pipeHead.textContent = "正在核对资料…";
-              progressLabel.textContent = "正在核对资料…";
-              progressBar.style.width = "35%";
-              thinkingBox.style.display = "inline-flex";
+              byId("chat-send-progress").textContent = pipeHead.textContent;
             } else if (event.type === "tool_start") {
               if (!toolStarted) {
                 toolStarted = true;
@@ -11439,19 +11461,28 @@
                 setPipelineStepState(s2, "active");
               }
               pipeHead.textContent = "正在查询真实数据…";
-              progressLabel.textContent = "正在查询真实数据…";
-              progressBar.style.width = "60%";
+              byId("chat-send-progress").textContent = pipeHead.textContent;
               const toolChip = document.createElement("span");
               toolChip.className = "chat-tool-tag";
-              toolChip.textContent = `调用工具：${event.tool}`;
+              toolChip.textContent = `工具 · ${CHAT_TOOL_LABELS[event.tool] || event.tool} · 处理中`;
+              activeToolTags.set(event.tool, toolChip);
               toolsContainer.append(toolChip);
             } else if (event.type === "tool_done") {
               if (event.tool === "query_stock_quote" && event.result?.status === "SUCCESS" && event.result.data) {
-                const output = byId("copilot-decision-output");
-                if (output) { clear(output); output.append(buildCopilotStockCard(event.result)); }
+                const details = document.createElement("details");
+                details.className = "chat-result-details";
+                const summary = document.createElement("summary");
+                summary.textContent = "查看本轮行情与财务数据";
+                details.append(summary, buildCopilotStockCard(event.result));
+                aiBubble.append(details);
               }
               const toolStatus = event.result?.status || "FAILED";
               const currentToolFailed = ["FAILED", "BLOCKED", "REJECTED"].includes(toolStatus);
+              const toolChip = activeToolTags.get(event.tool);
+              if (toolChip) {
+                toolChip.textContent = `工具 · ${CHAT_TOOL_LABELS[event.tool] || event.tool} · ${currentToolFailed ? "未完成" : "已完成"}`;
+                toolChip.dataset.status = currentToolFailed ? "failed" : "complete";
+              }
               if (event.result?.error_code === "DETERMINISTIC_CONTEXT_REQUIRED") {
                 const action = document.createElement("button");
                 action.type = "button"; action.className = "copilot-action-btn secondary";
@@ -11470,8 +11501,7 @@
               pipeHead.textContent = currentToolFailed
                 ? "真实数据工具未完成，正在整理失败边界…"
                 : "已取得数据，正在继续处理…";
-              progressLabel.textContent = pipeHead.textContent;
-              progressBar.style.width = "68%";
+              byId("chat-send-progress").textContent = pipeHead.textContent;
               if (
                 event.result
                 && event.result.status === "FAILED"
@@ -11488,8 +11518,7 @@
               pipeHead.textContent = toolFailed
                 ? "正在组织失败说明…"
                 : "正在核验事实与约束…";
-              progressLabel.textContent = "正在核验事实与约束…";
-              progressBar.style.width = "75%";
+              byId("chat-send-progress").textContent = pipeHead.textContent;
             } else if (event.type === "research_skipped") {
               setPipelineStepState(s1, "completed");
               setPipelineStepState(s2, "skipped");
@@ -11508,18 +11537,15 @@
               }
               setPipelineStepState(s4, "active");
               pipeHead.textContent = "正在生成回复…";
-              progressLabel.textContent = "正在生成回复…";
-              progressBar.style.width = "85%";
+              byId("chat-send-progress").textContent = pipeHead.textContent;
               fullText += event.delta;
               cursor.remove();
               renderAssistantMarkdown(contentBox, fullText);
               contentBox.append(cursor);
-              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              scrollChatToLatest(messagesContainer);
             } else if (event.type === "done" && !streamError) {
               setPipelineStepState(s4, "completed");
               pipeHead.textContent = "分析已完成";
-              progressLabel.textContent = "分析已完成";
-              progressBar.style.width = "100%";
             }
           } catch (e) {
             streamError = "分析响应格式异常";
@@ -11533,7 +11559,6 @@
       if (!receivedDone) throw new Error("分析连接提前结束，结果不完整");
       if (turnContextRevision !== chatContextRevision) return;
       cursor.remove();
-      thinkingBox.style.display = "none";
       renderAssistantMarkdown(contentBox, fullText);
       chatHistory.push({ role: "assistant", content: fullText, context_scope: contextScope });
       saveCopilotChatHistory();
@@ -11542,7 +11567,10 @@
       cursor.remove();
       if (turnContextRevision !== chatContextRevision) return;
       pipeHead.textContent = "分析未完成";
-      progressLabel.textContent = "分析未完成";
+      processLabel.textContent = "处理未完成";
+      processDetails.classList.add("is-error");
+      agentStatus.textContent = "协调 Agent · 处理未完成";
+      byId("chat-send-progress").textContent = "分析未完成";
       [s1, s2, s3, s4].forEach(step => {
         if (step.classList.contains("active")) setPipelineStepState(step, "failed");
       });

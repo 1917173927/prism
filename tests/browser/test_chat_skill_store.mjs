@@ -73,7 +73,7 @@ try {
     await page.waitForFunction(() => !document.getElementById("copilot-submit-query").disabled, {timeout: 60000});
     const result = await page.$eval(".chat-msg.assistant:last-child .chat-content-box", node => node.textContent.trim());
     assert.ok(result.length > 0 && !result.startsWith("请求未完成：") && !result.startsWith("分析已停止"), result);
-    assert.ok(await page.$eval("#chat-send-progress", node => node.textContent.includes("分析已完成")));
+    assert.equal(await page.$eval(".chat-msg.assistant:last-child .chat-process-label", node => node.textContent), "已思考");
     return result.length;
   }
   async function saveModel(model) {
