@@ -1,0 +1,17 @@
+{
+  "status": "PROPOSED_AWAITING_USER_CONFIRMATION",
+  "application_changes": false,
+  "source_sha256": "5e5dee7c2988e3ea38b23e9991cf4332f28077abf95a5ab5d755acf4dde0c14e",
+  "output_sha256": "6c39e71649b7fb22f68b39dc53e62780257658877c49c5d0bd8842978768b616",
+  "changed_parts": [
+    "word/document.xml"
+  ],
+  "preserved_body_elements": 155,
+  "added_body_elements": 22,
+  "proposals": 5,
+  "preserved_media": 24,
+  "source_unchanged": true,
+  "zip_crc": "PASS",
+  "download_copy_sha256": "6c39e71649b7fb22f68b39dc53e62780257658877c49c5d0bd8842978768b616",
+  "download_copy_identical": true
+}
