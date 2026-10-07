@@ -1,0 +1,99 @@
+{
+  "status": "PASS",
+  "generator": "built-in image_gen",
+  "images": [
+    {
+      "file": "01-constrained-method-definition.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1271793,
+      "sha256": "14d90644bfb243581dadb1938dfe0facc0c34c26a64a0f26b0453c56e9e5d1e1"
+    },
+    {
+      "file": "02-content-fingerprint-events.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1437735,
+      "sha256": "763ed33d53c087cac782e17d0e12725305c88ee369dfa8306437f25c8281ffad"
+    },
+    {
+      "file": "03-announcement-exposure-paths.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1362463,
+      "sha256": "23afe69d35afcc41d1f271f5ece576070bfc7f660881664608b74717b4c7c07f"
+    },
+    {
+      "file": "04-gated-virtual-ledger.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1669117,
+      "sha256": "2b9fce9e6d1122bca5bc2355a14a9d0b31891498b6385308a635946d6fb9ed2a"
+    },
+    {
+      "file": "05-dated-funding-pool.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1702390,
+      "sha256": "7b4471864a88d457529bb07e1b2cdaf3569d1a9b2752fd4df1c5158df91198b6"
+    }
+  ],
+  "examples": {
+    "margin_pct": "20.0",
+    "indirect_exposure_cny": "1000",
+    "known_exposure_cny": "11000",
+    "known_exposure_pct": "55",
+    "funding_schedule": {
+      "timeline": [
+        {
+          "date": "2026-10-08",
+          "kind": "GOAL",
+          "id": "near",
+          "name": "near",
+          "amount_cny": "40000",
+          "funded_cny": "30000",
+          "shortfall_cny": "10000",
+          "remaining_cash_cny": "0"
+        },
+        {
+          "date": "2026-11-07",
+          "kind": "INCOME",
+          "id": "later",
+          "name": "later",
+          "amount_cny": "20000",
+          "funded_cny": "0",
+          "shortfall_cny": "0",
+          "remaining_cash_cny": "20000"
+        }
+      ],
+      "initial_cash_cny": "30000",
+      "remaining_cash_cny": "20000",
+      "required_initial_cash_cny": "40000",
+      "current_cash_gap_cny": "10000",
+      "status": "SHORTFALL",
+      "method_version": "dated-funding-pool.v1"
+    }
+  },
+  "checks": [
+    "decimal_examples",
+    "hypothesis_states",
+    "content_signature",
+    "dated_funding",
+    "png_decode",
+    "aspect_ratio",
+    "prompt_presence"
+  ],
+  "source_sha256": {
+    "app/service/research_method_builder.py": "86b37b65cf5cc29971e64b3879baf07c2d5541e035926e223821bf6f128ea847",
+    "app/service/personal_research.py": "e71fadf48941e4a56e13c81a92e4603d47d4b63068de76fcb42a5bdd44d22fdf",
+    "app/service/investment_hypotheses.py": "677a5d490cef93efb4305bfd29807a8c97c16d014d221da8b60caa271355e9b9",
+    "app/service/research_lab_store.py": "e29737308e16400bd99f3cfa52821f6d5293a8e47e05e154a9575baf376fbea6",
+    "app/service/announcement_impact.py": "52eb291f0dc142c1d2b1711950e72de3eaa67dbdc426e15739e3a6cc295dbdaf",
+    "app/portfolio/exposure.py": "998303e27766146b9061cfaf870a07479d3b682991c60b94df31b18a67f28bab",
+    "app/service/shadow_portfolios.py": "5041b11f7f57b610fddea0e01bb3d625d7ceaa31459f2099b45e635b73d43442",
+    "app/service/portfolio_rebalancing.py": "38a33135280feb102a8ef5fc8487d0a6f51dc5d69a44b1b2217b246800697382",
+    "app/service/funding_goals.py": "63aacaeaa58ad7f601a06ddf7f8ed0bdeedd4622ced661010a7704cf587561d3",
+    "app/research/cross_validation.py": "54251a0a01ee2e28de1c2406a12728d6b9fb19dc5e84d5cd7b7be95b477bbd90",
+    "app/gates/pipeline.py": "1ae6808caa70326995fc76d7b7165cbd47a45809a7eb1f9371b8e39644409b2b"
+  }
+}

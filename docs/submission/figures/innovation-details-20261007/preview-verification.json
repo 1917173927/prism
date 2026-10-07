@@ -1,0 +1,41 @@
+{
+  "status": "PASS",
+  "renderWidth": 960,
+  "checks": [
+    {
+      "image": 1,
+      "loaded": true,
+      "width": 960,
+      "naturalWidth": 1672,
+      "naturalHeight": 941
+    },
+    {
+      "image": 2,
+      "loaded": true,
+      "width": 960,
+      "naturalWidth": 1672,
+      "naturalHeight": 941
+    },
+    {
+      "image": 3,
+      "loaded": true,
+      "width": 960,
+      "naturalWidth": 1672,
+      "naturalHeight": 941
+    },
+    {
+      "image": 4,
+      "loaded": true,
+      "width": 960,
+      "naturalWidth": 1672,
+      "naturalHeight": 941
+    },
+    {
+      "image": 5,
+      "loaded": true,
+      "width": 960,
+      "naturalWidth": 1672,
+      "naturalHeight": 941
+    }
+  ]
+}
