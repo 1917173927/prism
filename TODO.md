@@ -1,5 +1,11 @@
 # TODO
 
+## 2026-10-21 停止 GitHub Pages 公开托管
+
+- [x] 关闭 GitHub Pages 并解除 `prism.daoyezongzi.org` 的自定义域名绑定，保留仓库和本地前端。
+- [x] 确认 GitHub `has_pages=false`、Pages 查询返回 HTTP 404、原站点 `/index.html` 返回 HTTP 404。
+- [x] 确认 HTTP 首页及两个 GitHub Pages 节点的 HTTPS 首页返回 HTTP 404，记录旧首页的 CDN 缓存期限。
+
 ## 2026-10-06 上游合并
 
 - [x] 合并 `476774c` 并解决六项内容冲突，保留已交付创新功能及后端。

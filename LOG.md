@@ -1,5 +1,12 @@
 # LOG
 
+## 2026-10-21：停止 GitHub Pages 公开托管
+
+- 按用户确认，关闭 `daoyezongzi/prism` 的 GitHub Pages，解除 `prism.daoyezongzi.org` 的自定义域名绑定；保留仓库、本地前端和现有发布工作流关闭状态。
+- GitHub Pages 删除接口返回 HTTP 204，仓库 `has_pages` 为 `false`，Pages 查询接口返回 HTTP 404；HTTP 首页和 HTTPS `/index.html` 返回 HTTP 404。通过 `185.199.109.153` 与 `185.199.110.153` 两个 GitHub Pages 节点访问 HTTPS 首页，均返回 HTTP 404。
+- 部分 CDN 缓存仍保存旧首页，响应缓存期限为 600 秒；托管关闭及域名解绑已由 GitHub 接口确认。
+- DNS 的 CNAME 仍为 `daoyezongzi.github.io`，重新使用该子域名时需要将解析记录改为新服务要求的目标。
+
 ## 2026-10-06 — 上游合并与创新功能兼容
 
 - [PR #4](https://github.com/1917173927/prism/pull/4) 于2026-10-06 19:30:04（Asia/Shanghai）成功合入 `origin/main`，GitHub确认merged=true。集成提交 `57f759d` 已推送，合并提交 `60f5f4eca615747d29b80790f5a9913e5eecc423`；本地main已快进同步，原26个本地独有提交及31个上游独有提交均保留，上游验收基准82bd219落后0。最终文档留存提交见随后Git历史。
