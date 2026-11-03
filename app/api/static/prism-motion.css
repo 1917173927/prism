@@ -114,3 +114,19 @@
 .prism-ui-v2 .topbar-more-panel .data-source-status span { width: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
 .prism-ui-v2 .topbar-more-panel > #logout-local-session { color: var(--danger); }
 .prism-ui-v2 .topbar-more-panel > #logout-local-session:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* Other pages: portfolio, market, profile, skill store. Entrance only fires when display toggles from none, so subpage switches inside a section animate and plain re-renders do not. */
+.prism-ui-v2 :is(#overview, #market, #skill-store):not([hidden]) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+.prism-ui-v2 #market .surface:not(.research-subpage-hidden) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+.prism-ui-v2 #profile > [id$=-view]:not(.research-subpage-hidden):not([hidden]) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+
+/* Interactive feedback shared by these pages */
+.prism-ui-v2 :is(.workspace-page-tabs a, .market-chart-toolbar button, .quiet-profile-action, .portfolio-tool-links a, .portfolio-more-panel button) { transition: background-color var(--motion-micro) var(--motion-ease), border-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease), padding var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .market-chart-toolbar button:active, .prism-ui-v2 .quiet-profile-action:active { transform: scale(.97); }
+.prism-ui-v2 .portfolio-tool-links a:hover { padding-left: 6px; color: var(--brand-action); }
+.prism-ui-v2 .profile-feature-card { transition: border-color var(--motion-micro) var(--motion-ease), background-color var(--motion-micro) var(--motion-ease), transform var(--motion-micro) var(--motion-ease), box-shadow var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .profile-feature-card:hover { transform: translateY(-2px); box-shadow: var(--elev-1); }
+.prism-ui-v2 .profile-feature-card:active { transform: scale(.98); }
+.prism-ui-v2 .portfolio-page-more[open] > .portfolio-more-panel { animation: prism-overlay-in var(--motion-overlay) var(--motion-ease) both; }
+.prism-ui-v2 .surface { transition: box-shadow var(--motion-panel) var(--motion-ease), border-color var(--motion-panel) var(--motion-ease); }
+.prism-ui-v2 .status-chip { transition: background-color var(--motion-content) var(--motion-ease), color var(--motion-content) var(--motion-ease); }
