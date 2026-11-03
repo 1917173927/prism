@@ -1,0 +1,380 @@
+{
+  "entry": "http://127.0.0.1:8861/demos/product-demo/",
+  "scope": "independent extracted frontend with synthetic local data",
+  "checks": [
+    {
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "AI 投资助手"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "overview",
+      "expected": "组合总览",
+      "brokenImages": [],
+      "canvases": 7,
+      "heading": [
+        "组合总览"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "market",
+      "expected": "市场观察",
+      "brokenImages": [],
+      "canvases": 11,
+      "heading": [
+        "市场观察"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "交易复盘"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "profile",
+      "expected": "投资偏好",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "投资偏好"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "skill-store",
+      "expected": "研究工具",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究工具"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究资料"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "live-research",
+      "expected": "研究任务",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究任务"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "brokenImages": [],
+      "canvases": 7,
+      "heading": [
+        "风险分析"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "AI 投资助手"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "overview",
+      "expected": "组合总览",
+      "brokenImages": [],
+      "canvases": 7,
+      "heading": [
+        "组合总览"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "market",
+      "expected": "市场观察",
+      "brokenImages": [],
+      "canvases": 11,
+      "heading": [
+        "市场观察"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "交易复盘"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "profile",
+      "expected": "投资偏好",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "投资偏好"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "skill-store",
+      "expected": "研究工具",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究工具"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究资料"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "live-research",
+      "expected": "研究任务",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究任务"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "brokenImages": [],
+      "canvases": 7,
+      "heading": [
+        "风险分析"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "AI 投资助手"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "overview",
+      "expected": "组合总览",
+      "brokenImages": [],
+      "canvases": 7,
+      "heading": [
+        "组合总览"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "market",
+      "expected": "市场观察",
+      "brokenImages": [],
+      "canvases": 11,
+      "heading": [
+        "市场观察"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "交易复盘"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "profile",
+      "expected": "投资偏好",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "投资偏好"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "skill-store",
+      "expected": "研究工具",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究工具"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究资料"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "live-research",
+      "expected": "研究任务",
+      "brokenImages": [],
+      "canvases": 0,
+      "heading": [
+        "研究任务"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "brokenImages": [],
+      "canvases": 7,
+      "heading": [
+        "风险分析"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    }
+  ],
+  "interactions": [
+    {
+      "name": "指数与月线切换",
+      "result": [
+        "深证成指",
+        "收益与波动",
+        "板块样例"
+      ]
+    },
+    {
+      "name": "运行与取消",
+      "snapshot": "- complementary \"产品导航\":\n  - link \"问财智投，组合总览\":\n    - /url: \"#overview\"\n    - strong: 问财智投\n    - generic: 投资研究工作台\n  - generic: 研\n  - strong: 个人工作台\n  - generic: 产品演示账户\n  - navigation:\n    - generic: 投资工作台\n    - link \"AI 投资助手\":\n      - /url: \"#copilot\"\n      - generic: AI 投资助手\n    - link \"组合总览\":\n      - /url: \"#overview\"\n      - generic: 组合总览\n    - link \"市场观察\":\n      - /url: \"#market\"\n      - generic: 市场观察\n    - link \"交易复盘\":\n      - /url: \"#trading-style\"\n      - generic: 交易复盘\n    - generic: 研究与资料\n    - link \"研究工具\":\n      - /url: \"#skill-store\"\n      - generic: 研究工具\n    - link \"研究资料\":\n      - /url: \"#research-knowledge\"\n      - generic: 研究资料\n    - link \"研究任务\":\n      - /url: \"#live-research\"\n      - generic: 研究任务\n    - link \"风险分析\":\n      - /url: \"#research-algorithms\"\n      - generic: 风险分析\n    - generic: 账户\n    - link \"投资偏好\":\n      - /url: \"#profile\"\n      - generic: 投资偏好\n  - generic: 演示数据\n  - paragraph:\n    - text: 独立合成样例\n    - text: 不连接账户与交易服务\n  - generic: 林\n  - strong: 稳健研究型\n  - generic: 个人投资者\n  - generic: C3 · 平衡型\n- banner:\n  - generic: 工作台\n  - strong: 研究任务\n  - generic: 合成样例 2026-09-30\n  - generic: 演示数据\n  - button \"截图模式\":\n  - generic \"演示账户\": 林\n- strong: 产品演示\n- text: 页面、交互与数据均在本地运行\n- generic: 选择演示页面\n- combobox \"选择演示页面\":\n  - option \"组合总览\"\n  - option \"AI 投资助手\"\n  - option \"市场观察\"\n  - option \"交易复盘\"\n  - option \"投资偏好\"\n  - option \"研究工具\"\n  - option \"研究资料\"\n  - option \"研究任务\" [selected]\n  - option \"风险分析\"\n- button \"重置演示\"\n- button \"截图模式\"\n- main:\n  - region \"研究任务\":\n    - paragraph: 研究进度与结果\n    - heading \"研究任务\" [level=1]\n    - paragraph: 跟踪研究进度，核对结果与仍需补充的信息。\n    - generic: 本地演示流程\n    - article:\n      - text: 本次研究目标\n      - heading \"组合风险与市场环境联合研究\" [level=2]\n      - paragraph: 核对样例组合与波动环境，形成带有依据的研究解释。\n      - button \"取消演示\" [disabled]\n      - button \"运行演示\":\n        - text: 运行演示\n    - generic: 运行状态\n    - strong: 已取消\n    - generic: 研究范围\n    - strong: 样例账户与合成行情\n    - generic: 执行方式\n    - strong: 本地演示\n    - generic: 资料来源\n    - strong: 固定演示资料\n    - generic \"查看演示说明\"\n    - article:\n      - heading \"执行步骤\" [level=2]\n      - paragraph: 查看各阶段的处理进度\n      - generic: 演示流程\n      - list:\n        - generic: \"01\"\n        - strong: 确认研究范围\n        - paragraph: 固定样例标的、报告期及截止时点\n        - generic: 已取消\n        - generic: \"02\"\n        - strong: 读取演示资料\n        - paragraph: 加载本地已冻结快照，无上游调用\n        - generic: 已取消\n        - generic: \"03\"\n        - strong: 检查资产与风险指标\n        - paragraph: 使用预先计算的演示结果\n        - generic: 已取消\n        - generic: \"04\"\n        - strong: 关联资料片段\n        - paragraph: 保留缺少资料和待核对的事项\n        - generic: 已取消\n        - generic: \"05\"\n        - strong: 生成演示报告\n        - paragraph: 汇总预设示例，无模型服务调用\n        - generic: 已取消\n    - article:\n      - heading \"研究结果与风险检查\" [level=2]\n      - paragraph: 区分已完成、需关注与待补充的结果\n      - generic: 演示\n      - paragraph: 本页展示固定研究流程与样例结果，不连接外部研究服务。\n- contentinfo:\n  - generic: 问财智投 · 可解释证券研究与决策支持\n  - generic: 演示样例不构成投资建议"
+    },
+    {
+      "name": "资料关键词搜索",
+      "snapshot": "- complementary \"产品导航\":\n  - link \"问财智投，组合总览\":\n    - /url: \"#overview\"\n    - strong: 问财智投\n    - generic: 投资研究工作台\n  - generic: 研\n  - strong: 个人工作台\n  - generic: 产品演示账户\n  - navigation:\n    - generic: 投资工作台\n    - link \"AI 投资助手\":\n      - /url: \"#copilot\"\n      - generic: AI 投资助手\n    - link \"组合总览\":\n      - /url: \"#overview\"\n      - generic: 组合总览\n    - link \"市场观察\":\n      - /url: \"#market\"\n      - generic: 市场观察\n    - link \"交易复盘\":\n      - /url: \"#trading-style\"\n      - generic: 交易复盘\n    - generic: 研究与资料\n    - link \"研究工具\":\n      - /url: \"#skill-store\"\n      - generic: 研究工具\n    - link \"研究资料\":\n      - /url: \"#research-knowledge\"\n      - generic: 研究资料\n    - link \"研究任务\":\n      - /url: \"#live-research\"\n      - generic: 研究任务\n    - link \"风险分析\":\n      - /url: \"#research-algorithms\"\n      - generic: 风险分析\n    - generic: 账户\n    - link \"投资偏好\":\n      - /url: \"#profile\"\n      - generic: 投资偏好\n  - generic: 演示数据\n  - paragraph:\n    - text: 独立合成样例\n    - text: 不连接账户与交易服务\n  - generic: 林\n  - strong: 稳健研究型\n  - generic: 个人投资者\n  - generic: C3 · 平衡型\n- banner:\n  - generic: 工作台\n  - strong: 研究资料\n  - generic: 合成样例 2026-09-30\n  - generic: 演示数据\n  - button \"截图模式\":\n  - generic \"演示账户\": 林\n- strong: 产品演示\n- text: 页面、交互与数据均在本地运行\n- generic: 选择演示页面\n- combobox \"选择演示页面\":\n  - option \"组合总览\"\n  - option \"AI 投资助手\"\n  - option \"市场观察\"\n  - option \"交易复盘\"\n  - option \"投资偏好\"\n  - option \"研究工具\"\n  - option \"研究资料\" [selected]\n  - option \"研究任务\"\n  - option \"风险分析\"\n- button \"重置演示\"\n- button \"截图模式\"\n- main:\n  - region \"研究资料\":\n    - paragraph: 文献与参考资料\n    - heading \"研究资料\" [level=1]\n    - paragraph: 集中查看研究资料与原文摘录，为分析结论查找依据。\n    - generic: 演示资料空间\n    - heading \"搜索研究资料\" [level=2]\n    - paragraph: 按关键词查找演示空间中的资料。\n    - searchbox \"搜索研究资料\": 组合\n    - button \"搜索资料\" [active]\n    - generic: 关键词搜索\n    - generic: 固定演示资料\n    - generic: 结论需要核对原文依据\n    - article:\n      - heading \"资料与搜索结果\" [level=2]\n      - paragraph: 查看摘要、发布时间与参考文段\n      - generic: 2 篇演示资料\n      - article:\n        - heading \"组合集中度说明（演示资料）\" [level=3]\n        - generic: 演示资料\n        - paragraph: 方法说明 · 示例组合 · 2026 年三季度\n        - paragraph: 单项持仓权重超过演示参考阈值时，先展示独立风险提示，再讨论配置约束与可用资料。\n        - generic: 产品演示文档 · 2026-09-30\n        - button \"查看引用\"\n      - article:\n        - heading \"协方差收缩研究笔记（演示资料）\" [level=3]\n        - generic: 演示资料\n        - paragraph: 方法说明 · 组合研究 · 2026 年三季度\n        - paragraph: 本演示使用合成收益序列展示常相关目标收缩；它不证明真实资产的相关性或未来风险。\n        - generic: 产品演示文档 · 2026-09-30\n        - button \"查看引用\"\n    - complementary:\n      - article:\n        - heading \"资料核验\" [level=2]\n        - paragraph: 研究引用的基本要求\n        - list:\n          - generic: 记录发布时点与报告期间\n          - generic: 保留原文位置与来源记录\n          - generic: 更正使旧引用立即失效\n          - generic: 逐项核查结论与原文依据\n      - generic: 演示\n      - paragraph: 演示文段不能当作真实研究证据。\n- contentinfo:\n  - generic: 问财智投 · 可解释证券研究与决策支持\n  - generic: 演示样例不构成投资建议"
+    },
+    {
+      "name": "引用片段展开",
+      "snapshot": "- complementary \"产品导航\":\n  - link \"问财智投，组合总览\":\n    - /url: \"#overview\"\n    - strong: 问财智投\n    - generic: 投资研究工作台\n  - generic: 研\n  - strong: 个人工作台\n  - generic: 产品演示账户\n  - navigation:\n    - generic: 投资工作台\n    - link \"AI 投资助手\":\n      - /url: \"#copilot\"\n      - generic: AI 投资助手\n    - link \"组合总览\":\n      - /url: \"#overview\"\n      - generic: 组合总览\n    - link \"市场观察\":\n      - /url: \"#market\"\n      - generic: 市场观察\n    - link \"交易复盘\":\n      - /url: \"#trading-style\"\n      - generic: 交易复盘\n    - generic: 研究与资料\n    - link \"研究工具\":\n      - /url: \"#skill-store\"\n      - generic: 研究工具\n    - link \"研究资料\":\n      - /url: \"#research-knowledge\"\n      - generic: 研究资料\n    - link \"研究任务\":\n      - /url: \"#live-research\"\n      - generic: 研究任务\n    - link \"风险分析\":\n      - /url: \"#research-algorithms\"\n      - generic: 风险分析\n    - generic: 账户\n    - link \"投资偏好\":\n      - /url: \"#profile\"\n      - generic: 投资偏好\n  - generic: 演示数据\n  - paragraph:\n    - text: 独立合成样例\n    - text: 不连接账户与交易服务\n  - generic: 林\n  - strong: 稳健研究型\n  - generic: 个人投资者\n  - generic: C3 · 平衡型\n- banner:\n  - generic: 工作台\n  - strong: 研究资料\n  - generic: 合成样例 2026-09-30\n  - generic: 演示数据\n  - button \"截图模式\":\n  - generic \"演示账户\": 林\n- strong: 产品演示\n- text: 页面、交互与数据均在本地运行\n- generic: 选择演示页面\n- combobox \"选择演示页面\":\n  - option \"组合总览\"\n  - option \"AI 投资助手\"\n  - option \"市场观察\"\n  - option \"交易复盘\"\n  - option \"投资偏好\"\n  - option \"研究工具\"\n  - option \"研究资料\" [selected]\n  - option \"研究任务\"\n  - option \"风险分析\"\n- button \"重置演示\"\n- button \"截图模式\"\n- main:\n  - region \"研究资料\":\n    - paragraph: 文献与参考资料\n    - heading \"研究资料\" [level=1]\n    - paragraph: 集中查看研究资料与原文摘录，为分析结论查找依据。\n    - generic: 演示资料空间\n    - heading \"搜索研究资料\" [level=2]\n    - paragraph: 按关键词查找演示空间中的资料。\n    - searchbox \"搜索研究资料\": 组合\n    - button \"搜索资料\"\n    - generic: 关键词搜索\n    - generic: 固定演示资料\n    - generic: 结论需要核对原文依据\n    - article:\n      - heading \"资料与搜索结果\" [level=2]\n      - paragraph: 查看摘要、发布时间与参考文段\n      - generic: 2 篇演示资料\n      - article:\n        - heading \"组合集中度说明（演示资料）\" [level=3]\n        - generic: 演示资料\n        - paragraph: 方法说明 · 示例组合 · 2026 年三季度\n        - paragraph: 单项持仓权重超过演示参考阈值时，先展示独立风险提示，再讨论配置约束与可用资料。\n        - generic: 产品演示文档 · 2026-09-30\n        - button \"查看引用\"\n      - article:\n        - heading \"协方差收缩研究笔记（演示资料）\" [level=3]\n        - generic: 演示资料\n        - paragraph: 方法说明 · 组合研究 · 2026 年三季度\n        - paragraph: 本演示使用合成收益序列展示常相关目标收缩；它不证明真实资产的相关性或未来风险。\n        - generic: 产品演示文档 · 2026-09-30\n        - button \"查看引用\"\n    - complementary:\n      - article:\n        - heading \"资料核验\" [level=2]\n        - paragraph: 研究引用的基本要求\n        - list:\n          - generic: 记录发布时点与报告期间\n          - generic: 保留原文位置与来源记录\n          - generic: 更正使旧引用立即失效\n          - generic: 逐项核查结论与原文依据\n      - generic: 演示\n      - paragraph: 演示文段不能当作真实研究证据。\n- contentinfo:\n  - generic: 问财智投 · 可解释证券研究与决策支持\n  - generic: 演示样例不构成投资建议\n- dialog \"组合集中度说明（演示资料）\":\n  - text: 资料来源\n  - heading \"组合集中度说明（演示资料）\" [level=2]\n  - button \"关闭资料引用\" [active]:\n  - generic: 演示资料\n  - paragraph: 示例组合 · 2026 年三季度 · 2026-09-30 · 演示资料\n  - blockquote: 单项持仓权重超过演示参考阈值时，先展示独立风险提示，再讨论配置约束与可用资料。\n  - text: 原文来源\n  - paragraph: 产品演示文档\n  - generic: 说明\n  - paragraph: 引用的文段需要与结论逐项核对。"
+    }
+  ],
+  "console": []
+}

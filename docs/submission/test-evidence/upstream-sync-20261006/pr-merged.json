@@ -1,0 +1,14 @@
+{
+  "number": 4,
+  "url": "https://github.com/1917173927/prism/pull/4",
+  "head_sha": "57f759d3781a4be5a84fc4eed0fdd35c0fb793ed",
+  "base_sha": "bfc14f19719d81c061c3b60c69a26eacfaacba46",
+  "state": "closed",
+  "merged": true,
+  "mergeable": null,
+  "mergeable_state": "unknown",
+  "merged_at": "2026-10-06T11:30:04Z",
+  "merge_commit_sha": "60f5f4eca615747d29b80790f5a9913e5eecc423",
+  "checks": [],
+  "statuses": []
+}

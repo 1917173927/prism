@@ -1,0 +1,38 @@
+{
+  "before": "bfc14f19719d81c061c3b60c69a26eacfaacba46",
+  "first_upstream": "476774c13d23f19a87a3494b7b4925f5767769c6",
+  "backend_changes": [
+    "app/security/store.py"
+  ],
+  "demo_changes": [],
+  "existing_s2c_documents": [
+    {
+      "path": "docs/submission/Prism-S2C-技术路线及实现方案-图示版-创新功能实现版.docx",
+      "expected": "7674bdcf6dc0042dac44f6e66887ab5d0ac9e562",
+      "actual": "7674bdcf6dc0042dac44f6e66887ab5d0ac9e562",
+      "matched": true
+    },
+    {
+      "path": "docs/submission/Prism-S2C-技术路线及实现方案-图示版-创新点补充版.docx",
+      "expected": "1d0adf5f8bf8547ae8ec74304f7dfd26436ca40a",
+      "actual": "1d0adf5f8bf8547ae8ec74304f7dfd26436ca40a",
+      "matched": true
+    },
+    {
+      "path": "docs/submission/Prism-S2C-技术路线及实现方案-图示版-创新规划待确认版.docx",
+      "expected": "889992ac65554870059aefc2b4220d5ecfd170b5",
+      "actual": "889992ac65554870059aefc2b4220d5ecfd170b5",
+      "matched": true
+    },
+    {
+      "path": "docs/submission/Prism-S2C-技术路线及实现方案-图示版-功能创新版.docx",
+      "expected": "217c0f693d075ac73232ce7b9c07f3b911c5a610",
+      "actual": "217c0f693d075ac73232ce7b9c07f3b911c5a610",
+      "matched": true
+    }
+  ],
+  "pages_workflows": [],
+  "latest_upstream": "c4cdd21c70ce73f5c4030d872711e821613bc537",
+  "backend_change_scope": "REMOVE_UNSAFE_SIDECAR_SEED_WRITE_ONLY",
+  "other_backend_unchanged": true
+}

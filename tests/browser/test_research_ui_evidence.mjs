@@ -23,15 +23,20 @@ try {
   await navigate("research-knowledge");
   await fill("knowledge-query", "browser-library-evidence"); await page.click("#knowledge-search");
   await page.waitForFunction(() => !document.querySelector("#knowledge-search").disabled);
-  await navigate("live-research"); await page.click("#research-submit");
-  await page.waitForFunction(() => document.querySelector("#research-run-result").textContent.includes("COMPLETED"));
+  await navigate("live-research");
+  assert.equal(await page.$eval("#research-advanced-settings", node => node.open), false);
+  await page.click("#research-advanced-settings > summary"); await page.click("#research-submit");
+  await page.waitForFunction(() => document.querySelector("#research-run-result").innerText.includes("研究任务 · 已完成"));
+  await page.click("#research-advanced-settings > summary");
   await navigate("research-algorithms");
+  assert.equal(await page.$eval("#algorithm-input-settings", node => node.open), false);
+  await page.click("#algorithm-input-settings > summary");
   await page.select("#algorithm-kind", "covariance");
   const points = Array.from({length: 80}, (_, index) => ({time: new Date(Date.UTC(2025, 0, index + 1)).toISOString().slice(0, 10), value: Math.sin(index * 1.9187) * .01}));
   const covariance = {source: "Synthetic UI evidence fixture; not real financial evidence", as_of: "2026-09-30T00:00:00Z", series: {A: points, B: points.map((point, index) => ({...point, value: point.value * .5 + Math.cos(index) * .002}))}};
   await fill("algorithm-json", JSON.stringify(covariance)); await page.click("#algorithm-compute");
   await page.waitForFunction(() => !document.querySelector("#algorithm-compute").disabled);
-  assert.match(await page.$eval("#algorithm-output", node => node.textContent), /CALCULATED/);
+  assert.match(await page.$eval("#algorithm-output", node => node.innerText), /资产联动风险 · 已计算/);
 
   // Test a delayed old algorithm response against an intervening selector change.
   await page.setRequestInterception(true);

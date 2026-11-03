@@ -7,18 +7,21 @@
     <meta name="description" content="问财智投可解释证券研究与决策支持工作台">
     <title>问财智投 · 决策工作台</title>
     <link rel="icon" type="image/svg+xml" href="/static/wencai-zhitou-logo.svg">
-    <link rel="stylesheet" href="/static/styles.css?v=20261003-auxiliary-disclosure">
-    <link rel="stylesheet" href="/static/prism-v2.css?v=20261006-chat-polish">
-    <link rel="stylesheet" href="/static/research-platform.css?v=20261004-skill-store">
-    <link rel="stylesheet" href="/static/research-workbench.css?v=20261004-readable">
+    <link rel="stylesheet" href="/static/styles.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/prism-v2.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/research-platform.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/research-workbench.css?v=20261006-upstream-sync-82bd219">
+    <link rel="stylesheet" href="/static/personal-workbench.css?v=20261006-upstream-presentation">
     <link rel="stylesheet" href="/static/prism-motion.css?v=20261103-pages">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
     <script src="/static/lightweight-charts.js?v=5.2.1" defer></script>
     <script src="/static/app.js?v=20261006-truth-resume" defer></script>
-    <script src="/static/research-platform.js?v=20261004-skill-store" defer></script>
-    <script src="/static/research-tools.js?v=20261004-research-workbench" defer></script>
+    <script src="/static/research-platform.js?v=20261006-upstream-sync-82bd219" defer></script>
+    <script src="/static/research-tools.js?v=20261006-upstream-sync-82bd219" defer></script>
+    <script src="/static/personal-workbench.js?v=20261006-functional" defer></script>
+    <script src="/static/research-lab.js?v=20261006-upstream-sync-82bd219" defer></script>
     <script src="/static/research-examples.js?v=20261103-examples" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
@@ -277,7 +280,7 @@
       </header>
       <aside class="sidebar" id="home-history-sidebar" aria-label="历史对话">
         <div class="sidebar-conversation-actions home-only">
-          <a class="nav-item home-skill-store-entry" id="nav-store" href="#skill-store"><svg class="prism-icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>技能商店</span></a>
+          <a class="nav-item home-skill-store-entry" id="nav-store" href="#skill-store"><svg class="prism-icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>研究工具</span></a>
           <div class="home-history-toolbar">
             <button id="new-chat-session" type="button"><svg class="prism-icon" aria-hidden="true"><use href="#icon-plus"/></svg>新对话</button>
             <button id="home-history-hide" type="button" aria-label="收起历史对话" aria-controls="home-history-sidebar" aria-expanded="true" title="收起历史对话"><svg class="prism-icon" aria-hidden="true"><use href="#icon-panel-left"/></svg></button>
@@ -862,7 +865,7 @@
         </section>
 
         <section class="workspace-page-section market-page" id="market" hidden aria-labelledby="market-title">
-          <h2 id="market-title" class="sr-only">大盘鉴别</h2>
+          <h2 id="market-title" class="sr-only">市场观察</h2>
           <section class="surface market-result" aria-live="polite" data-subpage="market-quotes">
             <div class="market-result-heading">
               <div id="market-result-content">正在读取行情…</div>
@@ -897,14 +900,16 @@
           </section>
           <section id="market-industries-section" class="surface portfolio-detail-card" data-subpage="market-sectors">
             <h3>行业轮动观察</h3><p>对照固定观察行业的短中期涨跌幅，查看相对强弱变化。</p>
-            <div class="research-action-row"><label class="research-form-field">关联个股代码<input id="market-stock-research-code" placeholder="例如 600519.SH" maxlength="12"></label><button id="market-stock-research-open" type="button" class="copilot-action-btn secondary">进入个股 LIVE 研究</button></div>
+            <div class="research-action-row"><label class="research-form-field">关联个股代码<input id="market-stock-research-code" placeholder="例如 600519.SH" maxlength="12"></label><button id="market-stock-research-open" type="button" class="copilot-action-btn secondary">进入个股研究</button></div>
             <button id="market-load-industries" type="button" class="copilot-action-btn secondary">读取行业表现</button>
             <div id="market-industries" aria-live="polite"></div>
           </section>
         </section>
 
         <section class="workspace-page-section" id="skill-store" hidden aria-labelledby="skill-store-title">
-          <div class="page-heading research-store-heading"><div><h2 id="skill-store-title" tabindex="-1">技能商店</h2><p>为对话选择研究能力。</p></div><a class="research-store-return" href="#copilot">返回对话 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a></div>
+          <div class="page-heading research-store-heading"><div><h2 id="skill-store-title" tabindex="-1">研究工具</h2><p>创建自己的研究方法，为对话选择数据与研究能力。</p></div><a class="research-store-return" href="#copilot">返回对话 <svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-right"/></svg></a></div>
+          <div id="method-builder-workspace"></div>
+          <div id="personal-system-workspace"></div>
           <section id="skill-store-content" aria-label="技能目录"></section>
         </section>
 
@@ -914,7 +919,7 @@
             <div class="rw-task-tabs" role="tablist" aria-label="研究任务">
               <button id="research-tab-live" class="rw-task-tab" role="tab" type="button" data-research-route="live-research" aria-controls="live-research" aria-selected="true" tabindex="0">开展研究</button>
               <button id="research-tab-knowledge" class="rw-task-tab" role="tab" type="button" data-research-route="research-knowledge" aria-controls="research-knowledge" aria-selected="false" tabindex="-1">查找资料</button>
-              <button id="research-tab-algorithms" class="rw-task-tab" role="tab" type="button" data-research-route="research-algorithms" aria-controls="research-algorithms" aria-selected="false" tabindex="-1">算法计算</button>
+              <button id="research-tab-algorithms" class="rw-task-tab" role="tab" type="button" data-research-route="research-algorithms" aria-controls="research-algorithms" aria-selected="false" tabindex="-1">风险与风格</button>
             </div>
             <section id="live-research" role="tabpanel" aria-labelledby="research-tab-live">
               <div class="rw-task-heading"><h3 id="live-research-title">研究一家 A 股公司</h3><p>使用基础模板查询行情与财务，结果附数据来源与时点。</p></div>
@@ -922,12 +927,14 @@
               <div class="rw-examples" role="group" aria-label="示例代码"><span class="rw-examples-label">试试看</span><button type="button" class="rw-chip" data-rw-example="600519.SH">600519.SH 贵州茅台</button><button type="button" class="rw-chip" data-rw-example="000001.SZ">000001.SZ 平安银行</button><button type="button" class="rw-chip" data-rw-example="300750.SZ">300750.SZ 宁德时代</button></div>
               <p class="rw-task-hint">默认返回最新价格、营业收入与净利润；需要更多维度，在右上角“工具”里组合自定义研究。</p>
               <div id="research-results-slot" class="rw-results"></div>
+              <div id="hypothesis-workspace"></div>
             </section>
             <section id="research-knowledge" role="tabpanel" aria-labelledby="research-tab-knowledge" hidden>
               <div class="rw-task-heading"><h3 id="research-knowledge-title">从已有资料中查找依据</h3><p>检索已收录的公告、财报与研报，查看相关原文。</p></div>
               <div id="knowledge-workspace"></div>
               <dl class="rw-task-summary"><div><dt>检索结果</dt><dd>相关原文片段、资料来源与公告时间</dd></div><div><dt>限定范围</dt><dd>按标的、报告期或历史时点筛选</dd></div></dl>
               <div id="knowledge-results-slot" class="rw-results"></div>
+              <div id="announcement-impact-workspace"></div>
             </section>
             <section id="research-algorithms" role="tabpanel" aria-labelledby="research-tab-algorithms" hidden>
               <div class="rw-task-heading"><h3 id="research-algorithms-title">用历史数据计算研究指标</h3><p id="algorithm-purpose"></p></div>
@@ -944,6 +951,7 @@
             <button id="open-trade-import" type="button" class="copilot-action-btn primary" hidden>导入历史交易</button>
           </div>
           <div id="trade-style-error" class="notice error" role="alert" hidden></div>
+          <div id="investment-memory-workspace"></div>
 
           <section id="trade-style-empty" class="surface trade-style-empty" aria-labelledby="trade-style-empty-title">
             <h3 id="trade-style-empty-title">导入成交记录，查看交易风格</h3>
@@ -1370,6 +1378,7 @@
           <section class="panel scenario-simulation-panel workspace-page-section auxiliary-page" id="scenario-simulation" aria-labelledby="scenario-simulation-title">
             <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
             <div class="page-heading"><h2 id="scenario-simulation-title">市场变化模拟</h2></div>
+            <div id="shadow-experiment-workspace"></div>
             <div class="auxiliary-primary-card custom-stress-controls">
               <h3>如果市场变化，持仓会怎样？</h3>
               <p>设置行业涨跌幅，查看对组合的影响。</p>
@@ -1642,6 +1651,8 @@
           <section class="panel rebalancing-panel workspace-page-section auxiliary-page" id="portfolio-rebalancing" aria-labelledby="rebalancing-title">
             <a href="#overview" class="auxiliary-back-link"><svg class="prism-icon" aria-hidden="true"><use href="#icon-arrow-left"/></svg> 返回持仓分析</a>
             <div class="page-heading"><h2 id="rebalancing-title">调仓方案</h2></div>
+            <div id="personal-rebalancing-workspace"></div>
+            <div id="funding-goal-workspace"></div>
             <div class="auxiliary-primary-card">
               <h3>查看需要调整哪些持仓</h3>
               <p>按配置建议测算买卖清单与资金变化。</p>

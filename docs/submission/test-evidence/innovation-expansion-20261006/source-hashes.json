@@ -1,0 +1,41 @@
+{
+  "verified_commit": "3e5ed5d2ab420b797059fa6d0db081662a0ca32f",
+  "scope": "GIT_BLOB_AND_VERIFIED_WORKSPACE",
+  "files": {
+    "app/api/main.py": {
+      "git_blob_sha256": "70bf5e018946af74075f0bee112c3d41b593b0e90f6f717bb5e778afac3581ba",
+      "verified_workspace_sha256": "70bf5e018946af74075f0bee112c3d41b593b0e90f6f717bb5e778afac3581ba",
+      "equivalent_after_line_ending_normalization": true
+    },
+    "app/api/research_lab_routes.py": {
+      "git_blob_sha256": "89cdaedbf3846feb0bc8b6318579e964349c8722584e86defa0845e8de7979e3",
+      "verified_workspace_sha256": "89cdaedbf3846feb0bc8b6318579e964349c8722584e86defa0845e8de7979e3",
+      "equivalent_after_line_ending_normalization": true
+    },
+    "app/api/static/index.html": {
+      "git_blob_sha256": "1836d43618d644fb6c090ebe9861116f540d24a11e11c9c6635cfc2fa48f2907",
+      "verified_workspace_sha256": "adef66534d8966bf705b4d8c6ebadb02ca5edc8b337b77e6af02fbf247930e7d",
+      "equivalent_after_line_ending_normalization": true
+    },
+    "app/api/static/research-lab.js": {
+      "git_blob_sha256": "9938619e3a140aceaf47d48facb8edaa677431441a720ce2adb7323775261c97",
+      "verified_workspace_sha256": "9938619e3a140aceaf47d48facb8edaa677431441a720ce2adb7323775261c97",
+      "equivalent_after_line_ending_normalization": true
+    },
+    "app/api/static/personal-workbench.css": {
+      "git_blob_sha256": "7e8c51842ce2a19b3842cd65063a2c8f0839455bd96ba4d98707f6492e858ff0",
+      "verified_workspace_sha256": "7e8c51842ce2a19b3842cd65063a2c8f0839455bd96ba4d98707f6492e858ff0",
+      "equivalent_after_line_ending_normalization": true
+    },
+    "app/service/shadow_portfolios.py": {
+      "git_blob_sha256": "5041b11f7f57b610fddea0e01bb3d625d7ceaa31459f2099b45e635b73d43442",
+      "verified_workspace_sha256": "5041b11f7f57b610fddea0e01bb3d625d7ceaa31459f2099b45e635b73d43442",
+      "equivalent_after_line_ending_normalization": true
+    },
+    "app/service/funding_goals.py": {
+      "git_blob_sha256": "63aacaeaa58ad7f601a06ddf7f8ed0bdeedd4622ced661010a7704cf587561d3",
+      "verified_workspace_sha256": "63aacaeaa58ad7f601a06ddf7f8ed0bdeedd4622ced661010a7704cf587561d3",
+      "equivalent_after_line_ending_normalization": true
+    }
+  }
+}

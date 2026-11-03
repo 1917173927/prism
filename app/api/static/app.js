@@ -321,6 +321,7 @@
   }
 
   function invalidateDerivedState(store) {
+    document.dispatchEvent(new CustomEvent("prism:context-invalidated"));
     globalThis.prismStockQuickAbortController?.abort();
     globalThis.prismStockDeepAbortController?.abort();
     store.contextRevision += 1;
@@ -1686,6 +1687,7 @@
   }
 
   function clearDerivedResultsForContextRestore() {
+    document.dispatchEvent(new CustomEvent("prism:context-invalidated"));
     state.selected = null;
     state.selectedDecisionEvent = null;
     state.advancedEvidenceSelectedKey = "";
@@ -5709,6 +5711,7 @@
   }
 
   function clearConfirmedContexts() {
+    document.dispatchEvent(new CustomEvent("prism:context-invalidated"));
     state.portfolio = null;
     state.profile = null;
     byId("portfolio-json").value = "";
@@ -7866,30 +7869,32 @@
       const targetWeights = Object.fromEntries(
         state.portfolioOptimizationRun.targets.map((target) => [target.target_id, target.target_weight_pct])
       );
+      const rebalancingRequest = {
+        schema_version: "portfolio-rebalancing-request.v1",
+        request_id: `reb-${Date.now()}`,
+        owner_id: token.ownerId,
+        generated_at: new Date().toISOString(),
+        bundle: portfolio,
+        confirmed_profile: state.profile?.profile || null,
+        target_weights: targetWeights,
+        deadband_pct: "0.50",
+        max_turnover_pct: "50.00",
+        minimum_cash_pct: state.portfolioHealthRun?.cash_minimum_pct || "0.00",
+      };
       const res = await fetch("/api/v1/advisor/rebalancing-runs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Owner-ID": token.ownerId,
         },
-        body: JSON.stringify({
-          schema_version: "portfolio-rebalancing-request.v1",
-          request_id: `reb-${Date.now()}`,
-          owner_id: token.ownerId,
-          generated_at: new Date().toISOString(),
-          bundle: portfolio,
-          confirmed_profile: state.profile?.profile || null,
-          target_weights: targetWeights,
-          deadband_pct: "0.50",
-          max_turnover_pct: "50.00",
-          minimum_cash_pct: state.portfolioHealthRun?.cash_minimum_pct || "0.00",
-        }),
+        body: JSON.stringify(rebalancingRequest),
       });
       if (!isContextRequestCurrent(token)) return null;
       if (!res.ok) throw await apiError(res);
       const data = await res.json();
       if (!isContextRequestCurrent(token)) return null;
       state.rebalancingRun = data;
+      document.dispatchEvent(new CustomEvent("prism:rebalancing-context", {detail: {request: rebalancingRequest, baseline: data}}));
       const chip = byId("rebalancing-status-chip");
       if (chip) {
         chip.textContent = reportStatusLabel(data.status);
@@ -8660,7 +8665,7 @@
     label.className = "drilldown-label";
     label.textContent = "想了解更多依据？";
     row.append(label);
-    const destinations = [{href: "#holdings-report", text: "组合详细报告"}, {href: "#live-research", text: "LIVE 研究与证据"}, {href: "#research-knowledge", text: "资料原文与引用"}];
+    const destinations = [{href: "#holdings-report", text: "组合详细报告"}, {href: "#live-research", text: "研究任务与依据"}, {href: "#research-knowledge", text: "资料原文与引用"}];
     [...links, ...destinations.filter(item => !links.some(link => link.href === item.href))].forEach(l => {
       const a = document.createElement("a");
       a.href = l.href;
@@ -10332,8 +10337,8 @@
         ? `已生成 ${plan.execution_steps.length} 项调整步骤。`
         : "调整方案需要复核。"
       : plan.status === "PASS"
-        ? "当前持仓无需调仓。"
-        : "当前方案尚未生成可执行步骤。";
+        ? "当前目标未触发交易规则。"
+        : "未生成可执行步骤，不能据此判断组合无需调整。";
     notice.append(summary);
     const reasons = document.createElement("ul");
     (plan.issues || []).forEach((issue) => {
@@ -11260,6 +11265,8 @@
     search_research_knowledge: "检索研究资料",
     run_portfolio_health_check: "检查持仓风险",
     generate_portfolio_rebalance: "测算持仓调整",
+    list_personal_research_systems: "读取个人研究方法",
+    run_personal_research_system: "运行个人研究方法",
   });
 
   function setPipelineStepState(stepEl, status) {
@@ -11560,7 +11567,7 @@
               byId("chat-send-progress").textContent = pipeHead.textContent;
               const toolChip = document.createElement("span");
               toolChip.className = "chat-tool-tag";
-              toolChip.textContent = `工具 · ${CHAT_TOOL_LABELS[event.tool] || event.tool} · 处理中`;
+              toolChip.textContent = `工具 · ${CHAT_TOOL_LABELS[event.tool] || "研究工具"} · 处理中`;
               activeToolTags.set(event.tool, toolChip);
               toolsContainer.append(toolChip);
             } else if (event.type === "tool_done") {
@@ -11576,7 +11583,7 @@
               const currentToolFailed = ["FAILED", "BLOCKED", "REJECTED"].includes(toolStatus);
               const toolChip = activeToolTags.get(event.tool);
               if (toolChip) {
-                toolChip.textContent = `工具 · ${CHAT_TOOL_LABELS[event.tool] || event.tool} · ${currentToolFailed ? "未完成" : "已完成"}`;
+                toolChip.textContent = `工具 · ${CHAT_TOOL_LABELS[event.tool] || "研究工具"} · ${currentToolFailed ? "未完成" : "已完成"}`;
                 toolChip.dataset.status = currentToolFailed ? "failed" : "complete";
               }
               if (event.result?.error_code === "DETERMINISTIC_CONTEXT_REQUIRED") {

@@ -1,0 +1,21 @@
+{
+  "platform": "Windows x64",
+  "mode": "onefile console",
+  "python": "3.12.12",
+  "pyinstaller": "6.22.3",
+  "openssl": "OpenSSL 3.5.5 27 Jan 2026",
+  "build_dependencies": {
+    "altgraph": "0.17.5",
+    "packaging": "26.3",
+    "pefile": "2024.8.26",
+    "pyinstaller": "6.22.3",
+    "pyinstaller-hooks-contrib": "2026.8",
+    "pywin32-ctypes": "0.2.3",
+    "setuptools": "84.0.0"
+  },
+  "source": "tools/product_demo.py",
+  "source_sha256": "699cb6a1f938af2acf8445b5520e9a015d75469c7118bf03ee2e42cd4661e8d4",
+  "executable_sha256": "d52decf5beb3f93208aef91ff46fa3d5e22457850251c05a6c799a7afccf5ed8",
+  "executable_bytes": 8263261,
+  "runtime_license_sha256": "bbeea30b0671b8488cf938d0d63c95af695617c0f716b9a8df9f6d38e046817d"
+}

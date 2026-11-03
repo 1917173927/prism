@@ -1,0 +1,108 @@
+{
+  "scope": "ISOLATED_CONTROLLED_BROWSER",
+  "owner": "demo-owner",
+  "viewport_checks": [
+    {
+      "clientWidth": 1425,
+      "height": 1000,
+      "scrollWidth": 1425,
+      "sectionId": "portfolio-rebalancing",
+      "visible": true,
+      "width": 1440
+    },
+    {
+      "clientWidth": 1425,
+      "height": 1000,
+      "scrollWidth": 1425,
+      "sectionId": "trading-style",
+      "visible": true,
+      "width": 1440
+    },
+    {
+      "clientWidth": 1425,
+      "height": 1000,
+      "scrollWidth": 1425,
+      "sectionId": "skill-store",
+      "visible": true,
+      "width": 1440
+    },
+    {
+      "clientWidth": 1009,
+      "height": 768,
+      "scrollWidth": 1009,
+      "sectionId": "portfolio-rebalancing",
+      "visible": true,
+      "width": 1024
+    },
+    {
+      "clientWidth": 1009,
+      "height": 768,
+      "scrollWidth": 1009,
+      "sectionId": "trading-style",
+      "visible": true,
+      "width": 1024
+    },
+    {
+      "clientWidth": 1009,
+      "height": 768,
+      "scrollWidth": 1009,
+      "sectionId": "skill-store",
+      "visible": true,
+      "width": 1024
+    },
+    {
+      "clientWidth": 375,
+      "height": 844,
+      "scrollWidth": 375,
+      "sectionId": "portfolio-rebalancing",
+      "visible": true,
+      "width": 390
+    },
+    {
+      "clientWidth": 375,
+      "height": 844,
+      "scrollWidth": 375,
+      "sectionId": "trading-style",
+      "visible": true,
+      "width": 390
+    },
+    {
+      "clientWidth": 375,
+      "height": 844,
+      "scrollWidth": 375,
+      "sectionId": "skill-store",
+      "visible": true,
+      "width": 390
+    }
+  ],
+  "research_result": "研究结果 · 已完成\n\n600519 · 系统第 1 版 · 用时 2.233 毫秒 · 本次新采集\n\n本次使用受控演示数据，用于展示配置和执行过程。\n\n资料截止时点：2026/10/6 15:19:55\n\n我的盈利质量指标\n20%\n\n由已保存指标配置与本次实际输入计算。\n\n盈利观察助手：净利率达到 15% 的研究观察条件，可继续比较历史盈利稳定性。\n\n资料助手\t返回状态\t资料情况\n财务资料助手\t资料已返回\t返回 2 项观察值\n\n观察提示用于研究筛选；不直接产生交易指令。真实资料不足时，系统保留未计算状态。\n\n配置版本、输入与原始结果",
+  "comparison": {
+    "baseline_turnover_pct": "10",
+    "personal_turnover_pct": "5",
+    "baseline_sell_shares": 2000,
+    "personal_sell_shares": 1000,
+    "baseline_fees_cny": "15.20",
+    "personal_fees_cny": "10.10",
+    "baseline_cash_cny": "34984.80",
+    "personal_cash_cny": "24989.90"
+  },
+  "verified_interactions": [
+    "template_save",
+    "saved_system_load",
+    "deterministic_indicator_run",
+    "preference_save",
+    "policy_confirm",
+    "profile_change_stales_policy",
+    "policy_reconfirm",
+    "current_portfolio_load",
+    "target_edit",
+    "personal_comparison",
+    "responsive_navigation",
+    "policy_revision_clears_previous_comparison",
+    "target_sum_rejected_with_chinese_explanation",
+    "policy_reconfirm_restores_comparison"
+  ],
+  "console_logs": [],
+  "mobile_title_height": 32.395835876464844,
+  "mobile_table_scroll_verified": true
+}

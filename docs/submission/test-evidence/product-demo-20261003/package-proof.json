@@ -1,0 +1,9 @@
+{
+  "schema_version": "product-demo-package.v1",
+  "files": 12,
+  "local_asset_refs": 8,
+  "crc": "PASS",
+  "content_matches_source": true,
+  "contains_user_data": false,
+  "sha256": "f7b3f762bfd766ae5b4d9aa1e73d826ce1f5f90bf5f345be8292aa668dc58a7f"
+}

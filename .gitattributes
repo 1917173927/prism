@@ -23,6 +23,14 @@ docs/submission/test-evidence/research-quality-20261003/*.json -text whitespace=
 *.jpg binary
 *.jpeg binary
 *.webp binary
+*.exe binary
+*.zip binary
+
+# Runtime licenses are hashed as the exact bytes shipped in the Windows demo.
+tools/windows_product_demo/*.txt text eol=lf
+tools/windows_product_demo/runtime-LICENSE.txt -whitespace conflict-marker-size=128
+tools/windows_product_demo/licenses/*.txt text eol=lf
+tools/windows_product_demo/licenses/*.md -whitespace conflict-marker-size=128
 
 # Bundled template literals retain significant SVG whitespace; check the source files.
 app/api/static/workflow-editor.js -whitespace linguist-generated=true

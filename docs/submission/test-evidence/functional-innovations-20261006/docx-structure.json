@@ -1,0 +1,18 @@
+{
+  "source": "C:\\Users\\pc\\Downloads\\Prism-S2C-技术路线及实现方案-图示版.docx",
+  "source_sha256": "8a2a57da2966cf6b3d34caef6a94425a2c6f80854dc2a7f3f8d913bcb397299d",
+  "output_sha256": "5e5dee7c2988e3ea38b23e9991cf4332f28077abf95a5ab5d755acf4dde0c14e",
+  "changed_parts": [
+    "word/document.xml"
+  ],
+  "preserved_original_body_elements": 135,
+  "added_body_elements": 20,
+  "added_summary_rows": 6,
+  "added_points": 5,
+  "preserved_styles_headers_footers_media_relationships": true,
+  "source_unchanged": true,
+  "zip_crc": "PASS",
+  "preserved_media_count": 24,
+  "download_copy_sha256": "5e5dee7c2988e3ea38b23e9991cf4332f28077abf95a5ab5d755acf4dde0c14e",
+  "download_copy_identical": true
+}

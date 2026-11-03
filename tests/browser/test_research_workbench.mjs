@@ -7,10 +7,11 @@ import puppeteer from "puppeteer-core";
 const baseUrl = process.env.PRISM_TEST_BASE_URL || "http://127.0.0.1:8896";
 const artifactRoot = path.resolve("output/research-workbench-integration");
 await fs.mkdir(artifactRoot, {recursive: true});
+const browserProfile = await fs.mkdtemp(path.join(artifactRoot, "browser-profile-"));
 const browser = await puppeteer.launch({
   executablePath: process.env.PRISM_TEST_BROWSER || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   headless: true,
-  userDataDir: path.join(artifactRoot, "browser-profile"),
+  userDataDir: browserProfile,
   args: ["--no-sandbox"],
 });
 const evidence = {checks: [], responses: [], geometry: [], limitations: []};
@@ -107,18 +108,18 @@ try {
   assert.equal(await page.$eval("#research-tools-maintenance", node => node.open), false);
   assert.equal(await page.$eval("#research-tool-task", node => node.checkVisibility()), false);
   await page.click("#research-tool-custom");
-  await page.type('#research-node-editor input[aria-label="节点 1 subject"]', "600519.SH");
+  await page.type('#research-node-editor input[aria-label="研究步骤 1 研究标的"]', "600519.SH");
   assert.equal(await page.$eval("#research-node-editor details", node => node.open), false);
-  await page.click('#research-node-editor input[aria-label="节点 1 subject"]');
+  await page.click('#research-node-editor input[aria-label="研究步骤 1 研究标的"]');
   assert.equal(await page.$eval("#research-tools-dialog", node => node.open), true);
-  const inside = await page.$eval('#research-node-editor input[aria-label="节点 1 subject"]', node => { const rect = node.getBoundingClientRect(); return {x: rect.left + 12, y: rect.top + 14}; });
+  const inside = await page.$eval('#research-node-editor input[aria-label="研究步骤 1 研究标的"]', node => { const rect = node.getBoundingClientRect(); return {x: rect.left + 12, y: rect.top + 14}; });
   await page.mouse.move(inside.x, inside.y); await page.mouse.down(); await page.mouse.move(20, inside.y); await page.mouse.up();
   assert.equal(await page.$eval("#research-tools-dialog", node => node.open), true);
   await closeToolsOutside();
   assert.equal(await page.evaluate(() => document.activeElement.id), "research-tools-trigger");
   assert.equal(await page.$eval("body", node => node.classList.contains("research-dialog-open")), false);
   await page.click("#research-tools-trigger"); await page.click("#research-tool-custom");
-  assert.equal(await page.$eval('#research-node-editor input[aria-label="节点 1 subject"]', node => node.value), "600519.SH");
+  assert.equal(await page.$eval('#research-node-editor input[aria-label="研究步骤 1 研究标的"]', node => node.value), "600519.SH");
   await page.click("#research-add-node");
   assert.equal(await page.$$(".rw-node-card").then(items => items.length), 2);
   await page.click(".rw-node-card:last-child .rw-node-heading button");
@@ -153,7 +154,7 @@ try {
   await page.keyboard.press("Escape"); await waitClosed("knowledge-original-dialog");
   await page.click("#knowledge-matches .research-result-card details > summary");
   await page.click("#knowledge-matches .research-result-card details button");
-  await page.waitForFunction(() => document.getElementById("knowledge-message").textContent.includes("PASS"));
+  await page.waitForFunction(() => document.getElementById("knowledge-message").textContent.includes("引用与该版本原文完全对应"));
   await page.click("#knowledge-filter-trigger");
   await fill("knowledge-search-period", "2026");
   await page.click("#knowledge-filter-trigger");
@@ -185,7 +186,11 @@ try {
   await page.click("#research-template-submit");
   assert.equal((await templateResponse).status(), 202);
   await page.waitForSelector("#research-run-result:not([hidden])", {timeout: 30000});
-  await page.waitForFunction(() => document.getElementById("research-run-result").textContent.includes("研究未完成") || document.getElementById("research-run-result").textContent.includes("研究完成"), {timeout: 30000});
+  await page.waitForFunction(() => ["研究未完成", "研究完成", "研究已取消", "资料不完整"].includes(document.querySelector("#research-run-result > h3")?.textContent), {timeout: 30000});
+  evidence.researchRun = await page.$eval("#research-run-result > details pre", node => JSON.parse(node.textContent));
+  const terminalLabels = {FAILED: "研究未完成", COMPLETED: "研究完成", CANCELLED: "研究已取消", PARTIAL: "资料不完整"};
+  assert.ok(Object.hasOwn(terminalLabels, evidence.researchRun.status));
+  assert.equal(await page.$eval("#research-run-result > h3", node => node.textContent), terminalLabels[evidence.researchRun.status]);
   assert.equal(await page.$eval("#research-cancel", node => node.hidden), true);
   const runId = await page.$eval("#research-run-id", node => node.value);
   assert.ok(runId);
@@ -207,6 +212,7 @@ try {
       await navigate(route);
       const geometry = await page.evaluate(() => ({width: innerWidth, scrollWidth: document.documentElement.scrollWidth, cardWidth: document.querySelector(".rw-card").getBoundingClientRect().width}));
       assert.ok(geometry.scrollWidth <= geometry.width, JSON.stringify({route, ...geometry}));
+      assert.ok(geometry.cardWidth <= geometry.width, JSON.stringify({route, ...geometry}));
       evidence.geometry.push({route, ...geometry});
     }
     await page.click("#research-tools-trigger");
@@ -246,7 +252,7 @@ try {
   evidence.chatStatus = (await chatResponse).status();
   await page.waitForFunction(() => !document.getElementById("copilot-submit-query").disabled, {timeout: 30000});
   evidence.checks.push("原对话入口、模型服务切换与配置弹窗");
-  evidence.limitations.push("独立验收账户没有模型凭据、已确认风险设置与真实持仓；完整模型回答和指定投资组合分析未验证。");
+  evidence.limitations.push("本次使用独立数据库与受控测试资料；真实模型回答、真实金融输入及上游配额未重新验收。");
   assert.deepEqual(errors, []);
   evidence.pageErrors = errors;
   evidence.browser = await browser.version();
@@ -254,7 +260,8 @@ try {
   await fs.writeFile(path.join(artifactRoot, "browser-evidence.json"), JSON.stringify(evidence, null, 2) + "\n");
   process.stdout.write(JSON.stringify({passed: true, checks: evidence.checks, geometry: evidence.geometry, limitations: evidence.limitations}, null, 2) + "\n");
 } finally {
-  if (page && !page.isClosed()) evidence.endState = await page.evaluate(() => ({route: location.hash, dialogs: [...document.querySelectorAll("dialog[open]")].map(node => node.id), modelDialogDisplay: getComputedStyle(document.getElementById("llm-config-modal")).display}));
-  await fs.writeFile(path.join(artifactRoot, "browser-evidence.json"), JSON.stringify(evidence, null, 2) + "\n");
-  await browser.close();
+  try {
+    if (page && !page.isClosed()) evidence.endState = await page.evaluate(() => ({url: location.href, route: location.hash, dialogs: [...document.querySelectorAll("dialog[open]")].map(node => node.id), modelDialogDisplay: document.getElementById("llm-config-modal") ? getComputedStyle(document.getElementById("llm-config-modal")).display : null, researchStatus: document.querySelector("#research-run-result > h3")?.textContent, researchMessage: document.getElementById("research-message")?.textContent}));
+    await fs.writeFile(path.join(artifactRoot, "browser-evidence.json"), JSON.stringify(evidence, null, 2) + "\n");
+  } finally { await browser.close(); }
 }

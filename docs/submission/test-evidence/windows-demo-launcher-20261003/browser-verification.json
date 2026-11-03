@@ -1,0 +1,331 @@
+{
+  "entry": "http://127.0.0.1:8862/demos/product-demo/",
+  "runtime": "shipped preview.exe; PATH limited to System32",
+  "checks": [
+    {
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "brokenImages": [],
+      "heading": [
+        "AI 投资助手"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "overview",
+      "expected": "组合总览",
+      "brokenImages": [],
+      "heading": [
+        "组合总览"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "market",
+      "expected": "市场观察",
+      "brokenImages": [],
+      "heading": [
+        "市场观察"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "brokenImages": [],
+      "heading": [
+        "交易复盘"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "profile",
+      "expected": "投资偏好",
+      "brokenImages": [],
+      "heading": [
+        "投资偏好"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "skill-store",
+      "expected": "研究工具",
+      "brokenImages": [],
+      "heading": [
+        "研究工具"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "brokenImages": [],
+      "heading": [
+        "研究资料"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "live-research",
+      "expected": "研究任务",
+      "brokenImages": [],
+      "heading": [
+        "研究任务"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "brokenImages": [],
+      "heading": [
+        "风险分析"
+      ],
+      "height": 1000,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "brokenImages": [],
+      "heading": [
+        "AI 投资助手"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "overview",
+      "expected": "组合总览",
+      "brokenImages": [],
+      "heading": [
+        "组合总览"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "market",
+      "expected": "市场观察",
+      "brokenImages": [],
+      "heading": [
+        "市场观察"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "brokenImages": [],
+      "heading": [
+        "交易复盘"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "profile",
+      "expected": "投资偏好",
+      "brokenImages": [],
+      "heading": [
+        "投资偏好"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "skill-store",
+      "expected": "研究工具",
+      "brokenImages": [],
+      "heading": [
+        "研究工具"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "brokenImages": [],
+      "heading": [
+        "研究资料"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "live-research",
+      "expected": "研究任务",
+      "brokenImages": [],
+      "heading": [
+        "研究任务"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "brokenImages": [],
+      "heading": [
+        "风险分析"
+      ],
+      "height": 768,
+      "invalidText": false,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "route": "copilot",
+      "expected": "AI 投资助手",
+      "brokenImages": [],
+      "heading": [
+        "AI 投资助手"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "overview",
+      "expected": "组合总览",
+      "brokenImages": [],
+      "heading": [
+        "组合总览"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "market",
+      "expected": "市场观察",
+      "brokenImages": [],
+      "heading": [
+        "市场观察"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "trading-style",
+      "expected": "交易复盘",
+      "brokenImages": [],
+      "heading": [
+        "交易复盘"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "profile",
+      "expected": "投资偏好",
+      "brokenImages": [],
+      "heading": [
+        "投资偏好"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "skill-store",
+      "expected": "研究工具",
+      "brokenImages": [],
+      "heading": [
+        "研究工具"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "research-knowledge",
+      "expected": "研究资料",
+      "brokenImages": [],
+      "heading": [
+        "研究资料"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "live-research",
+      "expected": "研究任务",
+      "brokenImages": [],
+      "heading": [
+        "研究任务"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "route": "research-algorithms",
+      "expected": "风险分析",
+      "brokenImages": [],
+      "heading": [
+        "风险分析"
+      ],
+      "height": 844,
+      "invalidText": false,
+      "overflow": false,
+      "width": 390
+    }
+  ],
+  "console": []
+}

@@ -1,0 +1,654 @@
+{
+  "schema_version": "product-demo-browser.v1",
+  "checks": [
+    {
+      "id": "overview",
+      "title": "组合总览",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [
+        {
+          "canvases": 7,
+          "height": 174,
+          "id": "portfolio",
+          "width": 607.71875
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "组合总览",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "overview"
+      ],
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "id": "market",
+      "title": "市场观察",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [
+        {
+          "canvases": 11,
+          "height": 240,
+          "id": "market",
+          "width": 700.4375
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "市场观察",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "market"
+      ],
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "id": "copilot",
+      "title": "AI 投资助手",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "AI 投资助手",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "copilot"
+      ],
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "id": "profile",
+      "title": "投资者画像",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "投资者画像",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "profile"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "id": "trading-style",
+      "title": "交易行为",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "交易行为",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "trading-style"
+      ],
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "id": "skill-store",
+      "title": "技能商店",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "技能商店",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "skill-store"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "id": "research-knowledge",
+      "title": "研究知识库",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "研究知识库",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "research-knowledge"
+      ],
+      "scrollWidth": 1425,
+      "width": 1440
+    },
+    {
+      "id": "live-research",
+      "title": "研究工作流",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "研究工作流",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "live-research"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "id": "research-algorithms",
+      "title": "论文算法",
+      "requested": {
+        "width": 1440,
+        "height": 1000
+      },
+      "charts": [
+        {
+          "canvases": 7,
+          "height": 205,
+          "id": "regime",
+          "width": 573.9375
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "论文算法",
+      "height": 1000,
+      "missing": [],
+      "page": [
+        "research-algorithms"
+      ],
+      "scrollWidth": 1440,
+      "width": 1440
+    },
+    {
+      "id": "overview",
+      "title": "组合总览",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [
+        {
+          "canvases": 7,
+          "height": 180,
+          "id": "portfolio",
+          "width": 397.0520935058594
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "组合总览",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "overview"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "market",
+      "title": "市场观察",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [
+        {
+          "canvases": 11,
+          "height": 220,
+          "id": "market",
+          "width": 426.3229370117187
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "市场观察",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "market"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "copilot",
+      "title": "AI 投资助手",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "AI 投资助手",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "copilot"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "profile",
+      "title": "投资者画像",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "投资者画像",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "profile"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "trading-style",
+      "title": "交易行为",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "交易行为",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "trading-style"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "skill-store",
+      "title": "技能商店",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "技能商店",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "skill-store"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "research-knowledge",
+      "title": "研究知识库",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "研究知识库",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "research-knowledge"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "live-research",
+      "title": "研究工作流",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "研究工作流",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "live-research"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "research-algorithms",
+      "title": "论文算法",
+      "requested": {
+        "width": 1024,
+        "height": 768
+      },
+      "charts": [
+        {
+          "canvases": 7,
+          "height": 205,
+          "id": "regime",
+          "width": 368.84375
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "论文算法",
+      "height": 768,
+      "missing": [],
+      "page": [
+        "research-algorithms"
+      ],
+      "scrollWidth": 1009,
+      "width": 1024
+    },
+    {
+      "id": "overview",
+      "title": "组合总览",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [
+        {
+          "canvases": 7,
+          "height": 185,
+          "id": "portfolio",
+          "width": 309.3333435058594
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "组合总览",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "overview"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "market",
+      "title": "市场观察",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [
+        {
+          "canvases": 11,
+          "height": 240,
+          "id": "market",
+          "width": 309.3333435058594
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "市场观察",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "market"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "copilot",
+      "title": "AI 投资助手",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "AI 投资助手",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "copilot"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "profile",
+      "title": "投资者画像",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "投资者画像",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "profile"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "trading-style",
+      "title": "交易行为",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "交易行为",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "trading-style"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "skill-store",
+      "title": "技能商店",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "技能商店",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "skill-store"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "research-knowledge",
+      "title": "研究知识库",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "研究知识库",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "research-knowledge"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "live-research",
+      "title": "研究工作流",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [],
+      "demo": "DEMO · 演示数据",
+      "heading": "研究工作流",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "live-research"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    },
+    {
+      "id": "research-algorithms",
+      "title": "论文算法",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "charts": [
+        {
+          "canvases": 7,
+          "height": 195,
+          "id": "regime",
+          "width": 309.3333435058594
+        }
+      ],
+      "demo": "DEMO · 演示数据",
+      "heading": "论文算法",
+      "height": 844,
+      "missing": [],
+      "page": [
+        "research-algorithms"
+      ],
+      "scrollWidth": 375,
+      "width": 390
+    }
+  ],
+  "interactions": [
+    {
+      "action": "skill-filter-toggle",
+      "cards": 1,
+      "selected": "false"
+    },
+    {
+      "action": "capture-exit",
+      "capture": false
+    },
+    {
+      "action": "reset",
+      "cards": 9,
+      "search": "",
+      "selected": "true"
+    },
+    {
+      "action": "profile-tabs",
+      "panel": [
+        "questionnaire"
+      ]
+    },
+    {
+      "action": "preference",
+      "text": "详细解释 · 仅改变本次演示显示"
+    },
+    {
+      "action": "knowledge-search",
+      "count": 1
+    },
+    {
+      "action": "citation-open",
+      "focused": "citation-close",
+      "open": true,
+      "title": "协方差收缩研究笔记（演示资料）"
+    },
+    {
+      "action": "citation-close",
+      "closed": true,
+      "focused": "查看引用"
+    },
+    {
+      "action": "copilot-preset",
+      "answer": "分别查看波动与回撤的观察窗口DEMO如何理解市场波动与回撤？演示图表的基础指标由 Python 对合成日线预先计算。波动说明收益离散程度，回撤说明相对窗口最高收盘价的下降幅度，二者具有不同计算口径。固定20日窗口，不缩短输入要求。图表只展示合成演示日线。宏观与市场观察（演示摘要）协方差收缩研究笔记（演示资料）"
+    },
+    {
+      "action": "copilot-uncovered-safe",
+      "answer": "演示样例未覆盖此问题DEMO<img src=x onerror=alert(1)> 预测价格此页面只展示固定样例，未调用模型、行情服务或检索接口。请使用上方示例问题查看演示结果。",
+      "images": 0
+    },
+    {
+      "action": "market-change",
+      "metricScope": "风险与活跃度上证指数固定指标 · 与左侧切换独立",
+      "period": "true",
+      "title": "深证成指"
+    },
+    {
+      "action": "live-cancel",
+      "status": "DEMO · 已取消"
+    },
+    {
+      "action": "live-start",
+      "status": "DEMO · 演示执行中"
+    },
+    {
+      "action": "live-complete",
+      "results": 3,
+      "status": "DEMO · 演示已完成",
+      "steps": [
+        "DEMO DONE",
+        "DEMO DONE",
+        "DEMO DONE",
+        "DEMO DONE",
+        "DEMO DONE"
+      ]
+    },
+    {
+      "action": "leave-cancel-back",
+      "page": "live-research",
+      "status": "DEMO · 已取消"
+    },
+    {
+      "action": "forward-route",
+      "page": "market"
+    },
+    {
+      "action": "mobile-navigation",
+      "closed": true,
+      "page": "market",
+      "sidebarVisibility": "hidden",
+      "width": 390
+    },
+    {
+      "action": "mobile-capture-exit",
+      "capture": false
+    }
+  ],
+  "console": [],
+  "screenshots": 11,
+  "console_scope": "Final preview reload and mobile interactions"
+}

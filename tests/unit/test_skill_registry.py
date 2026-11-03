@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.research_routes import create_research_router
-from app.providers.contracts import ProviderRequest, ProviderResult, ProviderRecord
+from app.providers.contracts import ProviderOperation, ProviderRequest, ProviderResult, ProviderRecord
 from app.providers.fingerprint import compute_request_fingerprint
 from app.providers.skillhub import WencaiSkillHubProvider, load_iwencai_skill_manifest
 from app.service.skill_registry import SkillMetadata, SkillRegistry, SkillUnavailable
@@ -40,6 +40,40 @@ def test_global_and_personal_disable_prevent_actual_provider_calls(store):
         registry.resolve(request, "bob")
     result = asyncio.run(provider.execute(request))
     assert result.status.value == "FAILED"
+
+
+def test_exact_skill_reference_cannot_silently_use_another_adapter_or_version(store):
+    registry = SkillRegistry(store)
+
+    class Provider:
+        name = "exact-reference-test"
+        calls = 0
+
+        async def execute(self, request):
+            self.calls += 1
+            return ProviderResult(request_id=request.request_id,
+                request_fingerprint=compute_request_fingerprint(request), provider=self.name,
+                status="EMPTY", retrieved_at=registry.clock(), scope_description="controlled exact-reference test")
+
+    provider = Provider()
+    request = ProviderRequest(request_id="exact", operation="MARKET_DATA", subject="600519")
+    chosen = registry.scoped_provider(provider, "alice", skill_id="hithink-market-query", version="1.0.0")
+    assert asyncio.run(chosen.execute(request)).status.value == "EMPTY"
+    assert provider.calls == 1
+    registry.update("hithink-market-query", "1.0.0", action="disable", expected_revision=1)
+    # A different approved adapter does not satisfy a pinned private recipe.
+    metadata = SkillMetadata(skill_id="alternate-market", version="1.0.0", name="替代行情",
+                             operation="MARKET_DATA", endpoint="/v1/query2data")
+    registry.install(metadata)
+    registry.update(metadata.skill_id, metadata.version, action="verified", expected_revision=1)
+    assert registry.resolve(request, "alice").skill_id == "alternate-market"
+    assert asyncio.run(chosen.execute(request)).issues[0].code.value == "PERMISSION_DENIED"
+    wrong_operation = registry.scoped_provider(provider, "alice", skill_id=metadata.skill_id, version=metadata.version)
+    denied = asyncio.run(wrong_operation.execute(request.model_copy(update={"operation": ProviderOperation.COMPANY_DATA})))
+    assert denied.status.value == "FAILED"
+    assert provider.calls == 1
+    with pytest.raises(ValueError):
+        registry.scoped_provider(provider, "alice", skill_id="alternate-market")
 
 
 def test_new_version_is_pending_and_activation_disables_old_version(store):

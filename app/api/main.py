@@ -15,6 +15,7 @@ from time import monotonic
 
 from fastapi import Body, Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from app.api.access import LocalAccessMiddleware, LocalAccount, load_accounts, password_digest
@@ -23,6 +24,19 @@ from app.service.session_truth import TruthConfirmation, TruthInputRequired, cur
 from app.service.workflow import WorkflowDefinition, WorkflowSaveRequest, WorkflowRunRequest, default_workflow, bind_workflow
 from app.service.semantic_memory import search_context_memories
 from app.service.skill_registry import SkillRegistry
+from app.service.personal_research import PersonalResearchService
+from app.service.research_lab_store import LabRecords, digest as lab_digest
+from app.service.research_method_builder import MethodBuilder
+from app.api.research_lab_routes import create_method_router, create_monitor_router, create_planning_router
+from app.service.investment_hypotheses import HypothesisMonitor
+from app.service.announcement_impact import AnnouncementImpact
+from app.service.shadow_portfolios import ShadowPortfolios
+from app.portfolio import AssetType
+from app.service.funding_goals import FundingGoals
+from app.api.personal_research_routes import create_personal_research_router
+from app.api.investment_memory_routes import create_investment_memory_router, PersonalRebalancingInput
+from app.service.investment_memory import InvestmentMemoryService, InvestmentPolicyStale
+from app.gates import GateStatus
 from app.api.research_routes import create_research_router
 from app.api.algorithm_routes import create_algorithm_router
 from app.service.research_runtime import ResearchRuntime
@@ -981,9 +995,12 @@ def create_app(
                 if hasattr(provider, "start_http"):
                     await provider.start_http()
             await knowledge_crawler.start()
+            await hypothesis_monitor.start()
             yield
         finally:
+            await hypothesis_monitor.close()
             await knowledge_crawler.close()
+            await personal_research_service.aclose()
             await live_research_service.aclose()
             await research_runtime.aclose()
             for provider in (active_wencai_provider, active_live_finance):
@@ -1138,6 +1155,20 @@ def create_app(
 
     @api.exception_handler(HTTPException)
     async def http_error_handler(_: Request, exc: HTTPException) -> JSONResponse:
+        personal_errors = {
+            "PERSONAL_REBALANCING_CONTEXT_CHANGED": "当前持仓已变化，请重新生成基础调仓方案后再对比。",
+            "PERSONAL_REBALANCING_PORTFOLIO_REQUIRED": "请先导入并确认当前持仓。",
+            "PERSONAL_REBALANCING_PROFILE_REQUIRED": "请先完成并确认投资偏好问卷，再计算个人调仓方案。",
+            "PERSONAL_REBALANCING_INPUT_INCOMPLETE": "持仓需要具备完整的人民币金额、唯一资产及正市值，才能设置目标。",
+            "LIVE_PORTFOLIO_REFRESH_REQUIRED": "请先刷新真实行情，再使用当前持仓计算。",
+            "INVESTMENT_POLICY_STALE": "长期偏好的依据已变化，请重新读取并确认候选风格。",
+            "INVESTMENT_MEMORY_REVISION_CONFLICT": "长期偏好已被更新，请刷新后再次保存。",
+            "PERSONAL_RESEARCH_REVISION_CONFLICT": "研究系统已更新，请读取最新版本后运行。",
+            "PERSONAL_RESEARCH_SKILL_UNAVAILABLE": "系统引用的数据工具版本已停用，请调整工具配置后保存。",
+            "PERSONAL_RESEARCH_INVALID": "研究配置或输入期间无效，请检查指标依赖与日期。",
+        }
+        if isinstance(exc.detail, str) and exc.detail in personal_errors:
+            return _error_response(exc.status_code, exc.detail, personal_errors[exc.detail])
         if exc.status_code == 404:
             return _error_response(404, "NOT_FOUND", "decision event was not found")
         return _error_response(exc.status_code, "HTTP_ERROR", "request was refused")
@@ -1169,6 +1200,13 @@ def create_app(
     api.include_router(create_research_router(store=active_store, provider=active_wencai_provider,
         owner_dependency=owner_dependency, auth_enabled=access_enabled, clock=active_clock, registry=skill_registry,
         runtime=research_runtime, live_service=live_research_service))
+    personal_research_service = PersonalResearchService(store=active_store, provider=active_wencai_provider,
+        registry=skill_registry, runtime=research_runtime, clock=active_clock, facts=research_facts)
+    api.state.personal_research_service = personal_research_service
+    api.include_router(create_personal_research_router(service=personal_research_service, owner_dependency=owner_dependency))
+    investment_memory_service = InvestmentMemoryService(active_store, clock=active_clock,
+                                                       planner=active_portfolio_rebalancing)
+    api.state.investment_memory_service = investment_memory_service
     knowledge_service = KnowledgeService(active_store, clock=active_clock)
     knowledge_crawler = KnowledgeCrawler(knowledge_service)
     api.state.knowledge_service = knowledge_service
@@ -2967,6 +3005,71 @@ def create_app(
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
 
+    def bound_trade_inputs(bundle):
+        prices = {position.asset_id: position.market_value / position.quantity
+                  for position in bundle.position_snapshot.positions
+                  if position.quantity > 0 and position.asset_type.value != "CASH"}
+        types = {position.asset_id: position.asset_type for position in bundle.position_snapshot.positions}
+        types['CASH-CNY'] = AssetType.CASH
+        return prices, types
+
+    def personal_rebalancing_request(owner_id, body):
+        mode = get_runtime_mode_controller().mode
+        current = active_store.get_current_portfolio(owner_id, mode.value)
+        supplied = body.bundle
+        if supplied is not None and supplied.owner_id != owner_id:
+            raise StoreOwnerError("personal rebalancing portfolio owner mismatch")
+        if current is not None:
+            bundle = PortfolioImportBundle.model_validate(current["portfolio"])
+            if supplied is not None and fingerprint(supplied.model_dump(mode="json")) != fingerprint(bundle.model_dump(mode="json")):
+                raise HTTPException(409, detail="PERSONAL_REBALANCING_CONTEXT_CHANGED")
+        elif supplied is not None and mode != DataMode.LIVE:
+            bundle = supplied
+        else:
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_PORTFOLIO_REQUIRED")
+        if mode == DataMode.LIVE and not is_trusted_live_portfolio(owner_id, bundle):
+            raise HTTPException(409, detail="LIVE_PORTFOLIO_REFRESH_REQUIRED")
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner_id)
+        if snapshot is None:
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_PROFILE_REQUIRED")
+        profile = snapshot.profile
+        behavior = active_store.get_latest_behavior_profile(owner_id)
+        if behavior and behavior.questionnaire_profile_id == profile.profile_id:
+            profile = effective_risk_profile(profile, behavior)
+        # Price and asset identity are financial facts, not adjustable scenario
+        # parameters. Derive them from the same server-bound position snapshot.
+        bound_prices, bound_types = bound_trade_inputs(bundle)
+        return PortfolioRebalancingRequest(request_id="personal-rebalance:" + uuid4().hex,
+            owner_id=owner_id, generated_at=active_clock(), bundle=bundle, confirmed_profile=profile,
+            target_weights=body.target_weights, deadband_pct=body.deadband_pct,
+            max_turnover_pct=body.max_turnover_pct, minimum_cash_pct=body.minimum_cash_pct,
+            prices_cny=bound_prices, asset_types=bound_types, round_to_lot=True)
+
+    api.include_router(create_investment_memory_router(service=investment_memory_service,
+        owner_dependency=owner_dependency, rebalance_request_builder=personal_rebalancing_request))
+
+    @api.get("/api/v1/advisor/investment-memory/rebalancing-input", response_model=PersonalRebalancingInput)
+    def personal_rebalancing_input(owner_id: str = Depends(owner_dependency)):
+        mode = get_runtime_mode_controller().mode
+        current = active_store.get_current_portfolio(owner_id, mode.value)
+        if current is None:
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_PORTFOLIO_REQUIRED")
+        bundle = PortfolioImportBundle.model_validate(current["portfolio"])
+        positions = bundle.position_snapshot.positions
+        total = sum((position.market_value for position in positions), Decimal("0"))
+        if total <= 0 or len({position.asset_id for position in positions}) != len(positions) or any(p.currency != "CNY" for p in positions):
+            raise HTTPException(409, detail="PERSONAL_REBALANCING_INPUT_INCOMPLETE")
+        weights = {position.asset_id: (position.market_value / total * 100).quantize(Decimal("0.01")) for position in positions}
+        # Preserve a closed 100% target after rounding display percentages.
+        largest = max(weights, key=weights.get)
+        weights[largest] += 100 - sum(weights.values(), Decimal("0"))
+        return {"bundle": bundle, "target_weights": weights, "data_mode": mode.value,
+            "is_synthetic": mode != DataMode.LIVE,
+            "profile_ready": active_store.get_latest_questionnaire_snapshot(owner_id) is not None,
+            "quote_ready": mode != DataMode.LIVE or is_trusted_live_portfolio(owner_id, bundle),
+            "positions": [{"asset_id": p.asset_id, "asset_name": p.asset_name,
+                           "current_weight_pct": weights[p.asset_id]} for p in positions]}
+
     @api.get(
         "/api/v1/advisor/rebalancing-template",
     )
@@ -3010,6 +3113,20 @@ def create_app(
                 "LIVE_PORTFOLIO_REFRESH_REQUIRED",
                 "调仓输入未绑定本服务进程生成的真实行情刷新结果",
             )
+        if get_runtime_mode_controller().mode == DataMode.LIVE:
+            prices, types = bound_trade_inputs(request.bundle)
+            request = request.model_copy(update={"prices_cny": prices, "asset_types": types, "round_to_lot": True})
+        if request.personal_policy_revision is not None:
+            try:
+                policy = investment_memory_service.resolve_policy(owner_id, request.personal_policy_revision)
+                bound = personal_rebalancing_request(owner_id, request).model_copy(update={"request_id": request.request_id})
+                adjusted, details = investment_memory_service.apply_policy(bound, policy)
+                result = active_portfolio_rebalancing.plan_rebalancing(adjusted)
+                issues = tuple(dict.fromkeys((*result.issues, *details["application_issues"])))
+                return result.model_copy(update={"policy_application": jsonable_encoder(details, custom_encoder={Decimal: str}),
+                    "issues": issues, "status": GateStatus.REVIEW_REQUIRED if issues else result.status})
+            except InvestmentPolicyStale:
+                raise HTTPException(409, detail="INVESTMENT_POLICY_STALE") from None
         return active_portfolio_rebalancing.plan_rebalancing(request)
 
     @api.get(
@@ -3115,6 +3232,34 @@ def create_app(
 
     def global_llm_client() -> AsyncLLMClient:
         return AsyncLLMClient(global_llm_config())
+
+    lab_records = LabRecords(active_store, active_clock)
+    method_builder = MethodBuilder(lab_records, personal_research_service, global_llm_client)
+    api.state.method_builder = method_builder
+    api.include_router(create_method_router(method_builder, owner_dependency))
+
+    def lab_portfolio_context(owner):
+        context = personal_rebalancing_input(owner)
+        if not context['quote_ready']:
+            raise HTTPException(409, detail="请先刷新当前真实行情与组合。")
+        snapshot = active_store.get_latest_questionnaire_snapshot(owner)
+        behavior = active_store.get_latest_behavior_profile(owner)
+        profile = snapshot.profile if snapshot else None
+        if profile and behavior and behavior.questionnaire_profile_id == profile.profile_id:
+            profile = effective_risk_profile(profile, behavior)
+        context['profile_hash'] = lab_digest(profile.model_dump(mode='json')) if profile else None
+        return context
+
+    hypothesis_monitor = HypothesisMonitor(lab_records, personal_research_service, knowledge_service)
+    announcement_impacts = AnnouncementImpact(lab_records, knowledge_service, lab_portfolio_context)
+    api.state.hypothesis_monitor = hypothesis_monitor
+    api.state.announcement_impacts = announcement_impacts
+    api.include_router(create_monitor_router(hypothesis_monitor, announcement_impacts, owner_dependency))
+    shadow_portfolios = ShadowPortfolios(lab_records, personal_research_service, investment_memory_service, lab_portfolio_context, personal_rebalancing_request)
+    funding_goals = FundingGoals(lab_records, investment_memory_service, lab_portfolio_context, personal_rebalancing_request)
+    api.state.shadow_portfolios = shadow_portfolios
+    api.state.funding_goals = funding_goals
+    api.include_router(create_planning_router(shadow_portfolios, funding_goals, owner_dependency))
 
     @api.post("/api/v1/advisor/profile-extractions")
     async def natural_profile_extraction(req: NaturalProfileRequest, owner_id: str = Depends(owner_dependency)):
@@ -3422,7 +3567,8 @@ def create_app(
             history_objs = [CopilotMessage(role=message.role, content=message.content) for message in history_source]
             assistant_parts: list[str] = []
             stream_failed = False
-            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry, knowledge_service=knowledge_service).stream_chat(
+            async with aclosing(copilot_agent.with_owner(scoped_owner, registry=skill_registry, knowledge_service=knowledge_service,
+                                                       personal_research_service=personal_research_service).stream_chat(
                 user_message=req.message,
                 history=history_objs,
                 persona_info=req.persona_info,

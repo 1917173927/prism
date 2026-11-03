@@ -13,9 +13,9 @@
 .prism-ui-v2 :is(.research-workbench, .rw-dialog) [hidden] { display: none !important; }
 .prism-ui-v2 .rw-page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: min(1120px, 100%); margin: 0 auto 24px; }
 .prism-ui-v2 .rw-page-heading > h2 { margin: 0; font-size: 30px; line-height: 1.4; font-weight: 600; }
-.prism-ui-v2 .rw-stage { display: grid; justify-items: center; align-content: center; min-height: calc(100svh - 230px); }
+.prism-ui-v2 .rw-stage { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: center; min-height: calc(100svh - 230px); }
 .prism-ui-v2 .research-workbench.rw-has-results .rw-stage { min-height: 0; padding-top: 20px; }
-.prism-ui-v2 .rw-card { width: min(1120px, 100%); padding: 40px 44px 34px; border: 1px solid var(--border-subtle, #e6e7eb); border-radius: 18px; background: var(--surface, #fff); }
+.prism-ui-v2 .rw-card { width: min(1120px, 100%); min-width: 0; padding: 40px 44px 34px; border: 1px solid var(--border-subtle, #e6e7eb); border-radius: 18px; background: var(--surface, #fff); }
 .prism-ui-v2 .rw-task-tabs { display: flex; gap: 8px; margin-bottom: 32px; }
 .prism-ui-v2 .rw-task-tab { min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; color: var(--text-secondary, #62666e); background: transparent; font: inherit; font-size: 15px; font-weight: 400; }
 .prism-ui-v2 .rw-task-tab[aria-selected="true"] { color: var(--text, #282b30); background: var(--surface-muted, #f1f1f3); font-weight: 500; }

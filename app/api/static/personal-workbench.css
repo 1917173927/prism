@@ -1,0 +1,58 @@
+/* Local business components inherit the upstream palette; font tokens are scoped. */
+.prism-ui-v2 .personal-workbench {
+  --font-section: 20px;
+  --font-card: 16px;
+  --font-body: 14px;
+  --font-caption: 12px;
+  margin-top: 24px;
+  min-width: 0;
+}
+.prism-ui-v2 .personal-workbench .personal-section { padding: 22px; margin-bottom: 18px; min-width: 0; }
+.prism-ui-v2 .personal-workbench h3 { margin: 0 0 8px; font-size: var(--font-section); }
+.prism-ui-v2 .personal-workbench h4 { margin: 0 0 10px; font-size: var(--font-card); }
+.prism-ui-v2 .personal-workbench p { overflow-wrap: anywhere; }
+.prism-ui-v2 .personal-workbench .personal-block:empty { display: none; }
+.prism-ui-v2 .personal-heading, .prism-ui-v2 .personal-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.prism-ui-v2 .personal-actions { justify-content: flex-start; margin-top: 14px; }
+.prism-ui-v2 .personal-form-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 14px; margin: 16px 0; }
+.prism-ui-v2 .personal-field { display: grid; gap: 6px; min-width: 0; color: var(--text-secondary); font-size: var(--font-caption); }
+.prism-ui-v2 .personal-field :is(input,select,textarea) { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); font-size: var(--font-body); }
+.prism-ui-v2 .personal-field textarea { min-height: 72px; resize: vertical; }
+.prism-ui-v2 .personal-block { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin: 14px 0; min-width: 0; background: var(--surface-subtle); }
+.prism-ui-v2 .personal-block h4 { font-size: 16px; }
+.prism-ui-v2 .personal-collection { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; margin-top: 14px; }
+.prism-ui-v2 .personal-system-card { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; background: var(--surface-subtle); }
+.prism-ui-v2 .personal-system-card[aria-current="true"] { border-color: var(--brand); background: var(--brand-soft); }
+.prism-ui-v2 .personal-system-card strong { display: block; overflow-wrap: anywhere; }
+.prism-ui-v2 .personal-system-card p { font-size: var(--font-caption); color: var(--text-secondary); margin: 8px 0; }
+.prism-ui-v2 .personal-checks { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
+.prism-ui-v2 .personal-checks label { display: flex; align-items: center; gap: 5px; font-size: var(--font-caption); }
+.prism-ui-v2 .personal-checks input { width: auto; }
+.prism-ui-v2 .personal-input-row { display: grid; grid-template-columns: minmax(0,1fr) 105px auto; gap: 10px; align-items: end; margin-top: 10px; }
+.prism-ui-v2 .personal-input-row .copilot-action-btn { margin-bottom: 2px; }
+.prism-ui-v2 .personal-notice { border-radius: var(--radius-sm); padding: 10px 12px; background: var(--info-soft); color: var(--text-primary); overflow-wrap: anywhere; }
+.prism-ui-v2 .personal-notice.error { background: var(--danger-soft); color: var(--danger); }
+.prism-ui-v2 .personal-summary-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(155px,1fr)); gap: 12px; margin: 16px 0; }
+.prism-ui-v2 .personal-summary-grid > article { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-subtle); min-width: 0; }
+.prism-ui-v2 .personal-summary-grid small { display: block; color: var(--text-secondary); }
+.prism-ui-v2 .personal-summary-grid strong { display: block; margin-top: 6px; font-size: 22px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.prism-ui-v2 .personal-workbench table { width: 100%; border-collapse: collapse; font-size: var(--font-caption); }
+.prism-ui-v2 .personal-workbench :is(th,td) { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; overflow-wrap: anywhere; }
+.prism-ui-v2 .personal-workbench th { color: var(--text-secondary); font-weight: 500; }
+.prism-ui-v2 .personal-record { margin-top: 14px; font-size: var(--font-caption); }
+.prism-ui-v2 .personal-record pre { padding: 12px; background: var(--surface-subtle); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow-y: auto; font: 11px/1.6 var(--mono); }
+.prism-ui-v2 .personal-basis { padding-left: 20px; color: var(--text-secondary); font-size: var(--font-caption); }
+.prism-ui-v2 .personal-context-note { color: var(--text-secondary); font-size: var(--font-caption); }
+.prism-ui-v2 .personal-target-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; margin: 14px 0; }
+.prism-ui-v2 .personal-target-card { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.prism-ui-v2 .personal-target-card > :is(strong,small) { display: block; overflow-wrap: anywhere; }
+.prism-ui-v2 .personal-target-card > small { margin: 4px 0 12px; color: var(--text-secondary); }
+@media(max-width:700px) { .prism-ui-v2 .personal-workbench .personal-section { padding: 16px; } .prism-ui-v2 .personal-collection { grid-template-columns: minmax(0,1fr); } .prism-ui-v2 .personal-workbench h3 { font-size: 21px; } }
+@media(max-width:440px) { .prism-ui-v2 .personal-form-grid { grid-template-columns: minmax(0,1fr); } .prism-ui-v2 .personal-block { padding: 12px; } .prism-ui-v2 .personal-input-row { grid-template-columns: minmax(0,1fr) 75px; } .prism-ui-v2 .personal-input-row > button { grid-column: 1/-1; justify-self: start; } .prism-ui-v2 .personal-summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.prism-ui-v2 .personal-workbench .personal-wide-table { min-width: 620px; }
+@media(max-width:700px) {
+  .prism-ui-v2 #portfolio-rebalancing .rebalancing-heading { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+  .prism-ui-v2 #portfolio-rebalancing .rebalancing-heading > div:first-child { width: 100%; min-width: 0; }
+  .prism-ui-v2 #portfolio-rebalancing .rebalancing-heading h2 { word-break: keep-all; }
+  .prism-ui-v2 #portfolio-rebalancing .heading-actions { display: flex; width: 100%; min-width: 0; flex-wrap: wrap; gap: 8px; }
+}

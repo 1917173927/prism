@@ -66,6 +66,30 @@
   }
   function notice(id) { const result = el("p", null, "notice"); result.id = id; result.hidden = true; result.setAttribute("role", "status"); result.setAttribute("aria-live", "polite"); return result; }
   function section(title) { const result = el("section", null, "surface research-tool-section"); result.append(el("h3", title)); return result; }
+  const STATUS_TEXT = Object.freeze({CALCULATED: "已计算", PASS: "核对通过", UNAVAILABLE: "暂不可用", FAILED: "未完成", QUEUED: "排队中", RUNNING: "进行中", COMPLETED: "已完成", CANCELED: "已取消", CANCELLED: "已取消", PARTIAL: "资料不完整", SUCCESS: "资料已返回", EMPTY: "未找到资料", NOT_VERIFIED: "尚未核验", UNVERIFIED: "尚未核验", OBSERVED_UNVERIFIED: "观察值待核验", RETRIEVED_UNVERIFIED: "资料待核验", SINGLE_SOURCE_UNVERIFIED: "单一来源，尚未独立核验", NO_VERIFIABLE_OBSERVATION: "暂无可核验数据"});
+  const customerStatus = value => STATUS_TEXT[value] || "状态待确认";
+  const METRIC_TEXT = Object.freeze({price: "最新价", revenue: "营业收入", net_profit: "净利润", pe: "市盈率", nav: "单位净值", value: "指标数值", source: "数据来源", subject_identity: "标的身份", symbol: "证券代码", observed_at: "数据时点", market_cap: "总市值", volume: "成交量", amount: "成交额", turnover_rate: "换手率"});
+  const METRIC_SUFFIX = Object.freeze({unit: "计量单位", observed_at: "数据时点", period: "报告期", eligible_observation: "截止时点前的数据", eligible_period: "截止时点前的报告期", period_unrecognized: "可识别的报告期"});
+  function customerMetric(value) {
+    const [metric, suffix] = String(value || "").split(".");
+    const name = METRIC_TEXT[metric] || (metric === "WENCAI_SKILLHUB_API_KEY" ? "数据服务连接信息（由管理员配置）" : /\p{Script=Han}/u.test(metric) ? metric : "数据项说明见原始记录");
+    return suffix ? `${name}的${METRIC_SUFFIX[suffix] || "补充信息"}` : name;
+  }
+  const REASON_TEXT = Object.freeze({TIMEOUT: "数据请求超时", RATE_LIMITED: "数据请求过于频繁", QUOTA_EXHAUSTED: "数据服务额度不足", AUTH_FAILED: "数据服务认证失败", PERMISSION_DENIED: "没有数据访问权限", TRANSPORT_ERROR: "数据连接失败", INVALID_RESPONSE: "返回的数据格式无效", UNSUPPORTED_OPERATION: "暂不支持该类研究", CANCELLED: "操作已取消", INTERNAL_ERROR: "服务处理失败", RESEARCH_CAPACITY: "研究容量已满", DEPENDENCY_INCOMPLETE: "前置研究尚未完成", FUTURE_OBSERVATION: "数据时点晚于本次研究截止时间", FUTURE_REPORTING_PERIOD: "报告期晚于本次研究截止时间", DOCUMENT_UNAVAILABLE: "资料已删除或不可访问", DOCUMENT_VERSION_CHANGED: "资料版本已更新，请重新检索", FUTURE_PUBLICATION: "资料发布晚于指定截止时间", CHUNK_UNAVAILABLE: "引用片段已失效", CHUNK_INTEGRITY_FAILED: "引用片段未通过完整性检查", QUOTE_NOT_SUPPORTED: "引用文字与原文不符"});
+  const customerReason = value => REASON_TEXT[value] || "尚未满足数据或核验条件，具体原因可查看原始记录";
+  const customerTime = value => {
+    if (!value) return "尚未提供";
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toLocaleString("zh-CN", {hour12: false}) : "时间格式待核对";
+  };
+  const customerUnit = value => ({CNY: "元", RMB: "元", USD: "美元", HKD: "港元", PCT: "%", percent: "%", ratio: "比例", shares: "股", "CNY/share": "元/股", points: "点"}[value] || (/\p{Script=Han}|[%‰]/u.test(value || "") ? value : value ? "单位见原始记录" : "单位未提供"));
+  const customerSource = value => ({wencai_skillhub_provider: "同花顺问财数据服务", fixture_wencai_provider: "演示数据服务", static_market_provider: "静态样例数据", "Fuyao structured financial data API": "扶摇金融数据服务", "Fuyao financial statements and indicators": "扶摇财务报表与指标", "Tencent public quote snapshot": "腾讯公开行情", "Sina public quote snapshot": "新浪公开行情"}[value] || (/^[A-Za-z0-9_.:-]+$/.test(value || "") ? "来源名称见原始记录" : value || "来源尚未提供"));
+  const embeddingText = value => value === "AVAILABLE" ? "语义索引已准备" : value === "UNAVAILABLE" ? "关键词检索可用，语义索引未准备" : "索引状态待确认";
+  function rawDetails(title, data) {
+    const details = el("details");
+    details.append(el("summary", title), el("pre", JSON.stringify(data, null, 2), "research-original-text"));
+    return details;
+  }
   function table(headers, rows) {
     const wrapper = el("div", null, "table-wrap research-table-wrap");
     const result = el("table"); const head = el("thead"); const heading = el("tr");
@@ -203,11 +227,11 @@
     const result = await request(`${knowledgePrefix}/documents/${encodeURIComponent(documentId)}`);
     const original = result.original;
     const output = byId("knowledge-original"); output.replaceChildren();
-    output.append(el("h3", original.title), el("p", `${original.source} · 公告 ${original.published_at}`, "research-data-meta"));
+    output.append(el("h3", original.title), el("p", `${customerSource(original.source)} · 发布 ${customerTime(original.published_at)} · 第 ${result.revision} 版`, "research-data-meta"));
     if (original.source_url) output.append(safeLink(original.source_url, "打开原始来源"));
     const text = el("pre", original.text, "research-original-text"); output.append(text);
-    const record = el("div"); record.append(el("p", `修订 ${result.revision} · ${result.content_hash}`, "research-data-meta"));
-    if (match) record.append(el("p", `引用位置：${match.page == null ? "页码未提供" : `第 ${match.page} 页`} · 第 ${match.paragraph} 段 · ${match.chunk_id}`, "research-data-meta"));
+    const record = el("div"); record.append(rawDetails("版本定位记录", {document_id: documentId, revision: result.revision, content_hash: result.content_hash}));
+    if (match) record.append(el("p", `引用位置：${match.page == null ? "页码未提供" : `第 ${match.page} 页`} · 第 ${match.paragraph} 段`, "research-data-meta"));
     output.append(disclosure("原文记录与引用位置", record));
     output.hidden = false;
     showResearchDialog("knowledge-original-dialog");
@@ -223,9 +247,9 @@
     knowledgeDocuments = data.items || [];
     const output = byId("knowledge-documents"); output.replaceChildren();
     if (!knowledgeDocuments.length) output.append(el("p", "当前账户没有可查看的资料。", "empty-state"));
-    else output.append(table(["资料", "标的／期间", "公告时间", "可见范围", "版本与索引"], knowledgeDocuments.map(item => {
+    else output.append(table(["资料", "标的／期间", "发布时间", "可见范围", "资料版本与检索准备"], knowledgeDocuments.map(item => {
       const title = button(item.title, event => busy(event.currentTarget, "knowledge-message", () => showOriginal(item.document_id)));
-      return [title, [item.subject, item.period].filter(Boolean).join(" / ") || "未限定", item.published_at, item.visibility === "PUBLIC" ? "公开" : "个人", `${item.revision} · 向量 ${item.embedding_status} · ${item.chunk_count} 片段`];
+      return [title, [item.subject, item.period].filter(Boolean).join(" / ") || "未限定", customerTime(item.published_at), item.visibility === "PUBLIC" ? "公开" : "个人", `第 ${item.revision} 版 · ${item.chunk_count} 个片段 · ${embeddingText(item.embedding_status)}`];
     })));
     message("knowledge-message", readOnly() ? "当前页面只读。" : "");
   }
@@ -238,17 +262,19 @@
     if (!knowledgeMatches.length) output.append(el("p", "没有匹配资料。可以调整关键词或筛选范围。", "empty-state"));
     for (const match of knowledgeMatches) {
       const card = el("article", null, "research-result-card");
-      card.append(el("h4", match.title), el("span", "原文片段 · 待核验", "status-chip"), el("p", `${match.source} · 公告 ${match.published_at}`, "research-data-meta"), el("blockquote", match.text));
+      card.append(el("h4", match.title), el("span", "原文片段 · 待核验", "status-chip"), el("p", `${customerSource(match.source)} · 发布 ${customerTime(match.published_at)} · 第 ${match.revision} 版`, "research-data-meta"), el("blockquote", match.text));
       const actions = el("div", null, "research-action-row");
       actions.append(action("查看引用原文", event => busy(event.currentTarget, "knowledge-message", () => showOriginal(match.document_id, match))));
       const check = action("核验原文引用", event => busy(event.currentTarget, "knowledge-message", async () => {
         const checked = await request(`${knowledgePrefix}/citations/check`, {method: "POST", body: {citations: [{document_id: match.document_id, chunk_id: match.chunk_id, revision: match.revision, content_hash: match.content_hash, quote: match.text}], as_of: knowledgeAsOf}});
-        message("knowledge-message", checked.status === "PASS" ? "PASS · 引用与该版本原文对应，事实仍待核验。" : `UNVERIFIED · ${checked.results?.[0]?.reason || "引用未获支持"}`, checked.status !== "PASS");
+        message("knowledge-message", checked.status === "PASS" ? "引用与该版本原文完全对应；金融事实仍需独立核验。" : `引用尚未核对通过：${customerReason(checked.results?.[0]?.reason)}。`, checked.status !== "PASS");
       }), {write: true});
       if (match.source_url) actions.append(safeLink(match.source_url, "原始来源"));
       card.append(actions, disclosure("查看引用详情", check, el("pre", JSON.stringify(match, null, 2), "research-original-text"))); output.append(card);
     }
-    output.append(disclosure("检索方式与运行信息", el("p", `${data.mode} · ${data.fulltext_backend} · 候选 ${data.candidate_count} · ${data.elapsed_ms} ms · ${data.quality_gate} · ${data.degraded_reason || "未报告降级"}`, "research-data-meta")));
+    const mode = data.mode === "HYBRID_RRF" ? "关键词与语义联合检索" : data.mode === "KEYWORD_ONLY" ? "关键词检索" : "检索方式待确认";
+    const coverage = data.quality_gate === "COMPLETE_ELIGIBLE_CORPUS" ? "已搜索全部符合条件的资料" : "资料范围受限，可能遗漏相关内容";
+    output.append(disclosure("检索方式与运行信息", el("p", `${mode} · ${coverage} · 候选 ${data.candidate_count} 个片段 · 用时 ${data.elapsed_ms} 毫秒`, "research-data-meta"), rawDetails("原始检索记录", {mode: data.mode, fulltext_backend: data.fulltext_backend, quality_gate: data.quality_gate, degraded_reason: data.degraded_reason})));
     updateWorkbenchResults();
   }
   function initializeKnowledge() {
@@ -264,7 +290,7 @@
     intake.append(file, disclosure("直接填写原文", field("knowledge-text", "原文内容", {tag: "textarea"})), disclosure("补充资料信息", extra));
     const upload = action("添加资料并建立索引", event => busy(event.currentTarget, "knowledge-message", async () => {
       const published = byId("knowledge-published").value;
-      if (!published) throw new Error("请填写资料公告时点。");
+      if (!published) throw new Error("请填写资料发布时间。");
       const metadata = {title: byId("knowledge-title").value.trim(), source: byId("knowledge-source").value.trim(), published_at: new Date(published).toISOString(), visibility: byId("knowledge-visibility").value, kind: byId("knowledge-kind").value};
       for (const [key, id] of Object.entries({source_url: "knowledge-source-url", subject: "knowledge-subject", period: "knowledge-period"})) if (byId(id).value.trim()) metadata[key] = byId(id).value.trim();
       if (!metadata.title || !metadata.source) throw new Error("请填写标题与来源名称。");
@@ -276,7 +302,7 @@
         result = await request(`${knowledgePrefix}/upload`, {method: "POST", body});
       } else result = await request(`${knowledgePrefix}/documents`, {method: "POST", body: {...metadata, text: byId("knowledge-text").value}});
       await loadKnowledge();
-      message("knowledge-message", `资料已登记 · ${result.chunk_count} 个片段 · 索引 ${result.embedding_status}`);
+      message("knowledge-message", `资料已登记 · 第 ${result.revision} 版 · ${result.chunk_count} 个片段 · ${embeddingText(result.embedding_status)}；资料真实性尚未核验。`);
     }), {primary: true, write: true}); upload.id = "knowledge-upload";
     const intakeActions = el("div", null, "rw-tool-actions"); intakeActions.append(upload); intake.append(intakeActions); byId("research-materials-slot").append(intake);
     const search = el("form"); search.addEventListener("submit", event => event.preventDefault());
@@ -325,9 +351,9 @@
   }
   function importResearchTime(value) {
     if (value == null) { byId("research-as-of").value = ""; return; }
-    if (typeof value !== "string" || !/(Z|[+-]\d{2}:\d{2})$/.test(value)) throw new Error("as_of 必须为带时区的 ISO 时点。");
+    if (typeof value !== "string" || !/(Z|[+-]\d{2}:\d{2})$/.test(value)) throw new Error("历史截止时间必须包含时区，例如 2026-09-30T16:00:00+08:00。");
     const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) throw new Error("as_of 时点无效。");
+    if (!Number.isFinite(date.getTime())) throw new Error("历史截止时间无效。");
     byId("research-as-of").value = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
   async function submitResearch(path, body) {
@@ -347,26 +373,27 @@
   }
   async function loadResearchTemplate() {
     templateAvailable = false; byId("research-template-submit").disabled = true;
-    if (readOnly()) { byId("research-template-info").textContent = "只读页面快照不执行 LIVE 模板。"; return; }
+    if (readOnly()) { byId("research-template-info").textContent = "当前为只读页面，不能启动真实资料研究。"; return; }
     const data = await request("/api/v1/research/templates");
     const template = data.items?.find(item => item.template_id === "live-equity-basic.v1" && item.data_mode === "LIVE");
     if (!template) { byId("research-template-info").textContent = "股票研究模板暂不可用。"; message("research-message", "股票研究模板暂不可用。", true); return; }
     templateAvailable = true;
-    byId("research-template-info").textContent = `${template.name} · ${template.template_id} · ${template.nodes.map(node => `${node.node_id}：${node.operation}（${node.required_fields.join("、")}）`).join("；")}`;
+    byId("research-template-info").textContent = `研究内容：${template.nodes.map(node => `${RESEARCH_OPERATIONS[node.operation] || "研究资料"}（${node.required_fields.map(customerMetric).join("、")}）`).join("；")}。返回的数据仍需核对来源与时点。`;
+    byId("research-template-record").replaceChildren(el("pre", JSON.stringify(template, null, 2), "research-original-text"));
     byId("research-template-submit").disabled = readOnly() || researchSubmitting;
   }
   function renderResearchDraft() {
     const output = byId("research-node-editor"); output.replaceChildren();
     researchDraft.forEach((item, index) => {
       const editor = (key, value, list = false) => {
-        const labels = {node_id: "节点标识", subject: "研究对象", query: "查询语句", required_fields: "必需字段", dependencies: "前置节点"};
+        const labels = {node_id: "步骤标识", subject: "研究标的", query: "查询语句", required_fields: "必需字段", dependencies: "前置步骤"};
         const wrapper = el("label", null, "research-form-field"); wrapper.append(el("span", labels[key]));
         const input = el("input"); input.value = list ? (value || []).join(", ") : value || "";
-        input.setAttribute("aria-label", `节点 ${index + 1} ${key}`);
+        input.setAttribute("aria-label", `研究步骤 ${index + 1} ${labels[key]}`);
         input.addEventListener("input", () => { item[key] = list ? input.value.split(/[,，\n]/).map(value => value.trim()).filter(Boolean) : input.value.trim(); });
         wrapper.append(input); return wrapper;
       };
-      const operation = el("select"); operation.setAttribute("aria-label", `节点 ${index + 1} operation`);
+      const operation = el("select"); operation.setAttribute("aria-label", `研究步骤 ${index + 1} 研究内容`);
       for (const [key, name] of Object.entries(RESEARCH_OPERATIONS)) { const option = el("option", name); option.value = key; operation.append(option); }
       operation.value = item.operation; operation.addEventListener("change", () => { item.operation = operation.value; });
       const remove = action("移除节点", () => { researchDraft.splice(index, 1); renderResearchDraft(); }, {quiet: true}); remove.disabled = researchDraft.length <= 1;
@@ -387,18 +414,20 @@
     const output = byId("research-run-result"); output.replaceChildren();
     output.hidden = false;
     const statuses = {QUEUED: "研究排队中", RUNNING: "正在研究", COMPLETED: "研究完成", FAILED: "研究未完成", CANCELLED: "研究已取消"};
-    output.append(el("h3", statuses[run.status] || run.status), el("p", `开始 ${run.created_at}${run.finished_at ? ` · 完成 ${run.finished_at}` : ""}`, "research-data-meta"));
+    output.append(el("h3", statuses[run.status] || customerStatus(run.status)), el("p", `开始 ${customerTime(run.created_at)}${run.finished_at ? ` · 完成 ${customerTime(run.finished_at)}` : ""}`, "research-data-meta"));
+    output.append(el("p", run.is_synthetic === true ? "演示样例研究，不能用于证明真实数据能力。" : "单一来源的数据尚未独立核验；研究完成不等于金融事实已核验，也不构成交易指令。", "research-data-meta"));
     byId("research-run-actions").hidden = false;
     byId("research-cancel").disabled = terminalRun(run) || readOnly();
     byId("research-cancel").hidden = terminalRun(run);
-    for (const result of run.nodes || []) {
+    for (const [index, result] of (run.nodes || []).entries()) {
       const card = el("article", null, "research-result-card");
-      card.append(el("h4", `${result.node_id} · ${result.status}`), el("p", `${result.provider || "提供方尚未返回"} · ${result.provider_ms == null ? "尚无节点耗时" : `${result.provider_ms} ms`} · ${result.verification_status || "NOT_VERIFIED"}`, "research-data-meta"));
-      if (result.missing_fields?.length) card.append(el("p", `缺失字段：${result.missing_fields.join("、")}`, "notice"));
-      if (result.error_codes?.length) card.append(el("p", `节点原因：${result.error_codes.join("、")}`, "notice error"));
-      if (result.observations?.length) card.append(table(["字段／期间", "观察值／单位", "观察时点", "实际来源", "核验状态"], result.observations.map(item => [`${item.metric} / ${item.period || "未提供"}`, `${item.value} / ${item.unit || "单位未提供"}`, item.observed_at || "未提供", item.actual_source, item.verification_status])));
+      const content = RESEARCH_OPERATIONS[result.capability_snapshot?.operation];
+      card.append(el("h4", `研究步骤 ${index + 1}${content ? ` · ${content}` : ""} · ${customerStatus(result.status)}`), el("p", `数据服务：${customerSource(result.provider)} · ${result.provider_ms == null ? "尚无步骤耗时" : `用时 ${result.provider_ms} 毫秒`} · ${customerStatus(result.verification_status || "NOT_VERIFIED")}`, "research-data-meta"));
+      if (result.missing_fields?.length) card.append(el("p", `待补资料：${result.missing_fields.map(customerMetric).join("、")}`, "notice"));
+      if (result.error_codes?.length) card.append(el("p", `未完成原因：${result.error_codes.map(customerReason).join("；")}`, "notice error"));
+      if (result.observations?.length) card.append(table(["数据项／报告期", "数值／单位", "数据时点", "实际来源", "核验状态"], result.observations.map(item => [`${customerMetric(item.metric)} / ${item.period || "未提供"}`, `${item.value} / ${customerUnit(item.unit)}`, customerTime(item.observed_at), customerSource(item.actual_source), customerStatus(item.verification_status)])));
       else card.append(el("p", "当前没有可展示的观察值。", "empty-state"));
-      const evidence = el("details"); evidence.append(el("summary", "证据与原始字段"), el("pre", JSON.stringify(result, null, 2), "research-original-text")); card.append(evidence); output.append(card);
+      card.append(rawDetails("证据定位与原始数据", result)); output.append(card);
     }
     const {nodes, ...metadata} = run;
     output.append(disclosure("任务记录与核验说明", el("p", "单源观察仍待核验；任务记录保存在当前服务进程。", "research-data-meta"), el("pre", JSON.stringify(metadata, null, 2), "research-original-text")));
@@ -412,7 +441,7 @@
     output.append(counts, disclosure("详细运行信息", el("pre", JSON.stringify(status, null, 2), "research-original-text")));
   }
   async function refreshResearchRun() {
-    const runId = byId("research-run-id").value.trim(); if (!runId) throw new Error("请提交任务或填写任务标识。");
+    const runId = byId("research-run-id").value.trim(); if (!runId) throw new Error("请先开始研究，或填写已有任务的追踪编号。");
     const sequence = ++runSequence;
     const run = await request(`/api/v1/research/runs/${encodeURIComponent(runId)}`);
     if (sequence !== runSequence) return;
@@ -431,6 +460,8 @@
     const root = byId("live-research-workspace"); if (!root) return;
     root.append(notice("research-message"));
     const editor = el("div"); editor.append(toolNotice("research-message"));
+    const templateRecord = el("div"); templateRecord.id = "research-template-record";
+    editor.append(disclosure("基础研究模板与字段", templateRecord));
     const controls = el("div", null, "rw-tool-actions");
     const add = action("添加节点", () => {
       if (researchDraft.length >= 32) { message("research-message", "单次研究最多 32 个节点。", true); return; }
@@ -482,7 +513,8 @@
     const stockReport = section("当前对话的个股详细报告"); stockReport.id = "research-stock-report"; stockReport.hidden = true;
     const reportContent = el("div"); reportContent.id = "research-stock-report-content"; stockReport.append(reportContent); byId("research-results-slot").append(stockReport); renderResearchDraft();
   }
-  const ALGORITHMS = Object.freeze({regime: "两状态波动模型", covariance: "常相关协方差收缩", "five-factors": "Fama–French 五因子"});
+  const ALGORITHMS = Object.freeze({regime: "市场波动环境", covariance: "资产联动风险", "five-factors": "市场风格因素"});
+  const ALGORITHM_FIELDS = Object.freeze({low_variance: "低波动状态概率", high_variance: "高波动状态概率", MKT_RF: "市场超额收益", SMB: "规模因素", HML: "价值因素", RMW: "盈利因素", CMA: "投资因素"});
   let algorithmResult = null;
   let algorithmKind = "regime";
   let algorithmChart = null;
@@ -524,7 +556,7 @@
     const fields = algorithmKind === "regime" ? ["low_variance", "high_variance"] : ["MKT_RF", "SMB", "HML", "RMW", "CMA"];
     try {
       fields.forEach((key, index) => {
-        const series = chart.addSeries(window.LightweightCharts.LineSeries, {title: key, color: colors[index], lineWidth: 2, priceFormat: {type: "price", precision: 6, minMove: .000001}});
+        const series = chart.addSeries(window.LightweightCharts.LineSeries, {title: ALGORITHM_FIELDS[key], color: colors[index], lineWidth: 2, priceFormat: {type: "price", precision: 6, minMove: .000001}});
         series.setData(rows.map(row => ({time: algorithmKind === "five-factors" ? `${row.time}-01` : row.time, value: row[key]})));
       });
       chart.timeScale().fitContent();
@@ -544,17 +576,17 @@
   function renderAlgorithmResult(data) {
     algorithmResult = data;
     const output = byId("algorithm-output"); output.replaceChildren(); output.hidden = false;
-    output.append(el("h3", `${ALGORITHMS[algorithmKind]} · ${data.status}`));
+    output.append(el("h3", `${ALGORITHMS[algorithmKind]} · ${customerStatus(data.status)}`));
     const record = el("div"); record.append(el("p", `${data.source} · 时点 ${data.as_of} · ${data.method_version} · 输入快照 ${data.input_snapshot_id}`, "research-data-meta"));
     if (data.status !== "CALCULATED") {
       const descriptions = {INSUFFICIENT_RETURNS: "收益样本不足", DEGENERATE_TRAINING_RETURNS: "训练收益退化为常数", RESEARCH_DEPENDENCY_UNAVAILABLE: "研究算法依赖不可用", MODEL_NOT_CONVERGED: "模型未收敛", INSUFFICIENT_ASSETS: "资产数不足", INSUFFICIENT_ALIGNED_RETURNS: "共同日期的收益样本不足", ZERO_VARIANCE_ASSET: "存在零方差资产", FUNDAMENTAL_FIELDS_MISSING: "缺少五因子财务字段", INSUFFICIENT_FORMATION_UNIVERSE: "分组形成集合不足", EMPTY_2X3_PORTFOLIO: "存在空的 2×3 分组", RISK_FREE_RETURN_MISSING: "缺少无风险收益", FINANCIAL_POINT_IN_TIME_INVALID: "财报公告时点不符合形成期约束", MONTHS_MUST_BE_NONEMPTY_SORTED_UNIQUE: "月度记录须非空、排序且唯一", FORMATION_MEMBER_RETURN_MISSING: "形成集合成员缺少月度收益"};
-      output.append(el("p", `不可计算：${descriptions[data.reason] || "输入或数值条件不满足"}（${data.reason || "原因未提供"}）${data.missing_fields?.length ? `；缺失 ${data.missing_fields.join("、")}` : ""}`, "notice error"));
+      output.append(el("p", `暂无法分析：${descriptions[data.reason] || "资料或计算条件未满足"}。请补充或核对输入资料；具体字段可在计算明细中查看。`, "notice error"));
     } else {
       if (data.interpretation) record.append(el("p", data.interpretation));
-      if (algorithmKind === "regime") record.append(el("p", `训练 ${data.training_start} 至 ${data.training_end} · 全部样本 ${data.sample_count} · 样本外 ${data.out_of_sample_count} · 状态为低／高条件方差概率（0–1）。`, "research-data-meta"));
-      else if (algorithmKind === "five-factors") record.append(el("p", `集合 ${data.universe_id} · 范围 ${data.scope} · 全集合声明 ${data.universe_complete ? "由输入提供方声明完整" : "未声明完整"} · 收益单位为小数比例；月度图以月首日期定位。`, "research-data-meta"));
+      if (algorithmKind === "regime") output.append(el("p", `使用 ${data.sample_count} 条历史收益分析。图中 0–1 表示状态概率，1 代表 100%；高波动表示起伏较大，不代表上涨或下跌概率。`, "research-data-meta"));
+      else if (algorithmKind === "five-factors") output.append(el("p", "观察市场、规模、价值、盈利和投资特征的表现。图中收益采用小数比例，0.01 代表 1%；本结果没有进行个人持仓收益归因。", "research-data-meta"));
       else {
-        output.append(el("p", `共同样本 ${data.sample_count} · ${data.input_start} 至 ${data.input_end} · 收缩强度 ${data.shrinkage} · 目标 ${data.target} · 单位 ${data.covariance_unit}`, "research-data-meta"));
+        output.append(el("p", `输入包含 ${data.assets.length} 项资产、${data.sample_count} 个共同交易日。资产同时波动时，增加持仓数量不一定能降低组合风险；当前结果仅对应所导入的资产。`, "research-data-meta"));
         const actions = el("div", null, "research-action-row"); actions.append(action("协方差矩阵", () => renderMatrix(data)), action("相关矩阵", () => renderMatrix(data, true))); output.append(actions);
         const matrix = el("div"); matrix.id = "algorithm-matrix"; output.append(matrix); renderMatrix(data);
       }

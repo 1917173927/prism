@@ -4,7 +4,7 @@
 
 Prism 是面向同花顺 A18 赛题的个性化证券投顾智能体系统。系统将已确认的投资者画像、持仓资料、金融数据和研究任务组织为可复核的分析过程，由确定性程序完成金额、比例、风险与再平衡计算，并在建议输出前执行独立风险与合规审查。
 
-[技术文档](docs/submission/competition-technical-solution.md) · [技术设计文档](docs/submission/technical-report.md) · [本地部署教程](docs/local-deployment.md)
+[技术文档](docs/submission/competition-technical-solution.md) · [技术文档 PDF](docs/submission/Prism-技术文档-图形优化版.pdf) · [技术设计文档](docs/submission/technical-report.md) · [本地部署教程](docs/local-deployment.md)
 
 ![Prism 整体处理流程](docs/submission/figures/judge-01-processing-flow.png)
 

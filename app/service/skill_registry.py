@@ -196,7 +196,9 @@ class SkillRegistry:
             raise SkillUnavailable("capability is disabled or unavailable for this user")
         return SkillMetadata.model_validate({key: candidates[0][key] for key in SkillMetadata.model_fields})
 
-    def scoped_provider(self, provider, owner_id: str):
+    def scoped_provider(self, provider, owner_id: str, *, skill_id=None, version=None):
+        if (skill_id is None) != (version is None):
+            raise ValueError("an exact capability requires both ID and version")
         registry = self
         captured = ContextVar("prism_skill_snapshot", default=None)
 
@@ -215,7 +217,18 @@ class SkillRegistry:
 
             async def execute(self, request: ProviderRequest) -> ProviderResult:
                 try:
-                    metadata = registry.resolve(request, owner_id)
+                    if skill_id is None:
+                        metadata = registry.resolve(request, owner_id)
+                    else:
+                        row = next((item for item in registry.list(owner_id)
+                                    if item["skill_id"] == skill_id and item["version"] == version
+                                    and item["callable"]), None)
+                        channel = str(request.parameters.get("channel", "announcement")).lower()
+                        if row is None or row["operation"] != request.operation.value or (
+                            request.operation == ProviderOperation.SEARCH_NEWS and row.get("channel") != channel
+                        ):
+                            raise SkillUnavailable("selected capability does not permit this operation")
+                        metadata = SkillMetadata.model_validate({key: row[key] for key in SkillMetadata.model_fields})
                     captured.set(metadata.model_dump(mode="json", exclude_none=True))
                 except SkillUnavailable:
                     captured.set(None)

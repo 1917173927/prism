@@ -1,0 +1,14 @@
+{
+  "source_sha256": "6c39e71649b7fb22f68b39dc53e62780257658877c49c5d0bd8842978768b616",
+  "output_sha256": "882f2a83306a4cd881051c2f3a09bce5f4944b22769bf18afb8198841a805481",
+  "classification": "IMPLEMENTED_AUTOMATED_VALIDATION_COMPLETE",
+  "changed_parts": [
+    "word/document.xml"
+  ],
+  "changed_paragraphs": 21,
+  "preserved_media_count": 24,
+  "source_unchanged": true,
+  "zip_crc": "PASS",
+  "download_copy_sha256": "882f2a83306a4cd881051c2f3a09bce5f4944b22769bf18afb8198841a805481",
+  "download_copy_identical": true
+}

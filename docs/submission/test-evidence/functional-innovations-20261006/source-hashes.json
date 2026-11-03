@@ -1,0 +1,16 @@
+{
+  "app/api/main.py": "14684b7c7d146eaa6c960b39dbb464b095eeffd45d2b5dbaa41aac5cbb3e51cc",
+  "app/api/static/personal-workbench.js": "60047df5652328a09c74d0d87908e1bf3657174076098932830c68232cbfb4d5",
+  "app/api/static/personal-workbench.css": "cc607695720a4fcb14183ae0ac27ccb7963d0051df00c841537931f27f28f883",
+  "app/api/static/app.js": "4bb74ff3d8402a1c4f33aae233d6727f23971ec36fa66c61620449e02dfc3433",
+  "app/api/static/index.html": "55797245158382db06513bc7544790a67afc767b3dbb81aac579184f3658571d",
+  "docs/showcase/functional-innovations-20261006/portfolio-rebalancing-1440.jpg": "3a7c20bcaf5ba5de3cdfaa5fde43fa6f58d84e04257a804022fc5864a9042093",
+  "docs/showcase/functional-innovations-20261006/trading-style-1440.jpg": "fef7591e40da693eecb897d6b42392f431eab6ae4bd3bef0b777b111cc5a8830",
+  "docs/showcase/functional-innovations-20261006/skill-store-1440.jpg": "ab7d0bcaf2a21c8f8a34514ba5876735b25f3e9f1ebc475396faf5b46ecf7de3",
+  "docs/showcase/functional-innovations-20261006/portfolio-rebalancing-1024.jpg": "27292cc978882b7fbb0b548903128dd8e6baee3775f7f6512f20ddf65e0cd7b2",
+  "docs/showcase/functional-innovations-20261006/trading-style-1024.jpg": "cdd340de108ed70fae5a4e9a911fce950b08bf022f988503cd3f5b477e99ee08",
+  "docs/showcase/functional-innovations-20261006/skill-store-1024.jpg": "1286ab842e850e5a2868fa347567fca2687e84ed59cd1ead0f8510153f7edf62",
+  "docs/showcase/functional-innovations-20261006/portfolio-rebalancing-390.jpg": "9e4af2fadbe976e34b29f035deeb1fe5128a7335d1c90e5e03110699256b7bcb",
+  "docs/showcase/functional-innovations-20261006/trading-style-390.jpg": "7e09d2507e8ea1ed72ac2f35df591c6ef177d4d69c69f7298fecfde1b1c94e9b",
+  "docs/showcase/functional-innovations-20261006/skill-store-390.jpg": "9f525894b39ce527aff7a1fca48facc648369bf45cf98451ff05e651b6ab9db7"
+}

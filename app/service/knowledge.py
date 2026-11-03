@@ -303,7 +303,22 @@ class KnowledgeService:
         with self.store._lock:
             rows = self.store._connection.execute("SELECT * FROM knowledge_documents WHERE deleted_at IS NULL AND (owner_id=? OR visibility='PUBLIC') ORDER BY published_at DESC,document_id LIMIT ?", (owner_id, limit)).fetchall()
             return [{key: value for key, value in self._load(row).items() if key != "original"} |
-                    {"title": json.loads(row["payload_json"])["original"]["title"], "visibility": row["visibility"], "subject": row["subject"], "period": row["period"], "published_at": row["published_at"]} for row in rows]
+                    {"title": json.loads(row["payload_json"])["original"]["title"], "kind": json.loads(row["payload_json"])["original"]["kind"], "visibility": row["visibility"], "subject": row["subject"], "period": row["period"], "published_at": row["published_at"]} for row in rows]
+
+    def get_version(self, owner_id: str, document_id: str, revision: int) -> dict | None:
+        """History is readable only while the current document remains accessible."""
+        current = self.get(owner_id, document_id)
+        if current is None:
+            return None
+        with self.store._lock:
+            row = self.store._connection.execute("SELECT * FROM knowledge_document_versions WHERE document_id=? AND revision=?", (document_id, revision)).fetchone()
+        if row is None:
+            return None
+        payload = json.loads(row["payload_json"])
+        if (payload["document_id"] != document_id or payload["revision"] != revision or
+            payload["owner_id"] != current["owner_id"] or _digest(payload["original"]) != row["content_hash"]):
+            raise StoreCorruptError("knowledge historical version failed integrity validation")
+        return payload
 
     def delete(self, owner_id: str, document_id: str, *, admin=False, expected_revision=None) -> bool:
         _owner(owner_id)

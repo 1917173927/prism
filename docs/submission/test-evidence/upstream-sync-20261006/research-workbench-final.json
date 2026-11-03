@@ -1,0 +1,839 @@
+{
+  "checks": [
+    "统一入口与默认任务",
+    "任务标签键盘操作",
+    "浏览器前进与返回",
+    "参数应用、取消与任务输入保留",
+    "工具分组、节点编辑、外部关闭、内部拖动、Escape、焦点恢复",
+    "真实项目文档上传、检索、原文核对、引用核验与筛选",
+    "三种算法说明、数据编辑及真实接口输入校验",
+    "真实模板任务提交、终态轮询与读取任务",
+    "原研究链接直接刷新",
+    "1440、1024、390 像素宽度与侧栏关闭",
+    "研究区域主题切换",
+    "原对话入口、模型服务切换与配置弹窗"
+  ],
+  "responses": [
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/runtime/data-mode",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/preferences",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/market/catalog",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/runtime/data-mode",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/preferences",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/decision-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/recommendation-history",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/behavior/profile",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/profile/questionnaire-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/profile/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/copilot/conversations",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/query-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/copilot/conversations/chat-2a10b035-4311-4acb-81ee-e9bd6c005a1f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/research-matrix-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/model-settings",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/session-truth",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/stock-research-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/fund-research-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/convertible-bond-research-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio-optimization-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/scenario-simulation-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/context-memory",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/runtime/data-mode",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/current",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/refresh",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio-health",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/templates",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/session-truth",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/market/quotes/CN",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/upload",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/market/analysis/CN/sse-composite",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/search",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents/knowledge%3Ac56beeb3268691ae99d3dc8854d65a54",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/citations/check",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/algorithms/five-factors",
+      "method": "POST",
+      "status": 422
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/runs/from-template",
+      "method": "POST",
+      "status": 202
+    },
+    {
+      "path": "/api/v1/research/runs/b959048e3e924b2b9650117f9b6e185f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/runtime",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/runs/b959048e3e924b2b9650117f9b6e185f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/runtime",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/runtime/data-mode",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/preferences",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/market/catalog",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/runtime/data-mode",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/preferences",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/decision-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/recommendation-history",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/profile/questionnaire-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/behavior/profile",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/profile/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/copilot/conversations",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/query-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/templates",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/research-matrix-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/copilot/conversations/chat-2a10b035-4311-4acb-81ee-e9bd6c005a1f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/stock-research-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/model-settings",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/session-truth",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/fund-research-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/convertible-bond-research-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio-optimization-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/scenario-simulation-template",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/context-memory",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/runtime/data-mode",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/current",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/refresh",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio-health",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/summary",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/session-truth",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/portfolio/report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/market/quotes/CN",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/personal-research/systems",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research/knowledge/documents",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypotheses",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/announcements",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/research-lab/hypothesis-events",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/preferences",
+      "method": "PUT",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/preferences",
+      "method": "PUT",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/model-settings",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/advisor/session-truth",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/copilot/chat",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/copilot/conversations",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "geometry": [
+    {
+      "route": "live-research",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "cardWidth": 1120
+    },
+    {
+      "route": "research-knowledge",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "cardWidth": 1120
+    },
+    {
+      "route": "research-algorithms",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "cardWidth": 1120
+    },
+    {
+      "route": "live-research",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "cardWidth": 942.09375
+    },
+    {
+      "route": "research-knowledge",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "cardWidth": 942.09375
+    },
+    {
+      "route": "research-algorithms",
+      "width": 1024,
+      "scrollWidth": 1024,
+      "cardWidth": 942.09375
+    },
+    {
+      "route": "live-research",
+      "width": 390,
+      "scrollWidth": 390,
+      "cardWidth": 358
+    },
+    {
+      "route": "research-knowledge",
+      "width": 390,
+      "scrollWidth": 390,
+      "cardWidth": 358
+    },
+    {
+      "route": "research-algorithms",
+      "width": 390,
+      "scrollWidth": 390,
+      "cardWidth": 358
+    }
+  ],
+  "limitations": [
+    "本次使用独立数据库与受控测试资料；真实模型回答、真实金融输入及上游配额未重新验收。"
+  ],
+  "pageErrors": [],
+  "typography": {
+    "fontSize": "15px",
+    "fontWeight": "500",
+    "lineHeight": "26.25px",
+    "color": "rgb(32, 38, 48)",
+    "fontFamily": "ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Arial, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif"
+  },
+  "chatStatus": 200,
+  "browser": "Chrome/154.0.8037.93",
+  "passed": true,
+  "endState": {
+    "url": "http://127.0.0.1:8060/#copilot",
+    "route": "#copilot",
+    "dialogs": [],
+    "modelDialogDisplay": "none"
+  }
+}
