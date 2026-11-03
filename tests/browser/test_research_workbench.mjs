@@ -221,7 +221,7 @@ try {
   await page.click(".topbar-more-menu > summary");
   await page.click("#theme-toggle");
   await page.waitForSelector("body.prism-theme-dark");
-  await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".rw-task-tab[aria-selected=true]")).color === getComputedStyle(document.body).color, {timeout: 10000});
   const darkColors = await page.evaluate(() => ({body: getComputedStyle(document.body).color, tab: getComputedStyle(document.querySelector('.rw-task-tab[aria-selected="true"]')).color, background: getComputedStyle(document.querySelector('.rw-task-tab[aria-selected="true"]')).backgroundColor}));
   assert.equal(darkColors.tab, darkColors.body);
   assert.notEqual(darkColors.tab, darkColors.background);

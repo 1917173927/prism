@@ -101,3 +101,16 @@
 /* Sidebar: readable empty state and section title */
 .prism-ui-v2.copilot-active .chat-history-empty { color: var(--text-secondary); font-size: 13px; }
 .prism-ui-v2.copilot-active .chat-history-head h3 { font-size: 13px; }
+
+/* Settings menu: group by frequency without touching DOM or handlers. Order in DOM: profile, portfolio, context | data source, theme, more tools | password, logout. */
+.prism-ui-v2 .topbar-more-menu[open] > .topbar-more-panel { animation: prism-overlay-in var(--motion-overlay) var(--motion-ease) both; }
+.prism-ui-v2 .topbar-more-panel { gap: 2px; padding: 6px; border-radius: var(--radius-lg); box-shadow: var(--elev-2); }
+.prism-ui-v2 .topbar-more-panel > button { font-size: 14px; transition: background-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .topbar-more-panel > #data-source-status,
+.prism-ui-v2 .topbar-more-panel > #open-password-change { margin-top: 6px; position: relative; }
+.prism-ui-v2 .topbar-more-panel > #data-source-status::before,
+.prism-ui-v2 .topbar-more-panel > #open-password-change::before { content: ""; position: absolute; top: -4px; left: 6px; right: 6px; height: 1px; background: var(--border); }
+.prism-ui-v2 .topbar-more-panel .data-source-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 0; padding: 6px 9px; border: 0; background: transparent; }
+.prism-ui-v2 .topbar-more-panel .data-source-status span { width: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.prism-ui-v2 .topbar-more-panel > #logout-local-session { color: var(--danger); }
+.prism-ui-v2 .topbar-more-panel > #logout-local-session:hover { color: var(--danger); background: var(--danger-soft); }
