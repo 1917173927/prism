@@ -57,9 +57,12 @@ try {
   await page.waitForFunction(() => !document.getElementById("research-template-submit").disabled);
   assert.equal(await page.$eval("#live-research", node => node.checkVisibility()), true);
   assert.equal(await page.$eval("#research-run-result", node => node.checkVisibility()), false);
-  evidence.typography = await page.$eval("#live-research .rw-task-summary dd", node => { const style = getComputedStyle(node); return {fontSize: style.fontSize, fontWeight: style.fontWeight, lineHeight: style.lineHeight, color: style.color, fontFamily: style.fontFamily}; });
+  evidence.typography = await page.$eval("#research-workbench .rw-page-lede", node => { const style = getComputedStyle(node); return {fontSize: style.fontSize, fontWeight: style.fontWeight, lineHeight: style.lineHeight, color: style.color, fontFamily: style.fontFamily}; });
   const bodyFont = await page.$eval("body", node => getComputedStyle(node).fontFamily);
   assert.equal(evidence.typography.fontFamily, bodyFont);
+  assert.ok(parseFloat(evidence.typography.fontSize) >= 15);
+  assert.ok(await page.$eval("#live-research .rw-task-hint", (node, bodyFont) => { const style = getComputedStyle(node); return style.fontFamily === bodyFont && parseFloat(style.fontSize) >= 14; }, bodyFont));
+  assert.equal(await page.$$eval("#live-research [data-rw-example]", nodes => nodes.length), 3);
   assert.ok((await page.$$eval(".rw-task-summary dd", nodes => nodes.map(node => { const style = getComputedStyle(node); return {fontFamily: style.fontFamily, fontSize: parseFloat(style.fontSize)}; }))).every(style => style.fontFamily === bodyFont && style.fontSize >= 15));
   evidence.checks.push("统一入口与默认任务");
 
@@ -208,6 +211,7 @@ try {
     }
     await page.click("#research-tools-trigger");
     await page.waitForSelector("#research-tools-dialog[open]");
+    await page.evaluate(() => Promise.all(document.getElementById("research-tools-dialog").getAnimations().map(animation => animation.finished.catch(() => {}))));
     const bounds = await page.$eval("#research-tools-dialog", node => { const rect = node.getBoundingClientRect(); return {left: rect.left, right: rect.right, width: innerWidth}; });
     assert.ok(bounds.left >= 0 && bounds.right <= bounds.width, JSON.stringify(bounds));
     await closeToolsOutside();
@@ -217,6 +221,7 @@ try {
   await page.click(".topbar-more-menu > summary");
   await page.click("#theme-toggle");
   await page.waitForSelector("body.prism-theme-dark");
+  await page.evaluate(() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {}))));
   const darkColors = await page.evaluate(() => ({body: getComputedStyle(document.body).color, tab: getComputedStyle(document.querySelector('.rw-task-tab[aria-selected="true"]')).color, background: getComputedStyle(document.querySelector('.rw-task-tab[aria-selected="true"]')).backgroundColor}));
   assert.equal(darkColors.tab, darkColors.body);
   assert.notEqual(darkColors.tab, darkColors.background);
