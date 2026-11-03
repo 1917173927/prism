@@ -1,0 +1,10 @@
+flowchart TD
+  A[已确认个人资料] --> D[当前会话上下文]
+  B[最近消息] --> D
+  C[用户问题] --> D
+  D --> E[工具查询与计算]
+  E --> F[结果与来源]
+  F --> G[展示回答并保存]
+  class A,B,C,D blue
+  class E,F green
+  class G yellow

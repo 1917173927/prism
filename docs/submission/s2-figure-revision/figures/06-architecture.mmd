@@ -1,0 +1,9 @@
+flowchart TD
+  A[用户交互<br/>问题 · 测评 · 持仓] --> B[请求与任务协调<br/>FastAPI · Pydantic]
+  B --> C[领域处理<br/>画像 · 组合 · 研究 · 审查]
+  B --> D[外部能力适配<br/>金融接口 · LLM]
+  C --> E[资料与结果保存<br/>SQLite / PostgreSQL]
+  D --> B
+  class A,B blue
+  class C,E green
+  class D purple

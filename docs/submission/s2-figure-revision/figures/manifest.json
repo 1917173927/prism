@@ -1,0 +1,342 @@
+[
+  {
+    "name": "01-investor-needs",
+    "width": 792,
+    "height": 390,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "02-service-cycle",
+    "width": 792,
+    "height": 636,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "03-technical-route",
+    "width": 792,
+    "height": 636,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "04-delivery-materials",
+    "width": 792,
+    "height": 420,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "05-business-process",
+    "width": 792,
+    "height": 799,
+    "font_pt": 10,
+    "labels": [
+      "结果检查",
+      "系统分析",
+      "用户输入",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "资料待补充"
+    ]
+  },
+  {
+    "name": "06-architecture",
+    "width": 792,
+    "height": 570,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "07-prompt-tools",
+    "width": 792,
+    "height": 636,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "08-frontend",
+    "width": 792,
+    "height": 636,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "09-backend",
+    "width": 792,
+    "height": 402,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "10-workspace",
+    "width": 792,
+    "height": 126,
+    "font_pt": 10,
+    "labels": []
+  },
+  {
+    "name": "11-database-keys",
+    "width": 792,
+    "height": 300,
+    "font_pt": 10,
+    "labels": [
+      "username",
+      "conversation_id",
+      "联合外键"
+    ]
+  },
+  {
+    "name": "12-version-links",
+    "width": 792,
+    "height": 312,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "13-provider-states",
+    "width": 792,
+    "height": 420,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "14-profile-budget",
+    "width": 792,
+    "height": 636,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "15-exposure",
+    "width": 792,
+    "height": 528,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "16-rebalance",
+    "width": 792,
+    "height": 636,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "17-research-runtime",
+    "width": 792,
+    "height": 618,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "18-evidence",
+    "width": 792,
+    "height": 528,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "19-risk-compliance",
+    "width": 792,
+    "height": 528,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "20-retrieval",
+    "width": 792,
+    "height": 666,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "21-context",
+    "width": 792,
+    "height": 528,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "22-session-premises",
+    "width": 792,
+    "height": 528,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "23-algorithms",
+    "width": 792,
+    "height": 528,
+    "font_pt": 10,
+    "labels": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "name": "24-costs",
+    "width": 796,
+    "height": 356,
+    "font_pt": 9.949748743718592,
+    "labels": [
+      "人力研发",
+      "计算资源",
+      "第三方服务",
+      "资源采购",
+      "储备资金",
+      "60",
+      "55",
+      "50",
+      "45",
+      "40",
+      "35",
+      "30",
+      "25",
+      "20",
+      "15",
+      "10",
+      "5",
+      "0",
+      "占比（%）"
+    ]
+  }
+]

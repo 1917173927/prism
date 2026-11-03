@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/static/research-platform.css?v=20261006-upstream-sync-82bd219">
     <link rel="stylesheet" href="/static/research-workbench.css?v=20261006-upstream-sync-82bd219">
     <link rel="stylesheet" href="/static/personal-workbench.css?v=20261006-upstream-presentation">
+    <link rel="stylesheet" href="/static/prism-motion.css?v=20261103-pages">
     <script src="/static/dev-mode.js" defer></script>
     <script src="/static/pages-snapshot.js?v=20260917-pages-snapshot" defer></script>
     <script src="/static/markdown.js?v=20260914-polish5" defer></script>
@@ -21,6 +22,7 @@
     <script src="/static/research-tools.js?v=20261006-upstream-sync-82bd219" defer></script>
     <script src="/static/personal-workbench.js?v=20261006-functional" defer></script>
     <script src="/static/research-lab.js?v=20261006-upstream-sync-82bd219" defer></script>
+    <script src="/static/research-examples.js?v=20261103-examples" defer></script>
     <script src="/static/workflow-editor.js" defer></script>
   </head>
   <body class="questionnaire-pending prism-ui-v2 sidebar-layout-active">
@@ -912,7 +914,7 @@
         </section>
 
         <section class="workspace-page-section research-tools-page research-workbench" id="research-workbench" hidden aria-labelledby="research-workbench-title">
-          <header class="rw-page-heading"><h2 id="research-workbench-title">研究工作台</h2><button id="research-tools-trigger" class="rw-button rw-quiet" type="button" aria-haspopup="dialog" aria-controls="research-tools-dialog" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>工具</button></header>
+          <header class="rw-page-heading"><div class="rw-page-title"><h2 id="research-workbench-title">研究工作台</h2><p class="rw-page-lede">输入一只 A 股代码，几秒内拿到带数据来源与时点的研究结果。资料检索与算法计算见下方标签。</p></div><button id="research-tools-trigger" class="rw-button rw-quiet" type="button" aria-haspopup="dialog" aria-controls="research-tools-dialog" aria-expanded="false"><svg class="prism-icon" aria-hidden="true"><use href="#icon-sliders"/></svg>工具</button></header>
           <div class="rw-stage"><div class="rw-card">
             <div class="rw-task-tabs" role="tablist" aria-label="研究任务">
               <button id="research-tab-live" class="rw-task-tab" role="tab" type="button" data-research-route="live-research" aria-controls="live-research" aria-selected="true" tabindex="0">开展研究</button>
@@ -922,7 +924,8 @@
             <section id="live-research" role="tabpanel" aria-labelledby="research-tab-live">
               <div class="rw-task-heading"><h3 id="live-research-title">研究一家 A 股公司</h3><p>使用基础模板查询行情与财务，结果附数据来源与时点。</p></div>
               <div id="live-research-workspace"></div>
-              <dl class="rw-task-summary"><div><dt>基础模板查询</dt><dd>最新价格、营业收入、净利润</dd></div><div><dt>扩展研究</dt><dd>在工具中组合行情、财务、行业等查询</dd></div></dl>
+              <div class="rw-examples" role="group" aria-label="示例代码"><span class="rw-examples-label">试试看</span><button type="button" class="rw-chip" data-rw-example="600519.SH">600519.SH 贵州茅台</button><button type="button" class="rw-chip" data-rw-example="000001.SZ">000001.SZ 平安银行</button><button type="button" class="rw-chip" data-rw-example="300750.SZ">300750.SZ 宁德时代</button></div>
+              <p class="rw-task-hint">默认返回最新价格、营业收入与净利润；需要更多维度，在右上角“工具”里组合自定义研究。</p>
               <div id="research-results-slot" class="rw-results"></div>
               <div id="hypothesis-workspace"></div>
             </section>

@@ -1,0 +1,9 @@
+flowchart TD
+  A[知识资料] --> B[资料版本与片段]
+  C[问卷与画像] --> E[已确认会话前提]
+  D[当前持仓] --> E
+  B --> F[决策与引用记录]
+  E --> F
+  class A,C,D blue
+  class B,E green
+  class F yellow

@@ -1,0 +1,132 @@
+/* Prism motion and depth layer. Additive only: consumes v2 tokens, overrides no layout. */
+.prism-ui-v2 {
+  --motion-micro: 140ms;
+  --motion-overlay: 180ms;
+  --motion-panel: 220ms;
+  --motion-content: 240ms;
+  --motion-ease: cubic-bezier(.2, .7, .2, 1);
+  --elev-1: 0 1px 2px rgba(24, 24, 22, .05), 0 1px 1px rgba(24, 24, 22, .03);
+  --elev-2: 0 6px 18px -6px rgba(24, 24, 22, .12), 0 2px 6px rgba(24, 24, 22, .04);
+}
+.prism-ui-v2.prism-theme-dark { --elev-1: 0 1px 2px rgba(0, 0, 0, .35); --elev-2: 0 8px 22px -6px rgba(0, 0, 0, .5); }
+
+/* Unified feedback on interactive controls */
+.prism-ui-v2 :is(.rw-button, .rw-task-tab, .rw-tool-choice, .rw-icon-button, .nav-item) {
+  transition: background-color var(--motion-micro) var(--motion-ease), border-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease), box-shadow var(--motion-micro) var(--motion-ease), transform var(--motion-micro) var(--motion-ease);
+}
+.prism-ui-v2 :is(.rw-button, .rw-task-tab, .rw-tool-choice, .rw-icon-button):active:not(:disabled) { transform: scale(.98); }
+.prism-ui-v2 .rw-primary { box-shadow: var(--elev-1); }
+.prism-ui-v2 .rw-primary:hover:not(:disabled) { box-shadow: var(--elev-2); transform: translateY(-1px); }
+.prism-ui-v2 .rw-primary:active:not(:disabled) { transform: translateY(0) scale(.98); box-shadow: var(--elev-1); }
+.prism-ui-v2 :is(.rw-button, .rw-task-tab, .rw-tool-choice, .rw-icon-button):focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.prism-ui-v2 .rw-task-tab:hover:not([aria-selected="true"]) { color: var(--text-primary); background: var(--surface-soft); }
+.prism-ui-v2 .rw-task-tab[aria-selected="true"] { box-shadow: inset 0 -2px 0 var(--brand); }
+
+/* Depth: the main card and choice rows get a calm elevation instead of a flat outline */
+.prism-ui-v2 .rw-card { box-shadow: var(--elev-1); transition: box-shadow var(--motion-panel) var(--motion-ease); }
+.prism-ui-v2 .rw-card:focus-within { box-shadow: var(--elev-2); }
+.prism-ui-v2 .rw-tool-choice:hover { border-color: var(--brand-border); box-shadow: var(--elev-1); transform: translateY(-1px); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-form-field > :is(input, select, textarea) { transition: border-color var(--motion-micro) var(--motion-ease), box-shadow var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) .research-form-field > :is(input, select, textarea):focus { border-color: var(--brand); box-shadow: var(--shadow-glow); outline: none; }
+
+/* Content entrance: task panels and results ease in instead of snapping */
+@keyframes prism-content-in { from { opacity: 0; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
+@keyframes prism-overlay-in { from { opacity: 0; translate: 0 6px; scale: .985; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes prism-drawer-in { from { opacity: .4; translate: 24px 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes prism-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+.prism-ui-v2 #research-workbench:not([hidden]) .rw-card { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+.prism-ui-v2 .research-workbench [role="tabpanel"]:not([hidden]) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+.prism-ui-v2 .rw-results > :not([hidden]) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+
+/* Dialogs and the tools drawer */
+.prism-ui-v2 .rw-dialog[open] { animation: prism-overlay-in var(--motion-overlay) var(--motion-ease) both; }
+.prism-ui-v2 .rw-tools-dialog[open] { animation: prism-drawer-in var(--motion-panel) var(--motion-ease) both; }
+.prism-ui-v2 .rw-dialog[open]::backdrop { animation: prism-backdrop-in var(--motion-overlay) ease both; }
+
+/* Disclosure chevron follows the open state smoothly */
+.prism-ui-v2 :is(.research-workbench, .rw-dialog) details > summary::after { transition: transform var(--motion-panel) var(--motion-ease); }
+
+/* Workbench first screen: value statement, one-tap examples, quiet hint */
+.prism-ui-v2 .rw-page-title { min-width: 0; }
+.prism-ui-v2 #research-workbench .rw-stage { align-content: start; min-height: 0; padding-top: 12px; }
+.prism-ui-v2 .rw-page-lede { margin: 6px 0 0; max-width: 680px; color: var(--text-secondary); font-size: 15px; line-height: 1.7; }
+.prism-ui-v2 #live-research .rw-input-meta { min-height: 0; margin-top: 10px; }
+.prism-ui-v2 #live-research .rw-input-meta > .rw-quiet { margin-left: -10px; }
+.prism-ui-v2 .rw-examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.prism-ui-v2 .rw-examples-label { margin-right: 4px; color: var(--text-muted); font-size: 14px; }
+.prism-ui-v2 .rw-chip { min-height: 34px; padding: 5px 12px; border: 1px solid var(--border-subtle); border-radius: 999px; color: var(--text-secondary); background: var(--surface-subtle); font: inherit; font-size: 14px; cursor: pointer; transition: background-color var(--motion-micro) var(--motion-ease), border-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease), transform var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .rw-chip:hover { color: var(--brand-action); border-color: var(--brand-border); background: var(--brand-soft); transform: translateY(-1px); }
+.prism-ui-v2 .rw-chip:active { transform: scale(.97); }
+.prism-ui-v2 .rw-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.prism-ui-v2 .rw-task-hint { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 14px; line-height: 1.7; }
+@media (max-width: 700px) {
+  .prism-ui-v2 .rw-page-heading { flex-direction: column; align-items: stretch; gap: 8px; }
+  .prism-ui-v2 .rw-page-heading { position: relative; }
+  .prism-ui-v2 .rw-page-heading > .rw-button { position: absolute; top: -9px; right: 0; min-height: 38px; padding-block: 6px; }
+  .prism-ui-v2 .rw-page-title > h2 { padding-right: 84px; }
+  .prism-ui-v2 .rw-examples-label { flex: 0 0 100%; margin: 0 0 2px; }
+  .prism-ui-v2 .rw-page-lede { max-width: none; font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-ui-v2 *, .prism-ui-v2 *::before, .prism-ui-v2 *::after { animation: none !important; transition: none !important; }
+}
+
+/* AI chat home: minimal chatbot look. Overrides only the empty state; the has(.chat-msg) rules in prism-v2.css still hide heading and prompts after sending. */
+@keyframes prism-rise-in { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+.prism-ui-v2.copilot-active #copilot:not(:has(.chat-msg)) .agent-home-heading { animation: prism-rise-in 360ms var(--motion-ease) both; }
+.prism-ui-v2.copilot-active #copilot:not(:has(.chat-msg)) .agent-home-heading h2 { font-weight: 560; letter-spacing: -.025em; }
+.prism-ui-v2.copilot-active #copilot:not(:has(.chat-msg)) .copilot-query-box { animation: prism-rise-in 360ms var(--motion-ease) 70ms both; transition: border-color var(--motion-overlay) var(--motion-ease), box-shadow var(--motion-panel) var(--motion-ease); }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-query-box:hover:not(:focus-within) { border-color: var(--border-strong); box-shadow: var(--elev-2); }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-query-box:focus-within { box-shadow: var(--shadow-glow), var(--elev-2); }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-natural-input::placeholder { color: var(--text-muted); }
+
+/* Suggestions: horizontal pills under the composer */
+.prism-ui-v2.copilot-active .home-quick-prompts { height: auto; order: 5; margin-top: 18px; animation: prism-rise-in 360ms var(--motion-ease) 140ms both; }
+.prism-ui-v2.copilot-active .home-quick-prompts .copilot-quick-tags { position: static; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip { min-height: 38px; padding: 7px 16px; border: 1px solid var(--border-subtle); border-radius: 999px; background: var(--surface); font-size: 14px; transition: background-color var(--motion-micro) var(--motion-ease), border-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease), transform var(--motion-micro) var(--motion-ease), box-shadow var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip:hover,
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip:focus-visible { color: var(--brand-action); border-color: var(--brand-border); background: var(--brand-soft); text-decoration: none; transform: translateY(-1px); box-shadow: var(--elev-1); }
+.prism-ui-v2.copilot-active .home-quick-prompts .quick-tag-chip:active { transform: scale(.97); }
+
+/* Toolbar: quiet technical entries, prominent send button */
+.prism-ui-v2.copilot-active .home-model-trigger { font-size: 13px; color: var(--text-muted); }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn { transition: background-color var(--motion-micro) var(--motion-ease), transform var(--motion-micro) var(--motion-ease), box-shadow var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:hover:not(:disabled) { transform: scale(1.06); box-shadow: var(--elev-1); }
+.prism-ui-v2.copilot-active .agent-conversation .copilot-submit-btn:active:not(:disabled) { transform: scale(.94); }
+
+/* Conversation: gentle arrival for each message */
+.prism-ui-v2.copilot-active .agent-conversation .chat-msg { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+
+/* Sidebar: readable empty state and section title */
+.prism-ui-v2.copilot-active .chat-history-empty { color: var(--text-secondary); font-size: 13px; }
+.prism-ui-v2.copilot-active .chat-history-head h3 { font-size: 13px; }
+
+/* Settings menu: group by frequency without touching DOM or handlers. Order in DOM: profile, portfolio, context | data source, theme, more tools | password, logout. */
+.prism-ui-v2 .topbar-more-menu[open] > .topbar-more-panel { animation: prism-overlay-in var(--motion-overlay) var(--motion-ease) both; }
+.prism-ui-v2 .topbar-more-panel { gap: 2px; padding: 6px; border-radius: var(--radius-lg); box-shadow: var(--elev-2); }
+.prism-ui-v2 .topbar-more-panel > button { font-size: 14px; transition: background-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .topbar-more-panel > #data-source-status,
+.prism-ui-v2 .topbar-more-panel > #open-password-change { margin-top: 6px; position: relative; }
+.prism-ui-v2 .topbar-more-panel > #data-source-status::before,
+.prism-ui-v2 .topbar-more-panel > #open-password-change::before { content: ""; position: absolute; top: -4px; left: 6px; right: 6px; height: 1px; background: var(--border); }
+.prism-ui-v2 .topbar-more-panel .data-source-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 0; padding: 6px 9px; border: 0; background: transparent; }
+.prism-ui-v2 .topbar-more-panel .data-source-status span { width: auto; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.prism-ui-v2 .topbar-more-panel > #logout-local-session { color: var(--danger); }
+.prism-ui-v2 .topbar-more-panel > #logout-local-session:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* Other pages: portfolio, market, profile, skill store. Entrance only fires when display toggles from none, so subpage switches inside a section animate and plain re-renders do not. */
+.prism-ui-v2 :is(#overview, #market, #skill-store):not([hidden]) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+.prism-ui-v2 #market .surface:not(.research-subpage-hidden) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+.prism-ui-v2 #profile > [id$=-view]:not(.research-subpage-hidden):not([hidden]) { animation: prism-content-in var(--motion-content) var(--motion-ease) both; }
+
+/* Interactive feedback shared by these pages */
+.prism-ui-v2 :is(.workspace-page-tabs a, .market-chart-toolbar button, .quiet-profile-action, .portfolio-tool-links a, .portfolio-more-panel button) { transition: background-color var(--motion-micro) var(--motion-ease), border-color var(--motion-micro) var(--motion-ease), color var(--motion-micro) var(--motion-ease), padding var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .market-chart-toolbar button:active, .prism-ui-v2 .quiet-profile-action:active { transform: scale(.97); }
+.prism-ui-v2 .portfolio-tool-links a:hover { padding-left: 6px; color: var(--brand-action); }
+.prism-ui-v2 .profile-feature-card { transition: border-color var(--motion-micro) var(--motion-ease), background-color var(--motion-micro) var(--motion-ease), transform var(--motion-micro) var(--motion-ease), box-shadow var(--motion-micro) var(--motion-ease); }
+.prism-ui-v2 .profile-feature-card:hover { transform: translateY(-2px); box-shadow: var(--elev-1); }
+.prism-ui-v2 .profile-feature-card:active { transform: scale(.98); }
+.prism-ui-v2 .portfolio-page-more[open] > .portfolio-more-panel { animation: prism-overlay-in var(--motion-overlay) var(--motion-ease) both; }
+.prism-ui-v2 .surface { transition: box-shadow var(--motion-panel) var(--motion-ease), border-color var(--motion-panel) var(--motion-ease); }
+.prism-ui-v2 .status-chip { transition: background-color var(--motion-content) var(--motion-ease), color var(--motion-content) var(--motion-ease); }

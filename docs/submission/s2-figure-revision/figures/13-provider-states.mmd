@@ -1,0 +1,12 @@
+flowchart TD
+  A[金融数据请求] --> B[来源与质量检查]
+  B --> C[完整可用]
+  B --> D[资料缺项]
+  B --> E[请求失败]
+  C --> F[继续分析]
+  D --> G[说明缺项]
+  E --> H[说明原因]
+  class A,B blue
+  class C,F green
+  class D,G yellow
+  class E,H pink

@@ -1,0 +1,8 @@
+flowchart TD
+  A[接口层<br/>参数与权限校验] --> B[应用服务层<br/>资料读取与任务协调]
+  B --> C[领域模块<br/>金融计算与审查]
+  B --> D[外部适配模块<br/>金融接口与模型]
+  B --> E[存储模块<br/>事务与版本]
+  class A,B blue
+  class C,E green
+  class D purple

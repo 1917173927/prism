@@ -1,0 +1,12 @@
+flowchart TD
+  A[系统规则] --> D[组织提示词]
+  B[已确认资料] --> D
+  C[最近消息与问题] --> D
+  D --> E[LLM 理解与调用工具]
+  E --> F[校验参数并执行]
+  F --> G[返回结果与来源]
+  G --> H[生成回答]
+  class A,B,C,D blue
+  class E purple
+  class F,G green
+  class H yellow

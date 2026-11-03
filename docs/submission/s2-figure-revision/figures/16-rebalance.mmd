@@ -1,0 +1,9 @@
+flowchart TD
+  A[资金与交易约束] --> B[计算卖出数量]
+  B --> C[更新现金与费用]
+  C --> D[计算可买数量]
+  D --> E[复核现金与风险]
+  E --> F[测算方案与未满足条件]
+  class A blue
+  class B,C,D green
+  class E,F yellow

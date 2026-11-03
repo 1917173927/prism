@@ -1,0 +1,6 @@
+flowchart LR
+  A[账户记录] -->|username| B[认证会话]
+  C[对话记录] -->|conversation_id| D[消息记录]
+  E[研究快照] -->|联合外键| F[研究事实与请求记录]
+  class A,C,E blue
+  class B,D,F green

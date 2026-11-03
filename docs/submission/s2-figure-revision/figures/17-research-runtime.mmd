@@ -1,0 +1,11 @@
+flowchart TD
+  A[DAG 依赖校验] --> B[等待队列<br/>总量 400 · 每用户 200]
+  B --> C[研究任务<br/>最多 100 · 最长 60 秒]
+  C --> D[金融接口调用<br/>名额 100]
+  C --> E[模型调用<br/>名额 8]
+  D --> F[保存结果与执行状态]
+  E --> F
+  class A,B blue
+  class C,D green
+  class E purple
+  class F yellow

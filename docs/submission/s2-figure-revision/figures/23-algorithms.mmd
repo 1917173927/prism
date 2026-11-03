@@ -1,0 +1,12 @@
+flowchart TD
+  A[收益与财务数据] --> B[Pydantic 输入校验]
+  B --> C[HMM 状态概率]
+  B --> D[协方差收缩]
+  B --> E[Fama–French 五因子]
+  C --> F[计算条件检查]
+  D --> F
+  E --> F
+  F --> G[结果与方法版本]
+  class A,B blue
+  class C,D,E green
+  class F,G yellow
