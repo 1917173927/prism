@@ -1,0 +1,12 @@
+flowchart TD
+  A[统一交付版本] --> B[方案与过程材料]
+  A --> C[使用与测试材料]
+  A --> D[介绍与演示材料]
+  B --> E[核对内容与版本]
+  C --> E
+  D --> E
+  E --> F[归档提交]
+  class A green
+  class B blue
+  class C purple
+  class D,E,F yellow

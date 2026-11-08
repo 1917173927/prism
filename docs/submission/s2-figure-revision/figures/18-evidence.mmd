@@ -1,0 +1,9 @@
+flowchart TD
+  A[来源记录] --> B[核对主体与口径]
+  B --> C[按 lineage_id 分组]
+  C --> D[独立来源验证]
+  D --> E[支持或反对]
+  D --> F[不足或待核查]
+  class A,B blue
+  class C,D green
+  class E,F yellow

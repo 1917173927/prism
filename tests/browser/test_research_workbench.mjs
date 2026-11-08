@@ -58,9 +58,12 @@ try {
   await page.waitForFunction(() => !document.getElementById("research-template-submit").disabled);
   assert.equal(await page.$eval("#live-research", node => node.checkVisibility()), true);
   assert.equal(await page.$eval("#research-run-result", node => node.checkVisibility()), false);
-  evidence.typography = await page.$eval("#live-research .rw-task-summary dd", node => { const style = getComputedStyle(node); return {fontSize: style.fontSize, fontWeight: style.fontWeight, lineHeight: style.lineHeight, color: style.color, fontFamily: style.fontFamily}; });
+  evidence.typography = await page.$eval("#research-workbench .rw-page-lede", node => { const style = getComputedStyle(node); return {fontSize: style.fontSize, fontWeight: style.fontWeight, lineHeight: style.lineHeight, color: style.color, fontFamily: style.fontFamily}; });
   const bodyFont = await page.$eval("body", node => getComputedStyle(node).fontFamily);
   assert.equal(evidence.typography.fontFamily, bodyFont);
+  assert.ok(parseFloat(evidence.typography.fontSize) >= 15);
+  assert.ok(await page.$eval("#live-research .rw-task-hint", (node, bodyFont) => { const style = getComputedStyle(node); return style.fontFamily === bodyFont && parseFloat(style.fontSize) >= 14; }, bodyFont));
+  assert.equal(await page.$$eval("#live-research [data-rw-example]", nodes => nodes.length), 3);
   assert.ok((await page.$$eval(".rw-task-summary dd", nodes => nodes.map(node => { const style = getComputedStyle(node); return {fontFamily: style.fontFamily, fontSize: parseFloat(style.fontSize)}; }))).every(style => style.fontFamily === bodyFont && style.fontSize >= 15));
   evidence.checks.push("统一入口与默认任务");
 
@@ -183,7 +186,11 @@ try {
   await page.click("#research-template-submit");
   assert.equal((await templateResponse).status(), 202);
   await page.waitForSelector("#research-run-result:not([hidden])", {timeout: 30000});
-  await page.waitForFunction(() => ["研究未完成", "研究完成", "研究已取消"].includes(document.querySelector("#research-run-result > h3")?.textContent), {timeout: 30000});
+  await page.waitForFunction(() => ["研究未完成", "研究完成", "研究已取消", "资料不完整"].includes(document.querySelector("#research-run-result > h3")?.textContent), {timeout: 30000});
+  evidence.researchRun = await page.$eval("#research-run-result > details pre", node => JSON.parse(node.textContent));
+  const terminalLabels = {FAILED: "研究未完成", COMPLETED: "研究完成", CANCELLED: "研究已取消", PARTIAL: "资料不完整"};
+  assert.ok(Object.hasOwn(terminalLabels, evidence.researchRun.status));
+  assert.equal(await page.$eval("#research-run-result > h3", node => node.textContent), terminalLabels[evidence.researchRun.status]);
   assert.equal(await page.$eval("#research-cancel", node => node.hidden), true);
   const runId = await page.$eval("#research-run-id", node => node.value);
   assert.ok(runId);
@@ -210,6 +217,7 @@ try {
     }
     await page.click("#research-tools-trigger");
     await page.waitForSelector("#research-tools-dialog[open]");
+    await page.evaluate(() => Promise.all(document.getElementById("research-tools-dialog").getAnimations().map(animation => animation.finished.catch(() => {}))));
     const bounds = await page.$eval("#research-tools-dialog", node => { const rect = node.getBoundingClientRect(); return {left: rect.left, right: rect.right, width: innerWidth}; });
     assert.ok(bounds.left >= 0 && bounds.right <= bounds.width, JSON.stringify(bounds));
     await closeToolsOutside();
@@ -219,6 +227,7 @@ try {
   await page.click(".topbar-more-menu > summary");
   await page.click("#theme-toggle");
   await page.waitForSelector("body.prism-theme-dark");
+  await page.waitForFunction(() => getComputedStyle(document.querySelector(".rw-task-tab[aria-selected=true]")).color === getComputedStyle(document.body).color, {timeout: 10000});
   const darkColors = await page.evaluate(() => ({body: getComputedStyle(document.body).color, tab: getComputedStyle(document.querySelector('.rw-task-tab[aria-selected="true"]')).color, background: getComputedStyle(document.querySelector('.rw-task-tab[aria-selected="true"]')).backgroundColor}));
   assert.equal(darkColors.tab, darkColors.body);
   assert.notEqual(darkColors.tab, darkColors.background);
@@ -252,7 +261,7 @@ try {
   process.stdout.write(JSON.stringify({passed: true, checks: evidence.checks, geometry: evidence.geometry, limitations: evidence.limitations}, null, 2) + "\n");
 } finally {
   try {
-    if (page && !page.isClosed()) evidence.endState = await page.evaluate(() => ({url: location.href, route: location.hash, dialogs: [...document.querySelectorAll("dialog[open]")].map(node => node.id), modelDialogDisplay: document.getElementById("llm-config-modal") ? getComputedStyle(document.getElementById("llm-config-modal")).display : null}));
+    if (page && !page.isClosed()) evidence.endState = await page.evaluate(() => ({url: location.href, route: location.hash, dialogs: [...document.querySelectorAll("dialog[open]")].map(node => node.id), modelDialogDisplay: document.getElementById("llm-config-modal") ? getComputedStyle(document.getElementById("llm-config-modal")).display : null, researchStatus: document.querySelector("#research-run-result > h3")?.textContent, researchMessage: document.getElementById("research-message")?.textContent}));
     await fs.writeFile(path.join(artifactRoot, "browser-evidence.json"), JSON.stringify(evidence, null, 2) + "\n");
   } finally { await browser.close(); }
 }

@@ -1,0 +1,9 @@
+flowchart TD
+  A[上传 TXT / Markdown / PDF] --> B[提取文本与页码]
+  B --> C[保存版本与片段]
+  C --> D[权限与时间检查]
+  D --> E[检索相关片段]
+  E --> F[返回原文与引用位置]
+  class A,B blue
+  class C,D,E green
+  class F yellow

@@ -1,0 +1,31 @@
+[Unit]
+Description=Prism API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=prism
+Group=prism
+WorkingDirectory=/opt/prism
+EnvironmentFile=/etc/prism/prism.env
+Environment=PRISM_DEV_NO_AUTH=false
+Environment=PRISM_DB_PATH=/var/lib/prism/prism.sqlite3
+Environment=PRISM_SECRET_STORE_PATH=/var/lib/prism/secrets.json
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/prism
+ExecStart=/opt/prism/.venv/bin/python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+StateDirectory=prism
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/prism
+
+[Install]
+WantedBy=multi-user.target

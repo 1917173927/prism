@@ -1,0 +1,9 @@
+flowchart TD
+  A[问题与资料输入] --> B[提交操作]
+  C[账户与页面状态] --> D[HTTP / SSE]
+  E[进度与结果] --> F[来源与风险提示]
+  B --> C
+  D --> E
+  class A,B,C blue
+  class D purple
+  class E,F green

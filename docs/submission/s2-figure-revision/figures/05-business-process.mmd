@@ -1,0 +1,19 @@
+flowchart TD
+  subgraph 用户输入
+    direction LR
+    A[提出问题] --> B[确认画像与持仓]
+  end
+  subgraph 系统分析
+    direction LR
+    C[资料查询] --> D[研究与计算]
+  end
+  subgraph 结果检查
+    direction LR
+    E[证据与风险审查] --> F[展示结果]
+  end
+  B --> C
+  D --> E
+  E -. 资料待补充 .-> B
+  class A,B blue
+  class C,D green
+  class E,F yellow

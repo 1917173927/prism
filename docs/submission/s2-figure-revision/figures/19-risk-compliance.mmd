@@ -1,0 +1,14 @@
+flowchart TD
+  A[研究与计算结果] --> B[风险审查]
+  A --> C[合规审查]
+  B --> D[汇总审查状态]
+  C --> D
+  D --> E[通过]
+  D --> F[需要复核]
+  D --> G[阻止输出]
+  E --> H[核对版本并生成回执]
+  class A blue
+  class B,C,D,H green
+  class E green
+  class F yellow
+  class G pink

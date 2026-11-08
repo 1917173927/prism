@@ -1,0 +1,11 @@
+flowchart TD
+  A[问题与个人资料] --> B[FastAPI 请求校验]
+  B --> C[任务协调]
+  C --> D[金融数据查询]
+  C --> E[确定性计算]
+  D --> F[来源与风险检查]
+  E --> F
+  F --> G[界面展示与记录保存]
+  class A,B blue
+  class C,D,E green
+  class F,G yellow

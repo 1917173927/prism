@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Prism · Motion & Interaction</title>
+  <style>
+    :root {
+      --page: #f7f7f8; --surface: #fff; --subtle: #f1f1f3;
+      --ink: #282b30; --secondary: #62666e; --muted: #777d86;
+      --line: #e1e3e7; --accent: #d96b16; --accent-hover: #bd5810;
+      --accent-bg: #fcf3eb; --danger: #ad3932; --danger-bg: #fff4f3;
+      --micro: 140ms; --overlay: 180ms; --panel: 220ms; --content: 240ms;
+      --ease: cubic-bezier(.2, .7, .2, 1);
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scrollbar-gutter: stable; }
+    body { margin: 0; background: var(--page); color: var(--ink); font: 13px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+    body:has(dialog[open]) { overflow: hidden; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button, input, select, textarea { transition: background-color var(--micro) var(--ease), border-color var(--micro) var(--ease), color var(--micro) var(--ease); }
+    button { border: 1px solid var(--line); border-radius: 5px; background: white; padding: 8px 13px; }
+    button:hover:enabled { background: var(--subtle); border-color: #c8cbd0; }
+    button:active:enabled { background: #e7e8eb; }
+    button:disabled { color: #91959d; background: #f4f4f5; cursor: default; }
+    :is(button, input, select, textarea, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    input, select, textarea { border: 1px solid var(--line); border-radius: 5px; background: white; padding: 10px 12px; }
+    input:hover, select:hover, textarea:hover { border-color: #b6bac2; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 25px; font-weight: 600; letter-spacing: -.7px; }
+    h2 { font-size: 14px; font-weight: 600; }
+    small { font-size: 11px; }
+    .muted { color: var(--secondary); }
+    .mono { font-family: var(--mono); font-size: 11px; }
+    .icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .row { display: flex; align-items: center; gap: 10px; }
+    .between { justify-content: space-between; }
+    .quiet { border-color: transparent; background: transparent; color: var(--secondary); }
+    .primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .primary:hover:enabled { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .primary:active:enabled { background: #a84e0d; }
+    .icon-button { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; }
+    .shell { min-height: 100vh; display: grid; grid-template-columns: 216px minmax(0, 1fr); grid-template-rows: 62px 1fr; }
+    header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 25px; border-bottom: 1px solid var(--line); background: white; }
+    .brand { display: flex; align-items: center; gap: 10px; width: 165px; }
+    .brand img { width: 26px; height: 26px; }
+    .brand strong { font-size: 18px; letter-spacing: -.5px; font-weight: 650; }
+    .header-path { margin-right: auto; color: var(--secondary); font-size: 12px; }
+    .header-path span { margin: 0 12px; color: #c3c5ca; }
+    .header-label { font: 10px var(--mono); letter-spacing: 1px; color: var(--muted); }
+    aside { padding: 24px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: #f2f2f4; }
+    .nav-label { margin: 0 12px 12px; color: var(--muted); font-size: 10px; letter-spacing: 1px; }
+    .nav-button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; margin-bottom: 5px; padding: 9px 12px; background: transparent; border-color: transparent; text-align: left; color: var(--secondary); }
+    .nav-button[aria-pressed="true"] { color: var(--ink); background: #e8e8eb; font-weight: 600; }
+    .nav-button[aria-pressed="true"] .icon { color: var(--accent); }
+    .nav-divider { border-top: 1px solid var(--line); margin: 24px 12px; }
+    .side-note { margin: auto 12px 0; padding-top: 80px; color: var(--muted); font-size: 11px; line-height: 1.9; }
+    .shell.compact { grid-template-columns: 66px minmax(0, 1fr); }
+    .compact aside { padding-inline: 10px; }
+    .compact .nav-button { justify-content: center; padding-inline: 0; }
+    .compact :is(.nav-text, .nav-label, .side-note, .nav-divider) { display: none; }
+    main { min-width: 0; padding: 30px clamp(18px, 3.2vw, 52px) 130px; }
+    .workspace { max-width: 1120px; margin: auto; }
+    .eyebrow { font: 10px var(--mono); color: var(--muted); letter-spacing: 1.5px; margin-bottom: 7px; }
+    .heading { margin-bottom: 25px; }
+    .heading p { margin-top: 6px; color: var(--secondary); font-size: 12px; }
+    .design-link { font-size: 12px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; }
+    .composer { padding: 22px 24px 18px; }
+    .field-label { display: block; font-weight: 600; margin-bottom: 10px; }
+    .composer textarea { width: 100%; min-height: 82px; resize: vertical; font-size: 14px; line-height: 1.7; }
+    .composer textarea::placeholder { color: #858a92; }
+    .composer-footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 12px; }
+    .meta { color: var(--muted); font-size: 11px; }
+    .menu-wrap { position: relative; }
+    .menu { position: absolute; top: calc(100% + 7px); right: 0; z-index: 4; width: 220px; background: white; padding: 6px; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 12px #282b300a; animation: overlay-in var(--overlay) var(--ease); }
+    .menu button { display: block; width: 100%; text-align: left; border: 0; }
+    .menu small { display: block; color: var(--secondary); }
+    .flow { margin-top: 18px; overflow: hidden; }
+    .section-head { padding: 16px 22px; }
+    .badge { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: #f7f7f8; padding: 2px 7px; border-radius: 3px; color: var(--secondary); font: 10px/1.5 var(--mono); letter-spacing: .3px; }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .badge.running { color: #8a541d; background: #fcf6ee; border-color: #ead8c0; }
+    .badge.pass { color: #445866; background: #f1f5f7; border-color: #d5dfe6; }
+    .badge.error { color: var(--danger); background: var(--danger-bg); border-color: #edceca; }
+    .collapse { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--panel) var(--ease); }
+    .collapse.closed { grid-template-rows: 0fr; }
+    .collapse-inner { min-height: 0; overflow: hidden; }
+    .nodes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 23px; padding: 3px 22px 21px; }
+    .node { position: relative; min-width: 0; padding: 13px 14px; border: 1px solid var(--line); border-radius: 5px; transition: border-color var(--micro) var(--ease), background-color var(--micro) var(--ease); }
+    .node:not(:last-child)::after { content: "→"; position: absolute; top: 24px; right: -20px; color: #a5aab2; }
+    .node .number { font: 10px var(--mono); color: var(--muted); }
+    .node h3 { font-size: 12px; font-weight: 500; margin: 7px 0 10px; }
+    .node[data-state="running"] { border-color: #d4a77c; background: #fffaf5; }
+    .node[data-state="error"] { border-color: #d69992; background: var(--danger-bg); }
+    .flow-foot { padding: 10px 22px; border-top: 1px solid var(--line); color: var(--secondary); font-size: 11px; display: flex; justify-content: space-between; gap: 12px; }
+    .results { margin-top: 22px; }
+    .tabs { position: relative; display: flex; border-bottom: 1px solid var(--line); gap: 24px; }
+    .tab { border: 0; border-radius: 0; background: transparent; padding: 12px 2px; color: var(--secondary); }
+    .tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+    .tab:hover:enabled { background: transparent; color: var(--ink); }
+    .tab-line { position: absolute; left: 0; bottom: -1px; height: 2px; width: 56px; background: var(--ink); transform-origin: left; transition: transform var(--panel) var(--ease), width var(--panel) var(--ease); }
+    .result-body { min-height: 265px; padding-top: 18px; }
+    .content-enter { animation: content-in var(--content) var(--ease); }
+    .empty { min-height: 225px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+    .empty .icon { width: 28px; height: 28px; color: #9ca1aa; margin-bottom: 15px; }
+    .empty h3 { font-size: 13px; font-weight: 500; }
+    .empty p { color: var(--muted); font-size: 12px; max-width: 420px; margin-top: 7px; }
+    .result-top { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .result-cell { padding: 18px 20px; min-height: 126px; }
+    .result-cell + .result-cell { border-left: 1px solid var(--line); }
+    .result-cell p { margin-top: 13px; color: var(--muted); }
+    .callout { border: 1px solid #edceca; border-left: 3px solid var(--danger); border-radius: 4px; padding: 14px 18px; background: var(--danger-bg); display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 14px; }
+    .callout strong { color: #97362f; font-size: 12px; }
+    .callout p { color: #765c59; font-size: 12px; margin-top: 3px; }
+    .evidence-row { padding: 19px 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+    .evidence-row p { color: var(--muted); font-size: 12px; margin-top: 5px; }
+    .log { padding: 5px 20px; }
+    .log-row { display: grid; grid-template-columns: 100px 1fr auto; gap: 12px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .log-row:last-child { border: 0; }
+    .bottom-note { display: flex; justify-content: space-between; gap: 20px; margin-top: 17px; color: var(--muted); font-size: 10px; }
+    .demo-dock { position: fixed; z-index: 10; bottom: 18px; left: max(20px, calc((100vw - 950px) / 2)); right: max(20px, calc((100vw - 950px) / 2)); border: 1px solid #d5d7dc; border-radius: 7px; background: #fff; padding: 12px 16px; box-shadow: 0 3px 16px #282b3008; }
+    .dock-main { display: flex; align-items: center; gap: 16px; }
+    .demo-label { font: 10px var(--mono); letter-spacing: 1px; color: var(--secondary); padding-right: 16px; border-right: 1px solid var(--line); }
+    .state-controls { display: flex; gap: 3px; flex: 1; }
+    .state-controls button { padding: 5px 10px; border-color: transparent; background: transparent; font-size: 12px; }
+    .state-controls button[aria-pressed="true"] { background: var(--subtle); border-color: var(--line); font-weight: 600; }
+    .dock-note { margin-top: 7px; font-size: 10px; color: var(--muted); }
+    .motion-switch { display: flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; cursor: pointer; }
+    .motion-switch input { accent-color: var(--accent); margin: 0; }
+    dialog { padding: 0; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; width: min(530px, calc(100% - 32px)); max-height: calc(100dvh - 40px); background: white; }
+    dialog[open] { animation: overlay-in var(--overlay) var(--ease); }
+    dialog::backdrop { background: #20252d33; }
+    .dialog-head { padding: 19px 22px; border-bottom: 1px solid var(--line); }
+    .dialog-body { padding: 22px; }
+    .dialog-body p { color: var(--secondary); font-size: 12px; margin-bottom: 18px; }
+    .dialog-foot { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; }
+    .drawer { position: fixed; inset: 0 0 0 auto; height: 100dvh; max-height: 100dvh; width: min(440px, 100%); margin: 0; border-radius: 0; border-width: 0 0 0 1px; }
+    .drawer[open] { animation: drawer-in var(--panel) var(--ease); }
+    .drawer-field { padding: 14px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { text-align: left; padding: 12px 5px; border-bottom: 1px solid var(--line); }
+    th { color: var(--secondary); font-weight: 500; }
+    .parameter-field { display: grid; gap: 8px; margin-top: 18px; font-size: 12px; }
+    .toast { position: fixed; top: 77px; left: 50%; transform: translateX(-50%); z-index: 30; padding: 9px 15px; background: #30343a; color: white; font-size: 12px; border-radius: 5px; animation: overlay-in var(--overlay) var(--ease); max-width: calc(100% - 32px); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    @keyframes overlay-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes content-in { from { opacity: .6; translate: 0 3px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes drawer-in { from { opacity: .6; translate: 10px 0; } to { opacity: 1; translate: 0 0; } }
+    body.reduced *, body.reduced *::before, body.reduced *::after { animation: none !important; transition: none !important; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+    @media (max-width: 1000px) { .shell { grid-template-columns: 176px minmax(0, 1fr); } .nodes { gap: 18px; padding-inline: 16px; } .node { padding: 11px 9px; } .node:not(:last-child)::after { right: -16px; } .header-label { display: none; } }
+    @media (max-width: 760px) {
+      .shell { grid-template-columns: 66px minmax(0, 1fr); }
+      aside { padding-inline: 10px; } .nav-button { justify-content: center; padding-inline: 0; }
+      :is(.nav-text, .nav-label, .side-note, .nav-divider) { display: none; }
+      header { padding-inline: 16px; gap: 10px; } .brand { width: auto; } .header-path { display: none; }
+      main { padding: 24px 16px 175px; } .heading { align-items: flex-start; gap: 12px; } h1 { font-size: 22px; }
+      .composer { padding: 16px; } .nodes { grid-template-columns: 1fr 1fr; gap: 12px; } .node:not(:last-child)::after { content: none; }
+      .section-head { padding: 14px 16px; } .flow-foot { flex-direction: column; gap: 3px; padding-inline: 16px; }
+      .demo-dock { left: 12px; right: 12px; bottom: 12px; padding: 12px; } .dock-main { flex-wrap: wrap; gap: 8px; }
+      .state-controls { order: 3; width: 100%; flex-basis: 100%; flex-wrap: wrap; } .state-controls button { flex: 1; padding-inline: 6px; }
+      .motion-switch { margin-left: auto; } .result-grid { grid-template-columns: 1fr; } .result-cell + .result-cell { border-left: 0; border-top: 1px solid var(--line); }
+      .bottom-note { flex-direction: column; gap: 3px; } .evidence-row, .callout { align-items: flex-start; flex-direction: column; }
+      .log-row { grid-template-columns: 1fr auto; } .log-row .mono:first-child { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3z"/><path d="M7 8h10M7 12h6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3v17h17M7 14l4-4 4 2 5-6"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+  </svg>
+  <div class="shell" id="shell">
+    <header>
+      <div class="brand"><img src="../wencai-zhitou-logo.svg" alt=""><strong>Prism</strong></div>
+      <div class="header-path">研究空间 <span>/</span> <strong id="breadcrumb">研究工作台</strong></div>
+      <span class="header-label">MOTION & INTERACTION STUDY</span>
+      <button class="quiet icon-button" id="sidebar-toggle" aria-label="收起侧边栏" aria-expanded="true" aria-controls="sidebar"><svg class="icon"><use href="#i-panel"/></svg></button>
+    </header>
+    <aside id="sidebar" aria-label="工作空间导航">
+      <p class="nav-label">WORKSPACE</p>
+      <button class="nav-button" aria-pressed="true" data-page="研究工作台" title="研究工作台"><svg class="icon"><use href="#i-grid"/></svg><span class="nav-text">研究工作台</span></button>
+      <button class="nav-button" aria-pressed="false" data-page="AI 对话" title="AI 对话"><svg class="icon"><use href="#i-chat"/></svg><span class="nav-text">AI 对话</span></button>
+      <button class="nav-button" aria-pressed="false" data-page="持仓分析" title="持仓分析"><svg class="icon"><use href="#i-chart"/></svg><span class="nav-text">持仓分析</span></button>
+      <div class="nav-divider"></div>
+      <p class="nav-label">RESEARCH TOOLS</p>
+      <button class="nav-button" aria-pressed="false" data-page="知识库" title="知识库"><svg class="icon"><use href="#i-file"/></svg><span class="nav-text">知识库</span></button>
+      <div class="side-note">研究过程可追溯<br>数据依据可核验<br><br><span class="mono">PRISM / INTERACTION PREVIEW</span></div>
+    </aside>
+    <main>
+      <div class="workspace">
+        <div class="heading row between"><div><div class="eyebrow">RESEARCH WORKSPACE</div><h1 id="page-title">研究工作台</h1><p id="page-description">从研究问题到证据，让每一步都有明确反馈。</p></div><button id="spec-open" class="quiet design-link row"><svg class="icon"><use href="#i-sliders"/></svg>动效规范</button></div>
+        <section id="research-page">
+          <form class="card composer" id="research-form">
+            <label class="field-label" for="question">研究问题</label>
+            <textarea id="question" required maxlength="2000" placeholder="输入证券代码或研究问题，体验输入与提交反馈" aria-describedby="connection-note"></textarea>
+            <div class="composer-footer"><span class="meta" id="connection-note">Demo · 服务未连接，输入仅保留在当前页面</span><div class="row"><div class="menu-wrap"><button type="button" id="options-toggle" class="quiet row" aria-expanded="false" aria-controls="options-menu"><svg class="icon"><use href="#i-sliders"/></svg>研究参数 <span aria-hidden="true">⌄</span></button><div class="menu" id="options-menu" hidden><button type="button" id="parameters-open">参数设置<small>研究范围与证据要求</small></button><button type="button" id="evidence-menu">证据字段<small>查看来源与核验结构</small></button></div></div><button class="primary row" id="submit-preview" disabled>预览提交反馈<svg class="icon"><use href="#i-arrow"/></svg></button></div></div>
+          </form>
+          <section class="card flow" aria-labelledby="flow-title">
+            <div class="section-head row between"><div class="row"><h2 id="flow-title">Agent 协作</h2><span class="badge" id="overall-status">IDLE</span></div><button class="quiet" id="flow-toggle" aria-expanded="true" aria-controls="flow-content">收起流程 ⌃</button></div>
+            <div class="collapse" id="flow-content"><div class="collapse-inner"><div class="nodes">
+              <article class="node"><span class="number">01 / PLANNER</span><h3>任务解析</h3><span class="badge">WAITING</span></article>
+              <article class="node"><span class="number">02 / RETRIEVER</span><h3>资料检索</h3><span class="badge">WAITING</span></article>
+              <article class="node"><span class="number">03 / ANALYST</span><h3>研究分析</h3><span class="badge">WAITING</span></article>
+              <article class="node"><span class="number">04 / REVIEWER</span><h3>风险审查</h3><span class="badge">WAITING</span></article>
+            </div></div></div>
+            <div class="flow-foot"><span id="flow-message">研究任务尚未开始</span><span class="mono">状态布局预览 · 手动切换</span></div>
+          </section>
+          <section class="results" aria-label="研究内容">
+            <div class="tabs" role="tablist" aria-label="研究内容分类">
+              <button class="tab" id="tab-result" role="tab" aria-selected="true" aria-controls="panel-result" tabindex="0">研究结果</button>
+              <button class="tab" id="tab-evidence" role="tab" aria-selected="false" aria-controls="panel-evidence" tabindex="-1">证据来源</button>
+              <button class="tab" id="tab-log" role="tab" aria-selected="false" aria-controls="panel-log" tabindex="-1">执行记录</button>
+              <span class="tab-line" aria-hidden="true"></span>
+            </div>
+            <div class="result-body">
+              <div class="callout" id="failure-notice" role="alert" hidden><div><strong>Danger · 检索失败状态预览</strong><p>研究结论暂不可用。重要提示立即呈现。</p></div><button id="retry-preview">预览重试反馈</button></div>
+              <section id="panel-result" role="tabpanel" aria-labelledby="tab-result" tabindex="0">
+                <div class="card empty" id="empty-result"><svg class="icon"><use href="#i-file"/></svg><h3 id="empty-title">准备开始研究</h3><p id="empty-description">输入研究问题，或使用下方 Demo 控制查看不同状态。</p></div>
+                <div class="card" id="complete-result" hidden><div class="result-top row between"><h2>研究结果</h2><span class="badge pass">COMPLETE · 布局预览</span></div><div class="result-grid"><div class="result-cell"><span class="meta">研究结论</span><p>尚无研究服务返回的结果</p></div><div class="result-cell"><span class="meta">风险与适当性审查</span><p>尚无核验数据，无法判定</p></div></div></div>
+              </section>
+              <section id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0" hidden><div class="card evidence-row"><div><h2>证据与原始字段</h2><p>尚未取得来源资料。可展开查看证据详情的展示结构。</p></div><button id="evidence-open" class="row">查看详情<svg class="icon"><use href="#i-arrow"/></svg></button></div><div class="empty"><p>来源、发布日期与核验状态将在此保留。</p></div></section>
+              <section id="panel-log" role="tabpanel" aria-labelledby="tab-log" tabindex="0" hidden><div class="card log"><div class="log-row"><span class="mono">PREVIEW STATE</span><span id="log-state">待开始</span><span class="badge">DEMO</span></div><div class="log-row"><span class="mono">EVENT SOURCE</span><span class="muted">尚未连接 SSE 事件</span><span class="badge">OFFLINE</span></div><div class="log-row"><span class="mono">EVENT HISTORY</span><span class="muted">尚无真实执行记录</span><span class="mono">—</span></div></div></section>
+            </div>
+          </section>
+        </section>
+        <section class="card empty" id="other-page" hidden><svg class="icon"><use href="#i-grid"/></svg><h3 id="other-title"></h3><p>此处展示导航选中、焦点保留与内容切换的交互。</p><button id="back-research" style="margin-top:18px">返回研究工作台</button></section>
+        <div class="bottom-note"><span>Normal is quiet. Exceptions get attention.</span><span>140 / 180 / 220 / 240 ms · ease-out</span></div>
+      </div>
+    </main>
+  </div>
+  <section class="demo-dock" aria-label="独立预览控制">
+    <div class="dock-main"><span class="demo-label">DEMO CONTROL</span><div class="state-controls" aria-label="工作流状态"><button data-state="idle" aria-pressed="true">待开始</button><button data-state="running" aria-pressed="false">执行中</button><button data-state="stage" aria-pressed="false">阶段完成</button><button data-state="error" aria-pressed="false">失败</button><button data-state="complete" aria-pressed="false">已完成</button></div><label class="motion-switch"><input type="checkbox" id="reduce-motion">低动效</label></div>
+    <p class="dock-note">仅切换展示状态，未执行 Agent 任务。支持 Tab、方向键与 Escape；自动尊重系统低动效设置。</p>
+  </section>
+  <dialog id="spec-dialog" aria-labelledby="spec-title"><div class="dialog-head row between"><h2 id="spec-title">Motion Design / 动效规范</h2><button class="quiet icon-button" data-close aria-label="关闭动效规范">×</button></div><div class="dialog-body"><p>动效解释操作与状态。反馈即时发生，内容保留空间，异常提示立即可见。</p><table><thead><tr><th>场景</th><th>时长</th><th>变化</th><th>反馈</th></tr></thead><tbody><tr><td>微交互</td><td class="mono">140ms</td><td>颜色、边框</td><td>操作可感知</td></tr><tr><td>菜单与弹层</td><td class="mono">180ms</td><td>透明度、4px</td><td>明确所属关系</td></tr><tr><td>流程与抽屉</td><td class="mono">220ms</td><td>展开、10px</td><td>保留上下文</td></tr><tr><td>内容切换</td><td class="mono">240ms</td><td>透明度、3px</td><td>内容连续</td></tr><tr><td>风险与失败</td><td class="mono">0ms</td><td>即时呈现</td><td>异常可见</td></tr></tbody></table><p style="margin:18px 0 0">侧边栏即时调整可用空间；面板展开仅改变所属区域。执行中使用静态标签，低动效模式关闭全部过渡。</p></div><div class="dialog-foot"><button data-close>返回工作台</button></div></dialog>
+  <dialog id="parameters-dialog" aria-labelledby="parameters-title"><div class="dialog-head row between"><h2 id="parameters-title">研究参数</h2><button class="quiet icon-button" data-close aria-label="关闭研究参数">×</button></div><form id="parameters-form"><div class="dialog-body"><p>参数用于体验选择与保存反馈，仅保留在当前页面。</p><label class="parameter-field">研究范围<select id="scope"><option>公司基本面</option><option>行业研究</option><option>风险评估</option></select></label><label class="parameter-field">证据要求<select id="requirement"><option>公开披露与原始资料</option><option>公开披露</option></select></label></div><div class="dialog-foot"><button class="primary">保存参数</button></div></form></dialog>
+  <dialog class="drawer" id="evidence-dialog" aria-labelledby="evidence-title"><div class="dialog-head row between"><div><div class="eyebrow">EVIDENCE DETAIL</div><h2 id="evidence-title">证据详情</h2></div><button class="quiet icon-button" data-close aria-label="关闭证据详情">×</button></div><div class="dialog-body"><p>Info · 当前展示字段结构，尚无来源资料。</p><div class="drawer-field"><span class="muted">来源名称</span><span>未提供</span></div><div class="drawer-field"><span class="muted">原始链接</span><span>未提供</span></div><div class="drawer-field"><span class="muted">发布日期</span><span>未提供</span></div><div class="drawer-field"><span class="muted">核验状态</span><span class="badge">UNVERIFIED</span></div><div class="empty"><svg class="icon"><use href="#i-file"/></svg><h3>原始内容尚不可用</h3><p>连接真实研究服务后，原文与引用位置在此展示。</p></div></div></dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="sr-only" id="announcement" role="status" aria-live="polite"></div>
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => [...document.querySelectorAll(selector)];
+    const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+    const stateDefinitions = {
+      idle: { label: '待开始', badge: 'IDLE', nodes: ['WAITING', 'WAITING', 'WAITING', 'WAITING'], title: '准备开始研究', description: '输入研究问题，或使用下方 Demo 控制查看不同状态。', message: '研究任务尚未开始' },
+      running: { label: '执行中', badge: 'RUNNING', nodes: ['PASS', 'RUNNING', 'WAITING', 'WAITING'], title: '资料检索中', description: '结果区域保留空间。执行状态由事件更新，界面保持安静。', message: '资料检索 · 等待阶段事件' },
+      stage: { label: '阶段完成', badge: 'RUNNING', nodes: ['PASS', 'PASS', 'RUNNING', 'WAITING'], title: '研究分析中', description: '已完成的阶段保持可见，后续结果将在原位置呈现。', message: '资料检索已完成 · 研究分析进行中' },
+      error: { label: '失败', badge: 'FAILED', nodes: ['PASS', 'FAILED', 'WAITING', 'WAITING'], title: '等待重新执行', description: '保留研究输入与已完成阶段，提供明确的重试入口。', message: '资料检索失败 · 后续阶段尚未执行' },
+      complete: { label: '已完成', badge: 'COMPLETE', nodes: ['PASS', 'PASS', 'PASS', 'PASS'], title: '', description: '', message: '全部阶段完成 · 结果区域已就绪' }
+    };
+    let currentState = 'idle';
+    let toastTimer;
+    let lastDialogTrigger;
+    function reduced() { return motionPreference.matches || $('#reduce-motion').checked; }
+    function enter(element) {
+      element.getAnimations().forEach((animation) => animation.cancel());
+      const tokens = getComputedStyle(document.documentElement);
+      if (!reduced()) element.animate([{ opacity: .6, translate: '0 3px' }, { opacity: 1, translate: '0 0' }], { duration: parseFloat(tokens.getPropertyValue('--content')), easing: tokens.getPropertyValue('--ease').trim() });
+    }
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      $('#toast').textContent = message;
+      $('#toast').hidden = false;
+      toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 2600);
+    }
+    function badgeClass(value) { return value === 'FAILED' ? 'error' : value === 'RUNNING' ? 'running' : ['PASS', 'COMPLETE'].includes(value) ? 'pass' : ''; }
+    function setState(state) {
+      if (state === currentState) return;
+      currentState = state;
+      const definition = stateDefinitions[state];
+      $$('.state-controls button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.state === state)));
+      $('#overall-status').textContent = definition.badge;
+      $('#overall-status').className = `badge ${badgeClass(definition.badge)}`;
+      $$('.node').forEach((node, index) => {
+        const value = definition.nodes[index];
+        node.dataset.state = value === 'FAILED' ? 'error' : value.toLowerCase();
+        const badge = node.querySelector('.badge');
+        badge.textContent = value;
+        badge.className = `badge ${badgeClass(value)}`;
+      });
+      $('#flow-message').textContent = definition.message;
+      $('#log-state').textContent = `${definition.label} · 展示状态`;
+      $('#failure-notice').hidden = state !== 'error';
+      $('#empty-result').hidden = state === 'complete';
+      $('#complete-result').hidden = state !== 'complete';
+      $('#empty-title').textContent = definition.title;
+      $('#empty-description').textContent = definition.description;
+      $('#announcement').textContent = `Demo 状态：${definition.label}`;
+      // 异常提示立即显示，内容区域独立过渡。
+      if (state !== 'error') enter($('#panel-result'));
+    }
+    function closeMenu(returnFocus = false) {
+      $('#options-menu').hidden = true;
+      $('#options-toggle').setAttribute('aria-expanded', 'false');
+      if (returnFocus) $('#options-toggle').focus();
+    }
+    function openDialog(id, trigger) {
+      closeMenu();
+      lastDialogTrigger = trigger;
+      $(id).showModal();
+    }
+    $$('dialog').forEach((dialog) => {
+      dialog.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+      dialog.addEventListener('close', () => lastDialogTrigger?.focus());
+      dialog.addEventListener('click', (event) => {
+        const rect = dialog.getBoundingClientRect();
+        if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
+      });
+    });
+    $('#spec-open').addEventListener('click', (event) => openDialog('#spec-dialog', event.currentTarget));
+    $('#parameters-open').addEventListener('click', () => openDialog('#parameters-dialog', $('#options-toggle')));
+    $('#evidence-menu').addEventListener('click', () => openDialog('#evidence-dialog', $('#options-toggle')));
+    $('#evidence-open').addEventListener('click', (event) => openDialog('#evidence-dialog', event.currentTarget));
+    $('#parameters-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      $('#parameters-dialog').close();
+      showToast(`参数已保存至当前预览：${$('#scope').value}`);
+    });
+    $('#options-toggle').addEventListener('click', () => {
+      const open = $('#options-menu').hidden;
+      $('#options-menu').hidden = !open;
+      $('#options-toggle').setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (event) => { if (!event.target.closest('.menu-wrap')) closeMenu(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#options-menu').hidden) { event.preventDefault(); closeMenu(true); } });
+    $('#options-menu').addEventListener('focusout', (event) => { if (!event.relatedTarget?.closest('.menu-wrap')) closeMenu(); });
+    $('#sidebar-toggle').addEventListener('click', () => {
+      const compact = $('#shell').classList.toggle('compact');
+      $('#sidebar-toggle').setAttribute('aria-expanded', String(!compact));
+      $('#sidebar-toggle').setAttribute('aria-label', compact ? '展开侧边栏' : '收起侧边栏');
+    });
+    $('#flow-toggle').addEventListener('click', () => {
+      const closed = $('#flow-content').classList.toggle('closed');
+      $('#flow-content').inert = closed;
+      $('#flow-content').setAttribute('aria-hidden', String(closed));
+      $('#flow-toggle').setAttribute('aria-expanded', String(!closed));
+      $('#flow-toggle').textContent = closed ? '展开流程 ⌄' : '收起流程 ⌃';
+    });
+    const tabs = $$('.tab');
+    function positionTab(tab) {
+      $('.tab-line').style.width = `${tab.offsetWidth}px`;
+      $('.tab-line').style.transform = `translateX(${tab.offsetLeft}px)`;
+    }
+    function selectTab(tab, focus = false) {
+      tabs.forEach((item) => {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', String(selected));
+        item.tabIndex = selected ? 0 : -1;
+        $(`#${item.getAttribute('aria-controls')}`).hidden = !selected;
+      });
+      positionTab(tab);
+      enter($(`#${tab.getAttribute('aria-controls')}`));
+      if (focus) tab.focus();
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectTab(tab));
+      tab.addEventListener('keydown', (event) => {
+        let target;
+        if (event.key === 'ArrowRight') target = (index + 1) % tabs.length;
+        if (event.key === 'ArrowLeft') target = (index + tabs.length - 1) % tabs.length;
+        if (event.key === 'Home') target = 0;
+        if (event.key === 'End') target = tabs.length - 1;
+        if (target !== undefined) { event.preventDefault(); selectTab(tabs[target], true); }
+      });
+    });
+    function selectPage(name) {
+      $$('.nav-button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.page === name)));
+      $('#breadcrumb').textContent = name;
+      $('#page-title').textContent = name;
+      $('#research-page').hidden = name !== '研究工作台';
+      $('#other-page').hidden = name === '研究工作台';
+      $('#other-title').textContent = name;
+      $('#page-description').textContent = name === '研究工作台' ? '从研究问题到证据，让每一步都有明确反馈。' : '工作空间导航交互预览';
+      const target = name === '研究工作台' ? $('#research-page') : $('#other-page');
+      enter(target);
+      if (name === '研究工作台') positionTab($('.tab[aria-selected="true"]'));
+    }
+    $$('.nav-button').forEach((button) => button.addEventListener('click', () => selectPage(button.dataset.page)));
+    $('#back-research').addEventListener('click', () => { selectPage('研究工作台'); $('.nav-button').focus(); });
+    $$('.state-controls button').forEach((button) => button.addEventListener('click', () => { if ($('#research-page').hidden) selectPage('研究工作台'); setState(button.dataset.state); }));
+    $('#question').addEventListener('input', () => { $('#submit-preview').disabled = !$('#question').value.trim(); });
+    $('#research-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!$('#question').value.trim()) return;
+      setState('running');
+      showToast('已切换至执行中展示状态');
+    });
+    $('#retry-preview').addEventListener('click', () => { setState('running'); $('.state-controls [data-state="running"]').focus(); showToast('已切换至重试后的展示状态'); });
+    function cancelMotion() { document.getAnimations().forEach((animation) => animation.cancel()); }
+    $('#reduce-motion').addEventListener('change', () => {
+      document.body.classList.toggle('reduced', $('#reduce-motion').checked);
+      if (reduced()) cancelMotion();
+    });
+    motionPreference.addEventListener('change', () => { if (reduced()) cancelMotion(); });
+    new ResizeObserver(() => { if (!$('#research-page').hidden) positionTab($('.tab[aria-selected="true"]')); }).observe($('.tabs'));
+    document.fonts.ready.then(() => positionTab(tabs[0]));
+    window.addEventListener('pagehide', () => clearTimeout(toastTimer));
+  </script>
+</body>
+</html>

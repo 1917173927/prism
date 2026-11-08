@@ -1,0 +1,11 @@
+flowchart TD
+  A[确认画像与持仓] --> B[保存版本与指纹]
+  B --> C[持续核对当前资料]
+  C --> D[资料一致]
+  C --> E[资料变化]
+  D --> F[继续生成]
+  E --> G[终止并重新确认]
+  G -.-> A
+  class A,B,C blue
+  class D,F green
+  class E,G yellow

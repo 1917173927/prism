@@ -1,0 +1,11 @@
+flowchart TD
+  A[直接持仓] --> D[资产与行业汇总]
+  B[基金与 ETF] --> C[按披露比例穿透]
+  C --> D
+  C --> E[未穿透金额]
+  D --> F[金额守恒检查]
+  E --> F
+  F --> G[集中度与预算比较]
+  class A,B blue
+  class C,D,F green
+  class E,G yellow

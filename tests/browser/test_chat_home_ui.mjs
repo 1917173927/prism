@@ -90,6 +90,9 @@ try {
   assert.equal(await page.$eval("#chat-session-search", node => node.value), "");
   assert.equal(await page.$eval("#chat-session-search", node => node.readOnly), true);
   assert.equal(await page.$eval("#chat-session-search", node => node.matches(":placeholder-shown")), true);
+  await page.evaluate(() => Promise.all(document.getAnimations().filter(animation =>
+    animation.effect?.getComputedTiming().iterations !== Infinity
+  ).map(animation => animation.finished.catch(() => {}))));
   const home = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).getBoundingClientRect();
     const visible = selector => getComputedStyle(document.querySelector(selector)).display !== "none";
@@ -124,7 +127,7 @@ try {
   assert.equal(home.horizontalOverflow, false);
   assert.ok(home.inputTop > 300 && home.inputTop < 500, JSON.stringify(home));
   assert.match(home.font, /ui-sans-serif/);
-  assert.equal(home.titleWeight, "600");
+  assert.equal(home.titleWeight, "560");
   assert.equal(home.contextInsideConversation, false);
   assert.equal(await page.$eval("#home-model-label", node => node.textContent), "API 配置");
 
@@ -181,9 +184,9 @@ try {
       background: style.backgroundColor, radius: style.borderRadius, collapsible: Boolean(node.closest("details"))};
   });
   assert.equal(suggestions.count, 3);
-  assert.equal(suggestions.borderWidth, "0px");
-  assert.equal(suggestions.background, "rgba(0, 0, 0, 0)");
-  assert.equal(suggestions.radius, "0px");
+  assert.equal(suggestions.borderWidth, "1px");
+  assert.notEqual(suggestions.background, "rgba(0, 0, 0, 0)");
+  assert.equal(suggestions.radius, "999px");
   assert.equal(suggestions.collapsible, false);
   assert.ok(suggestions.top > await page.$eval(".copilot-query-box", node => node.getBoundingClientRect().bottom));
   await page.click("#copilot-quick-tags .quick-tag-chip");
@@ -229,6 +232,9 @@ try {
   assert.equal(await page.$eval(".main", node => node.getBoundingClientRect().left), 0);
   await page.click("#home-history-show");
   await page.emulateMediaFeatures([{name: "prefers-reduced-motion", value: "no-preference"}]);
+  await page.evaluate(() => Promise.all(document.getAnimations().filter(animation =>
+    animation.effect?.getComputedTiming().iterations !== Infinity
+  ).map(animation => animation.finished.catch(() => {}))));
 
   async function checkMenuGeometry(selector) {
     const geometry = await page.evaluate(selector => {
