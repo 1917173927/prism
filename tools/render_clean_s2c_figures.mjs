@@ -276,6 +276,136 @@ const node = (title, sub = '', cls = 'slate') => `
 </div>`;
 
 const FIGURES = [
+  // 图 1-1 投资者信息需求与服务设计
+  {
+    file: '图1-01-投资者信息需求与服务设计.png',
+    html: `
+      <div class="col" style="gap:9px">
+        <div class="stage-row" style="align-items:stretch">
+          ${node('信息过多，抓不住重点', '调研占比 58.97%', 'blue')}
+          <div class="arrow-right">${SVG_RIGHT('#15803d', 24)}</div>
+          ${node('围绕个人目标筛选重点', '结合风险画像聚焦核心信息', 'green')}
+        </div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('信息分散，多平台切换', '调研占比 53.85%', 'blue')}
+          <div class="arrow-right">${SVG_RIGHT('#15803d', 24)}</div>
+          ${node('一站式统一查询与整理', '聚合行情、财报、研报与持仓', 'green')}
+        </div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('真假难辨，缺乏依据', '调研占比 48.72%', 'blue')}
+          <div class="arrow-right">${SVG_RIGHT('#15803d', 24)}</div>
+          ${node('全程展示来源与核验依据', '标明出处、时间与风险提示', 'green')}
+        </div>
+      </div>
+    `,
+  },
+
+  // 图 1-2 个性化投顾服务流程
+  {
+    file: '图1-02-个性化投顾服务流程.png',
+    html: `
+      <div class="group-blue">
+        <div class="group-title"><span class="badge badge-blue">一、明确需求</span></div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('确认个人画像', '完成风险测评与持仓确认', 'blue')}
+          <div class="arrow-right">${SVG_RIGHT('#1d4ed8', 22)}</div>
+          ${node('提出投资问题', '自然语言发起咨询或体检', 'blue')}
+        </div>
+      </div>
+      ${arrowDown('', '#15803d')}
+      <div class="group-solid">
+        <div class="group-title">二、查数与分析</div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('多源资料查询', '获取行情、财报与披露持仓', 'green')}
+          <div class="arrow-right">${SVG_RIGHT('#15803d', 22)}</div>
+          ${node('专业研究与计算', '多节点分析 + 程序精准算账', 'green')}
+        </div>
+      </div>
+      ${arrowDown('', '#c2410c')}
+      <div class="group-orange">
+        <div class="group-title"><span class="badge">三、把关与交付</span></div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('证据与合规审查', '核对来源独立性与风控上限', 'orange')}
+          <div class="arrow-right">${SVG_RIGHT('#c2410c', 22)}</div>
+          ${node('输出结论与提示', '展示依据、风险提示与回执', 'amber')}
+        </div>
+      </div>
+    `,
+  },
+
+  // 图 1-3 系统技术路线
+  {
+    file: '图1-03-系统技术路线.png',
+    html: `
+      ${node('用户问题与已确认个人资料', '风险画像、当前持仓与分析目标', 'blue')}
+      ${arrowDown()}
+      ${node('服务端请求校验与任务协调', '核对身份归属、参数格式并拆解任务', 'dark')}
+      ${SVG_SPLIT_2()}
+      <div class="grid-2">
+        ${node('金融数据查询与研究', '统一接口取数，保留出处与时间', 'green')}
+        ${node('确定性金融程序计算', '市值、穿透、集中度与调仓测算', 'orange')}
+      </div>
+      ${SVG_MERGE_2()}
+      ${node('来源交叉验证与双闸门审查', '风险与合规双通过才具备建议资格', 'amber')}
+      ${arrowDown()}
+      ${node('界面分步展示与决策留痕', '图表化呈现结论、依据并保存历史记录', 'green')}
+    `,
+  },
+
+  // 图 2-1 项目成果交付组织
+  {
+    file: '图2-01-项目成果交付组织.png',
+    html: `
+      ${node('统一交付版本基线', '确保文档、代码与演示口径完全一致', 'green')}
+      ${SVG_SPLIT_3()}
+      <div class="grid-3">
+        ${node('方案与过程材料', '解决方案、需求分析<br/>与开发过程记录', 'blue')}
+        ${node('使用与测试材料', '系统测试报告<br/>与操作使用说明', 'purple')}
+        ${node('介绍与演示材料', '答辩演示文稿<br/>与功能演示视频', 'orange')}
+      </div>
+      ${SVG_MERGE_3()}
+      ${node('交叉核对内容与版本号', '检查图表引用、数据口径与排版规范', 'amber')}
+      ${arrowDown()}
+      ${node('统一归档与正式提交', '形成可复核的完整竞赛交付包', 'green')}
+    `,
+  },
+
+  // 图 2-2 核心业务流程
+  {
+    file: '图2-02-核心业务流程.png',
+    html: `
+      <div class="group-blue">
+        <div class="group-title"><span class="badge badge-blue">一、用户输入</span></div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('提出投资问题', '咨询大盘、行业、个股或组合', 'blue')}
+          <div class="arrow-right">${SVG_RIGHT('#1d4ed8', 22)}</div>
+          ${node('确认画像与持仓', '锁定风险等级与资产快照', 'blue')}
+        </div>
+      </div>
+      ${arrowDown('', '#15803d')}
+      <div class="group-solid">
+        <div class="group-title">二、系统分析</div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('多源资料查询', '实时行情、财报与研报资料', 'green')}
+          <div class="arrow-right">${SVG_RIGHT('#15803d', 22)}</div>
+          ${node('专业研究与计算', '多节点协同 + 程序确定性测算', 'green')}
+        </div>
+      </div>
+      ${arrowDown('', '#c2410c')}
+      <div class="group-orange">
+        <div class="group-title"><span class="badge">三、结果检查与输出</span></div>
+        <div class="stage-row" style="align-items:stretch">
+          ${node('证据与风险审查', '核对来源与画像适当性边界', 'orange')}
+          <div class="arrow-right">${SVG_RIGHT('#c2410c', 22)}</div>
+          ${node('展示可解释结果', '呈现结论、依据与风险提示', 'green')}
+        </div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="pill-warn">若审查发现<b>资料不足或画像已变动</b>，则返回第一步提示用户补充或重新确认</div>
+      </div>
+    `,
+  },
+
   // 图 3-1 系统技术架构
   {
     file: '图3-01-系统技术架构.png',
@@ -776,6 +906,33 @@ const FIGURES = [
       <div class="grid-2">
         ${node('已算好', '满足条件，输出完整指标与依据', 'green')}
         ${node('暂不可用', '样本不足或未收敛，明确说明原因', 'amber')}
+      </div>
+    `,
+  },
+
+  // 图 4-1 成本结构占比
+  {
+    file: '图4-01-成本结构占比.png',
+    html: `
+      <div class="group-solid" style="padding:12px 14px">
+        <div class="group-title" style="margin-bottom:10px">项目总成本结构占比（合计 100%）</div>
+        ${[
+          ['人力研发成本', 55, '#c2410c', '#fed7aa', '项目统筹、产品、前后端、算法与测试'],
+          ['计算资源成本', 20, '#1d4ed8', '#bfdbfe', '算力、向量库、云服务器与存储'],
+          ['第三方服务费', 10, '#15803d', '#bbf7d0', '大模型调用与金融行情接口'],
+          ['资源采购成本', 10, '#7e22ce', '#e9d5ff', '金融数据、研报版权与数据集'],
+          ['应急储备资金', 5,  '#b45309', '#fde68a', '突发扩容与风险应急预留'],
+        ].map(([label, pct, fg, bg, desc]) => `
+          <div style="margin-bottom:9px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+              <span style="font-size:10pt;font-weight:700;color:#1f2329">${label} <span style="font-weight:400;font-size:9pt;color:#64748b">（${desc}）</span></span>
+              <span style="font-size:10.5pt;font-weight:700;color:${fg}">${pct}%</span>
+            </div>
+            <div style="width:100%;height:14px;background:#e2e8f0;border-radius:7px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${fg};border-radius:7px"></div>
+            </div>
+          </div>
+        `).join('')}
       </div>
     `,
   },
